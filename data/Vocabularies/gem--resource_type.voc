@@ -1,0 +1,45 @@
+<vocabulary>
+    <name>Resource Type</name> <!-- (correlates to CWIS Resource Type) -->
+    <description>Words or phrases that describe the kind or the genre of the resource being described.</description>
+    <version>Jun 11 2004</version>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-resource-type</url>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>>
+        <name>GEM Resource Type Vocabulary</name>
+        <namespace>http://purl.org/gem/instance/GemType/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-resource-type</url>
+    </qualifier>
+    <term>Activity</term>
+    <term>Artifact</term>
+    <term>Best practice</term>
+    <term>Catalog record</term>
+    <term>Collection</term>
+    <term>Community</term>
+    <term>Course</term>
+    <term>Curriculum</term>
+    <term>Curriculum support</term>
+    <term>Data set</term>
+    <term>Educator's guide</term>
+    <term>Environment</term>
+    <term>Event</term>
+    <term>Form</term>
+    <term>Image set</term>
+    <term>Lesson plan</term>
+    <term>Literature</term>
+    <term>Primary source</term>
+    <term>Project</term>
+    <term>Realia</term>
+    <term>Reference</term>
+    <term>Research study</term>
+    <term>Secondary source</term>
+    <term>Serial</term>
+    <term>Service</term>
+    <term>Story</term>
+    <term>Study guide</term>
+    <term>Test</term>
+    <term>Tool</term>
+    <term>Unit of instruction</term>
+</vocabulary>

@@ -1,0 +1,93 @@
+<?PHP
+#
+#   FILE:  SysAdmin.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ResourceSummary;
+use Metavus\User;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+function PrintRecommendation(
+    $Resource,
+    $FullRecordLink,
+    $EditOkay,
+    $EditLink,
+    $CumulativeRating
+) {
+    $Summary = ResourceSummary::Create($Resource->id());
+    $Summary->Display();
+    ?>
+    <table class="table mv-recommendation-contain">
+        <tr>
+            <td align="right" colspan="5">
+                <a href="<?= GetWhyRecommendLink() ?>"
+                        class="mv-why-recommend-link lightgray">
+                        <img class="mv-small-up-arrow" src="<?=
+                                $GLOBALS["AF"]->GUIFile("uparrow_small.gif") ?>"/>
+                        Why was the above resource recommended?</a>
+            </td>
+        </tr>
+    </table>
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Recommended Resources</h1>
+
+<?PHP if (!User::getCurrentUser()->IsLoggedIn()) { ?>
+<p>
+    You must have an account and be logged in to get recommendations.If you
+    have an existing account, please <a href="index.php?P=Login">log in</a>.If
+    you do not have an account, <a href="index.php?P=RequestAccount">create one</a>
+    to start rating resources and receiving recommendations.
+</p>
+
+<?PHP } elseif (NoResultsFound()) { ?>
+<p>
+    There was not enough information available to recommend new resources.
+    Please rate additional resources so that recommendations can be made.
+</p>
+
+<?PHP } else { ?>
+<p>
+    The following recommendations are being made based on how you have rated
+    other resources. You can improve recommendations by rating more resources.
+</p>
+
+<p class="mv-content-boundingbox">
+    Results <b><?PHP PrintStartingResultNumber(); ?> -
+    <?PHP PrintEndingResultNumber(); ?></b> of <b>
+    <?PHP PrintTotalNumberOfResults(); ?></b>
+</p>
+
+<table class="table">
+    <tbody><tr><td><?PHP PrintRecommendations(); ?></td></tr></tbody>
+    <?PHP if (PreviousResultsAvailable() || NextResultsAvailable()) { ?>
+    <tfoot>
+        <tr>
+            <td>
+                <?PHP if (PreviousResultsAvailable()) { ?>
+                <a class="btn btn-primary"
+                    href="<?PHP PrintPreviousResultsLink(); ?>">&larr; Previous</a>
+                <?PHP } ?>
+            </td>
+            <td>
+                <?PHP if (NextResultsAvailable()) { ?>
+                <a class="btn btn-primary"
+                    href="<?PHP PrintNextResultsLink(); ?>">Next &rarr;</a>
+                <?PHP } ?>
+            </td>
+        </tr>
+    </tfoot>
+    <?PHP } ?>
+</table>
+
+<?PHP } ?>

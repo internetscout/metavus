@@ -1,0 +1,41 @@
+<?PHP
+#
+#   FILE:  ConfigureActions.html (UrlChecker plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+
+?>
+<style type="text/css">
+      .bulk-edit-button { display: none !important; }
+</style>
+
+<h1>UrlChecker: Configure Actions</h1>
+
+<div style="margin-bottom: 2em; width:80%">
+<form class="mv-feui-form"
+      action="index.php?P=P_UrlChecker_ConfigureActionsComplete"
+      method="post">
+  <table>
+    <?PHP foreach ($H_ActionUIs as $Action => $ActionUIs) { ?>
+    <tr><td colspan="4"><h2><?= $Action ?> actions</h2></td></tr>
+        <?PHP foreach ($H_Schemas as $SchemaId => $Schema) { ?>
+    <tr><td colspan="4"><h3><?= $Schema->Name() ?></h3></td></tr>
+            <?PHP $ActionUIs[$SchemaId]->DisplayAsRows(); ?>
+        <?PHP } ?>
+    <?PHP } ?>
+  <tr>
+    <td colspan="4">
+      <span style="float:right;">
+        <button type="submit" name="Submit" value="Save"
+            class="btn btn-primary mv-button-iconed"><img
+            src="<?= $AF->GUIFile('Disk.svg'); ?>" alt="" class="mv-button-icon" /> Save</button>
+      </span>
+    </td>
+  </tr>
+</table>
+</form>
+</div>

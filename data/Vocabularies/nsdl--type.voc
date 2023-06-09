@@ -1,0 +1,119 @@
+<vocabulary>
+    <name>Type</name> <!-- (correlates to CWIS Resource Type field)  -->
+    <description>The nature or genre of the resource; the nature, function or typical use of a learning or teaching resource.</description>
+    <version>Jun 8 2007</version>
+    <url>https://wiki.ucar.edu/display/nsdldocs/Type</url>
+    <owner>
+        <name>NSDL</name>
+        <url>http://nsdl.org/</url>
+    </owner>
+    <qualifier>>
+        <name>NSDL Type Vocabulary</name>
+        <namespace>http://ns.nsdl.org/nsdltype_v1.00</namespace>
+        <url>https://wiki.ucar.edu/display/nsdldocs/Type</url>
+    </qualifier>
+    <term>
+        <value>Assessment Material</value>
+        <term>Answer Key</term>
+        <term>Portfolio</term>
+        <term>Rubric</term>
+        <term>Test</term>
+    </term>
+    <term>
+        <value>Dataset</value>
+        <term>Database</term>
+        <term>List/Table</term>
+        <term>Observed Data</term>
+        <term>Remotely Sensed Data</term>
+        <term>Trial</term>
+    </term>
+    <term>
+        <value>Event</value>
+        <term>Award/Recognition/Scholarship</term>
+        <term>Broadcast</term>
+        <term>Call for Participation</term>
+        <term>Conference</term>
+        <term>Exhibit</term>
+        <term>Learning/Research Opportunity</term>
+        <term>Job</term>
+        <term>News</term>
+        <term>Workshop</term>
+    </term>
+    <term>
+        <value>Instructional Material</value>
+        <term>Activity</term>
+        <term>Annotation</term>
+        <term>Case Study</term>
+        <term>Course</term>
+        <term>Curriculum</term>
+        <term>Demonstration</term>
+        <term>Experiment/Lab Activity</term>
+        <term>Field Trip</term>
+        <term>Game</term>
+        <term>Instructional Strategy</term>
+        <term>Instructor Guide/Manual</term>
+        <term>Interactive Simulation</term>
+        <term>Lecture/Presentation</term>
+        <term>Lesson/Lesson Plan</term>
+        <term>Model</term>
+        <term>Problem Set</term>
+        <term>Project</term>
+        <term>Simulation</term>
+        <term>Student Guide</term>
+        <term>Syllabus</term>
+        <term>Textbook</term>
+        <term>Tutorial</term>
+        <term>Unit of Instruction</term>
+    </term>
+    <term>
+        <value>Reference Material</value>
+        <term>Abstract</term>
+        <term>Article</term>
+        <term>Bibliography</term>
+        <term>Career Information</term>
+        <term>Classification Key</term>
+        <term>Educational Standard</term>
+        <term>FAQ</term>
+        <term>Fiction</term>
+        <term>Glossary/Index</term>
+        <term>Outline</term>
+        <term>Nonfiction Reference</term>
+        <term>Periodical</term>
+        <term>Policy</term>
+        <term>Proceedings</term>
+        <term>Proposal</term>
+        <term>Report</term>
+        <term>Scientific Standard</term>
+        <term>Specimen</term>
+        <term>Thesis/Dissertation</term>
+    </term>
+    <term>
+        <value>Community</value>
+        <term>Ask-an-Expert</term>
+        <term>Forum</term>
+        <term>Listserv</term>
+        <term>Weblog</term>
+        <term>Wiki</term>
+    </term>
+    <term>
+        <value>Tool</value>
+        <term>Code</term>
+        <term>Equipment</term>
+        <term>Form</term>
+        <term>Numerical Model</term>
+        <term>Search Engine</term>
+        <term>Software</term>
+    </term>
+    <term>
+        <value>Audio/Visual</value>
+        <term>Graph</term>
+        <term>Illustration</term>
+        <term>Image/Image Set</term>
+        <term>Map</term>
+        <term>Movie/Animation</term>
+        <term>Music</term>
+        <term>Photograph</term>
+        <term>Sound</term>
+        <term>Voice Recording</term>
+    </term>
+</vocabulary>

@@ -1,0 +1,45 @@
+<?PHP
+#
+#   FILE:  RequestAccount.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\Email;
+
+# ----- MAIN -----------------------------------------------------------------
+if ($H_AccountCreatedSuccessfully) { ?>
+    <h1>Activation Email Sent</h1>
+
+    <p>An email message has been sent to <i><?= $H_FormUI->getFieldValue("EMail"); ?></i>
+    containing a link to activate your new account.</p>
+
+    <p>If you have trouble with the link, you can
+    <a href="index.php?P=ManuallyActivateAccount">manually activate</a> your
+    account.</p>
+
+    <p>If you don't receive an email message with your activation information
+    within a few minutes, you can
+        <a href="index.php?P=ResendAccountActivation&amp;UN=<?=
+            urlencode($H_FormUI->getFieldValue("UserName")) ?>">resend the message</a>.
+    </p>
+    <?PHP
+    return;
+}
+?>
+
+<h1>Create an Account</h1>
+<?PHP Email::printWhitelistNotice(); ?>
+
+<?PHP $H_FormUI->DisplayErrorBlock(); ?>
+<form method="post" action="index.php?P=RequestAccount">
+    <?PHP $H_FormUI->displayFormTable(); ?>
+    <div class="mv-content-boundingbox">
+      <button class="btn btn-primary" type="submit" name="Submit" value="Create Account"
+              >Create Account</button>
+    </div>
+</form>

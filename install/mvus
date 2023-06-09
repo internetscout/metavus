@@ -1,0 +1,2355 @@
+#!/usr/bin/env php
+<?PHP
+#
+#   FILE:  mvus (Metavus command line utility)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use ReflectionClass;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\Database;
+use ScoutLib\Plugin;
+use ScoutLib\PluginManager;
+
+$Util = new CommandLineUtility();
+$Util->checkEnvironment();
+$Args = $Util->parseCommandLineArguments(array_slice($_SERVER["argv"], 1));
+$Util->setUpOperatingEnvironment();
+$Util->runCommand($Args);
+
+class CommandLineUtility
+{
+    # ---- CONFIGURATION -----------------------------------------------------
+
+    const BOOTSTRAP_FILE = "objects/Bootloader.php";
+    const CLU_VERSION = "2.0.18";
+    const REQUIRED_SOFTWARE_VERSION = "1.0.0";
+
+    private $TablesToExcludeFromSparseDatabaseDump = [
+        "AF_CachedPageCallbacks",
+        "AF_CachedPageTagInts",
+        "AF_CachedPageTags",
+        "AF_CachedPages",
+        "UserPermsCache"
+    ];
+
+    /**
+     * Associative array that describes the command and subcommand structure,
+     * with commands for the index.
+     *
+     * Available array elements:
+     *  AliasFor - The command or command and subcommand for which this
+     *      command is an alias.  When set, this will prevent a command
+     *      from appearing in the command list in the help display.
+     *  Description - Text description of command or command group, that
+     *      should be under 60 characters.
+     *  Function - Name of method to call to execute command.  The method
+     *      will be passed the command line arguments with the command
+     *      and any subcommand stripped off.
+     *  MinArgs - Minimum number of arguments required after command or
+     *      subcommand.  This is also used to be able to display error
+     *      or usage messages without first loading the whole environment.
+     *  Options - String containing first letters of options or subcommand
+     *      in upper case.  This is used to be able to display error messages
+     *      without having to potentially first load up the whole application
+     *      framework environment.
+     *  SubCommands - An associative array of subcommands, with subcommands
+     *      for the index.  Only legal at the top level (i.e. subcommands
+     *      cannot have a further level of subcommands).
+     *  Usage - Short text string that is appended onto the command and
+     *      (if appropriate) subcommand, when printing a usage message.
+     *
+     * Either "Function" or "SubCommands" are required;  all other elements
+     * are optional.  Commands (and subcommands, within their section) should
+     * be added alphabetically, with implementation functions added in a
+     * corresponding order within the class.
+     */
+    public $CommandList = [
+        "cache" => [
+            "SubCommands" => [
+                "clear" => [
+                    "Description" => "clear page/object/template cache",
+                    "Usage" => "(all|template|object|page)",
+                    "Options" => "ATOP",
+                    "MinArgs" => 1,
+                    "Function" => "clearCaches",
+                    ],
+                ],
+            ],
+        "config" => [
+            "Description" => "get/set system configuration value",
+            "Usage" => "(SettingName) [Value]",
+            "MinArgs" => 1,
+            "Function" => "configValue",
+            ],
+        "database" => [
+            "SubCommands" => [
+                "args" => [
+                    "Description" => "print MySQL command line util args",
+                    "Function" => "printMysqlArgs",
+                    "NoBootstrap" => true,
+                    ],
+                "check" => [
+                    "Description" => "check database integrity (with mysqlcheck)",
+                    "Function" => "checkDatabase",
+                    "NoBootstrap" => true,
+                    ],
+                "cnf" => [
+                    "Description" => "write database login info to specified MySQL config file",
+                    "Usage" => "(File.cnf)",
+                    "MinArgs" => 1,
+                    "Function" => "writeMysqlLoginInfoToConfigFile",
+                    "NoBootstrap" => true,
+                    ],
+                "dump" => [
+                    "Description" => "dump database to file",
+                    "Usage" => "(Directory|File.sql|File.sql.gz|File.sql.bz2) [sparse]",
+                    "MinArgs" => 1,
+                    "Function" => "dumpDatabase",
+                    "NoBootstrap" => true,
+                    ],
+                "load" => [
+                    "Description" => "load resource records from file",
+                    "Usage" => "FileName.xml [SchemaName]",
+                    "MinArgs" => 1,
+                    "Function" => "loadResourcesFromFile",
+                    ],
+                "reload" => [
+                    "Description" => "reload database from file",
+                    "Usage" => "(File.sql|File.sql.gz|File.sql.bz2) [backup|nobackup]",
+                    "MinArgs" => 1,
+                    "Function" => "reloadDatabase",
+                    "NoBootstrap" => true,
+                    ],
+                "shell" => [
+                    "Description" => "start MySQL command line client",
+                    "Function" => "runMysqlShell",
+                    "NoBootstrap" => true,
+                    ],
+                ],
+            ],
+        "deprecated" => [
+            "Description" => "search source files for deprecated functions "
+                ."that need to be removed",
+            "Function" => "checkDeprecation",
+            "NoBootstrap" => true,
+        ],
+        "export" => [
+            "SubCommands" => [
+                "schema" => [
+                    "Description" => "export schema definition to file",
+                    "Function" => "exportSchemaToXmlFile",
+                    "Usage" => "(SchemaName|SchemaID) [FileName]",
+                    "MinArgs" => 1,
+                    ],
+            ],
+        ],
+        "grep" => [
+            "Description" => "search source files for string",
+            "Usage" => "(GrepArguments)",
+            "MinArgs" => 1,
+            "Function" => "grepSource",
+            "NoBootstrap" => true,
+            ],
+        "interface" => [
+            "SubCommands" => [
+                "get" => [
+                    "Description" => "get current interface for user or default",
+                    "Function" => "getUserInterface",
+                    "Usage" => "(UserName|default)",
+                    "MinArgs" => 1,
+                    ],
+                "set" => [
+                    "Description" => "set current interface for user, default, or all",
+                    "Function" => "setUserInterface",
+                    "Usage" => "(UserName|default|all) (InterfaceName)",
+                    "MinArgs" => 2,
+                    ],
+                ],
+            ],
+        "list" => [
+            "SubCommands" => [
+                "config" => [
+                    "Description" => "list available configuration settings",
+                    "Function" => "listConfigSettings",
+                    ],
+                "fields" => [
+                    "Description" => "list metadata fields by type or schema",
+                    "Function" => "listMetadataFields",
+                    ],
+                "interfaces" => [
+                    "Description" => "list available user interfaces",
+                    "Function" => "listUserInterfaces",
+                    ],
+                "plugins" => [
+                    "Description" => "list available plugins",
+                    "Function" => "listPlugins",
+                    "LoadAllPlugins" => true,
+                    ],
+                "privileges" => [
+                    "Description" => "list available privileges",
+                    "Function" => "listAllPrivileges",
+                    ],
+                "schemas" => [
+                    "Description" => "list metadata schemas",
+                    "Function" => "listMetadataSchemas",
+                    ],
+                "tasks" => [
+                    "Usage" => "(queued|running|orphaned)",
+                    "Options" => "OQR",
+                    "MinArgs" => 1,
+                    "Function" => "listTasks",
+                    "AliasFor" => "task list",
+                    ],
+                ],
+            ],
+        "maintenance" => [
+            "Description" => "turn maintenance mode on or off",
+            "Usage" => "(on|off)",
+            "Function" => "toggleMaintenanceMode",
+            "MinArgs" => 1,
+            "NoBootstrap" => true,
+            ],
+        "plugin" => [
+            "SubCommands" => [
+                "command" => [
+                    "Description" => "run command supplied by plugin",
+                    "Usage" => "PluginName Command [arguments...]",
+                    "Function" => "runPluginCommand",
+                    "MinArgs" => 2,
+                    ],
+                "config" => [
+                    "Description" => "print current plugin configuration",
+                    "Usage" => "PluginName",
+                    "Function" => "printPluginConfig",
+                    "MinArgs" => 1,
+                    ],
+                "disable" => [
+                    "Description" => "disable plugin",
+                    "Usage" => "PluginName",
+                    "Function" => "disablePlugin",
+                    "MinArgs" => 1,
+                    ],
+                "enable" => [
+                    "Description" => "enable plugin",
+                    "Usage" => "PluginName",
+                    "Function" => "enablePlugin",
+                    "MinArgs" => 1,
+                    "LoadAllPlugins" => true,
+                    ],
+                "list" => [
+                    "Function" => "listPlugins",
+                    "AliasFor" => "list plugins",
+                    "LoadAllPlugins" => true,
+                    ],
+                ],
+            ],
+        "privilege" => [
+            "SubCommands" => [
+                "add" => [
+                    "Description" => "grant privilege to user",
+                    "Function" => "addPrivilegeToUser",
+                    "Usage" => "UserName (PrivilegeConstant|PrivilegeId|all)",
+                    "Examples" => [
+                            "username sysadmin",
+                            "anotheruser all",
+                            "otheruser 5 6 13",
+                            "username resource name news",
+                            ],
+                    "MinArgs" => 2,
+                    ],
+                "list" => [
+                    "Description" => "list current privileges for user",
+                    "Function" => "listPrivilegesForUser",
+                    "Usage" => "UserName",
+                    "MinArgs" => 1,
+                    ],
+                "remove" => [
+                    "Description" => "revoke privilege from user",
+                    "Function" => "removePrivilegeFromUser",
+                    "Usage" => "UserName (PrivilegeConstant|PrivilegeId|all)",
+                    "MinArgs" => 2,
+                    ],
+                ],
+            ],
+        "task" => [
+            "SubCommands" => [
+                "delete" => [
+                    "Description" => "remove task from queue",
+                    "Usage" => "TaskID",
+                    "MinArgs" => 1,
+                    "Function" => "deleteTask",
+                    ],
+                "list" => [
+                    "Description" => "list queued/running/orphaned tasks",
+                    "Usage" => "(queued|running|orphaned|all)",
+                    "Options" => "AOQR",
+                    "MinArgs" => 1,
+                    "Function" => "listTasks",
+                    ],
+                "requeue" => [
+                    "Description" => "requeue orphaned task",
+                    "Usage" => "TaskId",
+                    "MinArgs" => 1,
+                    "Function" => "requeueTask",
+                    ],
+                "run" => [
+                    "Description" => "run task",
+                    "Usage" => "TaskId",
+                    "MinArgs" => 1,
+                    "Function" => "runTask",
+                    ],
+                ],
+            ],
+        "uifile" => [
+            "Description" => "report on UI file usage in source code",
+            "Usage" => "(FileNames)",
+            "MinArgs" => 1,
+            "Function" => "reportOnFileUsage",
+            "NoBootstrap" => true,
+            ],
+        "upgrade" => [
+            "Description" => "run any needed system or database upgrades",
+            "Usage" => "",
+            "Function" => "runUpgrades",
+            ],
+        "user" => [
+            "SubCommands" => [
+                "add" => [
+                    "Description" => "add user account",
+                    "Usage" => "Email Password [UserName]",
+                    "MinArgs" => 2,
+                    "Function" => "addUser",
+                    ],
+                ],
+            ],
+
+        # ---- BACKWARD COMPATIBILITY COMMANDS -------------------------------
+        "clearcache" => [
+            "Usage" => "(all|template|object|page)",
+            "Options" => "ATOP",
+            "MinArgs" => 1,
+            "Function" => "clearCaches",
+            "AliasFor" => "cache clear",
+            ],
+        "dumpdb" => [
+            "Usage" => "(Directory|File.sql)",
+            "MinArgs" => 1,
+            "Function" => "dumpDatabase",
+            "AliasFor" => "database dump",
+            ],
+        "loadresources" => [
+            "Usage" => "FileName.xml [SchemaName]",
+            "MinArgs" => 1,
+            "Function" => "loadResourcesFromFile",
+            "AliasFor" => "database load",
+            ],
+        "mysql" => [
+            "Description" => "start MySQL command line client",
+            "Function" => "runMysqlShell",
+            "AliasFor" => "database shell",
+            ],
+        "mysqlargs" => [
+            "Function" => "printMysqlArgs",
+            "AliasFor" => "database args",
+            ],
+        "pdisable" => [
+            "Usage" => "PluginName",
+            "Function" => "disablePlugin",
+            "MinArgs" => 1,
+            "AliasFor" => "plugin disable",
+            ],
+        "penable" => [
+            "Usage" => "PluginName",
+            "Function" => "enablePlugin",
+            "MinArgs" => 1,
+            "AliasFor" => "plugin enable",
+            ],
+        "tdel" => [
+            "Usage" => "TaskID",
+            "Function" => "deleteTask",
+            "MinArgs" => 1,
+            "AliasFor" => "task delete",
+            ],
+        "tlist" => [
+            "Usage" => "(queued|running|orphaned)",
+            "Options" => "OQR",
+            "MinArgs" => 1,
+            "Function" => "listTasks",
+            "AliasFor" => "task list",
+            ],
+        "trun" => [
+            "Usage" => "TaskId",
+            "MinArgs" => 1,
+            "Function" => "runTask",
+            "AliasFor" => "task run",
+            ],
+        "uadd" => [
+            "Usage" => "Email Password [UserName]",
+            "MinArgs" => 2,
+            "Function" => "addUser",
+            "AliasFor" => "user add",
+            ],
+        ];
+
+
+    # ---- PUBLIC INTERFACE --------------------------------------------------
+
+    /**
+     * Check to make sure operating environment is viable, and exit with an error
+     * message if it is not.
+     */
+    public function checkEnvironment()
+    {
+        # check to make sure we are running from the command line
+        if (php_sapi_name() != "cli") {
+            print "Must be running from the command line.\n";
+            exit(1);
+        }
+
+        # check to make sure we are running within or near a Metavus installation
+        if (!is_readable(self::BOOTSTRAP_FILE)) {
+            if (is_dir("html") && is_readable("html")) {
+                chdir("html");
+            }
+
+            if (!is_readable(self::BOOTSTRAP_FILE)) {   // @phpstan-ignore-line
+                print "Must be run from the base directory"
+                        ." of a working Metavus installation.\n";
+                exit(1);
+            }
+        }
+    }
+
+    /**
+     * Parse command line arguments to extract command and subcommand (if any).
+     * @param array $Args Command line arguments.
+     * @return array Updated command line arguments, with any valid command
+     *      or (if present) subcommand removed.
+     */
+    public function parseCommandLineArguments(array $Args): array
+    {
+        # retrieve argument list
+        $Args = array_slice($_SERVER["argv"], 1);
+
+        # print help message if no arguments supplied
+        if (count($Args) < 1) {
+            $this->printHelp();
+            exit(0);
+        }
+
+        # try to determine primary command
+        $this->Command = $this->determineCommandFromArgument(
+            $Args[0],
+            $this->CommandList,
+            "command",
+            "printHelp"
+        );
+
+        # remove primary command from argument list
+        $Args = array_slice($Args, 1);
+        $CmdInfo = $this->CommandList[$this->Command];
+
+        # assume no subcommand
+        $this->SubCommand = false;
+
+        # if there are subcommands defined
+        if (isset($CmdInfo["SubCommands"])) {
+            # print usage message if no subcommand supplied
+            if (count($Args) < 1) {
+                $this->printUsage();
+                exit(0);
+            }
+
+            # try to determine subcommand
+            $this->SubCommand = $this->determineCommandFromArgument(
+                $Args[0],
+                $CmdInfo["SubCommands"],
+                "subcommand",
+                "printUsage"
+            );
+
+            # remove subcommand from argument list
+            $Args = array_slice($Args, 1);
+            $CmdInfo = $CmdInfo["SubCommands"][$this->SubCommand];
+        }
+
+        # if there are options defined
+        if (isset($CmdInfo["Options"])) {
+            # if no option was supplied
+            if (!count($Args) || !strlen($Args[0])) {
+                $this->printUsage();
+                exit(0);
+            # print usage message if next argument does not match any option
+            } elseif (strpos(
+                $CmdInfo["Options"],
+                strtoupper(substr($Args[0], 0, 1))
+            ) === false) {
+                print "Unknown command option: ".$Args[0]."\n";
+                $this->printUsage();
+                exit(1);
+            }
+        }
+
+        # if minimum number of arguments are specified and we do not have that many
+        if (isset($CmdInfo["MinArgs"]) && (count($Args) < $CmdInfo["MinArgs"])) {
+            $this->printUsage();
+            exit(1);
+        }
+
+        return $Args;
+    }
+
+    /**
+     * Set up operating environment (e.g. initialize application framework).
+     */
+    public function setUpOperatingEnvironment()
+    {
+        # skip operating environment setup if specified for command
+        $CmdInfo = $this->CommandList[$this->Command];
+        $SubCmdInfo = $CmdInfo["SubCommands"][$this->SubCommand] ?? [];
+        if (($CmdInfo["NoBootstrap"] ?? false)
+                || ($SubCmdInfo["NoBootstrap"] ?? false)) {
+            return;
+        }
+
+        # force loading of every available plugin if specified
+        if (($CmdInfo["LoadAllPlugins"] ?? false)
+                || ($SubCmdInfo["LoadAllPlugins"] ?? false)) {
+            $GLOBALS["StartUpOpt_FORCE_PLUGIN_CONFIG_LOAD"] = true;
+        }
+
+        # set up operating environment
+        require_once(self::BOOTSTRAP_FILE);
+        (\Metavus\Bootloader::getInstance())->boot();
+
+        # check to make sure we have at least the minimum required Metavus version
+        if (!version_compare(METAVUS_VERSION, self::REQUIRED_SOFTWARE_VERSION, ">=")) {
+            print "Metavus version ".self::REQUIRED_SOFTWARE_VERSION
+                    ." or later is required.\n";
+            exit(1);
+        }
+    }
+
+    /**
+     * Print overall usage information (AKA help).
+     */
+    public function printHelp()
+    {
+        print "Metavus Command Line Utility ".self::CLU_VERSION."\n";
+        print "Usage: mvus command [arguments]\n";
+        print "Commands:\n";
+        foreach ($this->CommandList as $Command => $CmdInfo) {
+            if (isset($CmdInfo["AliasFor"])) {
+                continue;
+            } elseif (isset($CmdInfo["Description"])) {
+                printf("  %-18s %s\n", $Command, $CmdInfo["Description"]);
+            } elseif (isset($CmdInfo["SubCommands"])) {
+                foreach ($CmdInfo["SubCommands"] as $SubCommand => $SubCmdInfo) {
+                    if (isset($SubCmdInfo["AliasFor"])) {
+                        continue;
+                    } elseif (isset($SubCmdInfo["Description"])) {
+                        printf(
+                            "  %-18s %s\n",
+                            $Command." ".$SubCommand,
+                            $SubCmdInfo["Description"]
+                        );
+                    } else {
+                        printf(
+                            "  %-18s %s\n",
+                            $Command." ".$SubCommand,
+                            "(no description available)"
+                        );
+                    }
+                }
+            } else {
+                printf("  %-18s %s\n", $Command, "(no description available)");
+            }
+        }
+        print "Enter a command with no arguments for help on that specific command.\n";
+    }
+
+    /**
+     * Print usage information for specific command.
+     */
+    public function printUsage()
+    {
+        $CmdInfo = $this->CommandList[$this->Command];
+        if (isset($CmdInfo["UsageFunction"])) {
+            $Callback = [$this, $CmdInfo["UsageFunction"]];
+            if (!is_callable($Callback)) {
+                throw new Exception("Uncallable usage function \""
+                        .$CmdInfo["UsageFunction"]."\".");
+            }
+            call_user_func($Callback);
+        } elseif (isset($this->SubCommand)
+                && isset($CmdInfo["SubCommands"])
+                && isset($CmdInfo["SubCommands"][$this->SubCommand])
+                && isset($CmdInfo["SubCommands"][$this->SubCommand]["Usage"])) {
+            $Usage = $this->SubCommand." ".
+                    $CmdInfo["SubCommands"][$this->SubCommand]["Usage"];
+        } elseif (isset($CmdInfo["Usage"])) {
+            $Usage = $CmdInfo["Usage"];
+        } elseif (isset($CmdInfo["SubCommands"])) {
+            $Usage = "(".implode("|", array_keys($CmdInfo["SubCommands"])).")";
+        } else {
+            print "No usage information available.\n";
+        }
+
+        if (isset($this->SubCommand)
+                && isset($CmdInfo["SubCommands"])
+                && isset($CmdInfo["SubCommands"][$this->SubCommand])
+                && isset($CmdInfo["SubCommands"][$this->SubCommand]["Examples"])) {
+            $Examples = $CmdInfo["SubCommands"][$this->SubCommand]["Examples"];
+        } elseif (isset($CmdInfo["Examples"])) {
+            $Examples = $CmdInfo["Examples"];
+        }
+
+        if (isset($Usage)) {
+            print "Usage: mvus ".$this->Command." ".$Usage."\n";
+        }
+        if (isset($Examples)) {
+            print "Examples:\n";
+            $CommandStart = "    mvus ".$this->Command
+                    .(isset($this->SubCommand) ? " ".$this->SubCommand : "")." ";
+            foreach ($Examples as $Example) {
+                print $CommandStart.$Example."\n";
+            }
+        }
+    }
+
+    /**
+     * Run specified command.
+     * @param array $Args Arguments for command.
+     */
+    public function runCommand(array $Args)
+    {
+        $CmdInfo = $this->CommandList[$this->Command];
+        if (isset($CmdInfo["Function"])) {
+            $Function = $CmdInfo["Function"];
+        } elseif (isset($CmdInfo["SubCommands"][$this->SubCommand]["Function"])) {
+            $Function = $CmdInfo["SubCommands"][$this->SubCommand]["Function"];
+        }
+
+        if (!isset($Function)) {
+            print "No function set for command \"".$this->Command."\"";
+            if (strlen($this->SubCommand)) {
+                print " with subcommand \"".$this->SubCommand."\"";
+            }
+            print ".";
+            exit(1);
+        }
+        if (!method_exists($this, $Function)) {
+            print "Function \"".$Function."\" does not exist for command \""
+                    .$this->Command."\".";
+            exit(1);
+        }
+
+        $this->$Function($Args);
+    }
+
+    # ---- PRIVATE INTERFACE -----------------------------------------------------
+
+    private $Command;
+    private $SubCommand;
+
+
+    # ---- Command Processing Methods --------------------------------------------
+    # (methods are listed in the order their commands appear in the help display)
+
+    /**
+     * Clear specified system cache(s).
+     * @param array $Args Additional command line arguments.
+     */
+    private function clearCaches(array $Args)
+    {
+        $ArgLetter = strtoupper($Args[0][0]);
+        $AF = ApplicationFramework::getInstance();
+        $PluginMgr = PluginManager::getInstance();
+        switch ($ArgLetter) {
+            case "A":
+                $AF->clearTemplateLocationCache();
+                print "Template location cache cleared.\n";
+                $AF->clearObjectLocationCache();
+                $PluginMgr->clearCaches();
+                print "Object location cache cleared.\n";
+                $AF->clearPageCache();
+                print "Page cache cleared.";
+                break;
+
+            case "O":
+                $AF->clearObjectLocationCache();
+                $PluginMgr->clearCaches();
+                print "Object location cache cleared.";
+                break;
+
+            case "P":
+                $AF->clearPageCache();
+                print "Page cache cleared.";
+                break;
+
+            case "T":
+                $AF->clearTemplateLocationCache();
+                print "Template location cache cleared.";
+                break;
+        }
+    }
+
+    /**
+     * Get/set system configuration value.
+     * @param array $Args Additional command line arguments.
+     */
+    private function configValue(array $Args)
+    {
+        $ConfigArg = $Args[0];
+
+        $Settings = SystemConfiguration::getInstance()->getFields();
+        $Matches = $this->findWordsThatMatchPrefix($ConfigArg, $Settings);
+        if (count($Matches) == 0) {
+            print "Unknown configuration setting \"".$ConfigArg."\".\n";
+            $this->printUsage();
+            exit(1);
+        }
+        if (count($Matches) > 1) {
+            print "Multiple matching configuration settings found:";
+            foreach ($Matches as $Setting) {
+                print "\n    ".$Setting;
+            }
+            exit(1);
+        }
+        $SettingName = $Matches[0];
+
+        $SysConfig = SystemConfiguration::getInstance();
+        $SettingType = $SysConfig->getFieldType($SettingName);
+
+        if (isset($Args[1])) {
+            $NewValue = $Args[1];
+            switch ($SettingType) {
+                case SystemConfiguration::TYPE_ARRAY:
+                    $NewValues = $Args;
+                    array_shift($NewValues);
+                    $SysConfig->setArray($SettingName, $NewValues);
+                    break;
+                case SystemConfiguration::TYPE_BOOL:
+                    $SysConfig->setBool($SettingName, (bool)$NewValue);
+                    break;
+                case SystemConfiguration::TYPE_DATETIME:
+                    $SysConfig->setDatetime($SettingName, $NewValue);
+                    break;
+                case SystemConfiguration::TYPE_FLOAT:
+                    $SysConfig->setFloat($SettingName, (float)$NewValue);
+                    break;
+                case SystemConfiguration::TYPE_INT:
+                    $SysConfig->setInt($SettingName, (int)$NewValue);
+                    break;
+                default:
+                    $SysConfig->setString($SettingName, $NewValue);
+                    break;
+            }
+            print "Set ".$SettingName." to:";
+            print "\n    ".$NewValue;
+        } else {
+            if (!$SysConfig->isSet($SettingName)) {
+                $CurrentValue = "(no value set)";
+            } else {
+                switch ($SettingType) {
+                    case SystemConfiguration::TYPE_ARRAY:
+                        $CurrentValues = $SysConfig->getArray($SettingName);
+                        $CurrentValue = join(", ", $CurrentValues);
+                        break;
+                    case SystemConfiguration::TYPE_BOOL:
+                        $CurrentValue = $SysConfig->getBool($SettingName)
+                                ? "TRUE" : "FALSE";
+                        break;
+                    case SystemConfiguration::TYPE_DATETIME:
+                        $CurrentValue = $SysConfig->getDatetime($SettingName);
+                        break;
+                    case SystemConfiguration::TYPE_FLOAT:
+                        $CurrentValue = $SysConfig->getFloat($SettingName);
+                        break;
+                    case SystemConfiguration::TYPE_INT:
+                        $CurrentValue = $SysConfig->getInt($SettingName);
+                        break;
+                    default:
+                        $CurrentValue = "\"".$SysConfig->getString($SettingName)."\"";
+                        break;
+                }
+            }
+            print "Current value of ".$SettingName.":";
+            print "\n    ".$CurrentValue;
+        }
+    }
+
+    /**
+     * Report on usage in software of specified file(s).
+     * @param array $Args Additional command line arguments.
+     */
+    private function reportOnFileUsage(array $Args)
+    {
+        foreach ($Args as $FileNameWithPath) {
+            $FileName = basename($FileNameWithPath);
+            $GrepCmd = $this->buildSourceGrepCommand(["-c", "-w", $FileName]);
+            $CmdOutput = [];
+            exec($GrepCmd, $CmdOutput);
+            foreach ($CmdOutput as $Line) {
+                $Line = trim($Line);
+                if (strlen($Line) && (substr($Line, -2) !== ":0")) {
+                    $Pieces = explode(":", $Line);
+                    $MatchingFiles[$FileName][] = $Pieces[0];
+                }
+            }
+            if (isset($MatchingFiles[$FileName])) {
+                $FileCount = count($MatchingFiles[$FileName]);
+                print $FileName." appears in ".$FileCount." files:\n";
+                foreach ($MatchingFiles[$FileName] as $MatchingFile) {
+                    print "    ".$MatchingFile."\n";
+                }
+            } else {
+                print $FileName." was not found in any file.\n";
+            }
+        }
+    }
+
+    /**
+     * Check codebase for deprecated function deprecated in previous releases
+     * that that either 1) have passed their scheduled removal date, or 2)
+     * were never given a scheduled removal date.
+     *
+     * Functions are initially marked deprecated by adding
+     *   '@deprecated in CWIS ${VERSION}, removed after X-DATE-X'
+     * to their docstring, where ${VERSION} is the version number for the next
+     * upcoming release as taken from the VERSION file and X-DATE-X is
+     * literally included.
+     *
+     * When a new release is cut, the "-ue" flag for 'buildrelease' should be
+     * used to replace the 'X-DATE-X' tokens in deprecated lines with an
+     * actual date (currently 1 year from the release date).
+     */
+    private function checkDeprecation()
+    {
+        $Version = file_get_contents("VERSION");
+        if ($Version === false) {
+            throw new Exception("Unable to read VERSION file.");
+        }
+        $Version = trim($Version);
+
+        $Now = time();
+
+        exec(
+            "find . -name \*.php -print0 | xargs -0 fgrep -l 'Internet Scout'",
+            $OurFiles
+        );
+
+        foreach ($OurFiles as $File) {
+            $MatchingLines = [];
+            exec(
+                "fgrep -n @deprecated < ".$File,
+                $MatchingLines
+            );
+
+            foreach ($MatchingLines as $Line) {
+                # if this @deprecated line refers to the current development
+                # version then it shouldn't yet have a scheduled removal date
+                if (strpos($Line, "@deprecated in CWIS ".$Version) !== false) {
+                    continue;
+                }
+
+                list ($LineNo, $LineText) = explode(":", $Line, 2);
+
+                if (preg_match(
+                    '/@deprecated .*, removed after ([0-9-]{10})$/',
+                    $LineText,
+                    $Matches
+                )) {
+                    if (strtotime($Matches[1]) < $Now) {
+                        print "EXPIRED deprecated function at "
+                            .$File.":".$LineNo."\n";
+                    }
+                } else {
+                    print "Deprecated function without proper expiry "
+                        ."information at ".$File.":".$LineNo."\n";
+                }
+            }
+        }
+    }
+
+    /**
+     * Export definition for specified schema to XML file.
+     * @param array $Args Additional command line arguments.
+     */
+    private function exportSchemaToXmlFile(array $Args)
+    {
+        $Schema = $this->getSchema($Args[0]);
+
+        # if file or directory name was supplied
+        $DirName = "";
+        if (isset($Args[1])) {
+            # if supplied value looks like a directory
+            $FileNameArg = $Args[1];
+            if (is_dir($FileNameArg)) {
+                $DirName = $FileNameArg;
+
+                # make sure directory has a trailing slash
+                if (substr($DirName, -1) != "/") {
+                    $DirName .= "/";
+                }
+
+                # check to make sure directory is writable
+                if (!is_writable($DirName)) {
+                    print "Could not write to directory \"".$DirName."\".";
+                    exit(1);
+                }
+            # otherwise assume supplied value is a file name
+            } else {
+                $FileName = $FileNameArg;
+            }
+        }
+
+        # generate file name if none supplied
+        if (!isset($FileName)) {
+            $SchemaName = preg_replace('/[^A-Za-z0-9]/', '', $Schema->name());
+            $FileName = $DirName."MetadataSchema--".$SchemaName."--"
+                    .date("ymd_Hi").".xml";
+        }
+
+        # check to make sure file is writable
+        if (file_exists($FileName) && !is_writable($FileName)) {
+            print "Could not write to file \"".$FileName."\".";
+            exit(1);
+        }
+
+        # export schema
+        $Schema->exportToXmlFile($FileName);
+        print $Schema->name()." schema exported to file ".$FileName.".";
+    }
+
+    /**
+     * Search through source code using grep.
+     * @param array $Args Additional command line arguments.
+     */
+    private function grepSource(array $Args)
+    {
+        $Command = $this->buildSourceGrepCommand($Args);
+        system($Command);
+    }
+
+    /**
+     * Print login arguments for MySQL command line programs.
+     * @param array $Args Additional command line arguments.
+     */
+    private function printMysqlArgs(array $Args)
+    {
+        print $this->getMysqlLoginArgs()."\n";
+    }
+
+    /**
+     * Write login info for MySQL to specified file in config file format.
+     * This file can be then be loaded with the --defaults-extra-file
+     * command line option, to avoid including the password on the command
+     * line.  (It must be the first option, placed right after the command.)
+     * @param array $Args Additional command line arguments.
+     */
+    private function writeMysqlLoginInfoToConfigFile(array $Args)
+    {
+        $FileName = $Args[0];
+
+        # check to make sure that file does not already exist
+        if (file_exists($FileName)) {
+            print "File ".$FileName." already exists.";
+            exit(1);
+        }
+
+        # check to make sure directory is writable
+        if (!is_writable(dirname($FileName))) {
+            print "Directory ".dirname($FileName)." is not writable.";
+            exit(1);
+        }
+
+        # create file and make sure it is readable only by user
+        touch ($FileName);
+        $Result = chmod($FileName, 0600);
+        if ($Result !== true) {
+            print "Unable to set mode on file "
+                    .$FileName." so that others cannot read it.\n";
+        }
+
+        # write out login info to file
+        print "Writing database login info to ".$FileName."\n";
+        $this->loadConfigFile();
+        $DBInfo = $GLOBALS["G_Config"]["Database"];
+        $LoginInfo = "[client]\n"
+                ."host = ".$DBInfo["Host"]."\n"
+                ."user = ".$DBInfo["UserName"]."\n"
+                ."password = ".$DBInfo["Password"]."\n";
+        file_put_contents($FileName, $LoginInfo);
+    }
+
+    /**
+     * Check database integrity.
+     * @param array $Args Additional command line arguments.
+     */
+    private function checkDatabase(array $Args)
+    {
+        $DbAuth = $this->getAuthArgsForMysqlCommands();
+        $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
+        print "Checking database ".$DbName."\n";
+        $Cmd = "mysqlcheck ".$DbAuth." ".$DbName;
+        system($Cmd);
+    }
+
+    /**
+     * Dump database to file.
+     * @param array $Args Additional command line arguments.
+     * @param string $MessagePrefix Prefix to dump message.  (OPTIONAL)
+     */
+    private function dumpDatabase(array $Args, string $MessagePrefix = "Dumping")
+    {
+        $FileName = $Args[0];
+        $Sparse = isset($Args[1])
+                && count($this->findWordsThatMatchPrefix($Args[1], ["sparse"]));
+
+        # if supplied file name is actually a directory name
+        if (is_writable($FileName) && is_dir($FileName)) {
+            # load environment so portal name is available
+            require_once(self::BOOTSTRAP_FILE);
+            (\Metavus\Bootloader::getInstance())->boot();
+
+            # normalize portal name for use in file name
+            $IntConfig = InterfaceConfiguration::getInstance();
+            $PortalName = $IntConfig->getString("PortalName");
+            $PortalName = preg_replace('/[^A-Za-z0-9 ]/', '', $PortalName);
+            $PortalName = preg_replace('/\s+/', '_', $PortalName);
+            if (!is_string($PortalName)) {
+                throw new Exception("Error normalizing portal name.");
+            }
+
+            # if we are currently in a home directory
+            $Cwd = getcwd();
+            if ($Cwd === false) {
+                throw new Exception("Unable to retrieve current working directory.");
+            }
+            if (strpos($Cwd, "/home/") === 0) {
+                # add user name to portal name
+                $UserInfo = posix_getpwuid(posix_geteuid());
+                if ($UserInfo !== false) {
+                    $PortalName .= "_".$UserInfo["name"];
+                }
+            }
+
+            # assemble absolute file name
+            $FileName .= "/".$PortalName."--DB_Backup--".date("ymd_Hi").".sql.bz2";
+        }
+
+        # check to make sure that file does not already exist
+        if (file_exists($FileName)) {
+            print "File ".$FileName." already exists.";
+            exit(1);
+        }
+
+        # check to make sure directory is writable
+        if (!is_writable(dirname($FileName))) {
+            print "Directory ".dirname($FileName)." is not writable.";
+            exit(1);
+        }
+
+        # build base dump command
+        $DbAuth = $this->getAuthArgsForMysqlCommands();
+        $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
+        $BaseDumpCmd = "mysqldump ".$DbAuth." --no-tablespaces --skip-lock-tables"
+                ." --single-transaction ".$DbName;
+
+        # add charset workaround option to command to avoid double-encoded UTF-8
+        #    https://www.inforbiro.com/blog/mysqldump-and-utf-8-problem
+        #    https://bugs.mysql.com/bug.php?id=28969
+        $MysqlVersion = exec("mysql --version");
+        if ($MysqlVersion === false) {
+            throw new Exception("Unable to determine MySQL version.");
+        }
+        if (preg_match("/Distrib 5\.[0-9]\.[0-9]+/", $MysqlVersion)) {
+            $BaseDumpCmd .= " --default-character-set=latin1 -N";
+        }
+
+        # build beginning of dump command
+        $Cmd = "( ".$BaseDumpCmd." --no-data ; ".$BaseDumpCmd." --no-create-info";
+
+        # add tables to exclude if sparse dump requested
+        if ($Sparse) {
+            foreach ($this->TablesToExcludeFromSparseDatabaseDump as $Table) {
+                $Cmd .= " --ignore-table=".$DbName.".".$Table;
+            }
+        }
+
+        # close dump portion of command
+        $Cmd .= " )";
+
+        # add compression if indicated by output file name
+        if (stripos($FileName, ".gz", -3) !== false) {
+            $Cmd .= " | gzip --best ";
+        } elseif (stripos($FileName, ".bz2", -4) !== false) {
+            $Cmd .= " | bzip2 --best ";
+        }
+
+        # complete dump command
+        $Cmd .= " > ".$FileName;
+
+        # dump database to file
+        print $MessagePrefix." database".($Sparse ? " (sparse version)" : "")
+                ." to ".$FileName."\n";
+        exec($Cmd);
+    }
+
+    /**
+     * Load resource records from specified file.
+     * @param array $Args Additional command line arguments.
+     */
+    private function loadResourcesFromFile(array $Args)
+    {
+        $FileName = $Args[0];
+        if (!is_readable($FileName)) {
+            print "No readable file was found with the name \"".$FileName."\".\n";
+            exit(1);
+        }
+
+        if (isset($Args[1])) {
+            $Schema = $this->getSchema($Args[1]);
+        } else {
+            $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
+        }
+
+        try {
+            $RFactory = new RecordFactory($Schema->Id());
+            $NewResourceIds =
+                    $RFactory->ImportRecordsFromXmlFile($FileName);
+            $ErrorMessages = $RFactory->getAllErrorMessages();
+
+            $SiteOwnerId = $this->getSiteOwner();
+            if ($SiteOwnerId !== null) {
+                $OwnerFields = [
+                        "Added By Id",
+                        "Last Modified By Id",
+                        ];
+                foreach ($OwnerFields as $FieldName) {
+                    foreach ($NewResourceIds as $ResourceId) {
+                        if ($Schema->FieldExists($FieldName)) {
+                            $Resource = new Record($ResourceId);
+                            $Resource->Set($FieldName, $SiteOwnerId);
+                        }
+                    }
+                }
+            }
+        } catch (Exception $Ex) {
+            $Location = basename($Ex->getFile()).":".$Ex->getLine();
+            print "Error encountered at ".$Location." during import:\n    "
+                    .$Ex->getMessage()."\n";
+        }
+
+        if (isset($NewResourceIds)) {
+            print count($NewResourceIds)." resources loaded.\n";
+
+            if (isset($ErrorMessages) && count($ErrorMessages) > 0) {
+                print "Errors encountered during import:\n";
+                foreach ($ErrorMessages as $Method => $Messages) {
+                    print "\t".$Method."\n";
+                    foreach ($Messages as $Message) {
+                        print "\t\t".$Message."\n";
+                    }
+                }
+            }
+        } else {
+            $this->printUsage();
+            exit(1);
+        }
+    }
+
+    /**
+     * Reload database from specified file.
+     * @param array $Args Additional command line arguments.
+     */
+    private function reloadDatabase(array $Args)
+    {
+        $FileName = $Args[0];
+
+        if (!file_exists($FileName)) {
+            print "No file found with the name \"".$FileName."\".\n";
+            exit(1);
+        } elseif (!preg_match("%.(sql|gz|bz2)$%i", $FileName)) {
+            print "File type not recognized for \"".$FileName."\".\n";
+            exit(1);
+        }
+
+        if (isset($Args[1])) {
+            if (strtoupper($Args[1][0]) == "B") {
+                $this->dumpDatabase(["."], "Backing up");
+            } elseif (strtoupper($Args[1][0]) != "N") {
+                $this->printUsage();
+                exit(1);
+            }
+        } else {
+            do {
+                $Response = readline("Wipe database and reload from "
+                        .basename($FileName)." (Y/N)?");
+            } while ($Response === false);
+            if (strtoupper($Response[0]) != "Y") {
+                print "Aborting database reload.";
+                exit(0);
+            }
+            $this->dumpDatabase(["."], "Backing up");
+        }
+
+        $DbAuth = $this->getAuthArgsForMysqlCommands();
+        $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
+
+        print "Reloading database from ".$FileName."\n";
+
+        $Cmd = "mysqladmin ".$DbAuth." -f drop ".$DbName;
+        exec($Cmd);
+
+        $Cmd = "mysqladmin ".$DbAuth." create ".$DbName;
+        exec($Cmd);
+
+        if (preg_match("%.gz$%", $FileName)) {
+            $CatCmd = "gzcat";
+        } elseif (preg_match("%.bz2$%", $FileName)) {
+            $CatCmd = "bzcat";
+        } else {
+            $CatCmd = "cat";
+        }
+
+        $Cmd = $CatCmd." ".$FileName
+                ." | mysql ".$DbAuth." --max_allowed_packet=512M ".$DbName;
+
+        # set charset if needed
+        $MysqlVersion = exec("mysql --version");
+        if ($MysqlVersion === false) {
+            throw new Exception("Unable to determine MySQL version.");
+        }
+        if (preg_match("/Distrib 5\.[0-9]\.[0-9]+/", $MysqlVersion)) {
+            $Cmd .=" --default-character-set=latin1";
+        }
+
+        exec($Cmd);
+    }
+
+    /**
+     * Start MySQL command line client.
+     * @param array $Args Additional command line arguments.
+     */
+    private function runMysqlShell(array $Args)
+    {
+        $DbAuth = $this->getAuthArgsForMysqlCommands();
+        $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
+        $Cmd = "mysql ".$DbAuth." ".$DbName;
+        $Proc = proc_open($Cmd, [STDIN, STDOUT, STDERR], $Pipes);
+        if ($Proc === false) {
+            throw new Exception("Unable to open process to run MySQL client.");
+        }
+        proc_close($Proc);
+    }
+
+    /**
+     * Print user interface for specific user or default.
+     */
+    private function getUserInterface(array $Args)
+    {
+        $UserArg = $Args[0];
+        switch (strtoupper($UserArg)) {
+            case "DEFAULT":
+                $SysConfig = SystemConfiguration::getInstance();
+                $CurrentInterface = $SysConfig->getString("DefaultActiveUI");
+                print "Current default interface is \"".$CurrentInterface."\".";
+                break;
+
+            default:
+                $User = $this->normalizeUserArgument($UserArg);
+                print "Current user interface for ".$User->Name()
+                        ." is \"".$User->Get("ActiveUI")."\".";
+                break;
+        }
+    }
+
+    /**
+     * Set user interface for specific user, all users, or default.
+     */
+    private function setUserInterface(array $Args)
+    {
+        $UserArg = $Args[0];
+        $InterfaceArg = $Args[1];
+
+        $NewInterface = $this->normalizeInterfaceArgument($InterfaceArg);
+
+        switch (strtoupper($UserArg)) {
+            case "ALL":
+                $UFactory = new \ScoutLib\UserFactory();
+                $UserIds = $UFactory->GetUserIds();
+                foreach ($UserIds as $UserId) {
+                    $User = new User($UserId);
+                    $User->Set("ActiveUI", $NewInterface);
+                }
+                print "Active user interface for all ".number_format(count($UserIds))
+                        ." users set to \"".$NewInterface."\".";
+                break;
+
+            case "DEFAULT":
+                $SysConfig = SystemConfiguration::getInstance();
+                $SysConfig->setString("DefaultActiveUI", $NewInterface);
+                print "Default user interface set to \"".$NewInterface."\".";
+                break;
+
+            default:
+                $User = $this->normalizeUserArgument($UserArg);
+                $User->Set("ActiveUI", $NewInterface);
+                print "User interface for ".$User->Name()
+                        ." set to \"".$NewInterface."\".";
+                break;
+        }
+    }
+
+    /**
+     * List available configuration settings.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listConfigSettings(array $Args)
+    {
+        $Settings = SystemConfiguration::getInstance()->getFields();
+        print "Available system configuration settings:";
+        sort($Settings);
+        foreach ($Settings as $SettingName) {
+            print "\n    ".$SettingName;
+        }
+    }
+
+    /**
+     * List metadata fields.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listMetadataFields(array $Args)
+    {
+        $AllSchemas = MetadataSchema::getAllSchemas();
+        uasort($AllSchemas, function ($A, $B) {
+                    return $A->Id() <=> $B->Id();
+        });
+
+        if (isset($Args[0])) {
+            $Type = $this->getMetadataFieldType($Args[0]);
+            if ($Type === null) {
+                $Schema = $this->getSchema($Args[0]);
+                $Schemas = [ $Schema ];
+            }
+        } else {
+            $Type = null;
+            $Schemas = $AllSchemas;
+        }
+
+        $RowFormat = "%-28.28s %-10.10s %3s %3s\n";
+        if (isset($Schemas)) {
+            foreach ($Schemas as $Schema) {
+                print "SCHEMA: ".$Schema->name()." (ID=".$Schema->id().")\n";
+                $Fields = $Schema->getFields(null, null, true);
+                usort($Fields, function ($A, $B) {
+                            return ($A->typeAsName() == $B->typeAsName())
+                                    ? ($A->name() <=> $B->name())
+                                    : ($A->typeAsName() <=> $B->typeAsName());
+                });
+                printf($RowFormat, "NAME", "TYPE", "ID", "ENA");
+                foreach ($Fields as $Field) {
+                    printf(
+                        $RowFormat,
+                        $Field->name(),
+                        $Field->typeAsName(),
+                        $Field->id(),
+                        ($Field->enabled() ? "Yes" : "No")
+                    );
+                }
+                print "\n";
+            }
+        } else {
+            $Fields = [];
+            foreach ($AllSchemas as $Schema) {
+                $SchemaFields = $Schema->getFields($Type);
+                usort($SchemaFields, function ($A, $B)
+                        {  return $A->name() <=> $B->name();  });
+                $Fields = array_merge($Fields, $SchemaFields);
+            }
+            print "FIELD TYPE: ".reset($Fields)->typeAsName()."\n";
+            printf($RowFormat, "NAME", "SCHEMA", "ID", "ENA");
+            foreach ($Fields as $Field) {
+                printf(
+                    $RowFormat,
+                    $Field->name(),
+                    $AllSchemas[$Field->schemaId()]->name(),
+                    $Field->id(),
+                    ($Field->enabled() ? "Yes" : "No")
+                );
+            }
+            print "\n";
+        }
+    }
+
+    /**
+     * List all available user interfaces.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listUserInterfaces(array $Args)
+    {
+        $this->printUserInterfaceList();
+    }
+
+    /**
+     * List all available privileges.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listAllPrivileges(array $Args)
+    {
+        print "All available privileges:\n";
+        foreach ($this->getAvailablePrivileges() as $PrivId => $PrivName) {
+            print "    ".$PrivName." (".$PrivId.")\n";
+        }
+    }
+
+    /**
+     * List metadata schemas.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listMetadataSchemas(array $Args)
+    {
+        $Schemas = MetadataSchema::GetAllSchemas();
+        usort($Schemas, function ($A, $B) {
+                    return $A->Id() <=> $B->Id();
+        });
+        printf("%2s %-30s\n", "ID", "SCHEMA NAME");
+        foreach ($Schemas as $Schema) {
+            printf("%2d %-30s\n", $Schema->Id(), $Schema->Name());
+        }
+    }
+
+    /**
+     * Turn system maintenance mode on or off.
+     * @param array $Args Additional command line arguments.
+     */
+    private function toggleMaintenanceMode(array $Args)
+    {
+        $FlagFile = ".maintenance";
+
+        $Setting = strtolower($Args[0]);
+        $FirstLetter = substr($Setting, 0, 1);
+        if (($Setting == "on") || ($FirstLetter == "t") || ($Setting == "1")) {
+            touch($FlagFile);
+            print "Maintenance mode enabled.\n";
+        } elseif (($Setting == "off") || ($FirstLetter == "f") || ($Setting == "0")) {
+            if (file_exists($FlagFile)) {
+                $Result = unlink($FlagFile);
+                if ($Result != true) {
+                    print "Could not disable maintenance mode."
+                            ."  (Unable to remove flag file \"".$FlagFile."\".)\n";
+                    exit(1);
+                }
+            }
+            print "Maintenance mode disabled.\n";
+        } else {
+            $this->printUsage();
+            exit(1);
+        }
+    }
+
+    /**
+     * Run command supplied by plugin.
+     * @param array $Args Additional command line arguments.
+     */
+    private function runPluginCommand(array $Args)
+    {
+        $Plugin = $this->getPlugin($Args[0]);
+        $PluginName = $Plugin->getBaseName();
+        $Command = $Args[1];
+        $MethodName = "command".ucfirst($Command);
+        $PluginCallback = [$Plugin, $MethodName];
+        if (!is_callable($PluginCallback)) {
+            print "No support found in the \"".$PluginName
+                    ."\" plugin for the command \"".$Command."\".\n";
+            $ClassFile = str_replace(getcwd()."/", "", $Plugin->getClassFile());
+            print "(Required method name would be \""
+                    .$PluginName."::".$MethodName."()\" in ".$ClassFile.".)";
+            exit(1);
+        } elseif (!$Plugin->isEnabled()) {
+            print "Plugin \"".$PluginName."\" is not enabled.\n";
+            exit(1);
+        } elseif (!$Plugin->isReady()) {
+            print "Plugin \"".$PluginName."\" is not in a ready state.\n";
+            $ErrMsgs = (PluginManager::getInstance())->getErrorMessages();
+            if (isset($ErrMsgs[$PluginName])) {
+                foreach ($ErrMsgs[$PluginName] as $Msg) {
+                    print strip_tags($Msg)."\n";
+                }
+            }
+            exit(1);
+        }
+
+        $Args = array_slice($Args, 2);
+        call_user_func($PluginCallback, $Args);
+    }
+
+    /**
+     * Run any needed system or database upgrades, via the Developer plugin.
+     * @param array $Args Additional command line arguments.
+     */
+    private function runUpgrades(array $Args)
+    {
+        $PluginMgr = PluginManager::getInstance();
+        if (!$PluginMgr->pluginReady("Developer")) {
+            print "Developer plugin (required to run upgrades) is not available.\n";
+            exit(1);
+        }
+        $DPlugin = $PluginMgr->getPlugin("Developer");
+        $UpgradeMethod = [$DPlugin, "commandUpgrade"];
+        if (!is_callable($UpgradeMethod)) {
+            print "Developer::commandUpgrade() method not found in Developer plugin.\n";
+            exit(1);
+        }
+        call_user_func($UpgradeMethod);
+    }
+
+    /**
+     * Print current plugin configuration values.
+     * @param array $Args Additional command line arguments.
+     */
+    private function printPluginConfig(array $Args)
+    {
+        $Plugin = $this->getPlugin($Args[0]);
+        $Attribs = $Plugin->getAttributes();
+        $CfgSetup = $Attribs["CfgSetup"];
+
+        if (count($CfgSetup) == 0) {
+            print "No configuration settings found for ".$Plugin->getName()." plugin.";
+            return;
+        }
+
+        $LongestLabelLen = max(array_map(function ($Params) {
+                return strlen($Params["Label"]);  }, $CfgSetup));
+        $DesiredMaximumWidth = self::outputIsPiped() ? 1000 : 79;
+        $LabelColumnWidth = min($LongestLabelLen, 35);
+        $ValueColumnWidth = $DesiredMaximumWidth - $LabelColumnWidth - 2;
+        $LineFormat = "%-".$LabelColumnWidth.".".$LabelColumnWidth."s"
+                ."  %-.".$ValueColumnWidth."s\n";
+
+        foreach ($CfgSetup as $SettingName => $SettingParams) {
+            $SettingLabel = $SettingParams["Label"];
+            switch ($SettingParams["Type"]) {
+                case FormUI::FTYPE_TEXT:
+                case FormUI::FTYPE_URL:
+                case FormUI::FTYPE_PARAGRAPH:
+                    $SettingValue = $Plugin->configSetting($SettingName);
+                    $SettingValue = str_replace("\n", "\\n ", $SettingValue);
+                    break;
+
+                case FormUI::FTYPE_NUMBER:
+                    $SettingValue = number_format($Plugin->configSetting($SettingName));
+                    if (isset($SettingParams["Units"])) {
+                        $SettingValue .= " ".strtolower($SettingParams["Units"]);
+                    }
+                    break;
+
+                case FormUI::FTYPE_FLAG:
+                    $SettingValue = $Plugin->configSetting($SettingName)
+                            ? "TRUE" : "FALSE";
+                    break;
+
+                case FormUI::FTYPE_OPTION:
+                    $SettingValue = $Plugin->configSetting($SettingName);
+                    if (is_array($SettingValue)) {
+                        $SettingValue = implode("|", $SettingValue);
+                    }
+                    break;
+
+                case FormUI::FTYPE_METADATAFIELD:
+                    $FieldId = $Plugin->configSetting($SettingName);
+                    if (is_numeric($FieldId)) {
+                        $Field = new MetadataField((int)$FieldId);
+                        $SettingValue = $Field->name()." ("
+                                .MetadataField::$FieldTypeHumanEnums[$Field->type()].")";
+                    } else {
+                        $SettingValue = "NO FIELD SET";
+                    }
+                    break;
+
+                case FormUI::FTYPE_SEARCHPARAMS:
+                    $SParams = $Plugin->configSetting($SettingName);
+                    $SettingValue = $SParams->textDescription(false);
+                    $SettingValue = preg_replace("%\s+%", " ", $SettingValue);
+                    break;
+
+                case FormUI::FTYPE_HEADING:
+                    $SettingLabel = "--- ".strtoupper($SettingParams["Label"]);
+                    $SettingValue = "";
+                    break;
+
+                case FormUI::FTYPE_PRIVILEGES:
+                case FormUI::FTYPE_USER:
+                default:
+                    $SettingValue = "(".$SettingParams["Type"].")";
+                    break;
+            }
+            printf($LineFormat, $SettingLabel, $SettingValue);
+        }
+    }
+
+    /**
+     * Disable specified plugin.
+     * @param array $Args Additional command line arguments.
+     */
+    private function disablePlugin(array $Args)
+    {
+        $Plugin = $this->getPlugin($Args[0]);
+        $Plugin->isEnabled(false);
+        if ($Plugin->isEnabled()) {
+            print "Unable to disable plugin \"".$Plugin->getBaseName()."\".\n";
+        } else {
+            print "Plugin \"".$Plugin->getBaseName()."\" has been disabled.\n";
+        }
+    }
+
+    /**
+     * Enable specified plugin.
+     * @param array $Args Additional command line arguments.
+     */
+    private function enablePlugin(array $Args)
+    {
+        $Plugin = $this->getPlugin($Args[0]);
+        $Plugin->isEnabled(true);
+        if ($Plugin->isEnabled()) {
+            print "Plugin \"".$Plugin->getBaseName()."\" has been enabled.\n";
+        } else {
+            print "Unable to enable plugin \"".$Plugin->getBaseName()."\".\n";
+        }
+    }
+
+    /**
+     * List all plugins.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listPlugins(array $Args)
+    {
+        $LineFormat = "%-23s %-9s\n";
+
+        $Plugins = (PluginManager::getInstance())->GetPlugins();
+        uksort($Plugins, "strnatcasecmp");
+
+        foreach ($Plugins as $PluginName => $Plugin) {
+            $Attribs = $Plugin->GetAttributes();
+            $Status = !$Plugin->isInstalled() ? "NOT INST"
+                    : (!$Plugin->isEnabled() ? "DISABLED"
+                    : ($Plugin->isReady() ? "ENABLED" : "UNREADY"));
+            printf($LineFormat, $PluginName, $Status);
+        }
+    }
+
+    /**
+     * Add user privilege.
+     * @param array $Args Additional command line arguments.
+     */
+    private function addPrivilegeToUser(array $Args)
+    {
+        $UserArg = array_shift($Args);
+        $User = $this->normalizeUserArgument($UserArg);
+
+        $Privileges = $this->normalizePrivilegeArguments($Args);
+
+        foreach ($Privileges as $Privilege) {
+            $User->GrantPriv($Privilege->Id());
+            print "Privilege ".$Privilege->Name()
+                    ." granted to user ".$User->Name().".\n";
+        }
+    }
+
+    /**
+     * List user privileges.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listPrivilegesForUser(array $Args)
+    {
+        $UserArg = $Args[0];
+        $User = $this->normalizeUserArgument($UserArg);
+        print "Current privileges for user ".$User->Name().":\n";
+        $UserPrivs = $User->GetPrivList();
+        foreach ($this->getAvailablePrivileges() as $PrivId => $PrivName) {
+            if (array_search($PrivId, $UserPrivs)) {
+                print "    ".$PrivName." (".$PrivId.")\n";
+            }
+        }
+    }
+
+    /**
+     * Remove user privilege.
+     * @param array $Args Additional command line arguments.
+     */
+    private function removePrivilegeFromUser(array $Args)
+    {
+        $UserArg = array_shift($Args);
+        $User = $this->normalizeUserArgument($UserArg);
+
+        $Privileges = $this->normalizePrivilegeArguments($Args);
+
+        foreach ($Privileges as $Privilege) {
+            $User->RevokePriv($Privilege->Id());
+            print "Privilege ".$Privilege->Name()
+                    ." revoked from user ".$User->Name().".\n";
+        }
+    }
+
+    /**
+     * Delete specified task.
+     * @param array $Args Additional command line arguments.
+     */
+    private function deleteTask(array $Args)
+    {
+        $TaskId = $Args[0];
+        $TasksRemoved = (ApplicationFramework::getInstance())->deleteTask($TaskId);
+        if ($TasksRemoved) {
+            print "Task with ID ".$TaskId." removed.";
+        } else {
+            print "No task found with ID ".$TaskId.".";
+        }
+    }
+
+    /**
+     * List queued, running, or orphaned tasks.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listTasks(array $Args)
+    {
+        $ArgLetter = strtoupper($Args[0][0]);
+        $AF = ApplicationFramework::getInstance();
+        switch ($ArgLetter) {
+            case "Q":
+                $this->printTaskList("Queued", $AF->getQueuedTaskList());
+                break;
+
+            case "R":
+                $this->printTaskList("Running", $AF->getRunningTaskList());
+                break;
+
+            case "O":
+                $this->printTaskList("Orphaned", $AF->getOrphanedTaskList());
+                break;
+
+            case "A":
+                $this->printTaskList("Running", $AF->getRunningTaskList());
+                $this->printTaskList("Orphaned", $AF->getOrphanedTaskList());
+                $this->printTaskList("Queued", $AF->getQueuedTaskList());
+                break;
+        }
+    }
+
+    /**
+     * Requeue specified task.
+     * @param array $Args Additional command line arguments.
+     */
+    private function requeueTask(array $Args)
+    {
+        $TaskId = strtoupper($Args[0]);
+
+        $AF = ApplicationFramework::getInstance();
+        $OrphanedTasks = $AF->getOrphanedTaskList();
+        if ($TaskId == "ALL") {
+            if (count($OrphanedTasks) == 0) {
+                print "(No orphaned tasks to requeue.)\n";
+            } else {
+                print "(Requeuing all orphaned tasks.)\n";
+            }
+            $TaskIdsToRequeue = array_keys($OrphanedTasks);
+        } else {
+            if (!isset($OrphanedTasks[$TaskId])) {
+                print "No orphaned task found with ID ".$TaskId.".\n";
+                $this->printTaskList("Orphaned", $OrphanedTasks);
+                exit(1);
+            }
+            $TaskIdsToRequeue = [ $TaskId ];
+        }
+
+        foreach ($TaskIdsToRequeue as $Id) {
+            $NewPriority = max(1, ($OrphanedTasks[$Id]["Priority"] - 1));
+            $AF->requeueOrphanedTask($Id, (int)$NewPriority);
+            print "Orphaned task with ID ".$Id." has been requeued.\n";
+        }
+
+        $this->printTaskList("Orphaned", $AF->getOrphanedTaskList());
+        $this->printTaskList("Queued", $AF->getQueuedTaskList());
+    }
+
+    /**
+     * Run specified task.
+     * @param array $Args Additional command line arguments.
+     */
+    private function runTask(array $Args)
+    {
+        $TaskId = $Args[0];
+        $AF = ApplicationFramework::getInstance();
+        $Task = $AF->getTask($TaskId);
+        if (!$Task) {
+            print "No task found with ID ".$TaskId.".";
+            exit(1);
+        }
+
+        # check to make sure task appears runnable
+        if (!is_callable($Task["Callback"])) {
+            print "Task with ID ".$TaskId." does not have a runnable callback.";
+            exit(1);
+        }
+
+        # run task
+        if ($Task["Parameters"]) {
+            call_user_func_array($Task["Callback"], $Task["Parameters"]);
+        } else {
+            call_user_func($Task["Callback"]);
+        }
+
+        # remove task from queue
+        $AF->deleteTask($TaskId);
+
+        print "Task with ID ".$TaskId." has been run.";
+    }
+
+    /**
+     * Add/remove/list user privileges.
+     * @param array $Args Additional command line arguments.
+     */
+    private function addUser(array $Args)
+    {
+        $Email = $Args[0];
+        $Password = $Args[1];
+
+        if (isset($Args[2])) {
+            $UserName = $Args[2];
+        } else {
+            $UserName = UserFactory::GenerateUniqueUsernameFromEmail($Email);
+        }
+
+        $UFactory = new UserFactory();
+        $NewUser = $UFactory->CreateNewUser(
+            $UserName,
+            $Password,
+            $Password,
+            $Email,
+            $Email
+        );
+
+        if (is_object($NewUser)) {
+            $NewUser->IsActivated(true);
+            print "User account '".$UserName."' added.";
+        } else {
+            foreach ($NewUser as $ErrorCode) {
+                print \ScoutLib\User::GetStatusMessageForCode($ErrorCode)."\n";
+            }
+            $this->printUsage();
+            exit(1);
+        }
+    }
+
+
+    # ---- Utility Methods -- (in alphabetical order) ----------------------------
+
+    /**
+     * Build command to grep through source code files.
+     * @param array $GrepArgs Arguments for grep command.
+     * @return string Command.
+     */
+    private function buildSourceGrepCommand(array $GrepArgs)
+    {
+        $Locations = [
+                "lib/ScoutLib",
+                "include",
+                "objects",
+                "pages",
+                "interface",
+                "plugins",
+                "install",
+                ];
+        $LocalLocations = [
+                "local/pages",
+                "local/interface",
+                "local/objects",
+                "local/plugins",
+                ];
+        $Extensions = [
+                "php",
+                "html",
+                "css",
+                "scss",
+                "js",
+                "ini",
+                ];
+        $OtherFiles = [
+                "index.php",
+                "installmv.php",
+                "buildrelease",
+                "install/mvus",
+                ];
+        foreach ($Extensions as $Extension) {
+            $ExtOpts[] = "-iname \"*.".$Extension."\"";
+        }
+        foreach ($GrepArgs as $Index => $Arg) {
+            if (strpos($Arg, " ") !== false) {
+                $GrepArgs[$Index] = "'".$Arg."'";
+            }
+        }
+        foreach ($LocalLocations as $LocalLoc) {
+            if (is_dir($LocalLoc)) {
+                $Locations[] = $LocalLoc;
+            }
+        }
+        $Command = "find ".join(" ", $Locations)
+                ." \( ".join(" -o ", $ExtOpts)." \) -print0 "
+                ." | xargs -0 grep ".join(" ", $GrepArgs)
+                ." ".join(" ", $OtherFiles);
+        return $Command;
+    }
+
+    /**
+     * Try to determine intended command from command line argument, erroring out
+     * if unable to unambiguously match command.
+     * @param string $Arg Command line argument.
+     * @param array $CmdList Associative array with commands for the index.
+     * @param string $CmdType Command type ("command" or "subcommand").
+     * @param string $ErrFn Name of function to call before exiting with an error.
+     * @return string Command that was found.
+     */
+    private function determineCommandFromArgument($Arg, $CmdList, $CmdType, $ErrFn)
+    {
+        # try to determine command
+        $Matches = $this->findWordsThatMatchPrefix(
+            $Arg,
+            array_keys($CmdList)
+        );
+
+        # if no matches, error out
+        if (count($Matches) == 0) {
+            print "Unknown ".$CmdType.": ".$Arg."\n";
+            $this->$ErrFn();
+            exit(0);
+        }
+
+        # if single match, return that
+        if (count($Matches) == 1) {
+            return $Matches[0];
+        }
+
+        # if exact match (case-insensitive), return that
+        if (in_array(strtolower($Arg), array_map("strtolower", $Matches))) {
+            return strtolower($Arg);
+        }
+
+        # otherwise arg was ambiguous, so error out
+        print "Ambiguous ".$CmdType.": ".$Arg."\n";
+        print "Could be one of: ".join(", ", $Matches)."\n";
+        $this->$ErrFn();
+        exit(0);
+    }
+
+    /**
+     * Find entries in list that match (case-insensitive) the specified prefix.
+     * @param string $Prefix Prefix to match.
+     * @param array $WordList Array of words to match against prefix.
+     * @return array Entries that match prefix.
+     */
+    private function findWordsThatMatchPrefix($Prefix, $WordList)
+    {
+        $Matches = [];
+        array_walk($WordList, function ($Value, $Index) use ($Prefix, &$Matches) {
+            if (stripos($Value, $Prefix) === 0) {
+                $Matches[] = $Value;
+            }
+        });
+        return $Matches;
+    }
+
+    /**
+     * Get list of available privileges, with constant privileges first
+     * (sorted by constant name) and then custom privileges (sorted by
+     * privilege name).
+     * @return array Privilege names, with privilege IDs for index.
+     */
+    private function getAvailablePrivileges()
+    {
+        # get all privileges
+        $PFactory = new PrivilegeFactory();
+        $AllPrivs = $PFactory->GetPrivileges(true, false);
+        ksort($AllPrivs);
+
+        # get all constants that begin with "PRIV_"
+        $PrivConstantNames = array_filter(
+            get_defined_constants(),
+            function ($Key) {
+                        return is_string($Key)
+                                && (strpos($Key, "PRIV_") === 0);
+            },
+            ARRAY_FILTER_USE_KEY
+        );
+        $PrivConstantNames = array_flip($PrivConstantNames);
+
+        # split privileges into constants and custom
+        $PrivNamesDefault = array();
+        $PrivNamesCustom = array();
+        foreach ($AllPrivs as $PrivId => $PrivName) {
+            if (isset($PrivConstantNames[$PrivId])) {
+                $PrivNamesDefault[$PrivId] = $PrivConstantNames[$PrivId];
+            } else {
+                $PrivNamesCustom[$PrivId] = $PrivName;
+            }
+        }
+        asort($PrivNamesDefault);
+        asort($PrivNamesCustom);
+        return $PrivNamesDefault + $PrivNamesCustom;
+    }
+
+    /**
+     * Get metadata field type.
+     * @param string $Name Plugin name.
+     * @return int|null Metadata field type (constant) or NULL if no matching type found.
+     */
+    private function getMetadataFieldType(string $Name)
+    {
+        $TypeConstants = (new ReflectionClass("Metavus\\MetadataSchema"))->getConstants();
+        $TypeConstants = array_filter(
+            $TypeConstants,
+            function ($Constant) {  return (strpos($Constant, "MDFTYPE_") === 0);  },
+            ARRAY_FILTER_USE_KEY
+        );
+        $MatchingNames = preg_grep(
+            "/^MDFTYPE_".preg_quote($Name, "/")."/i",
+            array_keys($TypeConstants)
+        );
+        if (($MatchingNames === false) || (count($MatchingNames) < 1)) {
+            return null;
+        }
+        $FirstName = reset($MatchingNames);
+        return ($FirstName === false) ? null : $TypeConstants[$FirstName];
+    }
+
+    /**
+     * Get MySQL login and password args and database name for command line use.
+     * @return string Command line arguments and database name.
+     */
+    private function getMysqlLoginArgs()
+    {
+        $this->loadConfigFile();
+        $DBInfo = $GLOBALS["G_Config"]["Database"];
+        $Args = "--user='".$DBInfo["UserName"]."'"
+                ." --password='".$DBInfo["Password"]."'"
+                ." ".$DBInfo["DatabaseName"];
+        return $Args;
+    }
+
+    /**
+     * Get arguments to include on command line for MySQL internal command
+     * execution, to authorize access, without including the password on the
+     * command line.  IMPORTANT:  The returned value must be included as the
+     * first thing on the command line after the command.
+     * @return string Arguments to include on command line.
+     */
+    private function getAuthArgsForMysqlCommands(): string
+    {
+        static $AuthArgs;
+        if (isset($AuthArgs)) {
+            return $AuthArgs;
+        }
+
+        $this->loadConfigFile();
+        $DBInfo = $GLOBALS["G_Config"]["Database"];
+        $LoginInfo = "[client]\n"
+                ."host = ".$DBInfo["Host"]."\n"
+                ."user = ".$DBInfo["UserName"]."\n"
+                ."password = ".$DBInfo["Password"]."\n";
+        $FileName = tempnam("/tmp", "dbcnf-");
+        if ($FileName === false) {
+            throw new Exception("Unable to create temporary MySQL configuration"
+                    ." file ".$FileName." to use for command authorization.");
+        }
+        file_put_contents($FileName, $LoginInfo);
+        register_shutdown_function("unlink", $FileName);
+        $AuthArgs = " --defaults-extra-file=".$FileName." ";
+        return $AuthArgs;
+    }
+
+    /**
+     * Get plugin, erroring out if not found.
+     * @param string $Name Plugin name.
+     * @return Plugin Requested plugin.
+     */
+    private function getPlugin(string $Name): Plugin
+    {
+        $Plugins = (PluginManager::getInstance())->getPlugins();
+        $MatchingNames = preg_grep(
+            "/^".preg_quote($Name, "/")."/i",
+            array_keys($Plugins)
+        );
+        if ($MatchingNames === false) {
+            print "Error parsing plugin name \"".$Name."\".\n";
+            exit(1);
+        }
+        if (count($MatchingNames) < 1) {
+            print "No plugin found with the name \"".$Name."\".\n";
+            exit(1);
+        } else if (count($MatchingNames) > 1) {
+            print "Ambiguous plugin name \"".$Name."\".\n";
+            print "Could be one of: ".join(", ", $MatchingNames)."\n";
+            exit(1);
+        }
+        return $Plugins[reset($MatchingNames)];
+    }
+
+    /**
+     * Retrieve schema for specified name or ID, erroring out if no matching
+     * schema found.
+     * @param string $Name Schema name or ID.
+     * @return MetadataSchema Matching schema.
+     */
+    private function getSchema(string $Name)
+    {
+        $SchemaNames = MetadataSchema::GetAllSchemaNames();
+        if (is_numeric($Name)) {
+            $SchemaId = $Name;
+            if (!isset($SchemaNames[$SchemaId])) {
+                print "No schema found with the ID \"".$SchemaId."\".\n";
+                exit(1);
+            }
+        } else {
+            $MatchingNames = preg_grep(
+                "/^".preg_quote($Name, "/")."/i",
+                $SchemaNames
+            );
+            if ($MatchingNames === false) {
+                print "Unable to parse schema name \"".$Name."\".\n";
+                exit(1);
+            }
+            if (count($MatchingNames) > 1) {
+                print "Ambiguous schema name \"".$Name."\".\n";
+                print "Could be one of: ".join(", ", $MatchingNames)."\n";
+                exit(1);
+            }
+            if (count($MatchingNames) < 1) {
+                print "No schema found with the name \"".$Name."\".\n";
+                exit(1);
+            }
+            $MatchingIds = array_keys($MatchingNames);
+            $SchemaId = reset($MatchingIds);
+        }
+        return new MetadataSchema((int)$SchemaId);
+    }
+
+    /**
+     * Get best guess at user account for site administrator/owner.  If running
+     * from the command line, this is assumed to be whoever is running the script,
+     * if a matching user account can be found for that person.
+     * @return int|null ID for user account of likely site owner or NULL if could not
+     *      determine likely owner.
+     */
+    private function getSiteOwner()
+    {
+        # assume no owner will be found
+        $OwnerId = null;
+
+        # if running from command line
+        $UFactory = new UserFactory();
+        if (PHP_SAPI === 'cli') {
+            # get name of system user currently executing script
+            $SysUserInfo = posix_getpwuid(posix_geteuid());
+            if ($SysUserInfo === false) {
+                return $UFactory->getSiteOwner();
+            }
+            $SysUserName = $SysUserInfo["name"];
+
+            # look for account with same name as system user
+            $UserNames = $UFactory->FindUserNames($SysUserName);
+            if (count($UserNames) == 1) {
+                $UserIds = array_keys($UserNames);
+                $OwnerId = array_pop($UserIds);
+                return (int)$OwnerId;
+            }
+        }
+
+        # if no matching user was found, look up owner with Metavus\UserFactory
+        return $UFactory->getSiteOwner();
+    }
+
+    /**
+     * Load software configuration file.
+     * @throws Exception If configuration file not found.
+     */
+    private function loadConfigFile()
+    {
+        if (file_exists("local/config.php")) {
+            require_once("local/config.php");
+        } elseif (file_exists("config.php")) {
+            require_once("config.php");
+        } else {
+            throw new Exception("Could not find config.php.");
+        }
+    }
+
+    /**
+     * Normalize command line interface argument to canonical interface name.
+     * @param string $Arg Command line argument.
+     * @return string Normalized value.
+     */
+     private function normalizeInterfaceArgument(string $Arg)
+     {
+        # look for match in list of canonical interface names
+        $AllInterfaces = (ApplicationFramework::getInstance())->getUserInterfaces();
+        $Matches = $this->findWordsThatMatchPrefix($Arg, array_keys($AllInterfaces));
+
+        # if no canonical match found
+        if (count($Matches) == 0) {
+            # look for match in interface labels
+            $Matches = $this->findWordsThatMatchPrefix($Arg, $AllInterfaces);
+
+            # convert any matching labels back to canonical names
+            $Matches = array_keys(array_intersect($AllInterfaces, $Matches));
+        }
+
+        # if no match found anywhere, report no match
+        if (count($Matches) == 0) {
+            print "Unknown interface: ".$Arg."\n";
+            $this->printUserInterfaceList();
+            $this->printUsage();
+            exit(1);
+        }
+
+        # if multiple matches found, report no unambiguous match
+        if (count($Matches) > 1) {
+            print "Ambiguous interface: ".$Arg."\n";
+            print "Could be one of: ".join(", ", $Matches)."\n";
+            exit(1);
+        }
+
+        # otherwise return match to caller
+        return $Matches[0];
+     }
+
+    /**
+     * Normalize command line privilege argument to Privilege object.
+     * @param array $Args Command line argument.
+     * @param bool $ErrorOut If TRUE, will print message and error out if
+     *      unable to normalize.  (OPTIONAL, defaults to TRUE)
+     * @return array Normalized values (Privilege objects).
+     */
+    private function normalizePrivilegeArguments(array $Args, bool $ErrorOut = true)
+    {
+        $Privileges = [];
+        $PFactory = new PrivilegeFactory();
+        foreach ($Args as $Arg) {
+            unset($PrivilegeId);
+
+            $Arg = strtoupper($Arg);
+
+            if ($Arg == "ALL") {
+                $AllPrivs = $PFactory->GetPrivileges();
+                foreach ($AllPrivs as $PrivId => $Priv) {
+                    if (!User::IsPseudoPrivilege($PrivId)
+                            && ($PrivId != PRIV_USERDISABLED)) {
+                        $Privileges[$PrivId] = $Priv;
+                    }
+                }
+                continue;
+            }
+
+            if ((strpos($Arg, "PRIV_") === 0) && defined($Arg)) {
+                $PrivilegeId = constant($Arg);
+            } elseif (defined("PRIV_".$Arg)) {
+                $PrivilegeId = constant("PRIV_".$Arg);
+            } elseif (defined("PRIV_".$Arg."ADMIN")) {
+                $PrivilegeId = constant("PRIV_".$Arg."ADMIN");
+            } elseif (is_numeric($Arg)
+                    && (User::IsStandardPrivilege((int)$Arg)
+                            || $PFactory->ItemExists((int)$Arg))) {
+                $PrivilegeId = $Arg;
+            }
+
+            if (isset($PrivilegeId)) {
+                $Privileges[$PrivilegeId] = new Privilege($PrivilegeId);
+            } elseif ($ErrorOut) {
+                print "Privilege \"".$Arg."\" is unknown.\n";
+                exit(1);
+            }
+        }
+        return $Privileges;
+    }
+
+    /**
+     * Normalize command line user argument to User object.
+     * @param string $Arg Command line argument.
+     * @return User Normalized value or FALSE if unable to normalize.
+     */
+    private function normalizeUserArgument(string $Arg): User
+    {
+        $User = false;
+        $UFactory = new UserFactory();
+        if (is_numeric($Arg) && $UFactory->userExists((int)$Arg)) {
+            $User = new User($Arg);
+        } else {
+            $Users = $UFactory->findUsers($Arg);
+            if (count($Users) == 1) {
+                $User = array_pop($Users);
+                $User = new User($User->id());
+            }
+        }
+        if ($User === false) {
+            print "User \"".$Arg."\" is unknown.";
+            exit(1);
+        }
+        return $User;
+    }
+
+    /**
+     * Try to determine whether output is direct to terminal or piped to another program.
+     * @return bool TRUE if output appears redirected, otherwise FALSE.
+     */
+    private static function outputIsPiped(): bool
+    {
+        return (function_exists("posix_isatty") && !posix_isatty(STDOUT)) ? true : false;
+    }
+
+    /**
+     * Print count and list of tasks.
+     * @param string $Prefix Prefix for task count label.
+     * @param array $Tasks Task list.
+     */
+    private function printTaskList(string $Prefix, array $Tasks)
+    {
+        $QueueSize = count($Tasks);
+        print $Prefix." Tasks: ".$QueueSize."\n";
+        if ($QueueSize) {
+            printf("%-9s %-40s\n", "ID", "SYNOPSIS");
+            foreach ($Tasks as $TaskId => $TaskInfo) {
+                $TaskSynopsis = htmlspecialchars_decode(
+                    ApplicationFramework::GetTaskCallbackSynopsis($TaskInfo)
+                );
+                printf("%-9d %-40s\n", $TaskId, $TaskSynopsis);
+            }
+        }
+    }
+
+    /**
+     * Print list of available user interfaces.
+     */
+    private function printUserInterfaceList()
+    {
+        $InterfaceList = (ApplicationFramework::getInstance())->getUserInterfaces();
+        $InterfaceNames = array_keys($InterfaceList);
+        natcasesort($InterfaceNames);
+        print "Available user interfaces:\n";
+        foreach ($InterfaceNames as $InterfaceName) {
+            $InterfaceLabel = $InterfaceList[$InterfaceName];
+            if (strlen($InterfaceLabel) && ($InterfaceLabel != $InterfaceName)) {
+                $InterfaceLabel = " (".$InterfaceLabel.")";
+            } else {
+                $InterfaceLabel = "";
+            }
+            print "    ".$InterfaceName.$InterfaceLabel."\n";
+        }
+    }
+}

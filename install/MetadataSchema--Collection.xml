@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+    <!-- FIELD DEFINITIONS -->
+    <MetadataField>
+        <Name>Name</Name>
+        <Type>TEXT</Type>
+        <Description>The title of the collection.</Description>
+        <Optional>0</Optional>
+        <MaxLength>50</MaxLength>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Description</Name>
+        <Type>PARAGRAPH</Type>
+        <Description>A brief description of the collection suitable for display in search results, a 'browse collections' page, or similar places.</Description>
+        <Optional>0</Optional>
+        <AllowHTML>1</AllowHTML>
+        <UseWYSIWYGEditor>1</UseWYSIWYGEditor>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Collection Scope</Name>
+        <Type>PARAGRAPH</Type>
+        <Description>A brief description of what comprises the collection to display only on this collection's Full Record Page.</Description>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Cataloging Instructions</Name>
+        <Type>PARAGRAPH</Type>
+        <Description>Additional internal documentation about cataloging expectations for items that are a member of this collection.</Description>
+        <Optional>1</Optional>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Selection Criteria</Name>
+        <Type>SEARCHPARAMETERSET</Type>
+        <Description>Search parameters that define what records belong to this collection.</Description>
+        <Optional>0</Optional>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+        </ViewingPrivileges>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Icon</Name>
+        <Type>IMAGE</Type>
+        <Description>A small icon or logo used to represent the collection.</Description>
+        <Optional>1</Optional>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Monogram</Name>
+        <Type>TEXT</Type>
+        <Description>Letter or letters used to represent the collection.</Description>
+        <Optional>0</Optional>
+        <MaxLength>2</MaxLength>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Color</Name>
+        <Type>TEXT</Type>
+        <Description>Color used to represent the collection.  Should be a CSS-compatible RGB triplet (e.g. "#415CA9") or common color name (e.g. "red").</Description>
+        <Optional>1</Optional>
+        <MaxLength>20</MaxLength>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <Owner>MetavusCore</Owner>
+    </MetadataField>
+    <MetadataField>
+        <Name>Record Status</Name>
+        <Type>OPTION</Type>
+        <Description>This internal administrative feature allows resource administrators to withhold record from public view and searching. Intended to provide a method for internal review and editing. The record will only be available for view by authorized resource editors and site administrator and is not available in the Advanced search. This is a required field. Required fields may not be customized as to thield type or disabled. In the Administration database editor feature, portal administrators may set the default value for this field.</Description>
+        <Optional>0</Optional>
+        <VocabularyFile>scout--record_status.voc</VocabularyFile>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Last Modified</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date the collection was last edited.</Description>
+        <Owner>MetavusCore</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordChange</UpdateMethod>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </ViewingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Of Record Creation</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date the collection was created.</Description>
+        <Owner>MetavusCore</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </ViewingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Of Record Release</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date the collection was released.</Description>
+        <Owner>MetavusCore</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordRelease</UpdateMethod>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </ViewingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Added By Id</Name>
+        <Type>MDFTYPE_USER</Type>
+        <Description>The user that authored the collection.</Description>
+        <Owner>MetavusCore</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </ViewingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Last Modified By Id</Name>
+        <Type>MDFTYPE_USER</Type>
+        <Description>The user that last modified the collection.</Description>
+        <Owner>MetavusCore</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordChange</UpdateMethod>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>0</IncludeInFacetedSearch>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </ViewingPrivileges>
+    </MetadataField>
+    <!-- STANDARD FIELD MAPPINGS -->
+    <StandardFieldMapping>
+        <StandardName>Title</StandardName>
+        <Name>Name</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+        <StandardName>Description</StandardName>
+        <Name>Description</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+        <StandardName>Screenshot</StandardName>
+        <Name>Icon</Name>
+    </StandardFieldMapping>
+    <!-- SCHEMA PRIVILEGE SETTINGS -->
+    <SchemaPrivileges>
+        <ViewingPrivileges>
+            <AddCondition>
+                <Field>Record Status</Field>
+                <Value>Published</Value>
+            </AddCondition>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+        </ViewingPrivileges>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <AuthoringPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </AuthoringPrivileges>
+    </SchemaPrivileges>
+</MetadataSchema>

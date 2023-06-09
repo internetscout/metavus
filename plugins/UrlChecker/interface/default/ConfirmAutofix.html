@@ -1,0 +1,80 @@
+<?PHP
+#
+#   FILE:  ConfirmAutofix.html (UrlChecker plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\InterfaceConfiguration;
+
+# ----- MAIN -----------------------------------------------------------------
+
+if (isset($H_Error)) { ?>
+    <ul class="mv-form-error">
+        <li><?= $H_Error ?></li>
+    </ul><?PHP
+    return;
+}
+
+$Charset = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
+
+$Title = defaulthtmlentities(
+    $H_Resource->GetMapped("Title"),
+    ENT_QUOTES,
+    $Charset,
+    false
+);
+$Url = defaulthtmlentities(
+    $H_InvalidUrl->Url,
+    ENT_QUOTES,
+    $Charset,
+    false
+);
+$FinalUrl = defaulthtmlentities(
+    $H_InvalidUrl->FinalUrl,
+    ENT_QUOTES,
+    $Charset,
+    false
+);
+
+# basic url href sanitization (mainly to reject javascript)
+$UrlHref = "#";
+if (preg_match("/^(mailto|ftps?|https?):\/\//", $H_InvalidUrl->Url)) {
+    $UrlHref = $H_InvalidUrl->Url;
+}
+
+$FinalUrlHref = "#";
+if (preg_match("/^(mailto|ftps?|https?):\/\//", $H_InvalidUrl->FinalUrl)) {
+    $FinalUrlHref = $H_InvalidUrl->FinalUrl;
+}
+
+?>
+
+<link type="text/css" rel="stylesheet"
+    href="plugins/UrlChecker/interface/default/include/UrlChecker.css" media="all" />
+
+<h1>Confirm Automatic Fix</h1>
+
+<p>
+    Are you sure you want to permanently modify the
+    <b><?= $H_Field->getDisplayName(); ?></b> field of
+    <b><i><?= $Title; ?></i></b>?
+</p>
+
+<p>
+Original:
+<a href="<?= $UrlHref; ?>" target="_blank"><?= $Url; ?></a>
+</p>
+
+<p>
+Updated:
+<a href="<?= $FinalUrlHref; ?>" target="_blank"><?= $FinalUrl; ?></a>
+</p>
+
+<a class="btn btn-primary mv-button-iconed" href="index.php?P=P_UrlChecker_Results"><img
+    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> No</a>
+<a class="btn btn-primary mv-button-iconed"
+    href="index.php?P=P_UrlChecker_Autofix&amp;Id=<?= $H_Id ?>"><img
+    src="<?= $AF->GUIFile('Check.svg'); ?>" alt="" class="mv-button-icon" /> Yes</a>

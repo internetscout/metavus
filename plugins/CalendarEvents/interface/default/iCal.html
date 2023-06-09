@@ -1,0 +1,26 @@
+<?PHP
+#
+#   FILE:  iCal.html (CalendarEvents plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Event Not Found");
+
+if ($H_State == "Invalid Date") {
+    ?>
+<h1>Invalid Event Dates</h1>
+
+<p>The selected event did not have a listed start or end date.</p>
+
+<?PHP } else { ?>
+<h1>Event Not Found</h1>
+
+<p>The event could not be found. Please
+  <a href="index.php?P=LeaveFeedback">contact the administrator</a> if you
+  believe this is an error.</p>
+<?PHP } ?>

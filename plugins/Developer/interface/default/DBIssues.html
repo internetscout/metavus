@@ -1,0 +1,43 @@
+<?PHP
+#
+#   FILE:  DBIssues.html (Developer plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2019-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+
+$IssueListFields = [
+
+];
+
+?><h1>Database Integrity Checks</h1><?PHP
+
+if (isset($H_StatusMsgs)) {
+    ?><ul class="cw-form-modified"><?PHP
+foreach ($H_StatusMsgs as $Msg) {
+    ?><li><?= $Msg ?></li><?PHP
+}
+?></ul><?PHP
+}
+
+foreach ($H_Issues as $IssueName => $IssueInfo) {
+    ?><h2><?= $IssueName ?></h2><?PHP
+if (count($IssueInfo)) {
+    $List = new ItemListUI($IssueListFields[$IssueName]);
+    $List->fieldsSortableByDefault(false);
+    $List->Display($IssueInfo);
+    ?>
+        <form method="POST" action="?P=P_Developer_DBIssues">
+        <input type="hidden" name="F_IssueName" value="<?= $IssueName ?>">
+        <button type="submit" name="Submit" value="Clean"
+            class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Broom.svg'); ?>"
+            alt="" class="mv-button-icon" /> Clean</button>
+        </form>
+        <?PHP
+} else {
+    ?>No issues found.<?PHP
+}
+}

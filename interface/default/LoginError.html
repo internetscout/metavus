@@ -1,0 +1,47 @@
+<?PHP
+#
+#   FILE:  LoginError.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+?>
+
+<div class="mv-content-authbox">
+    <h1>User Login</h1>
+
+    <p class="alert alert-danger mv-form-error">The user name or password you entered was
+    incorrect, or your account has been disabled.</p>
+
+    <form method="post" action="index.php?P=UserLogin">
+        <table class="table table-striped">
+            <tbody>
+                <tr>
+                    <th><label for="F_UserName">User name</label>:</th>
+                    <td><input type="text" size="12" id="F_UserName" name="F_UserName" /></td>
+                </tr>
+                <tr>
+                    <th><label for="F_Password">Password</label>:</th>
+                    <td><input type="password" size="12" id="F_Password" name="F_Password" /></td>
+                </tr>
+                <tr>
+                    <th></th>
+                    <td><button class="btn btn-primary" type="submit"
+                        value="Log In">Log In</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+
+    <ul class="list-group list-group-flush">
+        <li class="list-group-item">
+            <a href="index.php?P=RequestAccount">Create a Login</a>
+        </li>
+        <li class="list-group-item">
+            <a href="index.php?P=ForgottenPassword">Forget your password?</a>
+        </li>
+    </ul>
+</div>

@@ -1,0 +1,149 @@
+<?PHP
+#
+#   FILE:  StdPageEnd.html (Metavus default interface)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\SecureLoginHelper;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# initialize some convenience variables
+$AF = ApplicationFramework::getInstance();
+$IsLoggedIn = User::getCurrentUser()->isLoggedIn();
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+<!-- BEGIN STDPAGEEND -->
+</main>
+</div>
+
+<footer role="contentinfo">
+  <div id="mv-segment-footer" class="container-fluid">
+    <div class="row">
+      <div class="col-lg text-center text-xl-left">
+        <a href="https://metavus.net"><img class="mv-metavus-logo"
+             alt="Powered by Metavus"
+             src="<?= $AF->gUIFile("MetavusPowered.svg") ?>"></a>
+      </div>
+      <div class="col-lg">
+        <ul class="list-group list-group-flush list-group-horizontal
+                    justify-content-center justify-content-lg-end">
+          <li class="list-group-item">
+            <a class="nav-link" tabindex="0"
+               href="index.php?P=LeaveFeedback">Contact</a></li>
+          <?PHP  if ($IsLoggedIn) {  ?>
+          <li class="list-group-item">
+            <a class="nav-link" tabindex="0"
+               href="help/collections">Help</a></li>
+          <?PHP  }  ?>
+          <li class="list-group-item">
+            <a class="nav-link" tabindex="0"
+               href="privacy">Privacy</a></li>
+        </ul>
+      </div>
+      <?PHP if (false) { ?>
+      <div class="col-lg text-right">
+        <div class="mv-social-logo">
+            <?= file_get_contents($AF->gUIFile("InstagramLogo.svg")) ?>
+        </div>
+        <div class="mv-social-logo">
+            <?= file_get_contents($AF->gUIFile("FacebookLogo.svg")) ?>
+        </div>
+        <div class="mv-social-logo">
+            <?= file_get_contents($AF->gUIFile("TwitterLogo.svg")) ?>
+        </div>
+      </div>
+      <?PHP } ?>
+    </div>
+    {{P-DEVELOPER-PAGELOADINFO}}
+    {{P-DEVELOPER-VARIABLEMONITOR}}
+    {{P-DEVELOPER-WATERMARK}}
+    {{P-DEVELOPER-DBINFO}}
+    {{P-DEVELOPER-EXECUTIONINFO}}
+    {{P-DEVELOPER-MEMORYINFO}}
+  </div>
+</footer>
+</div>
+
+<?PHP if ($IsLoggedIn) { ?>
+<div id="mv-content-toolbox" class="col-2" role="navigation">
+  {{P-SECONDARYNAVIGATION-DISPLAYMENU}}
+  {{P-FOLDERS-CURRENTFOLDERBOX}}
+  {{P-MYSEARCHES-SAVEDSEARCHBOX}}
+  {{P-MYSEARCHES-RECENTSEARCHBOX}}
+  {{P-MYRESOURCEVIEWS-RECENTLYVIEWEDBOX}}
+  {{P-TRENDINGRESOURCES-TRENDINGRESOURCESBOX}}
+</div>
+<?PHP } else { ?>
+<!-- BEGIN LOGIN DIALOG -->
+<div id="mv-login-dialog" title="Log In" style="display: none">
+  <div class="text mv-login-form-container">
+    <form method="POST" action="index.php?P=UserLogin" onsubmit="<?=
+          SecureLoginHelper::getLoginFormOnSubmitAction() ?>">
+      <table>
+        <tr>
+          <td>
+            <label for="UserName">User name:</label>
+          </td><td>
+            <input type="text" size="11" maxlength="240" name="F_UserName"
+                   id="UserName">
+          </td>
+        </tr><tr>
+          <td>
+            <label for="Password">Password:</label>
+          </td><td>
+            <input type="password" size="11" name="F_Password"
+                   id="Password">
+          </td>
+        </tr><tr>
+          <td></td>
+          <td>
+            <button class="btn btn-primary" type="submit" value="Log In">Log In</button>
+          </td>
+        </tr><tr>
+          <td colspan="2">
+            <a href="index.php?P=RequestAccount">Create a Login</a>
+          </td>
+        </tr><tr>
+          <td colspan="2">
+            <a href="index.php?P=ForgottenPassword">Forgot your password?</a>
+          </td>
+          </tr>
+      </table>
+      <?PHP  SecureLoginHelper::printLoginFormContent();  ?>
+      <input type="submit" style="display: none" />
+    </form>
+  </div>
+</div>
+<script type="text/javascript">
+  $("#mv-login-dialog").dialog({
+      autoOpen: false,
+      modal: true
+  });
+  $("#mv-login-button").click(function(){
+      $("#mv-login-dialog").dialog("open");
+  });
+</script>
+<!-- END LOGIN DIALOG -->
+<?PHP  }  ?>
+
+<script type="text/javascript">
+  $("#mv-search-button").click(function(){
+      $("#mv-navbar-search").slideToggle();
+      $("#F_SearchString").focus();
+  });
+</script>
+
+</div>
+</div>
+
+</body>
+</html>

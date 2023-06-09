@@ -1,0 +1,126 @@
+<?PHP
+#
+#   FILE:  ListQueuedEmail.html (Mailer plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+use Metavus\ItemListUI;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+
+PageTitle("Queued Email");
+
+ApplicationFramework::getInstance()->requireUIFile(
+    ["jquery-ui.js", "jquery-ui.css"],
+    ApplicationFramework::ORDER_FIRST
+);
+
+# set up fields to display
+$Fields = [
+    "FromAddr" => [
+        "Heading" => "From",
+    ],
+    "ToAddr" => [
+        "Heading" => "To",
+    ],
+    "Subject" => [
+        "Heading" => "Subject",
+    ],
+    "NumResources" => [
+        "Heading" => "Num. Resources",
+    ],
+    "DateCreated" => [
+        "Heading" => "Date Queued",
+    ],
+];
+
+$FormUI = new FormUI([
+    "SS" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Search",
+        "Value" => $H_SearchString,
+    ],
+
+    "Template" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "Label" => "Mailer Template",
+        "Value" => $H_SelectedTemplate,
+        "Options" => $H_Templates,
+    ],
+]);
+
+$OptList = new HtmlOptionList("TID", $H_Templates, $H_SelectedTemplate);
+$OptList->SubmitOnChange(true);
+
+?>
+<div id="SearchQueuedMessages" style="float: right; margin-top: 15px;">
+  <form action="index.php" method="get">
+    <input type="hidden" name="P" value="P_Mailer_ListQueuedEmail">
+    <b>Template:</b>
+    <?= $OptList->GetHtml() ?>
+    &nbsp;&nbsp;<b>Search:</b>
+    <input type="text" name="SS" value="<?= htmlspecialchars($H_SearchString) ?>">
+    <button class="btn btn-primary btn-sm" type="submit" value="GO"><img
+        src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
+        class="mv-button-icon" /> Search</button>
+    </form>
+</div>
+<h1>Queued Email</h1>
+
+<?PHP
+
+# create and display list UI
+$ListUI = new ItemListUI($Fields);
+$ListUI->ItemsPerPage($H_ItemsPerPage);
+$ListUI->BaseLink($H_BaseLink);
+
+# if we have any items, such that it makes any sense to show buttons
+# to send/view/delete them, then configure those buttons
+if (count($H_EmailList) > 0) {
+    $SearchParamsForUrl = "&amp;SS=".urlencode($H_SearchString)
+        ."&amp;TID=".urlencode($H_SelectedTemplate);
+
+    $SendLink = "index.php?P=P_Mailer_ViewMessage&amp;ID=\$ID"
+        ."&amp;A=Send".$SearchParamsForUrl;
+    $ViewLink = "index.php?P=P_Mailer_ViewMessage&amp;ID=\$ID"
+        ."&amp;A=View".$SearchParamsForUrl;
+    $DeleteLink = "index.php?P=P_Mailer_ViewMessage&amp;ID=\$ID"
+        ."&amp;A=Delete".$SearchParamsForUrl;
+
+    # set the label for our top buttons, showing simply 'All' when all
+    # messages were shown (no subsetting by search string or template,
+    # and the item count equals the total items), or "All Displayed"
+    # otherwise
+    $ManyLabel = (strlen($H_SearchString) == 0 && $H_SelectedTemplate == -1 &&
+                  count($H_EmailList) == $H_TotalItems) ?
+        "All" : "All Displayed";
+
+    $SendManyLink = "index.php?P=P_Mailer_ProcessMany"
+        ."&amp;A=Send"
+        ."&amp;IDs=".implode("-", array_keys($H_EmailList))
+        .$SearchParamsForUrl;
+    $DeleteManyLink = "index.php?P=P_Mailer_ProcessMany"
+        ."&amp;A=Destroy"
+        ."&amp;IDs=".implode("-", array_keys($H_EmailList))
+        .$SearchParamsForUrl;
+
+    $ListUI->AddTopButton(
+        "Send ".$ManyLabel,
+        $SendManyLink,
+        "Check.svg"
+    );
+    $ListUI->AddTopButton(
+        "Delete ".$ManyLabel,
+        $DeleteManyLink,
+        "Delete.svg"
+    );
+
+    $ListUI->AddActionButton("Send", $SendLink, "Check.svg");
+    $ListUI->AddActionButton("View", $ViewLink, "EyeOpen.svg");
+    $ListUI->AddActionButton("Delete", $DeleteLink, "Delete.svg");
+}
+$ListUI->Display($H_EmailList, $H_TotalItems);

@@ -1,0 +1,16 @@
+<?PHP
+#
+#   FILE:  Log.html (Captcha plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+?>
+<h1>CAPTCHA Logs</h1>
+
+<h2>Per-User Logging</h2>
+<?PHP $H_UserListUI->display($H_UserLogEntries, $H_NumUserLogEntries); ?>
+
+<h2>Per-IP Logging</h2>
+<?PHP $H_IpListUI->display($H_IpLogEntries, $H_NumIpLogEntries); ?>

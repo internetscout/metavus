@@ -1,0 +1,28 @@
+<?PHP
+#
+#   FILE:  Preferences.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\UserEditingUI;
+
+$Heading = "User Preferences";
+PageTitle($Heading);
+?>
+
+<h1><?= $Heading ?></h1>
+
+<?PHP UserEditingUI::displayErrorBlock();  ?>
+<?PHP UserEditingUI::displayStatusBlock();  ?>
+<form method="post" enctype="multipart/form-data" action="index.php?P=Preferences">
+  <?PHP $H_UserEditingUI->displayFormTable();  ?>
+
+  <input type="hidden" name="F_ReturnTo" value="<?= $H_ReturnTo; ?>" />
+  <?PHP if ($H_UserEditingUI->isFormVisible()) { ?>
+    <button class="btn btn-primary" type="submit" name="Submit" value="Save">Save</button>
+    <a class="btn btn-primary" href="<?= $H_ReturnTo; ?>">Cancel</a>
+  <?PHP } ?>
+</form>

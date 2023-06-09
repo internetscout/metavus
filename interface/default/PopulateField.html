@@ -1,0 +1,171 @@
+<?PHP
+#
+#   FILE:  PopulateField.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+/*
+CASES:
+- display error messages
+- import vocab and display result
+- preview vocab and confirm import
+- display list of available vocabs
+*/
+
+?>
+
+<?PHP if (isset($G_ErrorMessages)) { ?>
+<h1>Error Encountered</h1>
+
+<ul class="list-group list-group-flush">
+    <?PHP foreach ($G_ErrorMessages as $Msg) { ?>
+    <li class="list-group-item"><?= $Msg; ?></li>
+    <?PHP } ?>
+</ul>
+
+<?PHP } elseif (isset($G_IsVocabImport)) { ?>
+<h1>Field Populated</h1>
+
+<p>The <i><?= $G_Field->GetDisplayName(); ?></i> field was populated with
+    <?= $G_AddedItemCount; ?> new terms.</p>
+
+    <?PHP if ($G_AddedItemCount < count($G_Vocabulary->TermList())) { ?>
+<p><?= count($G_Vocabulary->TermList()) - $G_AddedItemCount; ?> terms
+were skipped because they were already present in the vocabulary for the
+field.</p>
+    <?PHP } ?>
+
+<a class="btn btn-primary mv-button-iconed"
+    href="index.php?P=EditMetadataField&amp;Id=<?=$G_Field->Id();?>"><img
+    src="<?= $AF->GUIFile('BackArrow.svg'); ?>" alt="" class="mv-button-icon" /> Return</a>
+
+<?PHP } elseif (isset($G_IsVocabPreview)) { ?>
+    <?PHP
+    $PopLink = "index.php?P=PopulateField&amp;ID=".$G_Field->Id()
+        ."&amp;VH=".$G_Vocabulary->Hash()."&amp;CP=Y";
+    $CancelLink = "index.php?P=PopulateField&amp;ID=".$G_Field->Id();
+    $Version = strlen($G_Vocabulary->Version())
+        ? $G_Vocabulary->Version() : "(no version specified)";
+    $Terms = $G_Vocabulary->TermList();
+    ?>
+
+<h1>Confirm Populate</h1>
+
+<p>If some of the terms are already in use for this field, they will not be
+replaced or overwritten.</p>
+
+<table class="table table-striped">
+    <tbody>
+        <tr>
+            <th>Vocabulary</th>
+            <td><?= "<i>".$G_Vocabulary->Name()."</i> (".count($Terms)." terms)"; ?></td>
+        </tr>
+        <tr>
+            <th>Version</th>
+            <td><?= $Version; ?></td>
+        </tr>
+        <tr>
+            <th>URL</th>
+            <td><a href="<?= $G_Vocabulary->Url(); ?>"
+                    target="_blank"><?= $G_Vocabulary->Url(); ?></a></td>
+        </tr>
+        <tr>
+            <th>Owner/Maintainer</th>
+            <td>
+                <a href="<?= $G_Vocabulary->OwnerUrl();?>"
+                    target="_blank"><?= $G_Vocabulary->OwnerName(); ?></a>
+            </td>
+        </tr>
+        <tr>
+            <th>Description</th>
+            <td><?= $G_Vocabulary->Description(); ?></td>
+        </tr>
+        <?PHP if ($G_Vocabulary->HasQualifier() && strlen($G_Vocabulary->QualifierUrl())) { ?>
+        <tr>
+            <th>Qualifier</th>
+            <td>
+                <a href="<?= $G_Vocabulary->QualifierUrl(); ?>">
+                  <?= $G_Vocabulary->QualifierName(); ?>
+                </a>
+            </td>
+        </tr>
+        <?PHP } ?>
+        <?PHP if (strlen($G_Vocabulary->QualifierNamespace())) { ?>
+        <tr>
+            <th>Namespace</th>
+            <td>
+                <a href="<?= $G_Vocabulary->QualifierNamespace(); ?>">
+                <i><?= $G_Vocabulary->QualifierNamespace(); ?></i>
+                </a>
+            </td>
+        </tr>
+        <?PHP } ?>
+        <tr>
+            <th>Terms</th>
+            <td>
+                <ul class="list-group list-group-flush">
+                    <?PHP foreach ($Terms as $Term) { ?>
+                    <li class="list-group-item"><i><?= $Term; ?></i></li>
+                    <?PHP } ?>
+                </ul>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    <a class="btn btn-primary mv-button-iconed" href="<?= $PopLink; ?>"><img
+        src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
+        class="mv-button-icon" /> Populate</a>
+    <a class="btn btn-danger mv-button-iconed" href="<?= $CancelLink; ?>"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</a>
+</p>
+
+<?PHP } else { ?>
+<h1>Available Vocabularies</h1>
+
+<p>Controlled vocabularies available for populating the <i><?=
+    $G_Field->GetDisplayName(); ?></i> field:</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Version</th>
+            <th>Owner</th>
+            <th>Description</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <?PHP foreach ($G_Vocabularies as $Vocab) {
+            $PopLink = "index.php?P=PopulateField&amp;ID=".$G_Field->Id()."&amp;VH=".$Vocab->Hash();
+            ?>
+        <tr>
+            <td><?= $Vocab->Name(); ?></td>
+            <td><?= $Vocab->Version(); ?></td>
+            <td><a href="<?= $Vocab->OwnerUrl();?>"
+                    target="_blank"><?= $Vocab->OwnerName(); ?></a></td>
+            <td><?= $Vocab->Description()." (".count($Vocab->TermList())." terms)";  ?></td>
+            <td><a class="btn btn-primary btn-sm mv-button-iconed"
+                    href="<?= $PopLink; ?>"><img src="<?= $AF->GUIFile('EyeOpen.svg'); ?>"
+                    alt="" class="mv-button-icon" /> Preview</a></td>
+        </tr>
+        <?PHP } ?>
+    </tbody>
+</table>
+
+<p>
+    <a class="btn btn-danger mv-button-iconed"
+        href="index.php?P=EditMetadataField&amp;Id=<?=$G_Field->Id();?>"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</a>
+</p>
+
+<?PHP } ?>

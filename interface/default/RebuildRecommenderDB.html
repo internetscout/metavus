@@ -1,0 +1,39 @@
+<?PHP
+#
+#   FILE:  RebuildRecommenderDB.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<?PHP if ($H_RebuildIsComplete) { ?>
+<h1>Recommender Database Rebuild Complete</h1>
+
+<p>The recommender database has been rebuilt successfully.</p>
+
+<?PHP } else { ?>
+<h1>Rebuilding Recommender Database</h1>
+
+<table class="table table-striped">
+    <tbody>
+        <tr>
+            <th>Percent Complete</th>
+            <td><?= $H_PercentRebuildComplete;  ?>%</td>
+        </tr>
+        <tr>
+            <th>Time Remaining</th>
+            <td><?= $H_EstimatedTimeRemaining; ?> (estimated)</td>
+        </tr>
+        <tr>
+            <th>Time of Completion</th>
+            <td><?= $H_EstimatedTimeOfCompletion; ?> (estimated)</td>
+        </tr>
+    </tbody>
+</table>
+
+<?PHP } ?>

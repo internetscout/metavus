@@ -1,0 +1,79 @@
+<?PHP
+#
+#   FILE:  FullImage.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use Exception;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+if (isset($H_Error)) {
+    PageTitle("Full Image: Error");
+    print "<h1>Error</h1>";
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+    return;
+}
+
+# check for required (if no error) variables
+if (!isset($H_Image)) {
+    throw new Exception("Variable \$H_Image not set.");
+}
+if (!isset($H_Resource)) {
+    throw new Exception("Variable \$H_Resource not set.");
+}
+if (!isset($H_Field)) {
+    throw new Exception("Variable \$H_Field not set.");
+}
+
+# retrieve resource title
+$ResourceTitle = $H_Resource->userCanViewMappedField(User::getCurrentUser(), "Title")
+        ? $H_Resource->getMapped("Title") : null;
+
+# construct return link and text
+if (isset($_SERVER["HTTP_REFERER"]) && strpos("EditResource", $_SERVER["HTTP_REFERER"])) {
+    $ReturnLink = $H_Resource->getEditPageUrl();
+    $ReturnPrompt = "Return to editing ";
+} else {
+    $ReturnLink = "index.php?P=FullRecord&ID=".$H_Resource->Id();
+    $ReturnPrompt = "Return to full record for ";
+}
+
+# construct download link
+$DownloadLink = "index.php?P=FullImage&ID=".$H_Image->id()
+        ."&RI=".$H_Resource->id()."&FI=".$H_Field->id()."&DL=1";
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle($H_Field->Name()." Display");
+
+?>
+<h1><?PHP if (!strlen($ResourceTitle)) {
+    print "Resource ";
+    } ?><?=
+        $H_Field->Name() ?><?PHP if (strlen($ResourceTitle)) {
+        print " for <i>".$ResourceTitle."</i>";
+        } ?></h1>
+
+<a href="<?= $ReturnLink ?>"><?= $ReturnPrompt ?><?=
+        strlen($ResourceTitle) ? "<i>".$ResourceTitle."</i>" : "the Resource" ?></a>
+
+<hr />
+
+<?= $H_Image->getHtml("mv-image-large"); ?>
+<a class="btn btn-primary mv-button-iconed" href="<?= $DownloadLink
+        ?>"><img class="mv-button-icon" src="<?= $AF->gUIFile("Download.svg")
+        ?>"> Download Original Image</a>
+
+<hr />
+
+<a href="<?= $ReturnLink ?>"><?= $ReturnPrompt ?><?=
+        strlen($ResourceTitle) ? "<i>".$ResourceTitle."</i>" : "the Resource" ?></a>

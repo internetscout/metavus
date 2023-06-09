@@ -1,0 +1,31 @@
+<?PHP
+#
+#   FILE:  PurgeSampleDataExecute.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Sample Data Purge Completed Successfully</h1>
+
+<table class="table table-striped">
+    <tbody>
+        <tr>
+            <th>Resources Deleted</th>
+            <td><?= $ResourceCount; ?></td>
+        </tr>
+        <tr>
+            <th>Classifications Deleted</th>
+            <td><?= $ClassificationCount; ?></td>
+        </tr>
+        <tr>
+            <th>Controlled Names Deleted</th>
+            <td><?= $ControlledNameCount; ?></td>
+        </tr>
+    </tbody>
+</table>

@@ -1,0 +1,198 @@
+==================
+Metavus Change Log
+==================
+
+Version 1.1.0 - June 8, 2023
+
+ADDED
+- Added ability to configure settings on a per-interface basis, via
+	new Interface Configuration page.  [EA]
+- Added interface configuration setting to customize the title of the Featured
+	Items section on the home page.  [SW]
+- Added Clean URLs for Browse Resources and Home pages.  [EA]
+- Added interface configuration setting to control the number of items to
+	show on the collection display page.  [SW]
+- Added list of upcoming events to home page in default interface.  (Requires
+	CalendarEvents plugin.)  [SW]
+- Added option for downloading original image file to full image page.  [EA]
+- Added a clarifying note to Browse Resources page, shown only to
+	administrative users, indicating that the Browse page only lists records
+	that are publicly-viewable.  [CRH]
+- Extended filesystem caches to also cache locations of plugin files, avoiding
+	the need to scan plugin directories on every page load.  [CRH]
+- Added clarifying import instructions and examples of import files to
+	tab-delimited data import.  [CRH]
+- mvus utility: New command "export schema" that exports a specified
+	schema definition to an XML file.  [EA]
+- AutoScreenshot plugin: Added a "Take Now" button that can be used to
+	immediately capture a screenshot rather than waiting for a background
+	task to run. [CRH]
+- CalendarEvents plugin: Added EventsPerPage configuration parameter.  [SW]
+- Collage plugin: Added logic to ensure images are larger than the configured
+	title size, to avoid images from being stretched by the browser.  [SW]
+- Developer plugin: Add the ability to profile memory usage.  [CRH]
+- Google Analytics plugin: Add support for GA4 properties.  [CRH]
+- Google Maps plugin: Make KML cache lifetime configurable.  [CRH]
+- UrlChecker plugin: Added a column to results page showing which records are
+	publicly-visible.  [SW]
+- NEW PLUGIN: CalendarFeed -- Provides a URL to a feed of events
+	in iCalendar format that match a set of search parameters. [RH]
+- NEW PLUGIN: CustomCSS -- Allows CSS customizations to be added from
+	the site interface, without adding or editing files.  [EA]
+- NEW PLUGIN: FeaturedItems -- Generate a list of featured items of a
+	specific type using search parameters, a sorting field, and an
+	optional grouping field.  [SW]
+
+CHANGED
+- Merged Advanced System Configuration into System Configuration. [EA]
+- Revamped Administration page to break plugin administration menu items
+	out into their own sections.  [EA]
+- Revise UI to consistently use <button> tags where appropriate rather than a
+	mixture of <button> and <a> tags.  [MA]
+- Add mv-image-extralarge and mv-image-huge sizes.  [EA]
+- Revised the way plugin configuration options are loaded in numerous plugins
+	to avoid unnecessary work when the page being loaded is not the
+	plugin configuration page.  [CRH]
+- Revised GoTo page to return a 404 on invalid record IDs rather than going
+	to a fallback redirect.  [CRH]
+- When purging sample data, sample Collection records are now also
+	removed. [CRH]
+- Added validation to many MetadataField methods, primarily aimed at
+	ensuring the parameters being set for a field are valid for that
+	field's type.  [CRH]
+- AutoScreenshot plugin: Increased resolution of screenshots and change them
+	to use a 1:1 aspect ratio. [CRH]
+- AutoScreenshot plugin: Revised the "Firefox" screenshot method to use the
+	--headless --screenshot options that firefox now provides rather than
+	running firefox inside an Xvfb instance. [CRH]
+- Blog plugin: Revised blog summaries so that those which include an
+	image will display captions if the post includes a caption but omit them
+	otherwise.  [CRH]
+- Pages plugin: Revised handling of tabbed content to allow content after the
+	end of the tabs and also multiple sets of tabs on a page.  [EA]
+- Mailer plugin: Improved error handling and logging.  [CRH]
+
+FIXED
+- Fixed misuse of DTSTAMP property in iCalendar, so that it now uses the
+	the event's most recent time of modification, rather than the date and
+	time of the creation of the iCalendar document.  [RH]
+- Fixed bug in FormUI that resulted in insertion keywords not being
+	escaped when appearing in the contents of text area fields.  [RH]
+- Fixed bug where Blog titles were smaller than sub-headers, removed
+	H1 from the list of CKEDITOR styles.  [SW]
+- Fixed a bug in RecordEditingUI where vocabularies with exactly
+	the number of terms configured as the incremental search threshold for
+	their metadata field could not be edited.  [CRH]
+- Improved error message when no Unique Field is set but the data file omits
+	values for Title or Description on a line during data import.
+- Added more-informative error message to data import when no data file was
+	uploaded for import.  [CRH]
+- Fixed bug on home page that caused one extra item to appear in the Featured
+	Resources area.  [SW]
+- Fixed numerous bugs in search parameter set editor, involving subgroup
+	handling, tree field handling, and user field handling.  [CRH]
+- Fixed the "Please Note" message for mapped fields when editing metadata
+	fields, to direct users to Edit Metadata Schema, where the relevant
+	settings now live.  [CRH]
+- Fixed generation of 'remove' links in search facets for Tree fields so
+	that it respects the field's search logic setting rather than reverting
+	to the top-level logic setting.  [CRH]
+- Fixed bug that caused the search string to be lost when paging past the
+	first page of matching terms, when editing controlled names.  [RH]
+- In Record::applyListOfChanges() (used primarily by the BatchEdit plugin),
+	if the changes applied make the record publicly viewable, run the "On
+	Record Release" actions.  [CRH]
+- Fixed bug that prevented a metadata field's Label or Instructions from
+	being cleared once they were set.  [RH]
+- Fixed bug that rendered image insertion buttons nonfunctional in the rich
+	text editor if the cursor was inside a heading or a list.  [CRH]
+- Fixed date validation bug that could cause valid dates to be rejected,
+	when editing records.  [CRH]
+- Fixed bug in change set editor (BatchEdit plugin and Ruls plugin) that
+	could prevent list of included fields from being editable.  [CRH]
+- Fixed bug in metadata field editor that prevented clearing a default
+	qualifier.  [CRH]
+- Blog Plugin: fixed bug causing an exception when deleting a comment on
+	a blog entry.  [SW]
+- Blog plugin: Fixed bug that caused image captions to appear in
+	notification emails for new posts.  [CRH]
+- Folders plugin: Improved error handling on folder viewing page and fixed
+	issue with clean URL generation that was causing exceptions when invalid
+	folder IDs were supplied.  [CRH]
+- OAIPMHServer plugin: Fixed bug that caused exceptions when editing a
+	format that had no "Defaults" setting saved.  [CRH]
+- OAIPMHServer plugin: Use CDATA to escape field descriptions so that the
+	generated XML will remain valid even when the descriptions have
+	embedded HTML.  [CRH]
+- Mailer plugin: Fixed logic bug in approval queue page that caused the 'approve'
+	button to appear only when there were no messages to approve.  [CRH]
+- MailingList plugin: Fixed bug that could prevent subscribing or
+	unsubscribing when the mailing list name included capital letters.  [CRH]
+- UrlChecker plugin: Fixed logic error that could prevent new resources from
+	being queued for URL checks.  [CRH]
+
+
+Version 1.0.1 - October 19, 2022
+
+ADDED
+- Added new "insert with caption" buttons ("Insert-R-C" and "Insert-L-C"),
+	available when editing items with Image fields (e.g. Blog entries).  [CRH]
+- Provide an example configuration file for running Metavus with an nginx
+	web server.  [CRH]
+- Add the account activation link to the user editing page (for unactivated
+	users), to make it easier to send to users if needed.  [CRH]
+- Collage plugin:  Added "Order Persistence Period" configuration setting,
+	that determines how frequently the order of images changes.  [EA]
+- NEW PLUGIN: NavEditor -- Provides simple editing of the main navigation
+	options in the default interface.  [EA]
+
+CHANGED
+- WYSIWYG editing (e.g. for Paragraph fields) now uses a whitelist for
+	allowed CSS attributes, rather than a blacklist.  [CRH]
+- When editing users, select the default user interface for users who
+	do not currently have a user interface set.  [CRH]
+- Default interface:  Focus is now automatically switched to search box when
+	"Search" is clicked.  [EA]
+- Default interface:  Footer revamped to be more responsive.  [MA]
+- Default interface:  Improved responsiveness in main navigation and on most
+	forms.  [CRH]
+- Default interface:  Set <pre> elements to wrap within the content area to
+	prevent poorly-formatted content from breaking the layout.  [CRH]
+- Blog plugin: Changed teaser break marker to explicit '--' instead of
+	double blank line.  [SW]
+- Blog plugin: Whitespace is now explicitly disallowed in clean URLs.  [MA]
+- Blog plugin: Do not display "Notify Subscribers" buttons for blogs that
+	are not configured for sending notifications.  [CRH]
+- Collage plugin:  Revised image selection to prevent adjacent repeated
+	images.  [EA]
+
+FIXED
+- Fixed issue that caused the port number to be omitted on some internal
+	links when running on a non-standard port.  [EA]
+- Fixed manual rebuilding of recommender database.  [EA]
+- Fixed issue with exception occurring when viewing a folder with bad
+	parameter values in the URL.  [EA]
+- Change file length column in database (Files:FileLength) to BIGINT UNSIGNED
+	to support very large files.  [CRH]
+- Revise record editing to not to use lookbehind assertions for compatibility
+	with Safari.  [CRH]
+- Fixed escaping of single quotes in alt text for image "Insert" buttons.  [CRH]
+- Fix a bug wrapping long lines in HTML messages that produced a mix of "\r\n"
+	and "\r" line endings when "\r\n" was requested.  [MA]
+- Fixed error that occurred due to undefined variable when exporting
+    controlled vocabularies from within the metadata field editor.  [CRH]
+- Fixed account request to make sure that default values for the User schema
+    are used in all cases.  [CRH]
+- Mailer plugin:  Fixed background email sending to use correct object type,
+	instead of always using Record.  [CRH]
+- Mailer plugin: Fix bug that caused an exception when when a template
+	that expected a resource is used in a context where no resource is
+	available.  [MA]
+- UrlChecker plugin:  Fix bug that prevented data for deleted records from
+	being cleaned out.  [CRH]
+
+
+Version 1.0.0 - July 19, 2022
+
+Initial release.
+

@@ -1,0 +1,122 @@
+<?PHP
+#
+#   FILE: EditMetadataSchema.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use ScoutLib\HtmlOptionList;
+use Metavus\MetadataSchema;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+# ----- MAIN -----------------------------------------------------------------
+
+# escaped values
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$SafeSchemaName = defaulthtmlentities($H_Schema->Name());
+$SafeSchemaResourceName = defaulthtmlentities($H_Schema->ResourceName());
+$SafeSchemaViewPage = defaulthtmlentities($H_Schema->ViewPage());
+$SafePrivilegesError = defaulthtmlentities($H_PrivilegesError);
+
+# variable holding available schema field names with their ids
+
+# add a new local default sort field option (Relevance) to the list of available sort fields
+# this option can be used to clear the DefaultSortField.
+$SchemaFieldNames = ["R" => "(Relevance)"] + $H_Schema->getSortFields();
+
+$DefaultSortField = $H_Schema->defaultSortField();
+
+$DefaultSortFieldOptList = new HtmlOptionList(
+    "F_DefaultSortField",
+    $SchemaFieldNames,
+    ($DefaultSortField == false ? "R" : $DefaultSortField)
+);
+
+?>
+
+<h1>Edit Metadata Schema</h1>
+
+<?PHP if (!is_null($H_PrivilegesError)) { ?>
+  <p class="alert alert-danger mv-form-error">
+    There was an issue with the viewing privileges and they were not saved:
+    <?= $SafePrivilegesError; ?>
+  </p>
+<?PHP } ?>
+
+<form method="post"
+      class="priv-form"
+      action="index.php?P=EditMetadataSchema&amp;SC=<?= $SafeSchemaId; ?>">
+  <table class="table table-striped">
+    <tbody>
+      <tr>
+        <th><span class="mv-form-pseudolabel">Name</span></th>
+        <td><?= $SafeSchemaName; ?></td>
+      </tr>
+      <tr>
+        <th><span class="mv-form-pseudolabel">Resource Name</span></th>
+        <td><?= $SafeSchemaResourceName; ?></td>
+      </tr>
+      <tr>
+        <th><span class="mv-form-pseudolabel">View Page</span></th>
+        <td><?= $SafeSchemaViewPage; ?></td>
+      </tr>
+      <?PHP
+        foreach ($H_MappingFormFields as $FieldId => $Params) {
+            $TableData = count($H_Schema->getFieldNames($Params["FieldTypes"])) == 0 ?
+              "<p>No fields can be mapped to ".$Params["MFieldName"]." field.</p>" :
+              $H_Schema->getFieldsAsOptionList(
+                  $FieldId,
+                  $Params["FieldTypes"],
+                  $Params["Value"],
+                  !$Params["Required"]
+              );
+            ?>
+            <tr>
+                <th><span class="mv-form-pseudolabel"><?= $Params["Label"]; ?></span></th>
+                <td><?= $TableData; ?></td>
+            </tr>
+            <?PHP
+        }
+        ?>
+      <tr>
+        <th><span class="mv-form-pseudolabel">Default Sort Field</span></th>
+        <td><?= $DefaultSortFieldOptList->getHTML(); ?></td>
+      </tr>
+      <tr class="mv-content-tallrow mv-form-fieldtype-privileges">
+        <th><span class="mv-form-pseudolabel">Viewing Permissions</span></th>
+        <td>
+          <?PHP $H_PrivsetUI->DisplaySet("ViewingPrivileges", $H_Schema->ViewingPrivileges()); ?>
+        </td>
+      </tr>
+      <tr class="mv-content-tallrow mv-form-fieldtype-privileges">
+        <th><span class="mv-form-pseudolabel">Authoring Permissions</span></th>
+        <td>
+          <?PHP
+             $H_PrivsetUI->DisplaySet("AuthoringPrivileges", $H_Schema->AuthoringPrivileges());
+            ?>
+        </td>
+      </tr>
+      <tr class="mv-content-tallrow mv-form-fieldtype-privileges">
+        <th><span class="mv-form-pseudolabel">Editing Permissions</span></th>
+        <td>
+          <?PHP $H_PrivsetUI->DisplaySet("EditingPrivileges", $H_Schema->EditingPrivileges()); ?>
+        </td>
+      </tr>
+      <tr class="mv-content-tallrow">
+        <th><span class="mv-form-pseudolabel">Allow Comments</span></th>
+        <td><input type="checkbox" name="F_AllowComments" value="1"
+          <?= $H_Schema->commentsEnabled() ? "checked" : "" ?> /></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
+    value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+    class="mv-button-icon"/> Save Changes</button>
+  <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
+    value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+    class="mv-button-icon"/> Cancel</button>
+</form>

@@ -1,0 +1,242 @@
+<?PHP
+#
+#   FILE:  OAILog.html (MetricsReporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+/**
+* Format an IP Address for pretty printing.
+* @param string $Addr IP Address.
+* @return string Formatted version with hostname as mouseover
+*/
+function FormatIPAddress($Addr)
+{
+    $HostName = StdLib::getHostName($Addr);
+
+    if ($HostName == $Addr) {
+        return $Addr;
+    } else {
+        return "<span title='".$Addr."'>"
+            .$HostName."</span>";
+    }
+}
+
+/**
+* Format an OAI Request for pretty printing.
+* @param string $Request OAI Request URL
+* @return string Formatted request.
+*/
+function FormatOaiRequest($Request)
+{
+    $Result = htmlentities($Request);
+
+    parse_str($Request, $Args);
+    if (isset($Args["verb"])) {
+        $Verb = $Args["verb"];
+        unset($Args["verb"]);
+
+        $CheckOtherArgs = false;
+
+        switch ($Verb) {
+            case "GetRecord":
+                $CheckOtherArgs = true;
+                $Result = $Verb;
+
+                if (isset($Args["metadataPrefix"])) {
+                    $Result .= " (<i>".htmlentities(
+                        $Args["metadataPrefix"]
+                    )."</i>)";
+                    unset($Args["metadataPrefix"]);
+                }
+
+                if (isset($Args["identifier"])) {
+                    $Result .= "<br/>&nbsp;&nbsp;".htmlentities($Args["identifier"]);
+                    unset($Args["identifier"]);
+                }
+
+                break;
+
+            case "Identify":
+                $CheckOtherArgs = true;
+                $Result = $Verb;
+                break;
+
+            case "ListRecords":
+            case "ListIdentifiers":
+                $CheckOtherArgs = true;
+                $Result = $Verb;
+
+                if (isset($Args["resumptionToken"])) {
+                    $Result .= " <i>continued</i>";
+                    unset($Args["resumptionToken"]);
+                } else {
+                    if (isset($Args["metadataPrefix"])) {
+                        $Result .= " (<i>".htmlentities(
+                            $Args["metadataPrefix"]
+                        )."</i>)";
+                        unset($Args["metadataPrefix"]);
+                    }
+
+                    foreach (["from", "until", "set"] as $Thing) {
+                        if (isset($Args[$Thing])) {
+                            $Result .= "<br/>&nbsp;&nbsp;".$Thing.": "
+                                    .htmlentities($Args[$Thing]);
+                            unset($Args[$Thing]);
+                        }
+                    }
+                }
+                break;
+
+            case "ListMetadataFormats":
+                $CheckOtherArgs = true;
+                $Result = $Verb;
+
+                if (isset($Args["identifier"])) {
+                    $Result .= "<br/>&nbsp;&nbsp;".htmlentities($Args["identifier"]);
+                    unset($Args["identifier"]);
+                }
+                break;
+
+            case "ListSets":
+                $CheckOtherArgs = true;
+                $Result = $Verb;
+
+                if (isset($Args["metadataPrefix"])) {
+                    $Result .= " (<i>".htmlentities(
+                        $Args["metadataPrefix"]
+                    )."</i>)";
+                    unset($Args["metadataPrefix"]);
+                }
+                break;
+            default:
+                break;
+        }
+
+        if ($CheckOtherArgs && count($Args)) {
+            $Result .= "<br/>Illegal arguments:<br/>";
+            $OtherArgs = [];
+            foreach ($Args as $Key => $Val) {
+                $OtherArgs[] = "&nbsp;&nbsp;".htmlentities($Key).": ".htmlentities($Val);
+            }
+
+            $Result .= implode("<br/>", $OtherArgs);
+        }
+
+        $Result = "<span title='".htmlentities($Request)."'>".$Result."</span>";
+
+        return $Result;
+    }
+}
+
+
+$H_ListFields["DataOne"]["AllowHTML"] = true;
+$H_ListFields["DataOne"]["ValueFunction"] = function ($Item, $FieldId) {
+    return FormatIPAddress($Item["DataOne"]);
+};
+
+
+
+$H_ListFields["DataTwo"]["AllowHTML"] = true;
+$H_ListFields["DataTwo"]["ValueFunction"] = function ($Item, $FieldId) {
+    return FormatOaiRequest($Item["DataTwo"]);
+};
+
+# construct the ListUI
+$ListUI = new ItemListUI($H_ListFields);
+$ListUI->ItemsPerPage($H_ResultsPerPage);
+$ListUI->BaseLink($H_BaseLink);
+
+$StartOptionList = new HtmlOptionList(
+    "ST",
+    [
+        ST_FOREVER => "All time",
+        ST_24_MONTH => "Last 24 months",
+        ST_12_MONTH => "Last 12 months",
+        ST_6_MONTH => "Last 6 months",
+        ST_3_MONTH => "Last 3 months",
+        ST_1_MONTH => "Last month",
+        ST_1_WEEK => "Last week",
+        ST_1_DAY => "Last day"
+    ],
+    $H_StartTime
+);
+$StartOptionList->SubmitOnChange(true);
+
+$RPOptionList = new HtmlOptionList(
+    "RP",
+    [
+        50  =>  50,
+        100 => 100,
+        250 => 250,
+        500 => 500,
+        750 => 750
+    ],
+    $H_ResultsPerPage
+);
+$RPOptionList->SubmitOnChange(true);
+
+$FTOptionList = new HtmlOptionList(
+    "FT",
+    [
+        FT_ALL => "All requests",
+        FT_CONTACT => "Contact",
+        FT_SAMPLE => "Sample",
+        FT_HARVEST => "Harvest",
+        FT_SETS => "Sets",
+    ],
+    $H_FilterType
+);
+$FTOptionList->SubmitOnChange(true);
+?>
+<style type="text/css">
+.cw-oailog-container td:last-of-type { word-break: break-all; }
+</style>
+
+<form name="OAILogForm" action="index.php" method="GET">
+  <input type="hidden" name="P" value="P_MetricsReporter_OAILog">
+  Filter Type: <?= $FTOptionList->GetHtml(); ?>
+  Period: <?= $StartOptionList->GetHtml(); ?>
+  Results: <?= $RPOptionList->GetHtml(); ?>
+</form>
+<p>
+<b>Contact</b>: One representative OAI request from each host that issued any requests.<br/>
+<b>Sample</b>: OAI requests that retrieved a subset of the collection's records (either a
+<i>GetRecord</i> or a <i>ListRecords</i> that did not have a subsequent <i>ListRecords</i>
+with a resumptionToken).<br/>
+<b>Harvest</b>: Full or partial harvests (a sequence of <i>ListRecords</i> requests where
+one or more of them had a resumptionToken).</br/>
+<b>Sets</b>: OAI requests asking for a collection-specified set of records (<i>ListSets</i>
+or <i>ListRecords</i> requests with a set specification).
+</p>
+
+<?PHP
+$H_TransportUI->baseLink($H_BaseLink);
+$H_TransportUI->message(
+    "Results <b>"
+    .number_format(min(
+        ($H_TransportUI->StartingIndex() + 1),
+        $H_TotalResults
+    ))
+    ."</b> - <b>"
+    .number_format(min(
+        ($H_TransportUI->StartingIndex() + $H_ResultsPerPage),
+        $H_TotalResults
+    ))
+    ."</b> of <b>".number_format($H_TotalResults)."</b>"
+);
+$H_TransportUI->display();
+?>
+
+<div class="cw-oailog-container">
+<?PHP $ListUI->Display($H_HarvestData); ?>
+</div>
+
+<?PHP
+$H_TransportUI->display();

@@ -1,0 +1,269 @@
+<?PHP
+#
+#   FILE:  EditOptionList.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\HtmlOptionList;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+* Print an option list containing metadata schemas.
+* @param MetadataSchema $SchemaInUse Metadata schema in use.
+*/
+function PrintSchemaOptionList(MetadataSchema $SchemaInUse)
+{
+    $Options = [];
+
+    # get the metadata schema options
+    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+        $Options[$Schema->Id()] = $Schema->Name() . " Schema";
+    }
+
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
+    $OptList->SubmitOnChange(true);
+    $OptList->PrintHtml();
+}
+
+/**
+* Print a search URL to find resources associated with a given controlled name.
+* @param ControlledName $CName Target controlled name
+*/
+function GetSearchUrl(ControlledName $CName)
+{
+    $SearchParams = new SearchParameterSet();
+    $SearchParams->AddParameter("=".$CName->Name(), $CName->FieldId());
+
+    return "index.php?P=SearchResults&" .$SearchParams->UrlParameterString();
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($Schema->Id());
+
+?>
+<?PHP if (isset($G_Field)) { ?>
+<form method="post" action="index.php?P=EditOptionList&amp;SC=<?= $SafeSchemaId; ?>">
+    <input type="hidden" name="F_FieldId" value="<?= $G_Field->Id(); ?>" />
+    <div class="container-fluid">
+    <div class="row">
+        <div class="col">
+            <h1>Edit Options for <i><?= $G_Field->GetDisplayName(); ?></i></h1>
+        </div>
+        <div class="col text-right">
+            <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
+                value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+                class="mv-button-icon"/> Save Changes</button>
+            <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
+                value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+                class="mv-button-icon"/> Cancel</button>
+        </div>
+    </div>
+    </div>
+
+    <p>
+        <i>(selection on the left selects the default value<?=
+            $G_Field->AllowMultiple() ? "s" : ""; ?> for field)</i>
+    </p>
+
+    <label>Update Unset Values With Default Value(s)?</label>
+    <input type="checkbox" id="F_UpdateValues" name="F_UpdateValues" value="UpdateValues" />
+
+    <table class="table table-striped mv-content-optionoptions">
+        <tbody>
+        <?PHP
+        $OptionNames = [-1 => "(no change)"] + $G_OptionNames;
+        $Index = 0;
+        $DefaultValue = $G_Field->DefaultValue();
+        foreach ($G_Options as $Id => $CName) {
+            $Qualifier = $CName->Qualifier();
+            $QName = $Qualifier ? $Qualifier->Name() : "";
+
+            $Selected = is_array($DefaultValue) ?
+                in_array($Id, $DefaultValue) : $Id == $DefaultValue;
+            if ($Selected) {
+                $DefaultFound = true;
+            }
+            ?>
+            <tr>
+                <td>
+                  <?PHP if ($G_Field->AllowMultiple()) { ?>
+                    <input type="checkbox" name="F_Default[]" value="<?= $Id; ?>" <?=
+                    $Selected ? "checked" : ""; ?> />
+                  <?PHP } else { ?>
+                    <input type="radio" name="F_Default" value="<?= $Id; ?>" <?=
+                    $Selected ? "checked" : ""; ?> />
+                  <?PHP } ?>
+                </td>
+                <td class="mv-option-field-container">
+                    <input type="hidden" name="F_OptionId<?= $Index; ?>" value="<?= $Id; ?>" />
+                    <input type="text" name="F_Option<?= $Index; ?>" size="20" maxlen="60"
+                        value="<?= htmlspecialchars($CName->Name()); ?>" />
+                </td>
+                <td>
+                    <?= $QName; ?>
+                </td>
+                <td>
+                    (<a href="<?= GetSearchUrl($CName); ?>">
+                        <?= number_format(count($CName->getAssociatedResources())) ?> resources
+                    </a>)
+                </td>
+                <td>
+                    <?PHP if ($CName->InUse()) { ?>
+                    <input type="radio" id="F_ConfirmRemap<?= $Index; ?>" name="F_ConfirmRemap"
+                        value="<?= $Id; ?>" />
+                    <label for="F_ConfirmRemap<?= $Index; ?>">remap to</label>
+                        <?PHP
+                        (new HtmlOptionList("F_RemapTo".$Index, $OptionNames, -1))->PrintHtml();
+                        ?>
+                    <?PHP } ?>
+                </td>
+                <td>
+                    <input type="checkbox" id="F_ConfirmDelete<?= $Index; ?>"
+                        name="F_ConfirmDelete<?= $Index; ?>"
+                        title="Mark option to be deleted on save."/>
+                    <label for="F_ConfirmDelete<?= $Index; ?>">Delete</label>
+                </td>
+            </tr>
+            <?PHP
+            $Index++;
+        }
+        ?>
+            <tr>
+                <?PHP if (!$G_Field->AllowMultiple()) { ?>
+                  <td>
+                      <input type="radio" id="F_DefaultNone" name="F_Default"
+                          value="-1" <?= isset($DefaultFound) ? "" : "checked"; ?> />
+                  </td>
+                  <td>
+                      <label for="F_DefaultNone">no default</label>
+                  </td>
+                <?PHP } ?>
+                <td colspan="<?= $G_Field->AllowMultiple() ? "4" : "2"; ?>">
+                    <input type="checkbox" name="F_ConfirmAdd" />
+                    <label for="F_AddName">add new option:</label>
+                    <input type="text" id="F_AddName" name="F_AddName" size="18" maxlen="60" />
+
+                    <?PHP
+                    if ($G_Field->UsesQualifiers()) {
+                        $Qualifiers = $G_Field->AssociatedQualifierList();
+                        if (count($Qualifiers) == 1 && $G_Field->HasItemLevelQualifiers() != true) {
+                            $QualifierIds = array_keys($Qualifiers);
+                            $Qualifier = array_pop($Qualifiers);
+                            $QualifierId = array_pop($QualifierIds);
+
+                            print $Qualifier;
+                            print '<input type="hidden" name="F_AddQualifier"
+                                value="'.$QualifierId.'" />';
+                        } elseif (count($Qualifiers) >= 1) {
+                            $Qualifiers = [-1 => "--"] + $Qualifiers;
+                            (new HtmlOptionList(
+                                "F_AddQualifier",
+                                $Qualifiers,
+                                $G_Field->DefaultQualifier()
+                            ))->PrintHtml();
+                        }
+                    }
+                    ?>
+                </td>
+                <td colspan="2" class="text-right">
+                    <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
+                        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+                        class="mv-button-icon" /> Save Changes</button>
+                    <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
+                        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+                        class="mv-button-icon" /> Cancel</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</form>
+
+<?PHP } else { ?>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <h1>Edit Option List</h1>
+    </div>
+    <div class="col text-right">
+      <form method="get" action="index.php">
+        <input type="hidden" name="P" value="EditOptionList" />
+        <?PHP PrintSchemaOptionList($Schema); ?>
+      </form>
+    </div>
+  </div>
+</div>
+
+    <?PHP
+
+    # if we do not have option fields available
+    if (!count($G_OptionFields)) {
+        ?>
+        <p>No Option fields were found for editing.</p><?PHP
+    } else { # else display a list of option fields to edit
+        # display action messages (if any)
+        if (isset($G_Msgs)) {
+            $CurrentFieldName = array_shift($G_Msgs);
+            ?>
+            <ul class="alert alert-primary">
+                <li class="mv-current-field-name-label"><b><?= $CurrentFieldName; ?></b></li>
+                <?PHP foreach ($G_Msgs as $Msg) { ?>
+                <li><?= $Msg; ?></li>
+                <?PHP } ?>
+            </ul>
+            <?PHP
+        }
+
+        ?><table class="table table-striped mv-content-optionlist">
+            <tbody>
+        <?PHP
+        $RFactory = new RecordFactory();
+        $ResourceCount = $RFactory->GetItemCount();
+        # get width of longest button text, add 4 to tune button width
+        $Width = strlen("Export") + 4;
+        foreach ($G_OptionFields as $Field) {
+            $CNFactory = new ControlledNameFactory($Field->Id());
+            if ($ResourceCount) {
+                $UsageCount = $CNFactory->GetUsageCount();
+                $UsagePercentage = round(($UsageCount * 100) / $ResourceCount);
+            } else {
+                $UsageCount = 0;
+                $UsagePercentage = 0;
+            }
+            ?>
+            <tr valign="top">
+            <td>
+                <a href="index.php?P=EditOptionList&amp;FI=<?= $Field->Id(); ?>">
+                    <?= $Field->GetDisplayName(); ?>
+                </a>
+            </td>
+            <td>(<?= count($Field->GetPossibleValues()); ?>&nbsp;values)</td>
+            <td>
+                <a style="width: <?= $Width ?>ex;" class="btn btn-primary btn-sm mv-button-iconed"
+                href="index.php?P=EditOptionList&amp;FI=<?=$Field->Id(); ?>"><img
+                src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+                <a style="width: <?= $Width ?>ex;" class="btn btn-primary btn-sm mv-button-iconed"
+                   href="index.php?P=DBExportField&amp;Id=<?= $Field->id(); ?>"><img
+                   src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt="" class="mv-button-icon"/> Export</a>
+            </td>
+            <td width="65%"><?= $Field->Description();  ?></td>
+            <td>
+                Assigned&nbsp;to<br />
+                <?= number_format($UsageCount); ?>&nbsp;Resources<br />
+                (<?= $UsagePercentage; ?>%)
+            </td>
+            </tr>
+            <?PHP
+        }
+        ?>
+            </tbody>
+        </table><?PHP
+    }
+}

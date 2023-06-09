@@ -1,0 +1,26 @@
+<?PHP
+#
+#   FILE:  AddClassification.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Add Classification</h1>
+
+<?PHP FormUI::DisplayErrorBlock(); ?>
+<form method="POST" action="index.php?P=AddClassification">
+    <?PHP $H_FormUI->DisplayFormTable(); ?>
+
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit" value="Add"><img
+        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt="" class="mv-button-icon" /> Add</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit" value="Cancel"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> Cancel</button>
+</form>

@@ -1,0 +1,2201 @@
+/**
+ * Main CSS for Metavus Default Interface
+ *
+ * This file is split into eight sections:
+ *      1: CONFIGURATION
+ *      2: HTML STYLES
+ *      3: BOOTSTRAP STYLES
+ *      4: THIRD-PARTY STYLES
+ *      5: LOCAL (NON-PAGE-SPECIFIC) STYLES - CLASS SELECTORS
+ *      6: LOCAL (NON-PAGE-SPECIFIC) STYLES - ID SELECTORS
+ *      7: LOCAL (PAGE-SPECIFIC) STYLES
+ *      8: FONT DEFINITIONS
+ *
+ * IMPORTANT:
+ * - Within sections, selectors should be alphabetized.
+ * - For nested selectors, grouping is based on the top level.
+ * - Do NOT add selectors that are order-dependent.
+ */
+
+/* ----- 1: CONFIGURATION ------------------------------------------------- */
+
+// Rounding on images and block element backgrounds.
+$BlockCornerRadius: 5px;
+
+// Bootstrap's breakpoints for @media(max-width) sections
+// see https://getbootstrap.com/docs/4.0/layout/overview/#responsive-breakpoints
+$BootstrapBreakpointExtraSmall: 575.98px;
+$BootstrapBreakpointSmall: 767.98px;
+$BootstrapBreakpointMedium: 991.98px;
+$BootstrapBreakpointLarge: 1199.98px;
+
+/* ----- 2: HTML STYLES --------------------------------------------------- */
+
+a {
+    color: black;
+    span.mv-link-image {
+        display: inline-block;
+        svg {
+            height: 1em;
+        }
+    }
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+body {
+    background-color: #dfdddb;
+    font-family: "LibreFranklin", "Helvetica", sans-serif;
+    line-height: 1.2rem;
+    margin-left: 98px;
+    margin-right: 98px;
+    min-width: 350px;
+}
+
+:focus {
+    outline-color: hotpink;
+    outline-style: none;
+    outline-width: 4px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1 {
+    span.mv-title-image {
+        display: inline-block;
+
+        svg {
+            height: 1em;
+        }
+    }
+}
+
+h2, h2 a, h2 a:visited {
+    color: #787673;
+    font-size: 1.9rem;
+    font-weight: 500;
+}
+
+h3 {
+    font-size: 1.66rem;
+}
+
+html {
+    font-size: 14px;
+}
+
+/**
+ * NOTE: The styling for the file input is based on Bootstrap's ".btn" class.
+ *       It's overrwriting some attribute values with those specified in ".btn-primary" class
+ *       defined under the "BOOTSTRAP STYLES" section in this file.
+ *       If changes were to be made to any of these two base classes,
+ *       the same changes should be reflected here as well.
+ */
+input[type="file"]::file-selector-button {
+    display: inline-block;
+    font-weight: 400;
+    color: white;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background: #3F3D3B;
+    border: 1px solid black;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+    &:hover {
+        background: #0069D9;
+        border-color: #0062CC;
+        text-decoration: none;
+    }
+}
+
+p a:not(".btn") {
+    color: #606060;
+    text-decoration: underline;
+    text-decoration-color: #BBBBBB;
+}
+
+@media (max-width: 1199.98px) {
+    body {
+        margin-left: 50px;
+        margin-right: 50px;
+    }
+}
+
+@media (max-width: 1091.98px) {
+    body {
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
+
+
+/* ----- 3: BOOTSTRAP STYLES ---------------------------------------------- */
+
+.alert-danger {
+    background-color: #FFEEEE;
+}
+
+.bg-light {
+    .text-secondary {
+        color: #6B737B !important;
+    }
+}
+
+/**
+ * NOTE: The class ".btn-primary" attributes are explicity used in
+ * input[type="file"]. If any changes were to be made to that class,
+ * the same changes should be reflected on input[type="file"]
+ * defined under the "HTML STYLES" section.
+ */
+.btn-primary, .btn-danger, .btn-warning {
+    background: #3F3D3B;
+    border-color: black;
+    color: white;
+
+    img[src$=".svg"] {
+        filter: invert(100%);
+        height: 1rem;
+        margin-top: -0.25rem;
+        padding-right: 0.25rem;
+    }
+}
+
+.bg-secondary.text-white {
+    .text-light {
+        color: white !important;
+    }
+}
+
+/* (for accessibility reasons, btn-sm should only be used for buttons */
+/*      that are not part of anonymous or primary functionality) */
+.btn-sm {
+    font-size: 0.8rem;
+    line-height: 1.0rem;
+    margin: 0 1px;
+    padding: 2px 2px 0 2px;
+    white-space: nowrap;
+
+    img.mv-button-icon {
+        height: 0.8rem;
+        margin-top: 0.01rem;
+        padding-right: 0.1rem;
+    }
+}
+
+.btn-sm > img {
+    margin-bottom: 0.15rem;
+}
+
+.container, .container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.list-group-flush {
+    .list-group-item {
+        background-color: inherit;
+        border: none;
+        padding: 0;
+    }
+}
+
+.navbar {
+    background-color: white;
+}
+
+.navbar-dark {
+    .navbar-nav {
+        .nav-link {
+            color: rgba(255,255,255, 0.6);
+        }
+
+        .btn-primary {
+            background: white;
+        }
+
+        .btn-primary:hover {
+            background: #0020ff;
+        }
+    }
+}
+
+.nav-link {
+    color: #3F3D3B;
+    font-size: 1.273rem;
+}
+
+.thead-dark {
+    a {
+        color: white;
+    }
+}
+
+
+/* ----- 4: THIRD-PARTY STYLES -------------------------------------------- */
+
+/* --- jQueryUI STYLES */
+
+ul.ui-autocomplete {
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    border-left: 1px solid #C3C3C3;
+    border-right: 1px solid #C3C3C3;
+    box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    list-style-type: none;
+    padding-left: 0;
+    width: 390px;
+}
+
+.ui-autocomplete-loading {
+    background-image: url('../images/loading.gif');
+    background-position: right center;
+    background-repeat: no-repeat;
+}
+
+button.ui-dialog-titlebar-close {
+    outline: none;
+}
+
+li.ui-menu-item:hover,
+li.ui-menu-item.ui-state-focus {
+    background-color: #C8C8C8 !important;
+}
+
+div.ui-menu-item-wrapper {
+    /* Override jquery-ui's desire to have white text in selected quickesarch items */
+    .mv-content-resourcesummary {
+        color: black !important;
+
+        a {
+            color: black !important;
+        }
+    }
+}
+
+.ui-sortable {
+    cursor: grab;
+}
+
+.ui-widget {
+    font-family: "LibreFranklin", "Helvetica", sans-serif;
+}
+
+.ui-widget-content a.btn-primary {
+    color: white;
+}
+
+.ui-widget-overlay {
+    opacity: 0.90;
+}
+
+
+/* ----- 5: LOCAL (NON-PAGE-SPECIFIC) STYLES - CLASS SELECTORS ------------ */
+
+span.mv-form-error,
+label.mv-form-error {
+    background-color: transparent;
+    border-radius: $BlockCornerRadius;
+    border-style: solid;
+    border-width: 2px;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+span.mv-form-error,
+label.mv-form-error {
+    border-color: #FF7777;
+}
+
+.mv-form-requiredfield {
+    background-color: #FFEE77;
+}
+
+span.mv-form-requiredfield,
+label.mv-form-requiredfield {
+    background-color: transparent;
+    border-color: #FFEE77;
+    border-radius: $BlockCornerRadius;
+    border-style: solid;
+    border-width: 2px;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+.mv-image-screenshot-container {
+    background-color: #EBEBEB;
+    height: 224px;
+    width: 224px;
+
+    img {
+        left: 50%;
+        position: absolute;
+        top: 50%;
+        transform: translateX(-50%) translateY(-50%);
+    }
+}
+
+.mv-itemlistui {
+    .text-muted {
+        color: #999999 !important;
+    }
+}
+
+.mv-itemlistui-subheading {
+    font-style: italic;
+    margin-top: -1.5ex;
+}
+
+.mv-itemlistui-topbuttons {
+    float: right;
+    margin-top: 2em;
+    margin-bottom: 10px;
+    span {
+        margin-left: 15px;
+    }
+}
+
+.mv-link-decoration {
+    display: inline-block;
+    font-weight: bold;
+    margin-right: 0.25em;
+    transform: rotate(-90deg);
+}
+
+.mv-login-form-container {
+    min-width: 14em;
+
+    input#go {
+        position: relative;
+        top: 5px;
+    }
+}
+
+.mv-p-collage-wrapper {
+    border-bottom: 2px solid #ebebeb;
+    border-top: 2px solid #ebebeb;
+    height: 420px;
+    margin: 14px -30px;
+    min-width: calc( 100% + 60px);
+    overflow: hidden;
+}
+
+.mv-p-collage-rollover {
+    .ui-dialog-titlebar-close {
+        display: none;
+    }
+}
+
+.mv-p-collage {
+    min-width: calc(100% + 200px);
+
+    .mv-p-collage-tile {
+        display: inline-block;
+        img {
+            object-fit: cover;
+        }
+    }
+
+    :not(.mv-p-collage-tile) {
+        img {
+            margin-left: 50%;
+            position: absolute;
+            transform: translateX(-50%);
+        }
+    }
+}
+
+#page-p_calendarfeed_buildfeed .mv-body {
+    .mv-p-calendarfeed-feeddescription {
+        margin-bottom: 2ex;
+        th {
+            text-align: right;
+            vertical-align: top;
+        }
+        th::after {
+            content: ":";
+        }
+        td {
+            padding-left: 1rem;
+        }
+    }
+    h2 {
+        margin-top: 2ex;
+    }
+}
+
+.mv-tab-container {
+    margin-bottom: 14px;
+    .ui-state-active {
+        border-color: #CCCCCC;
+        a {
+            color: #2B2B2B;
+        }
+    }
+    .ui-tabs-active {
+        background: #FFFFFF;
+    }
+}
+
+// TILE SET - Set of rectangular containers that dynamically rearrange into
+//  rows depending on the width of the viewport.
+// USAGE:  Uses four nested <div> levels.  Apply the mv-tileset class to the
+//  top <div>, and then repeat at the second <div> level for each tile, with
+//  tile content inside the innermost <div>.  Second level <div> should include
+//  "col-xx-NN" classes (e.g. "col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2") to
+//  trigger responsive tile rearranging.
+.mv-tileset {
+    $SpaceBetweenTiles: 10px;
+    $TileBackgroundColor: #F4F4F4;
+    $TilePadding: 15px;
+    margin-left: 0 - $SpaceBetweenTiles;
+    margin-right: 0 - $SpaceBetweenTiles;
+    > div {
+        margin-bottom: $SpaceBetweenTiles * 2;
+        padding-left: $SpaceBetweenTiles;
+        padding-right: $SpaceBetweenTiles;
+        > div {
+            align-items: center;
+            background-color: $TileBackgroundColor;
+            border-radius: $BlockCornerRadius;
+            display: flex;
+            height: 100%;
+            > div {
+                padding: $TilePadding;
+                width: 100%;
+            }
+        }
+    }
+}
+
+.mv-tile-collection {
+    text-align: center;
+
+    h2 {
+        font-size: 2rem;
+    }
+    h3 {
+        font-size: 1.5rem;
+    }
+    h4 {
+        font-size: 1.1rem;
+    }
+
+    img:not(.mv-button-icon) {
+        border-radius: $BlockCornerRadius;
+        height: 150px;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        object-fit: contain;
+        width: 150px;
+    }
+
+    .btn {
+        position: absolute;
+        right: 14px;
+        top: 5px;
+        z-index: 50;
+    }
+}
+
+.mv-resourcesummary.container-fluid {
+    .row {
+        align-items: center;
+    }
+
+    img.mv-screenshot {
+        border-radius: $BlockCornerRadius;
+        height: 224px;
+        object-fit: cover;
+        object-position: left top;
+        width: 224px;
+    }
+
+    @media (max-width: 767.98px) {
+        img.mv-screenshot {
+            height: 125px;
+            width: 125px;
+        }
+    }
+
+    .mv-content-categories {
+        margin-top: 1em;
+
+        a {
+            color: #787673;
+            font-size: 1.2rem;
+            font-weight: 400;
+        }
+    }
+
+    .mv-moreinfo {
+        margin-top: 0.5rem;
+    }
+
+    .mv-resource-title {
+        display: inline-block;
+        font-size: 1.273rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
+
+    .list-group-horizontal {
+        .list-group-item {
+            padding-bottom: calc( 1rem + 3px );
+        }
+    }
+}
+
+.mv-resourcesummary + .mv-resourcesummary {
+    margin-top: 25px;
+}
+
+span.mv-search-arrow {
+    font-family: "Zapf Dingbats", "Helvetica";
+    font-size: 14px;
+    font-weight: 600;
+    left: 6px;
+    position: absolute;
+    top: 2px;
+}
+
+ul.mv-search-facets {
+    padding-bottom: 13px;
+    padding-top: 10px;
+
+    .list-group-item {
+        padding-left: 2.5rem;
+        text-indent: -2.5rem;
+
+        .mv-facet-checkbox {
+            font-size: 1.5rem;
+            position: relative;
+            top: 1px;
+        }
+    }
+
+    ul.mv-search-facets {
+        padding-top: 0;
+        padding-left: 1.6rem;
+    }
+
+    a:hover {
+        text-decoration: none;
+    }
+}
+
+div.mv-search-facets {
+    padding-top: 13px;
+
+    b {
+        font-weight: 600;
+    }
+}
+
+.mv-search-order-button {
+    position: absolute;
+    width: 27px;
+    height: 18px;
+    top: 8px;
+    right: 12px;
+}
+
+.mv-search-order-button-text {
+    position: absolute;
+    top: 2px;
+    left: 15px;
+    font-size: 0.6em;
+}
+
+.mv-search-order-label {
+    position: relative;
+    padding: 1px 1px 1px 8px;
+    line-height: 12px;
+}
+
+.mv-search-sort-controls-container {
+    display: inline-block;
+    width: 100%;
+}
+
+.mv-search-sort-form {
+    label {
+        margin-top: 8px;
+    }
+}
+
+.mv-skip-link {
+    a {
+        position: absolute;
+        top: -5em;
+        background: white;
+        z-index: 100;
+        padding: 10px;
+        border: 10px;
+    }
+
+    a:focus {
+        position: absolute;
+        top: 0 !important;
+        transition: top .1s ease-in;
+    }
+}
+
+.mv-stat-container {
+    .mv-range-button {
+        a {
+            color: black;
+        }
+    }
+}
+
+button.mv-timestamp-update {
+    float: right;
+}
+
+/* ----vvvv NEED ALPHABETIZATION vvvv---- */
+
+.mv-form-fieldtype-quick_search {
+    textarea {
+        width: 100%;
+    }
+}
+
+.mv-form-file-table, .mv-form-image-table {
+    width: 100%;
+
+    tr {
+        background-color: inherit !important;
+    }
+
+    td {
+        padding: 0.25em;
+        border-top: none;
+    }
+
+    td:last-of-type {
+        text-align: right;
+        padding-right: 0;
+    }
+}
+
+.mv-form-image-left {
+    float: left;
+}
+
+.mv-form-image-right {
+    float: right;
+}
+
+.mv-form-image-table {
+    .mv-form-insert-btn {
+        min-width: 12ex;
+    }
+
+    button {
+        margin-bottom: 2px;
+        margin-left: 2px;
+    }
+
+    input[type="text"] {
+        width: 90%;
+    }
+
+    td:first-child {
+        width: 200px;
+    }
+
+    td:last-child {
+        width: 200px;
+    }
+}
+
+.mv-form-fieldtype-option {
+    td {
+        input + label {
+            margin-right: 2em;
+            display: inline;
+        }
+    }
+}
+
+.mv-form-fieldtype-privileges {
+    td {
+        padding: 0.2rem 0.7rem 0.2rem 0.7rem;
+    }
+
+    fieldset {
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+        vertical-align: middle;
+    }
+
+    .btn {
+        margin-right: 1.2rem;
+    }
+
+    .priv-set {
+        > button {
+            margin-top: 0.4rem;
+            margin-bottom: 0.4rem;
+        }
+
+        > p {
+            margin-top: 0.4rem;
+        }
+    }
+}
+
+.mv-form-fieldtype-search_parameters {
+    table {
+        margin-left: 0.4rem;
+    }
+
+    td {
+        padding: 0.2rem;
+
+        select {
+            vertical-align: top;
+        }
+    }
+
+    .mv-quicksearch {
+        display: inline-block;
+        margin-bottom: 4px;
+
+        textarea {
+            margin-bottom: -8px;
+        }
+    }
+
+    .mv-speui-add-field, .mv-speui-add-subgroup {
+        margin-top: 0.2rem;
+    }
+}
+
+.mv-form-group-indicator {
+    width: 0.75em;
+    text-align: center;
+    display: inline-block;
+}
+
+.mv-form-collapsible {
+    cursor: pointer;
+}
+
+.mv-form-group-header {
+    th {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+}
+
+.mv-form-group-hidden {
+    tr {
+        visibility: collapse;
+
+        /*
+          'visibility: collapse' *should* be sufficient to hide these
+          elements, but alas Safari pretends that it's a synonym for
+          'visibility: hidden'. Work around that by explicitly setting
+          heights and margins on child elements to collapse them.
+          See https://developer.mozilla.org/en-US/docs/Web/CSS/visibility#Notes
+       */
+
+        td, th {
+            border-bottom-style: none;
+            border-bottom-width: 0;
+            border-top-style: none;
+            border-top-width: 0;
+            height: 0;
+            line-height: 0;
+            margin-bottom: 0;
+            margin-top: 0;
+            padding-bottom: 0;
+            padding-top: 0;
+
+            * {
+                border-bottom-width: 0;
+                border-top-width: 0;
+                display: block;
+                height: 0;
+                margin-bottom: 0;
+                margin-top: 0;
+                padding-bottom: 0;
+                padding-top: 0;
+            }
+        }
+    }
+}
+
+tbody.mv-form-group + tbody.mv-form-group {
+    border-top-color: #32383e;
+    border-top-style: solid;
+    border-top-width: 2px;
+}
+
+tbody.mv-form-group {
+    th {
+        padding-right: 0;
+        text-align: right;
+
+        img {
+            float: left;
+        }
+
+        label::after {
+            content: ":";
+        }
+    }
+
+    input {
+        max-width: 100%;
+    }
+
+    input[type="checkbox"] + label {
+        line-height: 1.2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .mv-mutable-widget {
+        display: inline-block;
+        width: 80%;
+    }
+
+    .mv-form-optlist {
+        display: inline-block;
+        width: 80%;
+    }
+
+    .mv-form-additional-html {
+        display: inline-block;
+        text-align: right;
+        vertical-align: top;
+        width: 20%;
+    }
+
+    .mv-form-additional-html:empty {
+        display: none;
+    }
+}
+
+.mv-checkboxset {
+    display: grid;
+    width: 100%;
+    writing-mode: vertical-lr;
+
+    .mv-inputset-item {
+        white-space: nowrap;
+        writing-mode: horizontal-tb;
+
+        input {
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        label {
+            display: inline-block;
+            white-space: normal;
+        }
+    }
+}
+
+.mv-radiobuttonset-item {
+    display: inline-block;
+}
+
+.priv-js-clone_target,
+button.priv-js-add {
+    display: none;
+}
+
+.mv-quicksearch-menu {
+    -moz-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    -webkit-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    background-color: white;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    border: 1px solid #C3C3C3;
+    box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    position: fixed;
+    z-index: 100;
+}
+
+.mv-quicksearch-moreresults {
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
+}
+
+.mv-quicksearch-message {
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
+    position: absolute;
+}
+
+.mv-inline-edit-controls {
+    float: right;
+    padding-right: 5px;
+}
+
+.mv-inline-edit-edit {
+    div[contenteditable] {
+        outline-style: none;
+    }
+}
+
+.mv-feui-form {
+    .template_row {
+        display: none;
+    }
+}
+
+.mv-section-header h2 {
+    margin-bottom: 1.4rem;
+    text-transform: uppercase;
+}
+
+.mv-segment-toolbox {
+    .mv-section-header {
+        font-size: 1.3 rem;
+        padding-bottom: 1rem;
+        padding-top: 1.5rem;
+
+        img:not(.mv-button-icon) {
+            margin-top: -5px;
+            height: 1.75rem;
+            padding-right: 0.25rem;
+        }
+    }
+
+    .mv-metadata-tool-nav {
+        padding: 1.5rem 0.75rem 0;
+    }
+
+    .mv-sidebar-content {
+        padding: 0.75rem;
+
+        .mv-section-body {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+    }
+
+    ul {
+        margin-bottom: 0.5rem;
+    }
+
+    ul.mv-bullet-list {
+        padding-left: 0;
+        list-style-type: none;
+
+        li {
+            text-indent: -1.5rem;
+            padding-left: 1.5rem;
+        }
+
+        li::before {
+            content: "\B7";
+            font-weight: bold;
+        }
+    }
+}
+
+/** Per https://getbootstrap.com/docs/4.0/content/tables/ "All table styles are inherited in Bootstrap 4, meaning any nested tables will be styled in the same manner as the parent."  The mv-table-nostripes class can be used to remove stripes from a nested table. */
+.table-striped tbody .mv-table-nostripes {
+    tr, th {
+        background-color: transparent;
+    }
+}
+
+// responsiveness for FormUI
+@media (max-width: $BootstrapBreakpointMedium) {
+    .mv-form-table {
+        tbody {
+            display: block;
+        }
+
+        td {
+            border-top: none;
+            display: block;
+            padding: 5px;
+
+            input[type="text"] {
+                width: 100%;
+            }
+
+            input[type="password"] {
+                width: 100%;
+            }
+        }
+
+        th {
+            border-top: none;
+            display: block;
+            min-width: 0 !important;
+            padding: 5px;
+            text-align: left !important;
+
+            label {
+                margin-bottom: 0;
+            }
+        }
+
+        tr {
+            display: block;
+        }
+    }
+}
+
+@media (max-width: $BootstrapBreakpointSmall) {
+    .mv-form-table {
+        .mv-form-group {
+            .mv-form-additional-html {
+                display: block;
+            }
+
+            .mv-form-fieldtype-datetime {
+                input {
+                    max-width: calc(100% - 10ex);
+                }
+            }
+
+            .mv-form-image-table {
+                .mv-form-pseudolabel {
+                    display: block;
+                }
+            }
+
+            .mv-form-optlist {
+                width: 100%;
+            }
+        }
+    }
+}
+
+/* ----- 6: LOCAL (NON-PAGE-SPECIFIC) STYLES - ID SELECTORS --------------- */
+
+#mv-content-primary-nav {
+    align-items: start;
+
+    .nav-link:not(.navbar-brand):not(.dropdown-item) {
+        margin-top: 11px;
+        line-height:1.667rem;
+    }
+
+    ul.navbar-nav {
+        li.nav-item:last-of-type {
+            a.nav-link {
+                padding-right: 0;
+            }
+        }
+    }
+
+    a.navbar-brand {
+        font-size: 1.75rem;
+        font-weight: bold;
+        margin-bottom: 0.9rem;
+        margin-top: 1.2rem;
+        padding-left: 0;
+
+        img {
+            height: 37px;
+            margin-bottom: -0.75rem;
+            margin-top: -0.8rem;
+        }
+    }
+
+    .mv-header-icon {
+        display: inline-block;
+        padding-right: 0.375rem;
+
+        svg {
+            fill: #3f3d3b;
+            height: 1.5rem;
+            margin-top: -4px;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .nav-link {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        a.navbar-brand {
+            padding-right: 58px;
+        }
+    }
+}
+
+#mv-content-pagestats {
+    margin-top: 2em;
+    font-size: 0.8em;
+}
+
+#mv-content-primary-nav, #mv-segment-footer {
+    padding: 17px 33px;
+}
+
+#mv-content-quicksearch {
+    .mv-quicksearch-keywordsearch {
+        font-size: 1.1em;
+        height: 17px;
+        width: 275px;
+    }
+
+    .mv-quicksearch {
+        display: inline-block;
+
+        .mv-quicksearch-display {
+            font-size: 1.1em;
+            height: 17px;
+            margin: 0;
+            padding: 0;
+            width: 390px;
+        }
+
+        ul.ui-autocomplete { width: 200px; }
+    }
+}
+
+#mv-content-toolbox {
+    background-color: #747577;
+    color: white;
+    min-width: 240px;
+    padding-bottom: 1em;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 10px;
+
+    a {
+        color: white;
+    }
+
+    b, strong {
+        font-weight: 600;
+    }
+
+    .btn {
+        float: right;
+    }
+
+    .mv-section {
+        padding: 2rem 1.5rem 0 2rem;
+
+        .mv-section-header {
+            font-size: 1.3rem;
+            padding-bottom: 1rem;
+
+            img:not(.mv-button-icon) {
+                filter: invert(100%);
+                height: 1.75rem;
+                margin-top: -5px;
+                padding-right: 0.25rem;
+            }
+        }
+
+        .mv-section-body {
+            font-size: 0.9rem;
+            line-height: 1.0rem;
+            margin-left: 5px;
+
+            ul {
+                margin-bottom: 0.5rem;
+            }
+
+            ul.mv-bullet-list {
+                list-style: none;
+                padding-left: 0;
+
+                li {
+                    padding-left: 1.5rem;
+                    text-indent: -1.5rem;
+                }
+
+                li::before {
+                    content: "\B7";
+                    font-weight: bold;
+                }
+            }
+        }
+
+        .mv-section-body.mv-section-secondary-nav {
+            font-size: 1.2rem;
+            line-height: 1.3rem;
+            padding-bottom: 1rem;
+            padding-top: 1rem;
+        }
+    }
+
+    .mv-folders-sidebar {
+        background-color: #6E7172;
+        margin-bottom: 1rem;
+        margin-top: 2rem;
+        padding-bottom: 3.25rem;
+    }
+}
+
+#mv-content-wrapper {
+    .mv-section-footer {
+        .col {
+            padding: 0 15px;
+        }
+    }
+}
+
+#mv-inline-edit-dialog-confirm + .ui-dialog-buttonpane {
+    .ui-button-icon.ui-icon-close {
+        background-image: url("../images/cross.png");
+        background-position: center;
+        display: block;
+        height: 16px;
+        margin-top: 0;
+        position: absolute;
+        width: 16px;
+    }
+}
+
+#mv-navbar-search {
+    background-color: white;
+    border-bottom: 2px solid #DFDDDB;
+    padding: 15px 15px 11px 15px;
+    text-align: right;
+
+    #F_SearchString {
+        display: inline-block;
+        height: 33px;
+        margin-bottom: 5px;
+        padding-top: 4px;
+        width: calc(100% - 100px);
+    }
+
+    .btn {
+        margin-left: 5px;
+
+        img.mv-button-icon {
+            height: 21px;
+            margin-bottom: -2px;
+            margin-left: -5px;
+        }
+    }
+}
+
+#mv-secondary-navigation-menu {
+    padding: 2rem 1.5rem 0 2rem;
+
+    > .col-12 > .row:first-child {
+        font-weight: bold;
+    }
+
+    .col-3 {
+        padding-left: 0;
+        padding-right: 0;
+
+        .btn {
+            min-width: 55px;
+        }
+
+        .row:nth-of-type(2) .btn {
+            margin-top: 0.25em;
+        }
+    }
+
+    .mv-secondary-navigation-menu-item {
+        margin: 5px 10px 0px -10px;
+    }
+
+    .mv-secondary-navigation-menu-item::before {
+        background-image: url("../images/go_small.gif");
+        content: "";
+        display: inline-block;
+        height: 12px;
+        width: 12px;
+    }
+
+    .btn.disabled {
+        opacity: 0;
+    }
+}
+
+#mv-segment-body {
+    background-color: white;
+    min-height: 5rem;;
+    padding-left: 30px;
+    padding-right: 30px;
+
+    pre {
+        white-space: pre-wrap;
+    }
+
+    p:last-child, table:last-child {
+        margin-bottom: 0;
+    }
+}
+
+#mv-segment-footer {
+    background-color: white;
+    padding-bottom: 1.5em;
+    padding-top: 2em;
+
+    .row {
+        align-items: center;
+    }
+
+    .mv-social-logo {
+        display: inline-block;
+
+        svg {
+            height: 3rem;
+            fill: #3f3d3b;
+        }
+    }
+
+    .mv-social-logo + .mv-social-logo {
+        padding-left: 10px;
+    }
+
+    .mv-metavus-logo {
+        height: 28px;
+    }
+}
+
+#mv-vocabsearchpopup {
+    h3 {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    .TermsAssigned + span + h3 {
+        margin-top: 2rem;
+    }
+
+    .TermsAssigned + span {
+        margin-top: 2rem;
+    }
+
+    .TermsAvailable, .TermsAssigned {
+        line-height: 1.5;
+        margin-left: 1rem;
+
+        label {
+            display: inline;
+        }
+    }
+
+    .mv-num-results-per-page {
+        float: right;
+
+        input {
+            width: 3em;
+        }
+    }
+
+    .mv-search-pagination {
+        display: inline-block;
+        margin-bottom: 0.25rem;
+        margin-top: 0.25rem;
+        text-align: center;
+        width: 100%;
+
+        .btn {
+            font-size: 0.875rem;
+        }
+
+        .mv-pagination-left {
+            float: left;
+        }
+
+        .mv-pagination-right {
+            float: right;
+        }
+
+        .mv-pagination-center {
+            display: inline-block;
+            padding-top: 4px;
+        }
+    }
+}
+
+div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
+    .ui-dialog-title {
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+}
+
+
+/* ----- 7: LOCAL (PAGE-SPECIFIC) STYLES ---------------------------------- */
+
+#page-addresourcecomment {
+    #mv-comment-char-count-container {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+    }
+
+    #mv-comment-char-count-progress {
+        margin-top: 10px;
+        height: 12px;
+        width: 344px;
+    }
+}
+
+#page-advancedsearch {
+    .mv-advanced-field-column {
+        select {
+            width: 100%;
+        }
+    }
+
+    .mv-advanced-terms-column {
+        input {
+            width: 100%;
+        }
+    }
+
+    .mv-search-limit-field {
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+    .mv-extra-space {
+        font-size: 0.5em;
+    }
+
+    .mv-limits-entries {
+        padding-left: 1rem;
+        padding-right: 1rem;
+
+        > div {
+            margin-bottom: 1rem;
+            margin-top: 1rem;
+        }
+    }
+
+    .mv-search-limits {
+        margin-bottom: 1em;
+        margin-top: 1em;
+
+        h2 {
+            margin-bottom: 0;
+        }
+
+        .btn {
+            margin-bottom: 8px;
+        }
+    }
+
+    .mv-content-searchfields {
+        padding: 1rem;
+
+        .row:first-child {
+            font-weight: bold;
+            line-height: 0.8rem;
+            margin-left: -11px;
+            padding-top: 8px;
+        }
+
+        .row:last-child .btn {
+            margin-bottom: 3px;
+            margin-left: -1px;
+            margin-top: 5px;
+        }
+
+        .mv-clone-parent {
+            line-height: 0.4rem;
+        }
+    }
+
+    .mv-limits-section {
+        padding-top: 0.5em;
+    }
+
+    .mv-search-header {
+        h2 {
+            display: inline-block;
+            margin-right: 1rem;
+        }
+    }
+
+    .mv-adv-search-tips {
+        background-color: #F8F9FA;
+        margin-top: 20px;
+        padding: 1.5rem;
+
+        code {
+            color: #DB1A74;
+        }
+
+        dt {
+            margin-bottom: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        h3 {
+            margin-bottom: 0;
+        }
+    }
+}
+
+#page-browseresources {
+    table th, table td {
+        border: none;
+    }
+
+    table thead {
+        border-bottom: solid 1px #DEE2E6;
+        border-top: solid 1px #DEE2E6;
+    }
+}
+
+#page-displaycollection {
+    /* Collection description */
+    h1 + div {
+        margin-bottom: 2rem;
+    }
+
+    .mv-transport-controls:nth-of-type(2) {
+        margin-bottom: 10px;
+    }
+
+    .mv-transport-controls:nth-of-type(4) {
+        margin-top: -10px;
+    }
+}
+
+#page-editcontrolledname {
+    [id^="F_ControlledName_"] {
+        width: 450px;
+    }
+}
+
+#page-editmetadatafield {
+    tr.mfe {
+        textarea {
+            width: 100%;
+        }
+    }
+}
+
+#page-editresource {
+    .mv-fieldtable {
+        textarea, input[type="text"] {
+            width: 100%;
+        }
+
+        .table-sm {
+            background-color: transparent;
+            display: inline-block;
+
+            tr {
+                background-color: transparent;
+
+                td {
+                    border: none;
+                }
+            }
+        }
+    }
+}
+
+#page-edituser {
+    .mv-form-fieldtype-customcontent {
+        .mv-itemlistui {
+            .thead-dark {
+                th {
+                    opacity: 0.66;
+                    text-align: left;
+                }
+            }
+        }
+    }
+}
+
+#page-fullrecord {
+    .mv-stdtitle {
+        h1 {
+            margin-bottom: 0;
+        }
+
+        .btn {
+            float: right;
+        }
+    }
+    .mv-stdurl {
+        margin-bottom: 1.5ex;
+
+        a {
+            color: #606060;
+            text-decoration: underline;
+            text-decoration-color: #BBBBBB;
+        }
+
+        a:hover {
+            color: #0056b3;
+        }
+    }
+
+    .mv-stdscreenshot {
+        img {
+            float: right;
+            margin-left: 1em;
+            margin-bottom: 1ex;
+        }
+    }
+
+    .mv-stddescription {
+        margin-bottom: 1.5ex;
+    }
+
+    .mv-mfield-group {
+        background-color: #F3F3F3;
+        border: 1px solid #C3C3C3;
+        margin-bottom: 2ex;
+        margin-left: 0;
+        margin-top: 2ex;
+        padding: 1.5ex 0 1.5ex 0;
+    }
+
+    .mv-mfield-row {
+        margin-bottom: 0.75ex;
+        margin-top: 0.75ex;
+
+        .btn {
+            float: right;
+        }
+    }
+
+    .mv-mfield-label {
+        font-weight: bold;
+    }
+
+    .mv-mfield-value {
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    .mv-mfield-value-controlledname,
+    .mv-mfield-value-tree {
+        font-style: italic;
+    }
+
+    .mv-mfield-value-stillimage {
+        li {
+            margin-bottom: 1ex;
+        }
+
+        li:last-of-type {
+            margin-bottom: 0;
+        }
+    }
+
+    .mv-comments {
+        margin-top: 3ex;
+
+        .btn {
+            float: right;
+        }
+    }
+}
+
+#page-home {
+    .mv-content-newresources {
+        .mv-section-body {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+    }
+
+    #mv-content-wrapper {
+        margin-top: 22px;
+    }
+
+    .mv-content-featuredresources {
+        margin-left: 2px;
+    }
+
+    .mv-collection-list {
+        margin-bottom: 30px;
+
+        .mv-collection {
+            clear: both;
+
+            .mv-collection-tag {
+                float: left;
+                font-size: 3.18rem;
+                padding-top: 0.18rem;
+                width: 3.6rem;
+                height: 3.6rem;
+                line-height: 3.6rem;
+                margin-right: 1rem;
+                text-align: center;
+                color: white;
+                font-weight: bold;
+                border-radius: $BlockCornerRadius;
+            }
+
+            .mv-collection-name {
+                padding-top: 0.5rem;
+                font-size: 1.273rem;
+                font-weight: 500;
+                line-height: 1.3rem;
+            }
+
+            .mv-collection-items {
+                font-size: 0.9rem;
+                color: #787673;
+            }
+        }
+
+        .mv-collection + .mv-collection {
+            margin-top: 1.8rem;
+        }
+    }
+
+    .mv-collection-list::after {
+        content: '';
+        display: block;
+        clear: both;
+    }
+
+    .mv-news {
+        margin-top: 20px;
+        clear: both;
+
+        h3.blog-title {
+            font-size: 1.273rem;
+            font-weight: 500;
+            margin-top: -2px;
+            margin-bottom: 0;
+        }
+
+        .blog-date {
+            color: #787673;
+            display: inline-block;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .BlogEntrySummary {
+            padding: 0;
+        }
+
+        .social-media-share {
+            padding: 1rem 0;
+        }
+    }
+
+    .mv-event {
+        margin-bottom: 22px;
+        h3.mv-event-title {
+            font-size: 1.273rem;
+        }
+
+        .mv-event-location {
+            float: right;
+        }
+    }
+
+    .mv-section-footer {
+        margin-top: 1rem;
+    }
+}
+
+#page-mdhome {
+    td > a:not(.btn) {
+        color: #606060;
+        text-decoration: underline;
+        text-decoration-color: #BBBBBB;
+    }
+
+    td > a:not(.btn):hover {
+        color: #0056b3;
+    }
+}
+
+#page-metadatafieldordering {
+    .list-group-item {
+        padding-top: 0;
+        padding-bottom: 0;
+        border: none;
+    }
+
+    .mv-mfo-save-btn {
+        text-align: right;
+        padding-right: 8%;
+    }
+}
+
+#page-p_folders_viewfolder {
+    .mv-folders-items {
+        margin-top: 7px;
+    }
+}
+
+#page-p_pages_displaypage {
+    .mv-pages-edit-info {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        margin-top: 42px;
+    }
+}
+
+#page-p_resourceexporter_exportresources {
+    .btn-sm {
+        padding: 3.5px 7px;
+    }
+
+    .CheckAllFields, .UncheckAllFields {
+        color: #606060;
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-color: #BBBBBB;
+    }
+
+    .CheckAllFields:hover, .UncheckAllFields:hover {
+        color: #0056b3;
+    }
+}
+
+#page-p_secondarynavigation_editnav {
+    li {
+        margin-top: 0.7em;
+    }
+
+    label:nth-of-type(2) {
+        margin-left: 10px;
+    }
+}
+
+#page-plugins {
+    table.mv-itemlistui tr td:last-child {
+        white-space: nowrap;
+    }
+}
+
+#page-searchresults {
+    h1 {
+        font-size: 2.15rem;
+        margin-bottom: 1.5rem;
+    }
+
+    h1, a.mv-link-advancedsearch {
+        color: #6D7174;
+
+        svg {
+            fill: #5E6164;
+            margin-top: -6px;
+            padding-right: 3px;
+        }
+    }
+
+    .mv-search-description, .mv-transport-controls, .mv-link-advancedsearch {
+        font-size: 16px;
+
+        b, strong {
+            font-weight: 500;
+        }
+    }
+
+    .ui-tabs-tab {
+        strong {
+            font-weight: 500;
+        }
+    }
+
+    .mv-search-facets {
+        b {
+            font-size: 16px;
+            font-weight: 500;
+        }
+    }
+
+    .mv-transport-controls {
+        .btn.btn-sm {
+            font-size: 14px;
+            line-height: 14px;
+        }
+    }
+
+    .col.text-right {
+        .mv-transport-controls {
+            display: inline-block;
+
+            .row {
+                display: inline-block;
+                width: 100%;
+                padding-left: 0;
+                padding-right: 0;
+                margin-left: 0;
+                margin-right: 0;
+
+                .col-2, .col-8, .col-10, .col-12 {
+                    position: static;
+                    display: inline-block;
+                    width: unset;
+                    max-width: unset;
+                }
+
+                .col-2, .col-8, .col-12 {
+                    padding-left: 0;
+                    padding-right: 0;
+                }
+
+                .col-10 {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                }
+            }
+        }
+    }
+
+    .ui-tabs {
+        padding: 0;
+        border: none;
+    }
+
+    .ui-tabs-panel {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .ui-tabs-nav {
+        padding: 0;
+        border: none;
+
+        li.ui-tabs-tab:first-child {
+            margin-left: 15px;
+        }
+
+    }
+
+    .ui-tabs-tab {
+        border: none;
+        background: transparent;
+    }
+
+    .ui-tabs-tab.ui-tabs-active {
+        background: white;
+        border: none;
+
+        a {
+            color: black;
+        }
+    }
+
+    .ui-tabs-tab {
+        a {
+            color: #707070;
+        }
+    }
+
+    .ui-widget-header {
+        background: #F5F5F5;
+    }
+
+    .mv-transport-controls {
+        .btn-sm {
+            font-weight: bold;
+            margin-top: -2px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+    }
+
+    .mv-search-sort-form {
+        select {
+            width: calc(100% - 11ex);
+            height: fit-content;
+        }
+    }
+
+    .mv-search-header {
+        padding-top: 7px;
+        padding-bottom: 20px;
+
+        .mv-search-description {
+            strong {
+                padding-left: 0.25rem;
+            }
+        }
+    }
+
+    .mv-search-footer {
+        .mv-transport-controls {
+            padding-top: 16px;
+
+            .col-12.text-center {
+                text-align: right !important;
+            }
+        }
+    }
+}
+
+#page-sysadmin {
+    .mv-body h1 {
+        padding-top: 2rem;
+    }
+    .mv-content-sectioned h2:not(:first-of-type) {
+        padding-top: 1rem;
+    }
+    .alert li {
+        list-style: none;
+    }
+
+    .mv-content-sysadmin-logmsgs-row {
+        td.mv-logmsgs-message {
+            word-break: break-all;
+
+            a {
+                color: #606060;
+                text-decoration: underline;
+                text-decoration-color: #BBBBBB;
+            }
+
+            a:hover {
+                color: #0056b3;
+            }
+        }
+    }
+}
+
+/* ----- 8: FONT DEFINITIONS ---------------------------------------------- */
+
+/* font-weight: 100 (Thin) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 100;
+    src: url("../fonts/LibreFranklin-Thin.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 100;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-ThinItalic.ttf") format('truetype');
+}
+
+/* font-weight: 200 (ExtraLight) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 200;
+    src: url("../fonts/LibreFranklin-ExtraLight.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 200;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-ExtraLightItalic.ttf") format('truetype');
+}
+
+/* font-weight: 300 (Light) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 300;
+    src: url("../fonts/LibreFranklin-Light.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 300;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-LightItalic.ttf") format('truetype');
+}
+
+/* font-weight: 400 (Normal / Regular) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: normal;
+    src: url("../fonts/LibreFranklin-Regular.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-Italic.ttf") format('truetype');
+}
+
+/* font-weight: 500 (Medium) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 500;
+    src: url("../fonts/LibreFranklin-Medium.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 500;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-MediumItalic.ttf") format('truetype');
+}
+
+/* font-weight: 600 (Demibold) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 600;
+    src: url("../fonts/LibreFranklin-SemiBold.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 600;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-SemiBoldItalic.ttf") format('truetype');
+}
+
+/* font-weight: 700 (Bold) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: bold;
+    src: url("../fonts/LibreFranklin-Bold.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-style: italic;
+    font-weight: bold;
+    src: url("../fonts/LibreFranklin-BoldItalic.ttf") format('truetype');
+}
+
+/* font-weight: 800 (Extra Bold) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 800;
+    src: url("../fonts/LibreFranklin-ExtraBold.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 800;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-ExtraBoldItalic.ttf") format('truetype');
+}
+
+/* font-weight: 900 (Black) */
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 900;
+    src: url("../fonts/LibreFranklin-Black.ttf") format('truetype');
+}
+@font-face {
+    font-family: "LibreFranklin";
+    font-weight: 900;
+    font-style: italic;
+    src: url("../fonts/LibreFranklin-BlackItalic.ttf") format('truetype');
+}

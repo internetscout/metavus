@@ -1,0 +1,54 @@
+<?PHP
+#
+#   FILE:  ResendAccountActivation.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\Email;
+
+PageTitle("Resending Account Activation");
+?>
+<?PHP if ($H_AccountAlreadyActivated) { ?>
+<h1>Account Already Activated</h1>
+
+    <?PHP if ($H_EMailAddressUsed) { ?>
+    <p class="alert alert-primary">The account using the e-mail address
+    <i><?= $H_EMailAddress; ?></i> has already been activated.</p>
+    <?PHP } else { ?>
+    <p>The account with the user name <i><?= $H_UserName; ?></i> has
+    already been activated.</p>
+    <?PHP } ?>
+
+<?PHP } elseif ($H_EMailSent) { ?>
+<h1>Activation E-Mail Sent</h1>
+    <?PHP Email::printWhitelistNotice(); ?>
+    <?PHP if ($H_EMailAddressUsed) { ?>
+    <p class="alert alert-primary">A new account activation e-mail has been sent to <i><?=
+        $H_EMailAddress; ?></i>.</p>
+    <?PHP } else { ?>
+    <p>A new account activation e-mail has been sent to the e-mail address
+    associated with the user name <i><?= $H_UserName; ?></i>.</p>
+    <?PHP } ?>
+
+<?PHP } else { ?>
+<h1>Message Not Sent</h1>
+
+<div class="alert alert-danger">
+    <?PHP if ($H_UserFound) { ?>
+    <p>It was not possible to resend your account activation e-mail.</p>
+    <?PHP } else { ?>
+        <?PHP if ($H_EMailAddressUsed) { ?>
+        <p>No account was found associated with the e-mail address
+        <i><?= $H_EMailAddress; ?></i>.</p>
+        <?PHP } else { ?>
+        <p>No account was found associated with the user name
+        <i><?= $H_UserName; ?></i>.</p>
+        <?PHP } ?>
+    <?PHP } ?>
+</div>
+<?PHP } ?>

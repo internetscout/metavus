@@ -1,0 +1,52 @@
+<vocabulary>
+    <name>Teaching Methods</name> <!-- (does not correlate to a CWIS field) -->
+    <description>Words and phrases that describe ways of presenting instructional materials or conducting instructional activities.</description>
+    <version>Feb 2 2000</version>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-teaching-methods</url>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>>
+        <name>GEM Teaching Methods Vocabulary</name>
+        <namespace>http://purl.org/gem/instance/GEM-TM/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-teaching-methods</url>
+    </qualifier>
+    <term>Advanced organizers</term>
+    <term>Brainstorming</term>
+    <term>Computer assisted instruction</term>
+    <term>Computer simulations</term>
+    <term>Contingency management</term>
+    <term>Cooperative learning</term>
+    <term>Demonstrations</term>
+    <term>Dialog journals</term>
+    <term>Discovery learning</term>
+    <term>Discussions</term>
+    <term>Dramatic play drills</term>
+    <term>Experiential learning</term>
+    <term>Guided design</term>
+    <term>Hands-on learning</term>
+    <term>Interdisciplinary</term>
+    <term>Integrated instruction</term>
+    <term>Lab procedures</term>
+    <term>Learning modules</term>
+    <term>Lecture</term>
+    <term>Montessori Method</term>
+    <term>Multiple activities</term>
+    <term>Multimedia instruction</term>
+    <term>Museum education</term>
+    <term>Peer Tutoring</term>
+    <term>Programmed instruction</term>
+    <term>Project-based learning</term>
+    <term>Questioning techniques</term>
+    <term>Role playing</term>
+    <term>Self directed groups</term>
+    <term>Self-paced learning modules</term>
+    <term>Simulations and games</term>
+    <term>Teaching guides</term>
+    <term>Team teaching</term>
+    <term>Thematic approach</term>
+    <term>Tutorial programs</term>
+    <term>Visual instruction</term>
+    <term>Whole language approach</term>
+</vocabulary>

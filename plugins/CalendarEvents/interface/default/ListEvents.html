@@ -1,0 +1,132 @@
+<?PHP
+#
+#   FILE:  ListEvents.html (CalendarEvents plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+# button links and field definition
+$BaseLink = "index.php?P=P_CalendarEvents_ListEvents&amp;CK=".$H_ListChecksum;
+$TitleLink = "index.php?P=P_CalendarEvents_Event&amp;EventId=\$ID";
+$EditLink = "index.php?P=EditResource&amp;ID=\$ID";
+$DeleteLink = "index.php?P=EditResource&amp;ID=\$ID&amp;Submit=Delete";
+$NewEventLink = "index.php?P=EditResource&amp;ID=NEW&amp;SC=".$H_SchemaId;
+$ListFields = [
+    "Events: Title" => [
+        "MaxLength" => 32,
+        "Link" => $TitleLink,
+        "Heading" => "Title"
+    ],
+    "Events: Added By Id" => [
+        "Heading" => "Author"
+    ],
+    "Events: Last Modified By Id" => [
+        "Heading" => "Editor"
+    ],
+    "Events: Date Of Record Creation" => [
+        "Heading" => "Created"
+    ],
+    "Events: Date Last Modified" => [
+        "Heading" => "Modified"
+    ],
+    "Events: Release Flag" => [
+        "Heading" => "Rel.",
+        "ValueFunction" => function ($Event) {
+            return $Event->get('Release Flag') ? "Yes" : "No";
+        }
+    ]
+];
+
+# retrieve existing search text
+$SearchText = defaulthtmlentities(StdLib::getFormValue("F_SearchText"));
+
+# prepare statistic message
+$SafePastEventsCount = defaulthtmlentities($H_EventCountsByTense["Past"]);
+$SafeOccurringEventsCount = defaulthtmlentities($H_EventCountsByTense["Occurring"]);
+$SafeFutureEventsCount = defaulthtmlentities($H_EventCountsByTense["Future"]);
+$StatisticMsg = "";
+if ($H_EventCount > 0) {
+    $StatisticMsg .= "Stats: ".$SafePastEventsCount." past "
+            .StdLib::pluralize("event", $SafePastEventsCount).", "
+            .$SafeOccurringEventsCount." "
+            .StdLib::pluralize("event", $SafeOccurringEventsCount)
+            ." currently occuring, and ".$SafeFutureEventsCount
+            ." future ".StdLib::pluralize("event", $SafeFutureEventsCount);
+}
+
+
+# prepare search option list definition
+$SearchListName = "F_Field";
+$SearchListSelected = StdLib::getFormValue("F_Field");
+$SearchListOptions = [
+    "ALL" => "(any field)",
+    "Title" => "Title",
+    "ShortTitle" => "Short Title",
+    "Description" => "Description",
+    "URL" => "URL",
+    "ContactEmail" => "Contact Email",
+    "Venue" => "Venue",
+    "Locality" => "City",
+    "Region" => "State",
+    "StartDate" => "Start Date",
+    "EndDate" => "End Date",
+];
+$SearchList = new HtmlOptionList($SearchListName, $SearchListOptions, $SearchListSelected);
+
+# prepare condition option list definition
+$ConditionListName = "F_Condition";
+$ConditionListSelected = StdLib::getFormValue("F_Condition");
+$ConditionListOptions = [
+    "contains" => "contains",
+    "equals" => "equals",
+    "is before" => "is before",
+    "is after" => "is after",
+];
+$ConditionList = new HtmlOptionList(
+    $ConditionListName,
+    $ConditionListOptions,
+    $ConditionListSelected
+);
+
+# config ItemListUI and render
+$ListUI = new ItemListUI($ListFields);
+$ListUI->baseLink($BaseLink);
+$ListUI->itemTypeName("Event");
+$ListUI->heading("Calendar Events");
+$ListUI->subheading($StatisticMsg);
+$ListUI->noItemsMessage("There are no events.");
+$ListUI->addActionButton("Edit", $EditLink, 'Pencil.svg');
+$ListUI->addActionButton("Delete", $DeleteLink, 'Delete.svg');
+$ListUI->addTopButton("Add Event", $NewEventLink, 'Plus.svg');
+$ListUI->itemsPerPage($H_EventsPerPage);
+
+?>
+
+<div class="container">
+  <div class="row">
+    <div class="col"></div>
+    <div class="col">
+      <form name="EventList" method="post" action="index.php?P=P_CalendarEvents_ListEvents">
+        <b>Search:</b>
+        <?PHP
+            $SearchList->PrintHtml();
+            $ConditionList->PrintHtml();
+        ?>
+        <input type="text" name="F_SearchText" id="SearchText" size="15" value="<?=
+            $SearchText ?>"/>
+        <button type="submit" value="Go" class="btn btn-primary btn-sm mv-button-iconed"><img
+            src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
+            class="mv-button-icon" /> Search</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<?PHP
+$ListUI->display($H_Events, $H_EventCount, $H_StartingIndex);

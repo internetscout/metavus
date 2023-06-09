@@ -1,0 +1,53 @@
+<?PHP
+#
+#   FILE:  ExportUsers.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Export Users</h1>
+
+<p><strong>Important:</strong> Exporting user accounts into a file should be
+handled by a knowledgeable and skilled staff member. Please carefully read the
+instructions below.</p>
+
+<p>The export format is a file containing tab separated fields with each record
+terminated by a newline (carriage return) character. The UserPassword field will
+be encrypted. There will one line for each User Access Privilege that is
+assigned to the user. An exported file will be in the following format:</p>
+
+<ul>
+    <li>UserName</li>
+    <li>UserPassword</li>
+    <li>Email</li>
+    <li>Website</li>
+    <li>RealName</li>
+    <li>Address1</li>
+    <li>Address2</li>
+    <li>City</li>
+    <li>State</li>
+    <li>Country</li>
+    <li>Zipcode</li>
+    <li>ActiveUI</li>
+    <li>DefaultBrowsingField</li>
+    <li>UserAccessPrivilege</li>
+</ul>
+
+<p>After the file has been created for download, a download link will be
+provided. Click it to download the exported user file.</p>
+
+<form method="post" action="index.php?P=ExportUsersExecute">
+    <?PHP $H_Form->DisplayFormTable(); ?>
+    <button type="submit" name="Submit" class="btn btn-primary mv-button-iconed"
+        value="Export Users"><img src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt=""
+        class="mv-button-icon" /> Export Users</button>
+    <button type="submit" name="Submit" class="btn btn-primary mv-button-iconed"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>

@@ -1,0 +1,343 @@
+<?PHP
+#
+#   FILE:  ExportResources.html (ResourceExporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+use ScoutLib\HtmlOptionList;
+
+if ($H_Action == "SETUP") {
+    ?>
+
+<h1>Export Resources</h1>
+
+    <?PHP
+    if (isset($H_ErrorMessages)) {
+        ?><ul class="mv-form-error"><?PHP
+foreach ($H_ErrorMessages as $ErrorMessage) {
+    print "<li>".$ErrorMessage."</li>\n";
+}
+?></ul><?PHP
+    }
+
+    if (!count($H_AvailableFormats)) {
+        ?>
+<div class="mv-form-error">
+<p>No export formats are available.  Please install and/or enable an export
+format plugin to export resources.</p>
+</div>
+    <?PHP  } else {  ?>
+<form method="POST" action="index.php?P=P_ResourceExporter_ExportResources">
+<table class="table table-striped">
+<tr>
+    <th><label for="">Source</label></th>
+    <td><?PHP
+           $OptList = new HtmlOptionList("F_ResourceSource", $H_AvailableSources);
+           $OptList->DisabledOptions($H_DisabledSources);
+           $OptList->SelectedValue($H_SelectedSource);
+           $OptList->PrintHtml();
+    ?></td>
+</tr><?PHP
+
+$Count = 0;
+foreach ($H_AvailableFields as $SchemaId => $Fields) {
+    $SchemaName = $H_SchemaNames[$SchemaId];
+    ?>
+<tr class="mv-form-schemaid-<?= $SchemaId ?>">
+      <th><label for=""><?= $SchemaName; ?> Fields</label></th>
+      <td>
+        <div style="float:right; text-align: right;">
+          <span data-schemaid="<?= $SchemaId ?>" class="CheckAllFields smalleditbutton"
+                >Check All</span>
+          <br/>
+          <br/>
+          <span data-schemaid="<?= $SchemaId ?>" class="UncheckAllFields smalleditbutton"
+                >Uncheck All</span>
+        </div>
+
+        <?PHP
+        foreach ($Fields as $Id => $Field) {
+            $FieldIsDisabled = !in_array(
+                $Field->Type(),
+                $H_ExportedDataTypes[$H_SelectedFormat]
+            );
+            $Disabled = $FieldIsDisabled ? "disabled" : "";
+            $SpanClass = $FieldIsDisabled ? "class=\"cw-content-disabled\"" : "";
+            ?><span style="display: inline-block; width: 30ex;"<?PHP
+                        print $SpanClass;  ?>>
+                <input type="checkbox" class="FieldCheckbox"
+                        data-schemaid="<?= $SchemaId ?>"
+                        name="F_ExportField_<?= $Id;  ?>" <?PHP
+                        print $Disabled;  ?> /><?PHP
+                        print htmlspecialchars($Field->Name());  ?>
+            </span><?PHP
+        }
+        ?>
+    </td>
+</tr>
+<?PHP } ?>
+<tr>
+    <th><label for="">Format</label></th>
+    <td><?PHP
+        $Formats = [];
+    foreach ($H_AvailableFormats as $FormatName) {
+        $Formats[$FormatName] = $FormatName;
+    }
+        $OptList = new HtmlOptionList("F_Format", $Formats, $H_SelectedFormat);
+        $OptList->PrintHtml();
+    ?></td>
+</tr>
+</table>
+        <?PHP
+    # if any of the export formats have parameter settings defined
+        if (count($H_FormatParameters)) {
+            # for each format
+            foreach ($H_FormatParameters as $FormatName => $FormatParams) {
+                # if there are parameters for this format
+                if (is_array($FormatParams) && count($FormatParams)) {
+                    # display settings UI for format
+                    $TableId = "cw-content-paramstable-"
+                    .preg_replace("/[^a-zA-Z0-9]/", "", $FormatName);
+                    $Values = isset($H_FormatParameterValues[$FormatName]) ?
+                    $H_FormatParameterValues[$FormatName] : [];
+                    $CfgUI = new FormUI($FormatParams, $Values, $FormatName);
+                    $CfgUI->DisplayFormTable(
+                        $TableId,
+                        (($FormatName != $H_SelectedFormat) ? "display: none;" : null)
+                    );
+                }
+            }
+        }
+        ?>
+<button type="submit" name="F_Submit" value="Export"
+    class="btn btn-primary mv-button-iconed"><img
+    src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt=""
+    class="mv-button-icon" /> Export</button>
+<button type="submit" name="F_Submit" value="Cancel"
+    class="btn btn-danger mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+    class="mv-button-icon" /> Cancel</button>
+<span style="float: right;">
+  Save As: <input type="text" id="F_FieldSetName" name="F_FieldSetName"
+      value="<?= $H_FieldSetName ?>">
+  <button type="submit" name="F_Submit" value="Save"
+    class="btn btn-primary btn-sm mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Disk.svg'); ?>" alt="" class="mv-button-icon" /> Save</button>
+  <span style="display: inline-block; width: 3ex;">&nbsp;</span>
+  Saved Settings: <?= (new HtmlOptionList("F_FieldSet", $H_AvailableFieldSets, -1))->PrintHtml() ?>
+  <span id="cw-load" class="btn btn-primary btn-sm mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Check.svg'); ?>" alt="" class="mv-button-icon" /> Load</span>
+  <button class="btn btn-danger btn-sm mv-button-iconed" type="submit" name="F_Submit"
+        value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete</button>
+</span>
+</form>
+
+<script type="text/javascript">
+var source_schemas = <?= json_encode($H_SourceToSchemaMap); ?>;
+var fieldsets = <?= json_encode($H_FieldSets); ?>;
+var standard_fields = <?= json_encode($H_StandardFields); ?> ;
+
+$(document).ready(function() {
+    // for each .CheckAllFields button, set up a click handler that
+    // will check all fields where the schemaid on the checkbox
+    // matches the schemaid on the button
+    $('.CheckAllFields').click(function(event) {
+        var tgt_section = $(this).data('schemaid');
+        $('.FieldCheckbox').each(function() {
+            if ($(this).data('schemaid') == tgt_section &&
+                this.disabled == false) {
+                this.checked = true;
+            }
+        });
+    });
+
+    // for each .UncheckAllFields button, set up a click handler that
+    // will uncheck all fields where the schemaid on the checkbox
+    // matches the schemaid on the button
+    $('.UncheckAllFields').click(function(event) {
+        var tgt_section = $(this).data('schemaid');
+        $('.FieldCheckbox').each(function() {
+            if ($(this).data('schemaid') == tgt_section) {
+                this.checked = false;
+            }
+        });
+    });
+
+    // if none of the displayed fields are selected, select any
+    // standard mapped fields that are shown
+    function SelectStandardFieldsWhenNoneSelected() {
+        if ($('.FieldCheckbox:checked').filter(':visible').length == 0) {
+            $.each(standard_fields, function(scid, fields) {
+                $.each(fields, function(ix, field_id) {
+                    var tgt = $('.FieldCheckbox[name="F_ExportField_'+field_id+'"]');
+                    if (tgt.is(':visible')) {
+                        tgt.prop("checked", true);
+                    }
+                });
+            });
+        }
+    }
+
+    // function to toggle the display of elements based on which schemas they belong to
+    // @param tgt_schemas array of schemaids that we wish to display
+    function ToggleFieldDisplay(tgt_schemas) {
+        // iterate over all the tr elements, as these contain the fields we care about
+        $('tr').each(function(){
+            // attempt to extract the css clas for this element
+            var css_class = $(this).attr('class');
+            if (css_class != null && css_class != undefined) {
+                // if it had a class, see if it describes a schema
+                var res = $(this).attr('class').match(/mv-form-schemaid-([0-9]+)/);
+                if (res) {
+                    // if so, pull out which schema and hide or show it as necessary
+                    var schemaid = parseInt(res[1]);
+                    if (jQuery.inArray(schemaid, tgt_schemas) == -1) {
+                        $(this).hide();
+                    } else {
+                        $(this).show();
+                    }
+                }
+            }
+        });
+
+        SelectStandardFieldsWhenNoneSelected();
+    }
+
+    // load saved settings
+    function LoadSettings(tgt_name) {
+        if (tgt_name in fieldsets) {
+            $('#F_Format option:selected').prop('selected', false);
+            $('#F_Format option:contains("'+fieldsets[tgt_name]["Format"]+'")').prop(
+                'selected', true);
+            $('#F_Format').change();
+
+            $('.FieldCheckbox:checked').prop("checked", false);
+            $.each(fieldsets[tgt_name]["FieldIds"], function(ix, field_id) {
+                $('.FieldCheckbox[name="F_ExportField_'+field_id+'"]').prop("checked", true);
+            });
+
+            // for each format that has parameters
+            $.each(fieldsets[tgt_name]["FormatParams"], function(fmt_name, fmt_params){
+                // for each parameter that has values
+                $.each(fmt_params, function(p_name, p_vals) {
+                    // get the name of our form element
+                    var el_id = 'F_' + fmt_name + '_' + p_name;
+                    // if this is a multi-select element
+                    if (Array.isArray(p_vals)) {
+                        // deselect anything currently selected
+                        $('#' + el_id + '\\[\\] option:selected').prop('selected', false);
+
+                        // then select each of our values
+                        $.each(p_vals, function(p_ix, p_val) {
+                            $('#' + el_id + '\\[\\] option[value="'+p_val+'"]')
+                                .prop('selected', true);
+                        });
+                    } else {
+                        // fos single-value elements, just set the value
+                        $('#' + el_id).val(p_vals);
+                    }
+                });
+            });
+        }
+    }
+
+    // toggle the field display appropriately for the initially selected source
+    ToggleFieldDisplay( source_schemas[ $('#F_ResourceSource').val() ] );
+
+    // and set up a change handler so that we'll toggle again when new
+    // sources are selected
+    $('#F_ResourceSource').on('change', function() {
+        ToggleFieldDisplay( source_schemas[ $(this).val() ]);
+    });
+
+    // and set event handler to keep them updated
+    $('#F_Format').on('change', function() {
+        var FormatIds = {};
+            <?PHP
+            foreach ($H_AvailableFormats as $FormatName) {
+                $TableId = "cw-content-paramstable-"
+                        .preg_replace("/[^a-zA-Z0-9]/", "", $FormatName);
+                print 'FormatIds["'.$FormatName.'"] = "#'.$TableId.'";'."\n";
+            }
+            ?>
+
+            for (var Format in FormatIds) {
+                if (this.value === Format) {
+                    $(FormatIds[Format]).show();
+                } else {
+                    $(FormatIds[Format]).hide();
+                }
+            }
+        });
+
+    // add click handler to 'Load' button to load saved settings
+    $('#cw-load').on('click', function() {
+        var cur_set_name = $('#F_FieldSet option:selected').text();
+
+        if (cur_set_name != "--") {
+            $('#F_FieldSetName').val(cur_set_name);
+            $.cookie("ResourceExporter_FieldSetName", cur_set_name);
+        } else {
+            $('#F_FieldSetName').val("");
+            $.cookie("ResourceExporter_FieldSetName", "");
+        }
+
+        LoadSettings(cur_set_name);
+        SelectStandardFieldsWhenNoneSelected();
+    });
+
+    // if a name was provided, load that fieldset
+    if ($('#F_FieldSetName').val().length > 0) {
+        var tgt_name = $('#F_FieldSetName').val();
+        LoadSettings(tgt_name);
+
+        // and set our selector value
+        $('#F_FieldSet option:selected').prop('selected', false);
+        $('#F_FieldSet option:contains("' + tgt_name + '")').prop(
+            'selected', true);
+    }
+
+    // if the user pushes 'enter' in the FieldSetName, we want to 'save'
+    $('#F_FieldSetName').on('keypress', function(ev) {
+        if (ev.keyCode == 13) {
+            $('input[type=submit][value="Save"]').click();
+            return false;
+        } else {
+            return true;
+        }
+    });
+
+    // if the user pushes 'delete', load the selected fieldset
+    $('input[type=submit][value="Delete"]').on('click', function(){
+        $('#F_FieldSetName').val($('#F_FieldSet option:selected').text());
+    });
+ });
+</script>
+    <?PHP  }  ?>
+
+<?PHP  } elseif ($H_Action == "EXPORT") {  ?>
+<h1>Export Complete</h1>
+<p><?= $H_ExportedResourceCount;  ?> resources exported to
+<i><?= basename($H_ExportedFileName);  ?></i>.</p>
+<p>
+    <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=P_ResourceExporter_Download&FS=<?=
+        $H_ExportedFileSecret; ?>">
+        <img class="mv-button-icon" alt=""
+            src="<?= $AF->GUIFile('Download.svg') ?>"/>Download</a>
+    <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=P_ResourceExporter_ExportResources">
+        <img class="mv-button-icon" alt=""
+            src="<?= $AF->GUIFile('RefreshArrow.svg') ?>"/>Again</a>
+</p>
+
+<?PHP  } else {  ?>
+<h1>Export Resources - Error</h1>
+<p>UNKNOWN ACTION</p>
+
+<?PHP  }  ?>

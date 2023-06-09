@@ -1,0 +1,17 @@
+<?PHP
+#
+#   FILE:  GoTo.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+
+# (we only end up on this page on errors)
+
+$AF = ApplicationFramework::getInstance();
+include($AF->gUIFile("Common-404.html"));

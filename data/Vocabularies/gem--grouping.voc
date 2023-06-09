@@ -1,0 +1,22 @@
+<vocabulary>
+    <name>Grouping</name> <!-- (does not correlate to CWIS field) -->
+    <description>Words and phrases that describe the aggregation and demographics of students for purposes of instruction.</description>
+    <version>Feb 2 2000</version>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-grouping</url>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>>
+        <name>GEM Grouping Vocabulary</name>
+        <namespace>http://purl.org/gem/instance/GEM-GRO/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-grouping</url>
+    </qualifier>
+    <term>Cross age teaching </term>
+    <term>Heterogeneous grouping</term>
+    <term>Homogeneous grouping</term>
+    <term>Individualized instruction</term>
+    <term>Large Group instruction</term>
+    <term>Non-graded instructional grouping</term>
+    <term>Small group instruction</term>
+</vocabulary>

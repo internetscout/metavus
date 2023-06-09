@@ -1,0 +1,82 @@
+<?PHP
+#
+#   FILE:  ManageFolders.html (Folders plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use ScoutLib\ApplicationFramework;
+
+# ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+$AF->requireUIFile("jquery-ui.css", AF::ORDER_FIRST);
+$AF->requireUIFile("jquery-ui.js");
+$AF->requireUIFile("Folders_TransferFolder.js");
+
+?>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <h1>Manage Folders</h1>
+    </div>
+    <div class="col text-right">
+      <form method="get" action="index.php">
+        <input type="hidden" name="P" value="P_Folders_AddFolder" />
+
+        <label for="FolderName">Add New Folder:</label>
+        <input type="text" id="FolderName" name="FolderName" placeholder="Folder Name"
+            required="true" />
+
+        <button class="btn btn-primary mv-button-iconed" type="submit" value="Add"><img
+            src="<?= $AF->GUIFile('Plus.svg'); ?>" alt="" class="mv-button-icon" /> Add</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<p>Folders are customizable "packages" of individual resources that allow
+      you to create personalized collections of resources from within the portal
+      for your own purposes. Folders can be named, described, and shared with
+      others. They can be used to create modules or lessons, annotated
+      bibliographies, or just lists of interesting resources for you or your
+      colleagues to browse.</p>
+<p>Folders of resources, including any notes or descriptions you have entered,
+      can be shared with others by checking the <i>Make Public</i> box next to the folder you
+      wish to make public. When you make a folder public, you will notice
+      a <abbr title="Uniform Resource Locator">URL</abbr> below the folder title
+      when you click the name of that folder. This
+      <abbr title="Uniform Resource Locator">URL</abbr> can be sent to anyone
+      with whom you wish to share your folder and its contents. The recipients
+      do not need to be users of the portal, or log in to use your folder
+      (though they might want to in order to create their own folders!)</p>
+
+<p class="mv-folders-dragnote"><b>Tip:</b> drag folders and resources to rearrange them.</p>
+
+<?PHP if ($HasFolders) { ?>
+  <div class="mv-folders-folders">
+    <?PHP PrintFolders($ResourceFolder->Id(), $Folders, $SelectedFolder); ?>
+  </div>
+<?PHP } else { ?>
+  <p class="mv-folders-noitems">There are no folders.</p>
+<?PHP } ?>
+
+<div id="mv-folders-edit-tooltip" class="mv-section mv-section-popup mv-section-tooltip
+    mv-section-shadowed"></div>
+
+<div id="mv-folders-transfer-folder-popup" style="display: none">
+  <div id="#mv-folders-transfer-folder-popup-body">
+    <p id="mv-folders-transfer-folder-popup-description">
+      Please enter the user name of the user whom you want to transfer this folder
+      (<span class="mv-folders-folder-name"></span>) to.<br/>
+      <b>Caution</b>: This operation cannot be undone.</p>
+    <label id="mv-folders-transfer-folder-popup-uname-label">User Name:</label>
+    <input id="mv-folders-transfer-folder-popup-uname-field"
+           type="text" name="mv-folders-transfer-folder-popup-uname">
+    <div id="mv-folders-transfer-folder-popup-success" class="mv-folders-popup-success"></div>
+    <div id="mv-folders-transfer-folder-popup-error" class="mv-folders-popup-error"></div>
+  </div>
+</div>

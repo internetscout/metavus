@@ -1,0 +1,62 @@
+<vocabulary>
+    <name>Beneficiary</name> <!-- (correlates to CWIS Audience field) -->
+    <description>Words or phrases that describe the ultimate beneficiary of the resource being described--usually some category of student or trainee.</description>
+    <version>Sep 23 1999</version>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-beneficiary</url>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>>
+        <name>GEM Beneficiary Vocabulary</name>
+        <namespace>http://purl.org/gem/instance/GEM-BEN/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-beneficiary</url>
+    </qualifier>
+    <term>Administrators</term>
+    <term>Adult education students</term>
+    <term>Advanced placement students</term>
+    <term>African-American students</term>
+    <term>Asian-American Students</term>
+    <term>At-risk students</term>
+    <term>Bilingual students</term>
+    <term>College/ University Instructors</term>
+    <term>Culturally diverse classroom</term>
+    <term>Curriculum supervisors</term>
+    <term>Developmentally disabled students</term>
+    <term>Disabled students</term>
+    <term>Economically disadvantaged students</term>
+    <term>Elementary school teachers</term>
+    <term>Emotionally disabled students</term>
+    <term>English as a second languages (ESL) students </term>
+    <term>Female students</term>
+    <term>General Public</term>
+    <term>Gifted or honors students</term>
+    <term>Hearing-impaired students</term>
+    <term>Hispanic-American students</term>
+    <term>Learning disabled students</term>
+    <term>Librarians</term>
+    <term>Limited English proficiency (LEP) students </term>
+    <term>Male students</term>
+    <term>Middle school teachers</term>
+    <term>Minority students</term>
+    <term>Native American Students</term>
+    <term>Other educational professionals</term>
+    <term>Pacific Islanders</term>
+    <term>Parents</term>
+    <term>Physically disabled students</term>
+    <term>Policy-makers</term>
+    <term>Remedial students</term>
+    <term>Rural students</term>
+    <term>Secondary school teachers</term>
+    <term>Students</term>
+    <term>Students with multiple disabilities</term>
+    <term>Student teachers</term>
+    <term>Suburban students</term>
+    <term>Supervisors</term>
+    <term>Teachers</term>
+    <term>Teacher educators</term>
+    <term>Teaching professionals</term>
+    <term>Urban students</term>
+    <term>Vision-impaired students</term>
+    <term>All</term>
+</vocabulary>

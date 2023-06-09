@@ -1,0 +1,51 @@
+#
+# APACHE HTACCESS SUPPORT FOR METAVUS
+# If additional rewrite rules need to be added, they should be located
+# before this section, and will have to be preceded by their own entries
+# for RewriteEngine and RewriteBase.
+#
+
+<IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteBase X-REWRITEBASE-X
+# make sure fcgi installations get HTTP_AUTHORIZATION headers
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+# -- URL fingerprinting support
+RewriteRule .* - [E=URL_FINGERPRINTING_SUPPORT:1]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{QUERY_STRING} !=URLF=1
+RewriteRule ^(.+)\.[0-9A-F]{6}\.([a-z]+)$ $1.$2?URLF=1 [L]
+# -- SCSS support
+RewriteRule .* - [E=SCSS_REWRITE_SUPPORT:1]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{QUERY_STRING} !=SCSS=1
+RewriteRule ^(.+\.css)$ local/data/caches/SCSS/$1?SCSS=1 [L]
+# -- JavaScript auto-minification support
+RewriteRule .* - [E=JSMIN_REWRITE_SUPPORT:1]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{QUERY_STRING} !=JSMIN=1
+RewriteRule ^(.+\.js)$ local/data/caches/JSMin/$1?JSMIN=1 [L]
+# -- Clean URL support (must be last rewrite)
+RewriteRule .* - [E=CLEAN_URL_SUPPORT:1]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php [L]
+</IfModule>
+
+# set Cache Policy (static assets and fingerprinted files)
+<FilesMatch "\.(css|js|png|jpe?g|gif|svg|ico|swf|flv|mp4|pdf|docx?|pptx?|zip|woff)$">
+  Header set Cache-Control "max-age=604800, public"
+</FilesMatch>
+
+# enable compression if available
+<IfModule mod_version.c>
+<IfVersion >= 2.4>
+<IfModule mod_mime.c>
+<IfModule mod_deflate.c>
+AddType application/x-font-woff woff
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-font-woff
+</IfModule>
+</IfModule>
+</IfVersion>
+</IfModule>
+

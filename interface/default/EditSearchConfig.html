@@ -1,0 +1,30 @@
+<?PHP
+#
+#   FILE:  EditSearchConfig.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Edit Search Configuration");
+
+?>
+
+<h1>Search Configuration</h1>
+
+<?PHP $H_FormUI->DisplayErrorBlock(); ?>
+
+<form method="post" action="index.php?P=EditSearchConfig">
+    <?PHP $H_FormUI->DisplayFormTable(); ?>
+
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon" /> Save Changes</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+
+</form>

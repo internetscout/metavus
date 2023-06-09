@@ -1,0 +1,30 @@
+<vocabulary>
+    <name>Learning Resource Type</name> <!-- (correlates to CWIS Resource Type) -->
+    <description>Specific kind of learning object; indicate the potential educational use(s) or type(s) of content associated with the learning resource. Use LOM vocabulary values in conjunction with an additional, referenced vocabulary that extends these.</description>
+    <version>2.0 (Nov 21 2003)</version>
+    <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    <owner>
+        <name>CanCore</name>
+        <url>http://cancore.athabascau.ca</url>
+    </owner>
+    <qualifier>
+        <name>CanCore Learning Resource Type Vocabulary</name>
+        <namespace></namespace>
+        <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    </qualifier>
+    <term>Exercise</term>
+    <term>Simulation</term>
+    <term>Questionnaire</term>
+    <term>Diagram</term>
+    <term>Figure</term>
+    <term>Graph</term>
+    <term>Index</term>
+    <term>Slide</term>
+    <term>Table</term>
+    <term>Narrative text</term>
+    <term>Exam</term>
+    <term>Experiment</term>
+    <term>Problem statement</term>
+    <term>Self assessment</term>
+    <term>Lecture</term>
+</vocabulary>

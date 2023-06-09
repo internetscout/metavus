@@ -1,0 +1,47 @@
+<?PHP
+#
+#   FILE:  PhpInfo.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>PHP Information</h1>
+
+<p><a href="index.php?P=SysAdmin">Return to <i>Portal Administration</i></a></p>
+
+<iframe src="index.php?P=PhpInfo&IF=1" frameborder="0" height="600" width="100%"
+    title="PHP Configuration Information">
+    <p>Your browser does not support iframes, which are required.</p>
+</iframe>
+
+<script type="text/javascript">
+/**
+ * Resize the iframe.
+ */
+(function() {
+    var $iframe = $("iframe");
+
+    $iframe.load(function() {
+        var $this = $(this);
+        var height;
+
+        if (this.contentDocument) {
+            height = this.contentDocument.body.offsetHeight;
+        } else {
+            height = this.contentWindow.document.body.offsetHeight;
+        }
+
+        // additional 55px for IE scrollbar when shown
+        height += 55;
+
+        // resize the iframe
+        $this.height(height);
+    });
+}());
+</script>

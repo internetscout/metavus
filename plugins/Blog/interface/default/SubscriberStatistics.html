@@ -1,0 +1,72 @@
+<?PHP
+#
+#   FILE:  SubscriberStatistics.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\User;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+function getUserInfo(int $UserId, string $UserField)
+{
+    static $UserData = [];
+
+    $UserFields = ["UserName", "EMail", "RealName"];
+    if (!in_array($UserField, $UserFields)) {
+        throw new Exception("Unsupported field: ".$UserField);
+    }
+
+    if (!isset($UserData[$UserId])) {
+        $User = new User($UserId);
+        $UserData[$UserId] = [];
+        foreach ($UserFields as $Field) {
+            $UserData[$UserId][$Field] = $User->get($Field);
+        }
+    }
+
+    return $UserData[$UserId][$UserField];
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$BaseLink = "index.php?P=P_Blog_SubscriberStatistics";
+
+$Fields = [
+    "UserName" => [
+        "ValueFunction" => function ($UserId, $UserField) {
+            $UserName = getUserInfo($UserId, $UserField);
+            return "<a href='index.php?P=EditUser&ID=".$UserId."'>".$UserName."</a>";
+        },
+    ],
+    "EMail" => [
+        "Heading" => "E-Mail",
+        "AllowHTML" => true,
+        "ValueFunction" => function ($UserId, $UserField) {
+            $SafeEmail = defaulthtmlentities(getUserInfo($UserId, $UserField));
+            return "<a href='mailto:".$SafeEmail."'>".$SafeEmail."</a>";
+        },
+    ],
+    "RealName" => [
+        "Heading" => "Full Name",
+        "ValueFunction" => "getUserInfo",
+    ],
+];
+
+$ListUI = new ItemListUI($Fields);
+$ListUI->noItemsMessage("There are no subscribers.");
+$ListUI->itemsPerPage($H_ItemsPerPage);
+$ListUI->baseLink($BaseLink);
+
+?>
+<h1>Blog Subscriber Statistics</h1>
+
+<?PHP if (isset($H_Graph)) { ?>
+    <?PHP $H_Graph->Display(); ?>
+<?PHP } ?>
+
+<?PHP $ListUI->display($H_Subscribers, $H_SubscriberCount, $H_StartingIndex); ?>

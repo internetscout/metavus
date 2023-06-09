@@ -1,0 +1,177 @@
+<?PHP
+#
+#   FILE:  ListEntries.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\Plugins\Blog;
+use Metavus\User;
+use ScoutLib\PluginManager;
+
+/**
+ * Check if notifications for the passed in entry can be sent out or not.
+ *
+ * This method will check if the current (passed in) entery is allowed to Send
+ * out notifications to its subscribers. The return value (bool) will be used to determine
+ * whether or not the notify button will be displayed.
+ *
+ * @param mixed $Entry An entry.
+ * @return bool true if notifications can be sent out. Otherwise, returns false.
+ */
+function ShouldDisplayEmailNotify($Entry)
+{
+    $Blog = PluginManager::getInstance()->getPlugin("Blog");
+    return $Entry->GetBlogId() == $Blog->ConfigSetting("EmailNotificationBlog")
+        && $Blog->NotificationsCouldBeSent($Entry, User::getCurrentUser());
+}
+
+/**
+ * Get the entry's field value.
+ *
+ * This method is used to return the value of a field with the passed in $FieldId
+ * for the passed in entry.
+ *
+ * @param mixed $Entry An entry.
+ * @param mixed $FieldId The id of the field whose value is to be returned.
+ * @return mixed field value if exists. Otherwise, returns an empty string.
+ */
+function GetFieldValueForDisplay($Entry, $FieldId)
+{
+    global $H_Schema;
+
+    $Methods = [
+        Blog::TITLE_FIELD_NAME => "TitleForDisplay",
+        Blog::AUTHOR_FIELD_NAME => "AuthorForDisplay",
+        Blog::EDITOR_FIELD_NAME => "EditorForDisplay",
+        Blog::CREATION_DATE_FIELD_NAME => "CreationDateForDisplay",
+        Blog::MODIFICATION_DATE_FIELD_NAME => "ModificationDateForDisplay",
+        Blog::PUBLICATION_DATE_FIELD_NAME => "PublicationDateForDisplay"
+    ];
+    $FieldName = $H_Schema->GetField($FieldId)->Name();
+
+    return isset($Methods[$FieldName])
+        ? $Entry->{$Methods[$FieldName]}() : "";
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$PageTitle = "Blog Entries";
+
+PageTitle($PageTitle);
+
+# item list ui fields definitions
+$BlogFieldDefinitions = [
+    Blog::TITLE_FIELD_NAME => [
+        "Heading" => "Title",
+        "MaxLength" => 32,
+        "Link" => "index.php?P=P_Blog_Entry&amp;ID=\$ID",
+        "ValueFunction" => "GetFieldValueForDisplay"
+    ],
+    Blog::AUTHOR_FIELD_NAME => [
+        "Heading" => "Author",
+        "ValueFunction" => "GetFieldValueForDisplay"
+    ],
+    Blog::EDITOR_FIELD_NAME => [
+        "Heading" => "Editor",
+        "ValueFunction" => "GetFieldValueForDisplay"
+    ],
+    Blog::CREATION_DATE_FIELD_NAME => [
+        "Heading" => "Created",
+        "ValueFunction" => "GetFieldValueForDisplay"
+    ],
+    Blog::MODIFICATION_DATE_FIELD_NAME => [
+        "Heading" => "Modified",
+        "DefaultSortField" => true,
+        "ValueFunction" => "GetFieldValueForDisplay",
+    ],
+    Blog::PUBLICATION_DATE_FIELD_NAME => [
+        "Heading" => "Publication Date",
+        "ValueFunction" => "GetFieldValueForDisplay"
+    ],
+    "Public" => [
+        "Heading" => "Pub",
+        "ValueFunction" => function ($Entry) {
+            return $Entry->userCanView(User::getAnonymousUser()) ? "Yes" : "No";
+        },
+        "Sortable" => false
+    ]
+];
+
+# blog list item button links
+$BaseLink = "index.php?P=P_Blog_ListEntries&amp;CK=".$H_Checksum."&amp;".$H_BlogSelectVarName
+    ."=".$H_CurrentBlogId;
+$ViewLink = "index.php?P=P_Blog_Entry&amp;ID=\$ID";
+$EditLink = $H_Schema->editPage();
+$NotifyLink = "index.php?P=P_Blog_ConfirmNotifySubscribers&amp;ID=\$ID";
+$DeleteLink = "index.php?P=EditResource&amp;ID=\$ID&amp;Submit=Delete";
+
+# Top level button and option list links
+$AddNewEntryLink = str_replace('$ID', "NEW&amp;SC=".$SafeSchemaId, $H_Schema->editPage());
+$ManageSubscribersLink = "index.php?P=P_Blog_ManageSubscribers";
+$BlogOptionListLink = "index.php?P=P_Blog_ListEntries";
+
+# initiate and add action buttons to the blog entry list
+$ListUI = new ItemListUI($BlogFieldDefinitions);
+$ListUI->BaseLink($BaseLink);
+$ListUI->AddActionButton(
+    "View",
+    $ViewLink,
+    'EyeOpen.svg',
+    null,
+    ["title" => "View this blog entry"]
+);
+$ListUI->AddActionButton(
+    "Edit",
+    $EditLink,
+    "Pencil.svg",
+    null,
+    ["title" => "Edit this blog entry"]
+);
+$ListUI->AddActionButton(
+    "Notify",
+    $NotifyLink,
+    "NotifyEmail.svg",
+    "ShouldDisplayEmailNotify",
+    ["title" => "Send e-mail notifications to subscribers about this blog entry"]
+);
+$ListUI->AddActionButton(
+    "Delete",
+    $DeleteLink,
+    "Delete.svg",
+    null,
+    ["title" => "Permanently delete this blog entry"]
+);
+
+$TransportUI = $ListUI->transportUI();
+$TransportUI->sortField($H_SortField);
+$TransportUI->reverseSortFlag($H_ReverseSort);
+
+# add a "pick-blog" option list
+$Blog = PluginManager::getInstance()->getPlugin("Blog");
+$ListUI->AddTopOptionList(
+    $Blog->GetAvailableBlogs(),
+    $H_BlogSelectVarName,
+    $BlogOptionListLink,
+    $H_CurrentBlogId
+);
+
+# add a button linking to Manage Subscribers page
+if ($H_CurrentBlogId == $Blog->ConfigSetting("EmailNotificationBlog")) {
+    $ListUI->AddTopButton("Manage Subscribers", $ManageSubscribersLink, 'cog.png');
+}
+
+# add an add-entry button for user with the privilege
+if ($H_Schema->UserCanAuthor(User::getCurrentUser())) {
+    $ListUI->AddTopButton("New Entry", $AddNewEntryLink, 'Plus.svg');
+}
+
+# set other setting and display the list
+$ListUI->Heading($PageTitle);
+$ListUI->NoItemsMessage("There are no blog entries.");
+$ListUI->ItemsPerPage($H_PageSize);
+$ListUI->Display($H_BlogEntries, $H_EntryCount, $H_PageOffset);

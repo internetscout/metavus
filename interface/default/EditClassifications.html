@@ -1,0 +1,366 @@
+<?PHP
+#
+#   FILE:  EditClassifications.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+* Print an array of classifications used for hiearchy traversal and
+* classification editing.
+* @param array $Classifications An array of classifications to print.
+* @param MetadataField $Field currently in use.
+* @param string $StartLetter currently selected for pagination.
+* @param string $Search applied to these results.
+* @see PrintClassification()
+*/
+function PrintClassifications(array $Classifications, $Field, $Parent, $StartLetter, $Search)
+{
+    # some default values for splitting up the entries
+    $NumberOfColumns = InterfaceConfiguration::getInstance()->getInt("NumColumnsPerBrowsePage");
+    $MinEntriesPerColumn = 3;
+
+    # determine the number of entries to put in each column
+    $EntriesPerColumn = max(
+        round(count($Classifications) / $NumberOfColumns),
+        $MinEntriesPerColumn
+    );
+
+    reset($Classifications);
+
+    for ($ColumnNo = 0; $ColumnNo < $NumberOfColumns; $ColumnNo++) {
+        for ($EntryNo = 0; $EntryNo < $EntriesPerColumn; $EntryNo++) {
+            # reached the end of results before reacing th end of a column
+            if (($Classification = current($Classifications)) === false) {
+                break 2;
+            }
+
+            PrintClassification($Classification, $Field, $Parent, $StartLetter, $Search);
+
+            next($Classifications);
+        }
+
+        print("</td><td>");
+    }
+
+    reset($Classifications);
+}
+
+/**
+* Print a single classification entry.
+* @param Classification $Classification The classification to print.
+* @param MetadataField $Field currently in use.
+* @param string $StartLetter currently selected for pagination.
+* @param string $Search applied to these results.
+* @see PrintClassifications()
+*/
+function PrintClassification(Classification $Classification, $Field, $Parent, $StartLetter, $Search)
+{
+    $AF = ApplicationFramework::getInstance();
+    $SafeId = defaulthtmlentities($Classification->Id());
+    $SafeName = ($Search !== null) ?
+        defaulthtmlentities($Classification->FullName()) :
+        defaulthtmlentities($Classification->SegmentName());
+    $SafeResourceCount = defaulthtmlentities($Classification->FullResourceCount());
+
+    $TgtParams =
+        ( ($Search !== null) ? ("&amp;SQ=".urlencode($Search)) : "")
+        .( ($StartLetter !== null) ? ("&amp;SL=".urlencode($StartLetter)) : "")
+        .( ($Field  !== null) ? ("&amp;FieldId=".$Field->Id()) : "");
+
+    $ParentParams = ( ($Parent !== null) ? ("&amp;ParentId=".$Parent->Id()) : "");
+    ?>
+  <p>
+      <a href="index.php?P=EditClassifications&amp;ParentId=<?= $SafeId.$TgtParams; ?>"><?=
+            $SafeName; ?></a>
+      (<?= $SafeResourceCount; ?>)
+      <a class="btn btn-primary btn-sm mv-button-iconed"
+        href="index.php?P=EditClassification&amp;ClassificationId=<?=
+            $SafeId.$TgtParams.$ParentParams; ?>"><img src="<?= $AF->GUIFile('Pencil.svg'); ?>"
+        alt="" class="mv-button-icon"/> Edit</a>
+  </p>
+    <?PHP
+}
+
+/**
+* Pluralize the given word with the given suffix if the count is not +/- 1.
+* @param string $Word The word to pluralize.
+* @param string $Suffix The suffix added to $Word to make it plural.
+* @param int $Count The number of items counted.
+* @return Returns the pluralized word if it should be pluralized.
+*/
+function Pluralize($Word, $Suffix, $Count)
+{
+    return $Count == 1 || $Count == -1 ? $Word : $Word . $Suffix;
+}
+
+/**
+* Print an option list containing metadata schemas used to select the metadata
+* schema.
+* @param MetadataSchema $SchemaInUse The metadata schema in use.
+*/
+function PrintSchemaOptionList(MetadataSchema $SchemaInUse)
+{
+    $Options = [];
+
+    # get the metadata schema options
+    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+        $Options[$Schema->Id()] = $Schema->Name() . " Schema";
+    }
+
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
+    $OptList->SubmitOnChange(true);
+    $OptList->PrintHtml();
+}
+
+/**
+* Print an option list containing the tree fields for the schema in use.
+* @param MetadataSchema $SchemaInUse Metadata schema in use.
+* @param MetadataField $FieldInUse The metadata field to select.
+*/
+function PrintTreeFieldOptionList(MetadataSchema $SchemaInUse, MetadataField $FieldInUse = null)
+{
+    $OptList = new HtmlOptionList(
+        "FieldId",
+        $SchemaInUse->GetFieldNames(MetadataSchema::MDFTYPE_TREE),
+        is_null($FieldInUse) ? null : $FieldInUse->Id()
+    );
+    $OptList->SubmitOnChange(true);
+    $OptList->PrintIfEmpty(false);
+    $OptList->PrintHtml();
+}
+
+/**
+* Print the classification breadcrumb links for the given parent classification.
+* @param Classification $Parent The parent classification to print the links for.
+* @param string $SearchQuery.
+* @param MetadataField $Field involved in the breadcrumbs.
+*/
+function PrintClassificationBreadcrumb($Parent, $SearchQuery, $Field)
+{
+    # don't print anything if there isn't a parent selected
+    if (is_null($Parent)) {
+        return;
+    }
+
+    # get the hiearchy up to the parent classification
+    $Hierarchy = GetClassificationHierarchy($Parent);
+    $HierarchyStrings = [];
+
+    # transform the hiearchy into an array of classification names
+    foreach ($Hierarchy as $Classification) {
+        $SafeId = defaulthtmlentities($Classification->Id());
+        $Link = "index.php?P=EditClassifications&amp;ParentId=".$SafeId
+            .($SearchQuery !== null ? "&amp;SQ=".urlencode($SearchQuery) : '');
+        $HierarchyStrings[] = '<a href="'.$Link.'">'
+            .$Classification->SegmentName()."</a>";
+    }
+
+    # separate each link by "--" and print them
+    $Link = "index.php?P=EditClassifications"
+        .($SearchQuery !== null ? "&amp;SQ=".urlencode($SearchQuery) : '');
+    print '(<a class="small-close" href="'.$Link.'">x</a>) '
+        ."<b>".defaulthtmlentities($Field->Name())."</b>: "
+        .implode(" -- ", $HierarchyStrings);
+}
+
+/**
+* Print the URL to the page to add a classification for the given field
+* underneath the given parent classification.
+* @param MetadataField $Field The metadata field to use.
+* @param Classification $Parent The optional parent to use.
+*/
+function PrintAddClassificationLink(MetadataField $Field, Classification $Parent = null)
+{
+    # -1 needs to be used to signify that the classification should be added at
+    # the top level
+    print "index.php?".http_build_query([
+        "P" => "AddClassification",
+        "FieldId" => $Field->Id(),
+        "ParentId" => is_null($Parent) ? -1 : $Parent->Id()
+    ]);
+}
+
+/**
+* Print pagination for the classification list split by starting letter.
+* @param string $SearchQuery applied to these results.
+* @param Classification $Parent currently selected.
+* @param MetadataField $Field currently in use.
+* @param string $StartLetter currently selected for pagination.
+*/
+function PrintPagination($SearchQuery, $Parent, $Field, $StartLetter)
+{
+    global $H_ClassificationCount;
+    global $H_ClassificationsAll;
+
+    # construct parameters for jump page
+    $Params =
+        ( ($Parent !== null) ? ("&amp;ParentId=".$Parent->Id()) : "" )
+        .( ($Field !== null) ? ( "&amp;FieldId=".$Field->Id()) : "" )
+        .( ($SearchQuery !== null) ?  ("&amp;SQ=".urlencode($SearchQuery)) : "" );
+
+    print("Classifications starting with: ");
+
+    foreach (range('A', 'Z') as $Letter) {
+        if ($StartLetter == strtolower($Letter)) {
+            print("<span class='mv-classification-pagination-selected'>".$Letter."</span> ");
+        } elseif (array_key_exists(strtolower($Letter), $H_ClassificationsAll)) {
+            print("<a href=\"index.php?P=EditClassifications"
+                  ."&amp;SL=".$Letter.$Params."\">".$Letter."</a> ");
+        } else {
+            print ("<span class='classification-pagination-nav'>".$Letter."</span>");
+        }
+    }
+
+    if ($StartLetter == "XX") {
+        print ("<b class='classification-pagination-nav'>(Other)</b>");
+    } elseif (array_key_exists('XX', $H_ClassificationsAll)) {
+        print("<a href=\"index.php?P=EditClassifications".$Params."\">(Other)</a>");
+    } else {
+        print ("<span class='classification-pagination-nav'>(Other)</span>");
+    }
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+global $H_Errors;
+
+if (count($H_Errors)) {
+    print '<h1>Add/Edit Classifications</h1>';
+
+    print '<b>Errors encountered</b>';
+    print '<ul class="mv-form-error">';
+    foreach ($H_Errors as $Error) {
+        print '<li>'.$Error.'</li>';
+    }
+    print '</ul>';
+
+    return;
+}
+
+
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$SafeSchemaName = defaulthtmlentities($H_Schema->Name());
+
+$IntConfig = InterfaceConfiguration::getInstance();
+
+?>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <h1>Add/Edit Classifications</h1>
+      <br/>
+      <?PHP
+        if ($H_SearchQuery !== null) {
+            print "Viewing search results for: "
+              ."(<a class=\"small-close\" "
+              ."href=\"index.php?P=EditClassifications"
+              .($H_StartLetter !== null ? ("&amp;SL=".urlencode($H_StartLetter)) : "")
+              .($H_Parent !== null ? ("&amp;ParentId=".$H_Parent->Id()) : "")
+              .($H_Field !== null ? ("&amp;FieldId=".$H_Field->Id()) : "")
+              ."\">X</a>)"
+              ." <strong>".$H_SearchQuery."</strong>";
+        }
+        ?>
+    </div>
+    <div class="col text-right">
+      <b>Search:</b>
+        <form method="get" action="index.php">
+          <input type="hidden" name="P" value="EditClassifications" />
+          <?PHP if ($H_Parent === null) {
+                PrintSchemaOptionList($H_Schema);
+          }
+            ?>
+         </form>
+        <form method="get" action="index.php">
+          <input type="hidden" name="P" value="EditClassifications" />
+
+          <?PHP if ($H_Parent) {?>
+            <input type="hidden" name="ParentId" value="<?= $H_Parent->ID(); ?>" />
+          <?PHP } else { ?>
+              <?PHP PrintTreeFieldOptionList($H_Schema, $H_Field); ?>
+          <?PHP } ?>
+          <input type="text" name="SQ" id="SearchText" size="15"
+              value="<?= StdLib::getFormValue("SQ");  ?>"/>
+          <button type="submit" value="GO" class="btn btn-primary btn-sm mv-button-iconed"
+            ><img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
+                class="mv-button-icon"/> Search</button>
+        </form>
+    </div>
+  </div>
+</div>
+
+<?PHP if (is_null($H_Field)) { ?>
+  <p>
+    There are no tree fields in the <i><?= $SafeSchemaName; ?></i>
+    metadata schema. Tree fields can be created on the
+    <a href="index.php?P=DBEditor&amp;SC=<?= $SafeSchemaId; ?>"><i>Metadata
+    Field Editor</i></a> page.
+  </p>
+<?PHP } else { ?>
+    <?PHP
+    if ($H_ClassificationCount > $IntConfig->getInt("NumClassesPerBrowsePage")) {
+        print("<hr/><div class='classification-pagination-nav-container'>");
+        PrintPagination($H_SearchQuery, $H_Parent, $H_Field, $H_StartLetter);
+        print("</div><hr/>");
+    }
+    ?>
+  <p class="mv-content-boundingbox">
+    <?PHP PrintClassificationBreadcrumb($H_Parent, $H_SearchQuery, $H_Field); ?>
+  </p><p>
+    (<?= $H_ClassificationCount; ?>
+     <?= Pluralize("classification", "s", $H_ClassificationCount); ?>)
+  </p>
+  <a class="btn btn-primary mv-button-iconed"
+  href="index.php?P=DBExportField&amp;Id=<?= $H_Field->id(); ?>"
+  ><img src="<?= $AF->gUIFile('FileExport.svg'); ?>" alt=""
+    class="mv-button-icon"/> Export Vocabulary</a>
+  <p>
+    <a
+        class="btn btn-primary mv-button-iconed"
+        href="<?PHP PrintAddClassificationLink($H_Field, $H_Parent); ?>"
+    ><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add Classification Here</a>
+  </p>
+  <p><i>(browse hierarchy to add or edit classifications at other levels)</i></p>
+    <?PHP if (count($H_Classifications) < 1) { ?>
+    <p class="classifications--message__no-classifications"
+      >There are currently no classifications in this field at this level.</p>
+    <?PHP } else {
+        if ($H_ClassificationCount > $IntConfig->getInt("NumClassesPerBrowsePage")) {
+            print("<hr/>");
+            print("<div class='classification-pagination-nav-container'>");
+            PrintPagination($H_SearchQuery, $H_Parent, $H_Field, $H_StartLetter);
+            print("</div>");
+        }
+        ?>
+  <hr/>
+  <table class="table">
+    <tbody>
+       <tr>
+           <td>
+               <?PHP
+                PrintClassifications(
+                    $H_Classifications,
+                    $H_Field,
+                    $H_Parent,
+                    $H_StartLetter,
+                    $H_SearchQuery
+                );
+                ?>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+    <?PHP } ?>
+<?PHP } ?>

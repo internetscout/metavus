@@ -1,0 +1,2415 @@
+<?PHP
+#
+#   FILE:  EditMetadataField.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\HtmlOptionList;
+use ScoutLib\SearchEngine;
+use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get an array of options available for a flag value.The array keys are values
+ * for the form and the values are the labels for the form.
+ * @return array array of flag options
+ */
+function GetFlagOptions()
+{
+    return [0 => "No", 1 => "Yes"];
+}
+
+/**
+ * Get an array of options available for a privilege value.The array keys are
+ * values for the form and the values are the labels for the form.
+ * @return array array of privilege options
+ */
+function GetPrivilegeOptions()
+{
+    $PrivilegeFactory = new PrivilegeFactory();
+    return ["--" => "--"] + $PrivilegeFactory->GetPrivileges(true, false);
+}
+
+/**
+* Get an array of options available for SearchGroupLogic.
+* @return array of options
+*/
+function GetSearchGroupLogicOptions()
+{
+    return [
+        SearchEngine::LOGIC_OR => "OR",
+        SearchEngine::LOGIC_AND => "AND"
+    ];
+}
+
+/**
+ * Get the escaped option text and value for a flag value.
+ * @param int $State TRUE if the flag is on and FALSE if the flag is OFF
+ * @return array the first value is the text, the second is the value
+ */
+function GetSafeFlagOption($State)
+{
+    return [
+        defaulthtmlentities(StdLib::getArrayValue(GetFlagOptions(), $State ? 1 : 0)),
+        defaulthtmlentities($State ? 1 : 0)
+    ];
+}
+
+/**
+ * Print the type field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintTypeField(array $Data, $Error)
+{
+    $AllowedTypes = MakeTypesHumanReadable($Data["AllowedTypes"]);
+    $HasNoAllowedTypes = !count($AllowedTypes);
+    $SafeType = defaulthtmlentities($Data["Type"]);
+    $SafeTypeName = defaulthtmlentities(MetadataField::$FieldTypeHumanEnums[$Data["Type"]]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-type mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+      mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Type">Type</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"] || $Data["IsStandard"] || $HasNoAllowedTypes) { ?>
+        <input type="hidden" id="F_Type" name="F_Type" value="<?= $SafeType; ?>" />
+            <?= $SafeTypeName; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList("F_Type", $AllowedTypes, $Data["Type"]))->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the name of the schema associated with a field.
+* @return void
+*/
+function PrintSchemaName($Schema)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-type mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+      mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+    <th>Schema</th>
+    <td><?= $Schema->Name() ?></td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+
+/**
+ * Print the name field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintNameField(array $Data, $Error)
+{
+    $SafeId = defaulthtmlentities($Data["Id"]);
+    $SafeValue = defaulthtmlentities($Data["Name"]);
+    ?>
+    <?PHP if (!$Data["HasOwner"]) { ?>
+    <tr class="mfe mfe-value mfe-group-generic mfe-field-name mfe-type-text mfe-type-paragraph
+        mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+        mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+        mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+      <th>
+          <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+          for="F_Name">Name</label>
+      </th>
+      <td>
+          <input type="text" size="30" id="F_Name" name="F_Name" value="<?= $SafeValue; ?>" />
+      </td>
+      <td class="mfe mfe-appliesto">All fields.</td>
+    </tr>
+    <?PHP } else { ?>
+    <tr class="mfe mfe-value mfe-group-generic mfe-field-name mfe-type-text mfe-type-paragraph
+        mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+        mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+        mfe-type-url mfe-type-point mfe-type-email mfe-type-searchparameterset">
+      <th>
+          <label <?= $Error ? 'class="alert alert-danger" ' : '' ?> for="F_Name">Name</label>
+      </th>
+      <td>
+          <input type="hidden" id="F_Name" name="F_Name" value="<?= $SafeValue; ?>" />
+          <?= $SafeValue; ?>
+      </td>
+      <td class="mfe mfe-appliesto">All fields.</td>
+    </tr>
+    <?PHP }
+}
+
+/**
+ * Print the label field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintLabelField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities($Data["Label"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-label mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+      mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+    <th>
+        <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Label">Display Name</label>
+    </th>
+    <td>
+        <input type="text" size="30" id="F_Label" name="F_Label" value="<?= $SafeValue; ?>" />
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the description field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintDescriptionField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities($Data["Description"]);
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-generic mfe-field-description mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+      mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image
+      mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email
+      mfe-type-searchparameterset">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_Description">Description</label>
+    </th>
+    <td><textarea id="F_Description" name="F_Description" cols="20" rows="3"><?PHP
+          print $SafeValue; ?></textarea></td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the instructions field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintInstructionsField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities($Data["Instructions"]);
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-generic mfe-field-instructions
+      mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
+      mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
+      mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference
+      mfe-type-email mfe-type-searchparameterset">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_Instructions">Instructions</label>
+    </th>
+    <td><textarea id="F_Instructions" name="F_Instructions" cols="20" rows="3"><?PHP
+          print $SafeValue; ?></textarea></td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the enabled field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintEnabledField(array $Data, $Error)
+{
+    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["Enabled"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-enabled mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+      mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Enabled">Enabled</label>
+    </th>
+    <td>
+      <?PHP if (!isset($Data["IsTogglable"]) ||
+          !$Data["IsTogglable"] ||
+          $Data["UsedByPrivsets"]) { ?>
+        <input type="hidden" name="F_Enabled" value="<?= $SafeValue; ?>" />
+                   <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_Enabled",
+              GetFlagOptions(),
+              $Data["Enabled"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the editable field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintEditableField(array $Data, $Error)
+{
+    $IsAddedById = $Data["Name"] == "Added By Id";
+    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["Editable"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-editable mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+      mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Editable">Editable</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"] && !$IsAddedById) { ?>
+        <input type="hidden" name="F_Editable" value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_Editable",
+              GetFlagOptions(),
+              $Data["Editable"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the optional field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintOptionalField(array $Data, $Error)
+{
+    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["Optional"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-optional mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-tree mfe-type-controlledname
+      mfe-type-option mfe-type-user mfe-type-image mfe-type-file mfe-type-url mfe-type-point
+      mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Optional">Optional</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" name="F_Optional" value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_Optional",
+              GetFlagOptions(),
+              $Data["Optional"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+      <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+      <i>Option</i>, <i>User</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, and
+      <i>Point</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the uses qualifiers field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintUsesQualifiersField(array $Data, $Error)
+{
+    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["UsesQualifiers"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-usesqualifiers mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+      mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_UsesQualifiers">Uses Qualifiers</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_UsesQualifiers" name="F_UsesQualifiers"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_UsesQualifiers",
+              GetFlagOptions(),
+              $Data["UsesQualifiers"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+        <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+        <i>Option</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, and <i>Point</i>
+        fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the has item level qualifiers field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintHasItemLevelQualifiersField(array $Data, $Error)
+{
+    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["HasItemLevelQualifiers"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-hasitemlevelqualifiers mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+      mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_HasItemLevelQualifiers">Has Item Level Qualifiers</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_HasItemLevelQualifiers" name="F_HasItemLevelQualifiers"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_HasItemLevelQualifiers",
+              GetFlagOptions(),
+              $Data["HasItemLevelQualifiers"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+        <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+        <i>Option</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, <i>Email</i>, and <i>Point</i>
+        fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print HTML elements for the CopyOnResourceDuplication field.
+* @param array $Data metadata field data
+* @param array $H_Schema metadata schema for this field
+* @param strng_null $Error field error, if one exists
+*/
+function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error)
+{
+    list($SafeTex, $SaveValue) = GetSafeFlagOption($Data["CopyOnResourceDuplication"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-generic mfe-field-copy mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+      mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+      for="F_CopyOnResourceDuplication">Copy on Resource Duplication</label>
+    </th>
+    <td>
+        <?PHP (new HtmlOptionList(
+            "F_CopyOnResourceDuplication",
+            GetFlagOptions(),
+            $Data["CopyOnResourceDuplication"]
+        ))->PrintHtml(); ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print HTML elements for the ObfuscateValueForAnonymousUsers field.
+ * @param array $Data metadata field data
+ * @param array $Error field
+ */
+function printObfuscateValueForAnonymousUsersField(array $Data, $Error)
+{
+    ?>
+<tr class="mfe mfe-value mfe-group-generic mfe-field-obfuscate mfe-type-email">
+  <th>
+    <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+      for="F_ObfuscateValueForAnonymousUsers">Obfuscate for Anonymous Users</label>
+  </th>
+  <td>
+    <?PHP (new HtmlOptionList(
+        "F_ObfuscateValueForAnonymousUsers",
+        GetFlagOptions(),
+        $Data["ObfuscateValueForAnonymousUsers"]
+    ))->PrintHtml(); ?>
+  </td>
+  <td class="mfe mfe-appliesto"><i>Email</i> fields.</td>
+</tr>
+    <?PHP
+}
+
+/**
+ * Print the default qualifier field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintDefaultQualifierField(array $Data, $Error)
+{
+    # get the options
+    $Options = array_intersect_key(
+        GetQualifierList(),
+        array_flip($Data["AssociatedQualifierList"])
+    );
+    $Options = ["--" => "--"] + $Options;
+    ?>
+  <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-defaultqualifier mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+      mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file
+      mfe-type-url mfe-type-point mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_DefaultQualifier">Default Qualifier</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_DefaultQualifier",
+          $Options,
+          $Data["DefaultQualifier"]
+      ))->PrintHtml(); ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+        <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+        <i>Option</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, and <i>Point</i>
+        fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the allowed qualifiers field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintAssociatedQualifierListField(array $Data, $Error)
+{
+    # get the options
+    $Options = GetQualifierList();
+    $Selected = $Data["AssociatedQualifierList"];
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-qualifiers mfe-field-allowedqualifiers
+      mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
+      mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-image
+      mfe-type-file mfe-type-url mfe-type-point mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_AssociatedQualifierList">Allowed Qualifiers</label>
+    </th>
+    <td>
+      <?PHP
+          $OptList = new HtmlOptionList("F_AssociatedQualifierList[]", $Options, $Selected);
+          $OptList->Size(8);
+          $OptList->MultipleAllowed(true);
+          $OptList->PrintHtml();
+        ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+        <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+        <i>Option</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, <i>Email</i>, and <i>Point</i>
+        fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the show qualifiers field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintShowQualifiersField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-showqualifiers
+      mfe-type-tree mfe-type-controlledname mfe-type-option">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_ShowQualifiers">Show Qualifiers</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_ShowQualifiers",
+          GetFlagOptions(),
+          $Data["ShowQualifiers"]
+      ))->PrintHtml(); ?>
+      &nbsp;&nbsp;&nbsp;&nbsp;<i>(on the full record page)</i>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+        <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+        <i>Option</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, and <i>Point</i>
+        fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the include in keyword search field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintIncludeInKeywordSearchField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-includeinkeywordsearch mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-tree mfe-type-controlledname mfe-type-option
+      mfe-type-user mfe-type-image mfe-type-file mfe-type-url mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_IncludeInKeywordSearch">Include in Keyword Search</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_IncludeInKeywordSearch",
+          GetFlagOptions(),
+          $Data["IncludeInKeywordSearch"]
+      ))->PrintHtml(); ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Tree</i>, <i>Controlled
+        Name</i>, <i>Option</i>, <i>User</i>, <i>Image</i>, <i>File</i>, and
+        <i>URL</i> fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the include in advanced search field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintIncludeInAdvancedSearchField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-includeinadvancedsearch mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+      mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image
+      mfe-type-file mfe-type-url mfe-type-reference mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_IncludeInAdvancedSearch">Include in Advanced Search</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_IncludeInAdvancedSearch",
+          GetFlagOptions(),
+          $Data["IncludeInAdvancedSearch"]
+      ))->PrintHtml(); ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+        <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
+        <i>Option</i>, <i>User</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, and
+        <i>Reference</i> fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the include in faceted search field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintIncludeInFacetedSearchField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-includeinfacetedsearch
+      mfe-type-tree mfe-type-controlledname mfe-type-option">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_IncludeInFacetedSearch">Include in Faceted Search</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_IncludeInFacetedSearch",
+          GetFlagOptions(),
+          $Data["IncludeInFacetedSearch"]
+      ))->PrintHtml(); ?>
+      <td class="mfe mfe-appliesto">
+        <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the include in sort options field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintIncludeInSortOptionsField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-includeinsortoptions mfe-type-text
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-url mfe-type-email">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_IncludeInSortOptions">Include in Sort Options</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_IncludeInSortOptions",
+          GetFlagOptions(),
+          $Data["IncludeInSortOptions"]
+      ))->PrintHtml(); ?>
+      <td class="mfe mfe-appliesto">
+        <i>Text</i>, <i>Number</i>, <i>Date</i>, <i>Timestamp</i>, and
+        <i>URL</i> fields.
+      </td>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the search weight field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintSearchWeightField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities($Data["SearchWeight"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-searchweight mfe-type-text mfe-type-paragraph
+      mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-tree mfe-type-controlledname
+      mfe-type-option mfe-type-user mfe-type-image mfe-type-file mfe-type-url
+      mfe-type-reference mfe-type-email">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_SearchWeight">Search Weight</label>
+    </th>
+    <td>
+      <input type="number" id="F_SearchWeight" name="F_SearchWeight"
+          value="<?= $SafeValue; ?>" size="3" min="1" max="20" />
+      (1-20)
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
+      <i>Timestamp</i>, <i>Tree</i>, <i>Controlled Name</i>, <i>Option</i>,
+      <i>User</i>, <i>Image</i>, <i>File</i>, <i>URL</i>, and
+      <i>Reference</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the SearchGroupLogic setting for the given field.
+* @param array $Data Metadata field data
+* @param string|null $Errorr Field error, if one exists
+*/
+function PrintSearchGroupLogic(array $Data, $Error)
+{
+    $SafeValue = intval($Data["SearchGroupLogic"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-searchgrouplogic mfe-type-tree
+      mfe-type-controlledname mfe-type-option">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_SearchGroupLogic">Search Group Logic</label>
+    </th>
+    <td> <?PHP (new HtmlOptionList(
+        "F_SearchGroupLogic",
+        GetSearchGroupLogicOptions(),
+        $Data["SearchGroupLogic"]
+    ))->PrintHtml(); ?>
+      <i>(determines how multiple selections for this field are combined)</i>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the FacetsShowOnlyTermsUsedInResults setting for the given field.
+ * @param array $Data Metadata field data
+ * @param string|null $Error Field error, if one exists
+ */
+function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error)
+{
+    $SafeValue = intval($Data["FacetsShowOnlyTermsUsedInResults"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-search mfe-field-facetsshowallterms mfe-type-tree
+      mfe-type-controlledname mfe-type-option">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>cw-form-requiredfield"
+        for="F_FacetsShowOnlyTermsUsedInResults">Facets Show Only Terms Used In Results</label>
+    </th>
+    <td> <?PHP (new HtmlOptionList(
+        "F_FacetsShowOnlyTermsUsedInResults",
+        GetFlagOptions(),
+        $Data["FacetsShowOnlyTermsUsedInResults"]
+    ))->PrintHtml(); ?>
+      <i>(determines if search facets will show all top-level terms for the given field rather
+        than only those associated with the current set of search results)</i>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the option list threshold field for the given metadata field data.
+* @param array $Data Metadata field data.
+* @param string $Error A field error, if one exists.
+*/
+function PrintOptionListThresholdField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["OptionListThreshold"] ?? MetadataField::getDefaultValue("OptionListThreshold")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-resourceediting mfe-field-optionlistthreshold
+      mfe-type-tree mfe-type-controlledname">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_OptionListThreshold">Option List Field Threshold</label>
+    </th>
+    <td>
+      <input type="number" id="F_OptionListThreshold" name="F_OptionListThreshold"
+          value="<?= $SafeValue; ?>" size="5" min="1" />
+      (1 or more)
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i> and <i>Controlled Name</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the AJAX threshold field for the given metadata field data.
+* @param array $Data Metadata field data.
+* @param string $Error A field error, if one exists.
+*/
+function PrintAjaxThresholdField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["AjaxThreshold"] ?? MetadataField::getDefaultValue("AjaxThreshold")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-resourceediting mfe-field-ajaxthreshold
+      mfe-type-tree mfe-type-controlledname mfe-type-reference">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_AjaxThreshold">Incremental Search Field Threshold</label>
+    </th>
+    <td>
+      <input type="number" id="F_AjaxThreshold" name="F_AjaxThreshold"
+          value="<?= $SafeValue; ?>" size="5" min="1" />
+      (1 or more)
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i>, <i>Controlled Name</i>, and <i>Reference</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the number of AJAX results field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintNumAjaxResultsField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["NumAjaxResults"] ?? MetadataField::getDefaultValue("NumAjaxResults")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-resourceediting mfe-field-numajaxresults
+      mfe-type-tree mfe-type-controlledname mfe-type-reference">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_NumAjaxResults">Max Number of Search Results</label>
+    </th>
+    <td>
+      <input type="number" id="F_NumAjaxResults" name="F_NumAjaxResults"
+          value="<?= $SafeValue; ?>" size="5" min="10" />
+      (10 or more)
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i>, <i>Controlled Name</i>, and <i>Reference</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the use for OAI sets field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintUseForOaiSetsField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-oai mfe-field-useforoaisets mfe-type-tree
+      mfe-type-controlledname mfe-type-option">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_UseForOaiSets">Use for OAI Sets</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_UseForOaiSets",
+          GetFlagOptions(),
+          $Data["UseForOaiSets"]
+      ))->PrintHtml(); ?>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the Display as list for advanced search setting for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintDisplayAsListForAdvancedSearch(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-oai mfe-field-displayaslistforadvancedsearch mfe-type-tree">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_DisplayAsLIstForAdvancedSearch">Display as list for Advanced Search</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_DisplayAsListForAdvancedSearch",
+          GetFlagOptions(),
+          $Data["DisplayAsListForAdvancedSearch"] ?? false
+      ))->PrintHtml(); ?>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the Maximum Depth for Advanced Search setting for the given metadata field.
+* @param array $Data metadata field data
+* @param string|null $Error field error, if one exists
+*/
+function PrintMaxDepthForAdvancedSearch(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities($Data["MaxDepthForAdvancedSearch"] ?? 1);
+    ?>
+  <tr class="mfe mfe-value mfe-group-resourceediting mfe-field-maxdepthforadvancedsearch
+      mfe-type-tree">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger"' : '' ?>
+        for="F_MaxDepthForAdvancedSearch">Max Depth For Advanced Search</label>
+    </th>
+    <td>
+      <input type="number" id="F_MaxDepthForAdvancedSearch" name="F_MaxDepthForAdvancedSearch"
+          value="<?= $SafeValue; ?>" size="5" min="1" />
+      (1 or more)<br><i>When Display As List For Advanced Search is enabled, this sets the maximum
+        number of levels of a Tree field to include in the list
+        (e.g., 1 to only list top-level classifications).</i>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Tree</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the text field size field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintTextFieldSizeField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["TextFieldSize"] ?? MetadataField::getDefaultValue("TextFieldSize")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-textfieldsize mfe-type-text
+      mfe-type-number mfe-type-date mfe-type-url mfe-type-point mfe-type-email">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_TextFieldSize">Field Size</label>
+    </th>
+    <td>
+      <input type="number" id="F_TextFieldSize" name="F_TextFieldSize"
+          value="<?= $SafeValue; ?>" min="1" size="5" />
+      characters
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Text</i>, <i>Number</i>, <i>Date</i>, and <i>Point</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the maximum length field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintMaxLengthField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["MaxLength"] ?? MetadataField::getDefaultValue("MaxLength")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-maxlength mfe-type-text
+      mfe-type-url mfe-type-email mv-content-tallrow">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>
+        <?= $Data["HasOwner"] ? '' : 'mv-form-requiredfield' ?>"
+        for="F_MaxLength">Max Length</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_MaxLength" name="F_MaxLength"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeValue; ?> characters
+      <?PHP } else { ?>
+        <input type="number" id="F_MaxLength" name="F_MaxLength" value="<?= $SafeValue; ?>"
+            min="1" size="5" />
+        characters
+      <?PHP } ?>
+      <br />
+      <small>
+        (<strong>Note:</strong> making this value smaller will not truncate any
+        existing field values)
+      </small>
+    </td>
+    <td class="mfe mfe-appliesto">
+      <i>Text</i> and <i>URL</i> fields.
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the default value field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintDefaultValueField(array $Data, $Error)
+{
+    $Value = is_array($Data["DefaultValue"]) ? null : $Data["DefaultValue"];
+    $SafeValue = defaulthtmlentities($Value);
+    $SafeDisplayValue = $SafeValue;
+
+    if ($Data["HasOwner"] && !strlen($SafeValue)) {
+        $SafeDisplayValue = "<i>None</i>";
+    }
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluegeneric mfe-type-text">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_DefaultValue[Generic]">Default Value</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_DefaultValue[Generic]" name="F_DefaultValue[Generic]"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeDisplayValue; ?>
+      <?PHP } else { ?>
+        <input type="text" id="F_DefaultValue[Generic]" name="F_DefaultValue[Generic]"
+            value="<?= $SafeValue; ?>" size="30" />
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Text</i> and <i>Paragraph</i> fields.</td>
+  </tr>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluegeneric mfe-type-text">
+    <th><label>Update Unset Values With Default Value?</label></th>
+    <td>
+      <input type="checkbox" name="F_UpdateValues" id="F_UpdateValues" value="UpdateValues" />
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the default value field as a number for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintNumericDefaultValueField(array $Data, $Error)
+{
+    $Value = is_array($Data["DefaultValue"]) ? null : $Data["DefaultValue"];
+    $SafeValue = defaulthtmlentities($Value);
+
+    if ($Data["HasOwner"] && !strlen($SafeValue)) {
+        $SafeValue = "<i>None</i>";
+    }
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluenumeric mfe-type-number">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_DefaultValue[Numeric]">Default Value</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_DefaultValue[Numeric]" name="F_DefaultValue[Numeric]"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeValue; ?>
+      <?PHP } else { ?>
+        <input type="number" size="5" id="F_DefaultValue[Numeric]" name="F_DefaultValue[Numeric]"
+            value="<?= $SafeValue; ?>" />
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Number</i> fields.</td>
+  </tr>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluegeneric mfe-type-number">
+    <th><label>Update Unset Values With Default Value?</label></th>
+    <td>
+      <input type="checkbox" name="F_UpdateValues" id="F_UpdateValues" value="UpdateValues" />
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the default value field for flags for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintFlagDefaultValueField(array $Data, $Error)
+{
+    $Value = is_array($Data["DefaultValue"]) ? null : $Data["DefaultValue"];
+    $Options = [
+        0 => $Data["FlagOffLabel"] ?? MetadataField::getDefaultValue("FlagOffLabel"),
+        1 => $Data["FlagOnLabel"] ?? MetadataField::getDefaultValue("FlagOnLabel"),
+    ];
+    $SafeText = defaulthtmlentities($Value ? $Options[1] : $Options[0]);
+    $SafeValue = defaulthtmlentities($Value ? 1 : 0);
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvalueflag mfe-type-flag">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_DefaultValue[Flag]">Default Value</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_DefaultValue[Flag]" name="F_DefaultValue[Flag]"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_DefaultValue[Flag]",
+              $Options,
+              $Data["DefaultValue"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Flag</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the default value field for points for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintPointDefaultValueField(array $Data, $Error)
+{
+    $Value = $Data["DefaultValue"];
+    $DefaultValue = (is_array($Value) && isset($Value["X"]) && isset($Value["Y"])) ?
+                     $Value : ["X" => null, "Y" => null];
+    $SafeValue = defaulthtmlentities($DefaultValue["X"]);
+    $SafeValue2 = defaulthtmlentities($DefaultValue["Y"]);
+
+    if ($Data["HasOwner"]) {
+        if (!strlen($SafeValue)) {
+            $SafeValue = "<i>None</i>";
+        }
+        if (!strlen($SafeValue2)) {
+            $SafeValue2 = "<i>None</i>";
+        }
+    }
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluepoint mfe-type-point">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_DefaultValue[Point1]">Default Value</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        X: <?= $SafeValue; ?>, Y: <?= $SafeValue2; ?>
+        <input type="hidden" id="F_DefaultValue[Point1]" name="F_DefaultValue[Point1]"
+            value="<?= $SafeValue; ?>" />
+        <input type="hidden" id="F_DefaultValue[Point2]" name="F_DefaultValue[Point2]"
+            value="<?= $SafeValue2; ?>" />
+      <?PHP } else { ?>
+        <label for="F_DefaultValue">X:</label>
+        <input type="text" size="15" id="F_DefaultValue[Point1]" name="F_DefaultValue[Point1]"
+            value="<?= $SafeValue; ?>" />
+        <label for="F_DefaultValue2">Y:</label>
+        <input type="text" size="15" id="F_DefaultValue[Point2]" name="F_DefaultValue[Point2]"
+            value="<?= $SafeValue2; ?>" />
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Point</i> fields.</td>
+  </tr>
+    <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluegeneric mfe-type-point">
+    <th><label>Update Unset Values With Default Value?</label></th>
+    <td>
+      <input type="checkbox" name="F_UpdateValues" id="F_UpdateValues" value="UpdateValues" />
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the allow HTML field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintAllowHtmlField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-allowhtml
+      mfe-type-text mfe-type-paragraph">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_AllowHTML">Allow HTML in Text</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_AllowHTML",
+          GetFlagOptions(),
+          $Data["AllowHTML"] ?? MetadataField::getDefaultValue("AllowHTML")
+      ))->PrintHtml(); ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Tree</i> and <i>Paragraph</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the minimum value field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintMinValueField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["MinValue"] ?? MetadataField::getDefaultValue("MinValue")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-minvalue mfe-type-number">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_MinValue">Min Value</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_MinValue" name="F_MinValue"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeValue; ?>
+      <?PHP } else { ?>
+        <input type="number" size="5" id="F_MinValue" name="F_MinValue"
+            value="<?= $SafeValue; ?>" />
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Number</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the maximum value field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintMaxValueField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["MaxValue"] ?? MetadataField::getDefaultValue("MaxValue")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-maxvalue mfe-type-number">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_MaxValue">Max Value</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_MaxValue" name="F_MaxValue"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeValue; ?>
+      <?PHP } else { ?>
+        <input type="number" size="5" id="F_MaxValue" name="F_MaxValue"
+            value="<?= $SafeValue; ?>" />
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Number</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the point precision field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintPointPrecisionField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["PointPrecision"] ?? MetadataField::getDefaultValue("PointPrecision")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-pointprecision mfe-type-point">
+    <th><label <?PHP if (!$Data["HasOwner"]) {
+        ?>class="mv-form-requiredfield"<?PHP
+               } ?> for="F_PointPrecision">Point Precision</label></th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+            <?= $SafeValue; ?> digits to the left of the decimal point
+        <input type="hidden" id="F_PointPrecision" name="F_PointPrecision"
+            value="<?= $SafeValue; ?>" />
+      <?PHP } else { ?>
+        <input type="number" size="5" id="F_PointPrecision" name="F_PointPrecision"
+            value="<?= $SafeValue; ?>" />
+        digits to the left of the decimal point
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Point</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the decimal digits field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintDecimalDigitsField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["PointDecimalDigits"] ?? MetadataField::getDefaultValue("PointDecimalDigits")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-pointdecimaldigits mfe-type-point">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>
+        <?= $Data["HasOwner"] ? '' : 'mv-form-requiredfield' ?>"
+        for="F_PointDecimalDigits">Decimal Digits in Point</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+            <?= $SafeValue; ?> digits to the right of the decimal point
+        <input type="hidden" id="F_PointDecimalDigits" name="F_PointDecimalDigits"
+            value="<?= $SafeValue; ?>" />
+      <?PHP } else { ?>
+        <input type="number" size="5" id="F_PointDecimalDigits" name="F_PointDecimalDigits"
+            value="<?= $SafeValue; ?>" />
+        digits to the right of the decimal point
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Point</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the update method field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintUpdateMethodField(array $Data, $Error)
+{
+    $SafeUpdateMethod = null;
+
+    if ($Data["HasOwner"]) {
+        $UpdateMethod = MetadataField::$UpdateTypes[$Data["UpdateMethod"]];
+        $SafeUpdateMethod = defaulthtmlentities($UpdateMethod);
+    }
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-updatemethod
+      mfe-type-timestamp mfe-type-user">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_UpdateMethod">Update Method</label>
+    </th>
+    <td>
+      <?PHP if (!is_null($SafeUpdateMethod)) { ?>
+            <?= $SafeUpdateMethod; ?>
+      <?PHP } else { ?>
+          <?PHP $OptList = new HtmlOptionList(
+              "F_UpdateMethod",
+              MetadataField::$UpdateTypes,
+              $Data["UpdateMethod"]
+          );
+              $OptList->PrintIfEmpty(false);
+              $OptList->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Timestamp</i> and <i>User</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the paragraph rows field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintParagraphRowsField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["ParagraphRows"] ?? MetadataField::getDefaultValue("ParagraphRows")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-paragraphrows mfe-type-paragraph">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_ParagraphRows">Paragraph Rows</label>
+    </th>
+    <td>
+      <input type="number" size="4" id="F_ParagraphRows" name="F_ParagraphRows"
+          value="<?= $SafeValue; ?>" min="1" />
+    </td>
+    <td class="mfe mfe-appliesto"><i>Paragraph</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the paragraph columns field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintParagraphColsField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["ParagraphCols"] ?? MetadataField::getDefaultValue("ParagraphCols")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-paragraphcols mfe-type-paragraph">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_ParagraphCols">Paragraph Cols</label>
+    </th>
+    <td>
+      <input type="number" size="4" id="F_ParagraphCols" name="F_ParagraphCols"
+          value="<?= $SafeValue; ?>" min="1" />
+    </td>
+    <td class="mfe mfe-appliesto"><i>Paragraph</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the use WYSIWYG editor field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintUseWysiwygEditorField(array $Data, $Error)
+{
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-usewysiwygeditor mfe-type-paragraph">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_UseWysiwygEditor">Use WYSIWYG Editor</label>
+    </th>
+    <td>
+      <?PHP (new HtmlOptionList(
+          "F_UseWysiwygEditor",
+          GetFlagOptions(),
+          $Data["UseWysiwygEditor"] ?? MetadataField::getDefaultValue("UseWysiwygEditor")
+      ))->PrintHtml(); ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Paragraph</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the flag on label field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintFlagOnLabelField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["FlagOnLabel"] ?? MetadataField::getDefaultValue("FlagOnLabel")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-flagonlabel mfe-type-flag">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_FlagOnLabel">Flag On Label</label>
+    </th>
+    <td>
+      <input type="text" size="20" id="F_FlagOnLabel" name="F_FlagOnLabel"
+          value="<?= $SafeValue; ?>" />
+    </td>
+    <td class="mfe mfe-appliesto"><i>Flag</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the flag off label field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintFlagOffLabelField(array $Data, $Error)
+{
+    $SafeValue = defaulthtmlentities(
+        $Data["FlagOffLabel"] ?? MetadataField::getDefaultValue("FlagOffLabel")
+    );
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-flagofflabel mfe-type-flag">
+    <th>
+      <label class="<?= $Error ? 'alert alert-danger ' : '' ?>mv-form-requiredfield"
+        for="F_FlagOffLabel">Flag Off Label</label>
+    </th>
+    <td>
+      <input type="text" size="20" id="F_FlagOffLabel" name="F_FlagOffLabel"
+          value="<?= $SafeValue; ?>" />
+    </td>
+    <td class="mfe mfe-appliesto"><i>Flag</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the allow multiple field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintAllowMultipleField(array $Data, $Error)
+{
+    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["AllowMultiple"]);
+    ?>
+  <tr class="mfe mfe-value mfe-group-typespecific mfe-field-allowmultiple mfe-type-option
+      mfe-type-user mfe-type-tree mfe-type-file mfe-type-image mfe-type-reference">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_AllowMultiple">Allow Multiple</label>
+    </th>
+    <td>
+      <?PHP if ($Data["HasOwner"]) { ?>
+        <input type="hidden" id="F_AllowMultiple" name="F_AllowMultiple"
+            value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+      <?PHP } else { ?>
+          <?PHP (new HtmlOptionList(
+              "F_AllowMultiple",
+              GetFlagOptions(),
+              $Data["AllowMultiple"]
+          ))->PrintHtml(); ?>
+      <?PHP } ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>Option</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print the user privilege restrictions field for the given metadata field data.
+ * @param array $Data metadata field data
+ * @param string|null $Error field error, if one exists
+ * @return void
+ */
+function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
+{
+    $PrivilegeFactory = new PrivilegeFactory();
+    $Privileges = $PrivilegeFactory->GetPrivileges(true, false);
+    $Selected = $Data["UserPrivilegeRestrictions"];
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-typespecific
+      mfe-field-userprivilegerestrictions mfe-type-user">
+    <th>
+      <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
+        for="F_UserPrivilegeRestrictions">Restrict to Users With One of the Following</label>
+    </th>
+    <td>
+      <?PHP $OptList = new HtmlOptionList("F_UserPrivilegeRestrictions[]", $Privileges, $Selected);
+            $OptList->Size(8);
+            $OptList->MultipleAllowed(true);
+            $OptList->PrintHtml(); ?>
+    </td>
+    <td class="mfe mfe-appliesto"><i>User</i> fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the viewing privileges field for the given metadata field data.
+* @param array $Data Metadata field data.
+* @param mixed $Error Field error, if one exists.
+* @param MetadataSchema $Schema to use.
+*/
+function PrintViewingPrivilegesField(array $Data, $Error, $Schema)
+{
+    $AF = ApplicationFramework::getInstance();
+    global $H_PrivsetUI;
+    $SchemaPrivs = $Schema->ViewingPrivileges();
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-privileges mfe-field-viewpriv
+      mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
+      mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
+      mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference
+      mfe-type-email">
+    <th>
+      <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
+        Viewing Permissions
+      </span>
+    </th>
+    <td class="mv-form-fieldtype-privileges" width="75%">
+      <b>Schema requirements are:</b>&nbsp;<a class="btn btn-primary btn-sm mv-button-iconed"
+          href="index.php?P=EditMetadataSchema&amp;SC=<?= $GLOBALS['H_Schema']->Id(); ?>"><img
+          src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+      <div class="pl-4">
+      <?= getPrivilegeDescriptionHtml($SchemaPrivs); ?>
+      </div>
+      <br>
+      <b>This field separately requires</b>:
+      <?PHP $H_PrivsetUI->DisplaySet("ViewingPrivileges", $Data["ViewingPrivileges"]); ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the authoring privileges field for the given metadata field data.
+* @param array $Data Metadata field data.
+* @param mixed $Error Field error, if one exists.
+* @param MetadataSchema $Schema to use.
+*/
+function PrintAuthoringPrivilegesField(array $Data, $Error, $Schema)
+{
+    $AF = ApplicationFramework::getInstance();
+    global $H_PrivsetUI;
+    $SchemaPrivs = $Schema->AuthoringPrivileges();
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-privileges mfe-field-authorpriv
+      mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
+      mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
+      mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
+    <th>
+      <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
+        Authoring Permissions
+      </span>
+    </th>
+    <td class="mv-form-fieldtype-privileges" width="75%">
+      <b>Schema requirements are:</b>&nbsp;<a class="btn btn-primary btn-sm mv-button-iconed"
+          href="index.php?P=EditMetadataSchema&amp;SC=<?= $GLOBALS['H_Schema']->Id(); ?>"><img
+          src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+      <div class="pl-4">
+      <?= getPrivilegeDescriptionHtml($SchemaPrivs); ?>
+      </div>
+      <br>
+      <b>This field separately requires</b>:
+      <?PHP $H_PrivsetUI->DisplaySet("AuthoringPrivileges", $Data["AuthoringPrivileges"]); ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Print the editing privileges field for the given metadata field data.
+* @param array $Data Metadata field data.
+* @param mixed $Error Field error, if one exists.
+* @param MetadataSchema $Schema to use.
+*/
+function PrintEditingPrivilegesField(array $Data, $Error, $Schema)
+{
+    $AF = ApplicationFramework::getInstance();
+    global $H_PrivsetUI;
+    $SchemaPrivs = $Schema->EditingPrivileges();
+    ?>
+  <tr class="mv-content-tallrow mfe mfe-value mfe-group-privileges mfe-field-editpriv mfe-type-text
+      mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+      mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image
+      mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
+    <th>
+      <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
+        Editing Permissions
+      </span>
+    </th>
+    <td class="mv-form-fieldtype-privileges" width="75%">
+    <b>Schema requirements are:</b>&nbsp;<a class="btn btn-primary btn-sm mv-button-iconed"
+          href="index.php?P=EditMetadataSchema&amp;SC=<?= $GLOBALS['H_Schema']->Id(); ?>"><img
+          src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+      <div class="pl-4">
+      <?= getPrivilegeDescriptionHtml($SchemaPrivs); ?>
+      </div>
+      <br>
+      <b>This field separately requires</b>:
+      <?PHP $H_PrivsetUI->DisplaySet("EditingPrivileges", $Data["EditingPrivileges"]); ?>
+    </td>
+    <td class="mfe mfe-appliesto">All fields.</td>
+  </tr>
+    <?PHP
+}
+
+/**
+* Display the option list of referenceable schema ids.
+* @param array $Data Metadata field data.
+* @param mixed $Error Field error, if one exists
+*/
+function PrintReferenceableSchemaIds(array $Data, $Error)
+{
+    $Schemas = MetadataSchema::GetAllSchemas();
+
+    $OptionValues = [];
+    foreach ($Schemas as $Schema) {
+        $OptionValues[$Schema->Id()] = $Schema->Name();
+    }
+
+    $OptionList = new HtmlOptionList(
+        "F_ReferenceableSchemaIds[]",
+        $OptionValues,
+        $Data["ReferenceableSchemaIds"]
+    );
+
+    $OptionList->MultipleAllowed(true);
+    $OptionList->Size(count($Schemas));
+    ?>
+<tr class="mv-content-tallrow mfe mfe-value mfe-group-typespecific mfe-field-referenceableschemas
+    mfe-type-reference">
+  <th>
+    <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
+      Referenceable Schemas
+    </span>
+  </th>
+  <td width="75%">
+    <?PHP $OptionList->PrintHtml(); ?>
+  </td>
+  <td class="mfe mfe-appliesto">Reference fields.</td>
+</tr>
+    <?PHP
+}
+
+/**
+* Generate a read-only human-friendly description of a privilege set
+* @param PrivilegeSet $PrivilegeSet The privilege set to describe.
+* @return string containing HTML description
+*/
+function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
+{
+    $Logic = $PrivilegeSet->usesAndLogic() ? "AND" : "OR";
+    $Conditions = $PrivilegeSet->getConditions();
+    $Subsets = $PrivilegeSet->getSubsets();
+    $RequiredUserPrivileges = $PrivilegeSet->getPrivileges();
+
+    $AllSchemas = MetadataSchema::GetAllSchemas();
+
+    # map of friendly names for operators
+    $OpNames = [
+        "==" => "is",
+        "!=" => "is not",
+        ">"  => "is greater than",
+        "<"  => "is less than"
+    ];
+
+    # construct an array to hold descriptions of each priv element
+    $Elements = [];
+
+    # foreach user privilege
+    foreach ($RequiredUserPrivileges as $Privilege) {
+        $PrivFlag = new Privilege($Privilege);
+        $Elements [] = "Current user has <i>".$PrivFlag->Name()."</i> privilege";
+    }
+
+    # foreach condition
+    foreach ($Conditions as $Condition) {
+        # field conditions
+        try {
+            # get the field
+            $Field = new MetadataField($Condition["FieldId"]);
+            $Prefix = $AllSchemas[$Field->SchemaId()]->AbbreviatedName();
+            $SafeName = defaulthtmlentities("[".$Prefix."] "
+                    .$Field->GetDisplayName());
+            $SafeOperator = $OpNames[ $Condition["Operator"] ];
+
+            # proper dislpay of 'current user' tests against user fields
+            if ($Field->Type() == MetadataSchema::MDFTYPE_USER &&
+                is_null($Condition["Value"])) {
+                $SafeValue = "current user";
+            } elseif ($Field->Type() == MetadataSchema::MDFTYPE_OPTION) {
+                # proper display of cname values and the contains /
+                # does not contain test.
+                $CName = new ControlledName($Condition["Value"]);
+                $SafeValue = defaulthtmlentities($CName->Name());
+
+                if ($Condition["Operator"] == "==") {
+                    $SafeOperator = "contains";
+                } elseif ($Condition["Operator"] == "!=") {
+                    $SafeOperator = "does not contain";
+                }
+            } elseif ($Field->Type() == MetadataSchema::MDFTYPE_FLAG) {
+                # friendly names for flag values
+                $SafeValue = ($Condition["Value"] == 1) ? "true" : "false";
+            } else {
+                # otherwise display the literal value
+                $SafeValue = defaulthtmlentities($Condition["Value"]);
+            }
+        } catch (Exception $e) {
+            # handle invalid (or deleted) fields
+            $SafeName = "INVALID FIELD";
+            $SafeValue = defaulthtmlentities($Condition["Value"]);
+        }
+
+        # append friendly description to our list
+        $Elements [] = $SafeName." ".$SafeOperator." ".$SafeValue;
+    }
+
+    # foreach subset
+    foreach ($Subsets as $Subset) {
+        # for subgroups, wrap a div around a recursive call to ourself
+        $Elements [] =
+            "(<div class='pl-4'>".
+            getPrivilegeDescriptionHtml($Subset).
+            "</div>)";
+    }
+
+    # glue together all the elements we collected with our logic
+    return implode(" ".$Logic."<br/>", $Elements);
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$SafeId = defaulthtmlentities($H_FieldData["Id"]);
+$SafeName = defaulthtmlentities($H_FieldData["Name"]);
+$SafeMappedName = defaulthtmlentities($H_FieldData["MappedName"]);
+$SafeTypeAsName = defaulthtmlentities($H_FieldData["TypeAsName"]);
+$SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
+
+?>
+
+<form method="post"
+      action="index.php?P=EditMetadataField<?PHP if ($H_FieldData["Id"]) {
+            print "&amp;Id=".$SafeId;
+                                           } ?>"
+      class="mfe-form priv-form"
+      novalidate="novalidate">
+  <input type="hidden" name="F_SchemaId" value="<?= $SafeSchemaId; ?>" />
+
+  <div class="container container-fluid">
+  <div class="row">
+    <div class="col-5 mv-metadata-field-header">
+      <h1><?= $H_FieldData["FieldExists"] ? "Edit" : "Add"; ?> Metadata Field</h1>
+    </div>
+    <div class="col">
+        <p>(required fields are <span class="mv-form-requiredfield">circled</span>)</p>
+    </div>
+    <div class="col text-right">
+      <?PHP if ($H_FieldData["CanExport"]) { ?>
+        <a class="btn btn-primary btn-sm mv-button-iconed"
+            href="index.php?P=DBExportField&amp;Id=<?= $SafeId; ?>"
+        ><img src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt=""
+            class="mv-button-icon" /> Export Field</a>
+      <?PHP } ?>
+      <?PHP if ($H_FieldData["CanPopulate"]) { ?>
+        <button
+            class="btn btn-primary btn-sm mfe mfe-button mfe-submit-populatefield mv-button-iconed"
+            type="submit" name="Submit" value="Populate Field..."><img
+            src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
+            class="mv-button-icon" /> Populate Field</button>
+      <?PHP } ?>
+    </div>
+  </div>
+  </div>
+
+  <?PHP if (count($H_Errors) > 1) { ?>
+    <ul class="alert alert-danger list-group list-group-flush">
+        <?PHP foreach ($H_Errors as $Error) { ?>
+        <li class="list-group-item"><?= StripXSSThreats($Error); ?></li>
+        <?PHP } ?>
+    </ul>
+  <?PHP } elseif (count($H_Errors) == 1) { ?>
+    <p class="alert alert-danger"><?= StripXSSThreats(GetFirstError($H_Errors)); ?></p>
+  <?PHP } ?>
+
+  <?PHP if ($H_FieldData["IsStandard"] || $H_FieldData["HasOwner"] ||
+      $H_FieldData["IsLastTreeField"] || $H_FieldData["UsedByPrivsets"]) { ?>
+    <p class="alert alert-primary">
+      <strong>Please Note:</strong>
+      <?PHP if ($H_FieldData["IsStandard"]) { ?>
+        This field is currently designated the
+        <i>Resource <?= $SafeMappedName; ?> Field</i>. Some field
+        attributes cannot be modified and the field cannot be deleted until
+        another <i><?= $SafeTypeAsName; ?></i> metadata field is
+        selected for <i>Resource <?= $SafeMappedName; ?> Field</i>.
+            <?PHP if (User::getCurrentUser()->HasPriv(PRIV_SYSADMIN)) { ?>
+          This can be changed using the
+        <a href="index.php?P=EditMetadataSchema&SC=<?= $SafeSchemaId ?>"
+           >Edit Metadata Schema</a> page.
+            <?PHP } ?>
+      <?PHP } ?>
+      <?PHP if ($H_FieldData["HasOwner"]) { ?>
+            <?PHP if (($H_FieldData["Owner"] == "CWISCore")
+                    || ($H_FieldData["Owner"] == "MetavusCore")) { ?>
+          This field was created by the core software. Some field attributes
+          cannot be modified and the field cannot be deleted.
+            <?PHP } else { ?>
+          This field was created by the <i><?= $SafeOwner; ?></i> plugin.
+          Some field attributes cannot be modified and the field
+          cannot be deleted.
+            <?PHP } ?>
+      <?PHP } ?>
+      <?PHP if ($H_FieldData["IsLastTreeField"]) { ?>
+        This field cannot be deleted because at least one enabled tree field
+        must exist to provide resource browsing functionality.To delete this
+        field, create a new tree field or enable one that is currently
+        disabled.
+      <?PHP } ?>
+      <?PHP if ($H_FieldData["UsedByPrivsets"]) { ?>
+        This field cannot be deleted because it is currently in use by the
+        privileges system.
+      <?PHP } ?>
+    </p>
+  <?PHP } ?>
+
+  <table class="table table-striped mfe mfe-editfieldtable">
+    <tbody class="mfe mfe-group mfe-group-generic mfe-type-text mfe-type-paragraph mfe-type-number
+        mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree mfe-type-controlledname
+        mfe-type-option mfe-type-user mfe-type-image mfe-type-file mfe-type-url mfe-type-point
+        mfe-type-reference mfe-type-email mfe-type-searchparameterset">
+      <tr class="thead-dark mfe mfe-header mfe-group-generic mfe-type-text mfe-type-paragraph
+          mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+          mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+          mfe-type-url mfe-type-point mfe-type-reference mfe-type-email
+          mfe-type-searchparameterset">
+        <th colspan="2">Basic Information</th>
+        <th class="mfe mfe-appliesto">Applies To</th>
+      </tr>
+      <?PHP PrintTypeField($H_FieldData, StdLib::getArrayValue($H_Errors, "Type")); ?>
+      <?PHP PrintSchemaName($H_Schema); ?>
+      <?PHP PrintNameField($H_FieldData, StdLib::getArrayValue($H_Errors, "Name")); ?>
+      <?PHP PrintLabelField($H_FieldData, StdLib::getArrayValue($H_Errors, "Label")); ?>
+      <?PHP PrintDescriptionField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "Description"
+      )); ?>
+      <?PHP PrintInstructionsField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "Instructions"
+      )); ?>
+      <?PHP PrintEnabledField($H_FieldData, StdLib::getArrayValue($H_Errors, "Enabled")); ?>
+      <?PHP PrintEditableField($H_FieldData, StdLib::getArrayValue($H_Errors, "Editable")); ?>
+      <?PHP PrintOptionalField($H_FieldData, StdLib::getArrayValue($H_Errors, "Optional")); ?>
+      <?PHP PrintCopyOnResourceDuplicationField($H_FieldData, $H_Schema, StdLib::getArrayValue(
+          $H_Errors,
+          "CopyOnResourceDuplication"
+      )); ?>
+      <?PHP printObfuscateValueForAnonymousUsersField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "ObfuscateValueForAnonymousUsers"
+      )); ?>
+    </tbody>
+    <tbody class="mfe mfe-group mfe-group-qualifiers mfe-type-text mfe-type-paragraph
+        mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+        mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file mfe-type-url
+        mfe-type-point mfe-type-email">
+      <tr class="thead-dark mfe mfe-header mfe-group-qualifiers mfe-type-text mfe-type-paragraph
+          mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+          mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file mfe-type-url
+          mfe-type-point mfe-type-email">
+        <th colspan="2">Qualifiers</th>
+        <th class="mfe mfe-appliesto">Applies To</th>
+      </tr>
+      <?PHP PrintUsesQualifiersField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "UsesQualifiers"
+      )); ?>
+      <?PHP PrintHasItemLevelQualifiersField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "HasItemLevelQualifiers"
+      )); ?>
+      <?PHP PrintAssociatedQualifierListField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "AssociatedQualifierList"
+      )); ?>
+      <?PHP PrintDefaultQualifierField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "DefaultQualifier"
+      )); ?>
+      <?PHP PrintShowQualifiersField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "ShowQualifiers"
+      )); ?>
+      <tr class="mfe mfe-note mfe-group-qualifiers mfe-type-text mfe-type-paragraph mfe-type-number
+          mfe-type-date mfe-type-timestamp mfe-type-tree mfe-type-controlledname mfe-type-option
+          mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-email">
+        <td colspan="2">
+          <i>For <a href="http://www.dublincore.org/documents/dcmi-terms/"
+                target="_blank">Dublin Core</a>
+          compliant schemas, </i>Qualifiers<i> are equivalent to DC
+          </i>Encoding Schemes<i>.
+        </td>
+        <th class="mfe mfe-appliesto"></th>
+      </tr>
+    </tbody>
+    <tbody class="mfe mfe-group mfe-group-search mfe-type-text mfe-type-paragraph mfe-type-number
+        mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree mfe-type-controlledname
+        mfe-type-option mfe-type-user mfe-type-image mfe-type-file mfe-type-url mfe-type-reference
+        mfe-type-email">
+      <tr class="thead-dark mfe mfe-header mfe-group-search mfe-type-text mfe-type-paragraph
+          mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+          mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
+          mfe-type-url mfe-type-reference mfe-type-email">
+        <th colspan="2">Search</th>
+        <th class="mfe mfe-appliesto">Applies To</th>
+      </tr>
+      <?PHP PrintIncludeInKeywordSearchField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "IncludeInKeywordSearch"
+      )); ?>
+      <?PHP PrintIncludeInAdvancedSearchField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "IncludeInAdvancedSearch"
+      )); ?>
+      <?PHP PrintDisplayAsListForAdvancedSearch($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "DisplayAsListForAdvancedSearch"
+      )); ?>
+      <?PHP PrintMaxDepthForAdvancedSearch($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "MaxDepthForAdvancedSearch"
+      )); ?>
+      <?PHP PrintIncludeInFacetedSearchField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "IncludeInFacetedSearch"
+      )); ?>
+      <?PHP PrintIncludeInSortOptionsField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "IncludeInSortOptions"
+      )); ?>
+      <?PHP PrintSearchWeightField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "SearchWeight"
+      )); ?>
+      <?PHP PrintSearchGroupLogic($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "SearchGroupLogic"
+      )); ?>
+      <?PHP PrintFacetsShowOnlyTermsUsedInResults($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "FacetsShowOnlyTermsUsedInResults"
+      )); ?>
+    </tbody>
+    <tbody class="mfe mfe-group mfe-group-resourceediting mfe-type-tree mfe-type-controlledname
+        mfe-type-reference">
+      <tr class="thead-dark mfe mfe-header mfe-group-resourceediting mfe-type-tree
+          mfe-type-controlledname mfe-type-reference">
+        <th colspan="2">Resource Editing</th>
+        <th class="mfe mfe-appliesto">Applies To</th>
+      </tr>
+      <?PHP PrintOptionListThresholdField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "OptionListThreshold"
+      )); ?>
+      <?PHP PrintAjaxThresholdField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "AjaxThreshold"
+      )); ?>
+      <?PHP PrintNumAjaxResultsField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "NumAjaxResults"
+      )); ?>
+    </tbody>
+    <tbody class="mfe mfe-group mfe-group-oai mfe-type-tree mfe-type-controlledname
+        mfe-type-option">
+      <tr class="thead-dark mfe mfe-header mfe-group-oai mfe-type-tree
+          mfe-type-controlledname mfe-type-option">
+        <th colspan="2">OAI</th>
+        <th class="mfe mfe-appliesto">Applies To</th>
+      </tr>
+      <?PHP PrintUseForOaiSetsField($H_FieldData, StdLib::getArrayValue(
+          $H_Errors,
+          "UseForOaiSets"
+      )); ?>
+    </tbody>
+    <?PHP if ($H_FieldData["Name"] != "Cumulative Rating") { ?>
+      <tbody class="mfe mfe-group mfe-group-typespecific mfe-type-text mfe-type-paragraph
+          mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-option
+          mfe-type-user mfe-type-image mfe-type-url mfe-type-point mfe-type-reference
+          mfe-type-file mfe-type-tree mfe-type-email">
+        <tr class="thead-dark mfe mfe-header mfe-group-typespecific mfe-type-text
+            mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
+            mfe-type-option mfe-type-user mfe-type-image mfe-type-url mfe-type-point
+            mfe-type-reference mfe-type-file mfe-type-tree mfe-type-email">
+          <th colspan="2">Type-Specific Information</th>
+          <th class="mfe mfe-appliesto">Applies To</th>
+        </tr>
+        <?PHP PrintTextFieldSizeField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "TextFieldSize"
+        )); ?>
+        <?PHP PrintMaxLengthField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "MaxLength"
+        )); ?>
+        <?PHP PrintParagraphRowsField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "ParagraphRows"
+        )); ?>
+        <?PHP PrintParagraphColsField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "ParagraphCols"
+        )); ?>
+        <?PHP PrintAllowHtmlField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "AllowHtml"
+        )); ?>
+        <?PHP PrintUseWysiwygEditorField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "UseWysiwygEditor"
+        )); ?>
+        <?PHP PrintMinValueField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "MinValue"
+        )); ?>
+        <?PHP PrintMaxValueField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "MaxValue"
+        )); ?>
+        <?PHP PrintUpdateMethodField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "UpdateMethod"
+        )); ?>
+        <?PHP PrintFlagOnLabelField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "FlagOnLabel"
+        )); ?>
+        <?PHP PrintFlagOffLabelField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "FlagOffLabel"
+        )); ?>
+        <?PHP PrintAllowMultipleField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "AllowMultiple"
+        )); ?>
+        <?PHP PrintUserPrivilegeRestrictionsField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "UserPrivilegeRestrictions"
+        )); ?>
+        <?PHP PrintPointPrecisionField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "PointPrecision"
+        )); ?>
+        <?PHP PrintDecimalDigitsField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "DecimalDigits"
+        )); ?>
+        <?PHP PrintDefaultValueField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "DefaultValue"
+        )); ?>
+        <?PHP PrintReferenceableSchemaIds($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "ReferenceableSchemaIds"
+        )); ?>
+        <?PHP PrintNumericDefaultValueField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "NumericDefaultValue"
+        )); ?>
+        <?PHP PrintFlagDefaultValueField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "FlagDefaultValue"
+        )); ?>
+        <?PHP PrintPointDefaultValueField($H_FieldData, StdLib::getArrayValue(
+            $H_Errors,
+            "PointDefaultValue"
+        )); ?>
+      </tbody>
+    <?PHP } ?>
+    <tbody class="mfe mfe-group mfe-group-privileges mfe-type-text mfe-type-paragraph
+        mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
+        mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image
+        mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
+      <tr class="thead-dark mfe mfe-header mfe-group-privileges mfe-type-text
+          mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
+          mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
+          mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference
+          mfe-type-email">
+        <th colspan="2">Privileges</th>
+        <th class="mfe mfe-appliesto">Applies To</th>
+      </tr>
+      <?PHP PrintViewingPrivilegesField(
+          $H_FieldData,
+          StdLib::getArrayValue($H_Errors, "ViewingPrivileges"),
+          $H_Schema
+      ); ?>
+      <?PHP PrintAuthoringPrivilegesField(
+          $H_FieldData,
+          StdLib::getArrayValue($H_Errors, "AuthoringPrivileges"),
+          $H_Schema
+      ); ?>
+      <?PHP PrintEditingPrivilegesField(
+          $H_FieldData,
+          StdLib::getArrayValue($H_Errors, "EditingPrivileges"),
+          $H_Schema
+      ); ?>
+    </tbody>
+  </table>
+
+  <?PHP if (!$H_FieldData["FieldExists"]) { ?>
+    <button class="btn btn-primary mfe mfe-button mfe-submit-addfield mv-button-iconed"
+        type="submit" name="Submit" value="Add Field"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
+        alt="" class="mv-button-icon"/> Add Field</button>
+  <?PHP } else { ?>
+    <button class="btn btn-primary mfe mfe-button mfe-submit-updatefield mv-button-iconed"
+        type="submit" name="Submit" value="Update Field"><img
+        src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon"/> Update Field</button>
+  <?PHP } ?>
+  <?PHP if ($H_FieldData["FieldExists"] && !$H_FieldData["MappedName"] &&
+      !$H_FieldData["HasOwner"] && !$H_FieldData["IsLastTreeField"] &&
+      !$H_FieldData["UsedByPrivsets"]) { ?>
+    <button class="btn btn-danger mfe mfe-button mfe-submit-deletefield mv-button-iconed"
+        type="submit" name="Submit" value="Delete Field"><img
+        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon"/> Delete Field</button>
+  <?PHP } ?>
+  <button class="btn btn-danger mfe mfe-button mfe-submit-cancel mv-button-iconed" type="submit"
+        name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon"/> Cancel</button>
+</form>
+
+<!-- this needs to come after the form -->
+<script type="text/javascript">
+  (function(){
+    // remove text used for compatibility with browsers that don't have js
+    $(".mfe-appliesto").remove();
+
+    var typeMap = {}, typeBasedDefaults = {};
+    typeMap[<?= MetadataSchema::MDFTYPE_TEXT ?>] = "text";
+    typeMap[<?= MetadataSchema::MDFTYPE_PARAGRAPH ?>] = "paragraph";
+    typeMap[<?= MetadataSchema::MDFTYPE_NUMBER ?>] = "number";
+    typeMap[<?= MetadataSchema::MDFTYPE_DATE ?>] = "date";
+    typeMap[<?= MetadataSchema::MDFTYPE_TIMESTAMP ?>] = "timestamp";
+    typeMap[<?= MetadataSchema::MDFTYPE_FLAG ?>] = "flag";
+    typeMap[<?= MetadataSchema::MDFTYPE_TREE ?>] = "tree";
+    typeMap[<?= MetadataSchema::MDFTYPE_CONTROLLEDNAME ?>] = "controlledname";
+    typeMap[<?= MetadataSchema::MDFTYPE_OPTION ?>] = "option";
+    typeMap[<?= MetadataSchema::MDFTYPE_USER ?>] = "user";
+    typeMap[<?= MetadataSchema::MDFTYPE_IMAGE ?>] = "image";
+    typeMap[<?= MetadataSchema::MDFTYPE_FILE ?>] = "file";
+    typeMap[<?= MetadataSchema::MDFTYPE_URL ?>] = "url";
+    typeMap[<?= MetadataSchema::MDFTYPE_POINT ?>] = "point";
+    typeMap[<?= MetadataSchema::MDFTYPE_REFERENCE ?>] = "reference";
+    typeMap[<?= MetadataSchema::MDFTYPE_EMAIL ?>] = "email";
+    typeMap[<?= MetadataSchema::MDFTYPE_SEARCHPARAMETERSET ?>] = "searchparameterset";
+
+    <?PHP foreach (MetadataField::$FieldTypePHPEnums as $Type) { ?>
+      typeBasedDefaults[<?= $Type; ?>] = {
+        "SearchWeight": "<?= $H_TypeBasedDefaults[$Type]["SearchWeight"]; ?>",
+        "TextFieldSize": "<?= $H_TypeBasedDefaults[$Type]["TextFieldSize"]
+                ?? MetadataField::getDefaultValue("TextFieldSize"); ?>",
+        "MaxLength": "<?= $H_TypeBasedDefaults[$Type]["MaxLength"]
+                ?? MetadataField::getDefaultValue("MaxLength"); ?>",
+      };
+    <?PHP } ?>
+
+    var $typed = $(".mfe-group,.mfe-header,.mfe-value,.mfe-note"),
+        $toggleOnChange = $("select[name='F_Type'], select[name='F_UsesQualifiers']"),
+        $qualifiers = $typed.filter(".mfe-group-qualifiers"),
+        $main = $typed.not(".mfe-group-qualifiers")
+            .add($qualifiers.filter(".mfe-group,.mfe-header,.mfe-field-usesqualifiers")),
+        $secondaryQualifiers = $qualifiers
+            .not(".mfe-group,.mfe-header,.mfe-field-usesqualifiers"),
+        $mainRows = $(".mfe-value,.mfe-note"),
+        $groups = $(".mfe-group"),
+        $typeField = $("[name='F_Type']"),
+        $qualifierField = $("select[name='F_UsesQualifiers']");
+
+    /**
+     * Show and hide form fields based on the state of the form.
+     * @return void
+     */
+    function toggleFields() {
+      var typeClass = ".mfe-type-" + typeMap[$typeField.val()],
+          usesQualifiers = $(":selected", $qualifierField).val() == "1",
+          classes = ["mv-table-striped-even", "mv-table-striped-odd"];
+
+      // show and hide form fields
+      if (usesQualifiers) {
+        $typed.not(typeClass).hide();
+        $main.add($secondaryQualifiers).filter(typeClass).show();
+      } else {
+        $typed.not(typeClass).add($secondaryQualifiers.filter(typeClass)).hide();
+        $main.filter(typeClass).show();
+      }
+
+      // toggle the 'Copy on Dup' field as needed for new fields
+      if (location.search.indexOf("Id=") == -1) {
+          if (typeClass == '.mfe-type-file' || typeClass == '.mfe-type-image') {
+              $('#F_CopyOnResourceDuplication').val("0");
+          } else {
+              $('#F_CopyOnResourceDuplication').val("1");
+          }
+      }
+
+      // fix zebra striping
+      $mainRows.removeClass("mv-table-striped-odd mv-table-striped-even");
+      $groups.filter(":visible").each(function(){
+        var current = 0;
+
+        $(".mfe-value,.mfe-note", $(this)).filter(":visible").each(function(){
+          $(this).addClass(classes[current++ % 2] + " mv-table-striped-force");
+        });
+      });
+    }
+
+    // show and hide form fields to begin and setup toggling based on changes
+    // to some of the form fields
+    toggleFields();
+    $toggleOnChange.change(toggleFields);
+
+    // update defaults that depend on the type when the type changes
+    $typeField.change(function(){
+      var defaults = typeBasedDefaults[$typeField.val()];
+
+      for (var i in defaults) {
+        $("#F_"+i).val(defaults[i]);
+      }
+    });
+  })();
+
+  // enable WYSIWYG input only when AllowHTML value is "Yes"
+  (function(){
+    var $wysiwyg = $("#F_UseWysiwygEditor"),
+        $html = $("#F_AllowHTML");
+
+    function updateWysiwygInput() {
+      if ($html.val() == "0") {
+        $wysiwyg.val(0);
+        $wysiwyg.attr("disabled", "disabled");
+      } else {
+        $wysiwyg.removeAttr("disabled");
+      }
+    }
+
+    updateWysiwygInput();
+    $html.change(updateWysiwygInput);
+  }());
+
+  // update the default value select box labels for flags when the labels change
+  (function(){
+    var $flagOnLabel = $("#F_FlagOnLabel"),
+        $flagOnValue = $("#F_DefaultValue\\[Flag\\] option[value=1]"),
+        $flagOffLabel = $("#F_FlagOffLabel"),
+        $flagOffValue = $("#F_DefaultValue\\[Flag\\] option[value=0]");
+
+    $flagOnLabel.change(function(){
+      $flagOnValue.text($flagOnLabel.val());
+    });
+
+    $flagOffLabel.change(function(){
+      $flagOffValue.text($flagOffLabel.val());
+    });
+  }());
+
+  // update the default qualifier field when the associated qualifiers change
+  (function(){
+    var $associated = $("#F_AssociatedQualifierList\\[\\]"),
+        $default = $("#F_DefaultQualifier");
+
+    $associated.change(function(){
+      var currentDefault = parseInt($("option:selected", $default).val(), 10),
+          $selected = $("option:selected", $associated);
+
+      // clear existing options and add not set option
+      $default.html('<option value="--">--</option>');
+
+      // add selected options
+      $selected.clone().removeAttr("selected").appendTo($default);
+
+      // select the previously selected default
+      $("option[value='"+currentDefault+"']").attr("selected", "selected");
+    });
+  }());
+</script>

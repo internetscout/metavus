@@ -1,0 +1,69 @@
+<vocabulary>
+    <name>Education Level</name> <!-- (does not correlate to CWIS field)  -->
+    <description>A general statement describing the education or training context. Alternatively, a more specific statement of the location of the audience in terms of its progression through an education or training context; an appropriate learning level or range, for training or formal or informal education, associated with a resource.</description>
+    <version>Mar 26 2007</version>
+    <url>http://nsdl.org/collection/educationLevel.php</url>
+    <owner>
+        <name>NSDL</name>
+        <url>http://nsdl.org/</url>
+    </owner>
+    <qualifier>>
+        <name>NSDL Education Level Vocabulary</name>
+        <namespace>http://ns.nsdl.org/ed_type_v1.01/</namespace>
+        <url>https://wiki.ucar.edu/display/nsdldocs/Education+Level</url>
+    </qualifier>
+    <term>Pre-Kindergarten</term>
+    <term>
+        <value>Elementary School</value>
+        <term>
+            <value>Early Elementary</value>
+            <term>Kindergarten</term>
+            <term>Grade 1</term>
+            <term>Grade 2</term>
+        </term>
+        <term>
+            <value>Upper Elementary</value>
+            <term>Grade 3</term>
+            <term>Grade 4</term>
+            <term>Grade 5</term>
+        </term>
+    </term>
+    <term>
+        <value>Middle School</value>
+        <term>Grade 6</term>
+        <term>Grade 7</term>
+        <term>Grade 8</term>
+    </term>
+    <term>
+        <value>High School</value>
+        <term>Grade 9</term>
+        <term>Grade 10</term>
+        <term>Grade 11</term>
+        <term>Grade 12</term>
+    </term>
+    <term>
+        <value>Higher Education</value>
+        <term>
+            <value>Undergraduate (Lower Division)</value>
+            <term>Grade 13</term>
+            <term>Grade 14</term>
+        </term>
+        <term>
+            <value>Undergraduate (Upper Division)</value>
+            <term>Grade 15</term>
+            <term>Grade 16</term>
+        </term>
+        <term>Technical Education (Lower Division)</term>
+        <term>Technical Education (Upper Division)</term>
+        <term>Graduate/Professional</term>
+    </term>
+    <term>
+        <value>Informal Education</value>
+        <term>Elementary School Programming</term>
+        <term>Middle School Programming</term>
+        <term>High School Programming</term>
+        <term>General Public</term>
+        <term>Youth Public</term>
+    </term>
+    <term>Vocational/Professional Development Education</term>
+</vocabulary>

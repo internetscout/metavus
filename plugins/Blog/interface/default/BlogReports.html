@@ -1,0 +1,175 @@
+<?PHP
+#
+#   FILE:  EventReports.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Plugins\Blog\Entry;
+use Metavus\Record;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function PrintBlogTable($CountData, $StartDate, $Caption)
+{
+    ?>
+    <table class="table table-striped">
+      <tr style="background-color: #CFCFDD;">
+        <th align="left">Event</th><th align="right">Count</th>
+      </tr>
+        <?PHP
+        if (count($CountData) > 0) {
+            $Total = 0;
+            $Other = 0;
+            $Rows = 0;
+            foreach ($CountData as $Id => $Count) {
+                if (Record::itemExists($Id)) {
+                    $BlogPost = new Entry($Id);
+                    $Total += $Count;
+                    if ($Rows < 20) {
+                        $Rows++;
+                        ?><tr valign="top">
+                            <td>
+                              <a href="<?= $BlogPost->EntryUrl(); ?>">
+                                <?= $BlogPost->Get("Title"); ?>
+                              </a>
+                            </td>
+                            <td align="right"><?= $Count; ?></td>
+                          </tr><?PHP
+                    } else {
+                        $Other += $Count;
+                    }
+                }
+            }
+            if ($Other > 0) {
+                print  "<tr><td><i>Other</i></td><td align=\"right\">".$Other."</td></tr>";
+            }
+
+            print "<tr><td><i>Total</i></td><td align=\"right\">".$Total."</td></tr>";
+        } else {
+            ?><tr><td colspan="2">(no <?= $Caption; ?> for this period)</td></tr><?PHP
+        }
+        print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
+                    .date("M j Y", strtotime($StartDate))." - " .date("M j Y")
+                    ."</i></td></tr>";
+
+        ?></table><?PHP
+}
+
+
+# ----- MAIN -----------------------------------------------------------------
+?>
+
+<style type="text/css">
+.mv-stat-header {
+  display: inline-block;
+  margin: 0;
+  padding-left: 4px;
+  padding-top: 5px;
+}
+</style>
+
+<h1>Blog Usage Metrics</h1>
+
+<div style="min-width: 600px;">
+<table class="mv-table mv-table-fullsize" style="margin-bottom: 20px;">
+  <tr valign="top">
+    <td width="50%">
+      <div style="height: 2.5em">
+        <h2 class="mv-stat-header">Blog Post Views</h2>
+        <ul class="mv-button-group cw-content-mfetabs" style="float: right;">
+          <li>
+            <button class="btn btn-primary mv-button-weekly mv-button-views mv-button-active"
+            >Week</button>
+          </li>
+          <li><button class="btn btn-primary mv-button-monthly mv-button-views">Month</button></li>
+          <li><button class="btn btn-primary mv-button-yearly mv-button-views">Year</button></li>
+        </ul>
+      </div>
+
+      <div class="mv-stat-views mv-stat-weekly">
+      <?PHP PrintBlogTable($H_ViewData["Week"], $H_WeekAgo, "blog post views"); ?>
+      </div>
+
+      <div class="mv-stat-views mv-stat-monthly">
+      <?PHP PrintBlogTable($H_ViewData["Month"], $H_MonthAgo, "blog post views"); ?>
+      </div>
+
+      <div class="mv-stat-views mv-stat-yearly">
+      <?PHP PrintBlogTable($H_ViewData["Year"], $H_YearAgo, "blog post views"); ?>
+      </div>
+
+    </td>
+    <td></td>
+    <td width="50%">
+
+      <div style="height: 2.5em">
+        <h2 class="mv-stat-header">Blog Post Shares</h2>
+        <ul class="mv-button-group cw-content-mfetabs" style="float: right;">
+          <li>
+            <button class="btn btn-primary mv-button-weekly mv-button-shares mv-button-active"
+            >Week</button>
+          </li>
+          <li><button class="btn btn-primary mv-button-monthly mv-button-shares">Month</button></li>
+          <li><button class="btn btn-primary mv-button-yearly mv-button-shares">Year</button></li>
+        </ul>
+      </div>
+
+     <div class="mv-stat-shares mv-stat-weekly">
+      <?PHP PrintBlogTable($H_ShareData["Week"], $H_WeekAgo, "blog post shares"); ?>
+      </div>
+
+      <div class="mv-stat-shares mv-stat-monthly">
+      <?PHP PrintBlogTable($H_ShareData["Month"], $H_MonthAgo, "blog post shares"); ?>
+      </div>
+
+      <div class="mv-stat-shares mv-stat-yearly">
+      <?PHP PrintBlogTable($H_ShareData["Year"], $H_YearAgo, "blog post shares"); ?>
+      </div>
+
+    </td>
+  </tr>
+</table>
+</div>
+
+
+<script type="text/javascript">
+function toggle_stats(th, period){
+  var stat_type = '';
+  if      ($(th).hasClass('mv-button-views'))  { stat_type = 'views'; }
+  else if ($(th).hasClass('mv-button-shares')) { stat_type = 'shares'; }
+  else { return; }
+
+  $('.mv-stat-'+stat_type).hide();
+  $('.mv-button-'+stat_type).removeClass('mv-button-active');
+  $('.mv-stat-'+stat_type+'.mv-stat-'+period).show();
+  $('.mv-button-'+stat_type+'.mv-button-'+period).addClass('mv-button-active');
+}
+
+$('.mv-stat-monthly').hide();
+$('.mv-stat-yearly').hide();
+
+$(".mv-button-weekly").click( function(){ toggle_stats(this, 'weekly'); });
+$(".mv-button-monthly").click( function(){ toggle_stats(this, 'monthly'); });
+$(".mv-button-yearly").click( function(){ toggle_stats(this, 'yearly'); });
+</script>
+
+<?PHP
+  $H_ViewsPerDay->Title("<h2>Blog Post Views</h2>");
+  $H_ViewsPerDay->Display();
+
+?>
+<?PHP
+  $H_SharesPerDay->Title("<h2>Blog Post Shares</h2>");
+  $H_SharesPerDay->Display();
+?>
+
+<style type="text/css">
+#chart1 .graph_color0 { fill: #C5C53B; }
+#chart1 .graph_color1 { fill: #2E4588; }
+#chart1 .graph_color2 { fill: #2EC1FD; }
+#chart1 .graph_color3 { fill: #007000; }
+#chart1 .graph_color4 { fill: #A01E1A; }
+</style

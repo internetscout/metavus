@@ -1,0 +1,168 @@
+<?PHP
+#
+#   FILE:  StdPageStart.html (Metavus default interface)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\MetadataSchema;
+use Metavus\SecureLoginHelper;
+use Metavus\InterfaceConfiguration;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+# ----- CONFIGURATION --------------------------------------------------------
+
+# primary navigation menu items (in display order)
+$PrimaryNavItems = [
+    # Nav Item Label => Nav Item Link
+    "Home" => "index.php?P=Home",
+    "Browse" => "index.php?P=BrowseResources",
+    "About" => "about",
+];
+
+# required CSS and JavaScript files
+# NOTES:
+# - Override (e.g.Metavus-Override.css) files will also be loaded,
+#       if available, and should be used for modifications when creating
+#       custom interfaces.
+# - For CSS files, a ".scss" version of the file will also be searched
+#       for, and if found will be compiled and used in place of any ".css"
+#       version.
+# - jQuery JavaScript files must be loaded before Metavus JavaScript files.
+$InterfaceFiles = [
+    "jQuery.js",
+    "bootstrap.js",
+    "jquery-migrate.js",
+    "jquery-ui.js",
+    "bootstrap.css",
+    "jquery-ui.css",
+    "Metavus.css",
+    "CW-Confirm.js",
+    "CW-Base.js",
+];
+
+# image (SVG) files loaded inline (later within HTML)
+$InlineFiles = [
+    "FacebookLogo.svg",
+    "InstagramLogo.svg",
+    "MagnifyingGlass.svg",
+    "Meeple.svg",
+    "TwitterLogo.svg",
+];
+
+
+# ----- SETUP ----------------------------------------------------------------
+
+# initialize some convenience variables
+$AF = ApplicationFramework::getInstance();
+$IntConfig = InterfaceConfiguration::getInstance();
+$BaseUrl = ApplicationFramework::baseUrl();
+$IsLoggedIn = User::getCurrentUser()->isLoggedIn();
+$PageNameInLC = strtolower($AF->getPageName());
+
+# mark files loaded inline to not have fingerprints added to their names
+foreach ($InlineFiles as $InlineFile) {
+    $AF->doNotUrlFingerprint($InlineFile);
+}
+
+# drop browse from nav items if no viewable Tree fields available
+$Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
+if (!$Schema->aFieldIsViewableOfType(MetadataSchema::MDFTYPE_TREE)) {
+    unset($PrimaryNavItems["Browse"]);
+}
+
+# give plugins etc a chance to modify main nav
+$SignalResult = $AF->SignalEvent(
+    "EVENT_MODIFY_PRIMARY_NAV",
+    ["NavItems" => $PrimaryNavItems]
+);
+$PrimaryNavItems = $SignalResult["NavItems"];
+
+# set character set for interface
+$AF->addMetaTag(["charset" => $IntConfig->getString("DefaultCharacterSet")]);
+
+# set logo area content
+$PortalName = trim($IntConfig->getString("PortalName"));
+if (strlen($PortalName) == 0) {
+    $LogoAreaContent = "<img src=\"".$AF->gUIFile("MetavusLogo.svg")."\" alt=\"\">";
+} else {
+    $LogoAreaContent = $PortalName;
+}
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+# (NOTE: there must not be any whitespace in HTML output before the DOCTYPE)
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+    <title><?= PageTitle(); ?></title>
+    <!-- additional supporting JavaScript -->
+    <script>
+        var CWIS_BASE_URL = "<?= $BaseUrl ?>";
+    </script>
+
+    <?PHP  $AF->includeUIFile($InterfaceFiles);  ?>
+    <?PHP  SecureLoginHelper::printHeaderContent();  ?>
+    <?PHP  $AF->SignalEvent("EVENT_IN_HTML_HEADER");  ?>
+</head>
+<body id="page-<?= $PageNameInLC ?>">
+
+<div class="mv-skip-link">
+  <a href="#mv-segment-body">Skip to main content</a>
+</div>
+
+<div id="mv-navbar-search" style="display: none">
+  <form id="mv-content-quicksearch"
+        method="post" action="index.php?P=SearchResults">
+    <input type="text" id="F_SearchString" name="F_SearchString"
+           class="form-control" accesskey="s" placeholder="Search"/>
+    <button class="btn btn-primary mv-button-iconed" type="submit"
+        name="Submit" value="Search"><img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>"
+        alt="" class="mv-button-icon" /> Search</button>
+  </form>
+  <a href="index.php?P=AdvancedSearch">Advanced Search</a>
+</div>
+
+<div class="container-fluid">
+  <div class="row no-gutters">
+    <div class="col-sm">
+      <nav id="mv-content-primary-nav" role="navigation"
+            class="navbar navbar-expand flex-column flex-md-row">
+        <ul class="navbar-nav flex-column flex-lg-row mr-auto">
+          <li class="nav-item"
+              ><a class="nav-link navbar-brand" tabindex="-1" href="index.php?P=Home"
+                  ><?= $LogoAreaContent ?></a></li>
+            <?PHP
+            foreach ($PrimaryNavItems as $Label => $Link) {
+                ?><li class="nav-item"><a class="nav-link" tabindex="0"
+                    href="<?= $Link ?>"><?= $Label ?></a></li><?PHP
+            }
+            ?>
+        </ul>
+
+        <ul class="navbar-nav flex-column flex-lg-row">
+          <?PHP if (!$IsLoggedIn) { ?>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="mv-login-button" role="button">
+              <div class="mv-header-icon">
+                <?= file_get_contents($AF->gUIFile("Meeple.svg")) ?>
+              </div> Sign In </a>
+          </li>
+          <?PHP } ?>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="mv-search-button" role="button">
+              <div class="mv-header-icon">
+                <?= file_get_contents($AF->gUIFile("MagnifyingGlass.svg")) ?>
+              </div> Search </a>
+          </li>
+        </ul>
+      </nav>
+
+      <div id="mv-segment-body" class="mv-body">
+        <main role="main">
+
+<!-- END STDPAGESTART -->

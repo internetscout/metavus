@@ -1,0 +1,36 @@
+<?PHP
+#
+#   FILE:  NewSavedSearch.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Save Search");
+
+$MailingsEnabled = $GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailings");
+?>
+<h1>New Saved Search</h1>
+
+<?PHP FormUI::DisplayErrorBlock(); ?>
+
+<form name="newsavedsearch" method="post" action="index.php?P=NewSavedSearch">
+
+<?PHP if ($MailingsEnabled) { ?>
+<p> To be notified via email when new resources meet
+    the search criteria, select an e-mail frequency under
+     <b>Email</b>.</p>
+<?PHP } ?>
+    <?PHP $H_FormUI->DisplayFormTable(); ?>
+    <button class="btn btn-primary mv-button-iconed" type="Submit" name="Submit"
+        value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon" /> Save</button>
+    <button class="btn btn-danger mv-button-iconed" type="Submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>

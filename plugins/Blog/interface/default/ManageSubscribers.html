@@ -1,0 +1,99 @@
+<?PHP
+#
+#   FILE:  ManageSubscribers.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\MetadataSchema;
+use Metavus\QuickSearchHelper;
+use Metavus\User;
+use Metavus\Plugins\Blog;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+/**
+ * Retrieves the requested User Field of either UserName, Email, or RealName
+ * for the specified User to be displayed in the list of Blog subscribers.
+ * @param int $UserId The id of the User.
+ * @param string $UserField The User field to look up. Must be either
+ * UserName, Email, or RealName.
+ * @return string|null The requested user field if it is set for that user,
+ * otherwise NULL.
+ */
+function getUserInfo(int $UserId, string $UserField)
+{
+    static $UserData = [];
+
+    $UserFields = ["UserName", "EMail", "RealName"];
+    if (!in_array($UserField, $UserFields)) {
+        throw new Exception("Unsupported field: ".$UserField);
+    }
+
+    if (!isset($UserData[$UserId])) {
+        $User = new User($UserId);
+        $UserData[$UserId] = [];
+        foreach ($UserFields as $Field) {
+            $UserData[$UserId][$Field] = $User->get($Field);
+        }
+    }
+
+    return $UserData[$UserId][$UserField];
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+if (isset($H_Error)) {
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+}
+
+$PageTitle = "Manage Subscribers";
+
+PageTitle($PageTitle);
+?>
+<form method="post">
+    <?PHP QuickSearchHelper::PrintQuickSearchField(
+        QuickSearchHelper::USER_SEARCH,
+        "",
+        "",
+        false,
+        "F_UserName"
+    ); ?>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Add User"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add User</button>
+</form>
+<?PHP
+# item list ui fields definitions
+$SubscriberFieldDefinitions = [
+    "UserName" => [
+        "ValueFunction" => function ($UserId, $UserField) {
+            $UserName = getUserInfo($UserId, $UserField);
+            return "<a href='index.php?P=EditUser&ID=".$UserId."'>".$UserName."</a>";
+        },
+    ],
+    "EMail" => [
+        "Heading" => "E-Mail",
+        "AllowHTML" => true,
+        "ValueFunction" => function ($UserId, $UserField) {
+            $SafeEmail = defaulthtmlentities(getUserInfo($UserId, $UserField));
+            return "<a href='mailto:".$SafeEmail."'>".$SafeEmail."</a>";
+        },
+    ],
+    "RealName" => [
+        "Heading" => "Full Name",
+        "ValueFunction" => "getUserInfo",
+    ],
+];
+
+$ListUI = new ItemListUI($SubscriberFieldDefinitions);
+$ListUI->heading($PageTitle);
+$RemoveLinkFunc = function ($Item) {
+    # link for removing subscribers
+    return "index.php?P=P_Blog_ManageSubscribers&amp;ID=".$Item;
+};
+$ListUI->addActionButton("Remove", $RemoveLinkFunc, 'Delete.svg');
+$ListUI->display($H_Subscribers);

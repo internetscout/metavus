@@ -1,0 +1,615 @@
+<?PHP
+#
+#   FILE:  SearchResults.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
+use ScoutLib\PluginManager;
+
+# if this access came from an unwanted bot, bail and complain
+if ($H_IsBot) {
+    print "<p>Please do not spider search results in an automated fashion. "
+        ."It can generate significant system load. ";
+
+    if (PluginManager::getInstance()->pluginEnabled("XmlSitemap")) {
+        print "Instead, please use the "
+            ."<a href='index.php?P=P_XmlSitemap_Sitemap'>XML Sitemap</a> "
+            ."that we provide.";
+    }
+    print "</p>";
+
+    return;
+}
+
+# set page title
+PageTitle("Search Results - ".StdLib::NeatlyTruncateString(
+    $H_SearchParams->TextDescription(false),
+    120
+));
+
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get hidden tags needed by the sort controls for sorting and ordering.
+ * @param int $ItemType Type of item handled by sort controls.
+ * @param mixed $SortField The field to sort by.
+ * @param string $UrlParameterString String with all URL parameters.
+ * @param int $NumSearchResults Number of search results
+ * @return array Two-element array of strings where the first gives the hidden
+ *   tags for sort fields and the second gives the hidden tags for the sort
+ *   direction.
+ */
+function getSortFieldHiddenTags(
+    int $ItemType,
+    $SortField,
+    string $UrlParameterString
+) : array {
+    # split out URL parameters to build hidden tags for sort field and direction
+    parse_str($UrlParameterString, $UrlParameters);
+    $SortFieldHiddenTags = "";
+    $SortDirectionHiddenTags = "";
+
+    # for each URL parameter
+    foreach ($UrlParameters as $Param => $Values) {
+        $VarNameSuffix = $ItemType ? $ItemType : "";
+
+        # if multiple values were (or may be) provided
+        if (is_array($Values)) {
+            # for each value
+            foreach ($Values as $Index => $Value) {
+                # build hidden tag
+                $Tag = "<input type=\"hidden\""
+                        ." name=\"".$Param."[".$Index."]\""
+                        ." value=\"".defaulthtmlentities($Value)."\">\n";
+
+                if ((($Param != TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix)
+                        && ($Param != TransportControlsUI::PNAME_STARTINGINDEX.$VarNameSuffix))
+                        || ($Index != $ItemType)) {
+                    # add tag to sort field tags
+                    $SortFieldHiddenTags .= $Tag;
+                }
+
+                # if not reverse sort parameter for this item type
+                if (($Param != TransportControlsUI::PNAME_REVERSESORT.$VarNameSuffix)
+                        || ($Index != $ItemType)) {
+                    # add tag to sort direction tags
+                    $SortDirectionHiddenTags .= $Tag;
+                }
+            }
+        } else {
+            # build hidden tag
+            $Tag = "<input type=\"hidden\""
+                ." name=\"".$Param."\""
+                ." value=\"".defaulthtmlentities($Values)."\">\n";
+
+            # if param isn't reverse sort tag
+            if ($Param != TransportControlsUI::PNAME_REVERSESORT.$VarNameSuffix) {
+                # add to direction tags
+                $SortDirectionHiddenTags .= $Tag;
+
+                # and if param also isn't sort field tag or start index tag
+                if ($Param != TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix ||
+                    $Param != TransportControlsUI::PNAME_STARTINGINDEX.$VarNameSuffix) {
+                    # add to sort field tags
+                    $SortFieldHiddenTags .= $Tag;
+                }
+            }
+        }
+    }
+
+    return [$SortFieldHiddenTags, $SortDirectionHiddenTags];
+}
+
+/**
+ * Get the controls for sorting and ordering.
+ * @param int $ItemType Type of item handled by sort controls.
+ * @param mixed $SortField The field to sort by.
+ * @param bool $SortDescending Set to TRUE to indicate that sorting is in
+ *      descending order.
+ * @param array $SortableFields Array of sortable fields.
+ * @param string $UrlParameterString String with all URL parameters.
+ * @param SearchParameterSet $SearchParams Search parameters for this search
+ * @param int $NumSearchResults Number of search results
+ * @return string Returns the sort controls HTML as a string.
+ */
+function GetSortControls(
+    int $ItemType,
+    $SortField,
+    bool $SortDescending,
+    array $SortableFields,
+    string $UrlParameterString,
+    SearchParameterSet $SearchParams,
+    int $NumSearchResults
+) : string {
+
+    # get hidden tags
+    list($SortFieldHiddenTags, $SortDirectionHiddenTags) = getSortFieldHiddenTags(
+        $ItemType,
+        $SortField,
+        $UrlParameterString
+    );
+
+    # retrieve specifications for sort direction button
+    list($AscOrderInfo, $DescOrderInfo) = GetSortOrderButton($SortField);
+
+    # grab unique ID for use in the JavaScript below
+    $SafeUniqId = defaulthtmlentities(uniqid());
+    $SafeSortFieldId = null;
+
+    $ForwardSortValue = (is_null($SortField) ||
+        $SortField->Type() == MetadataSchema::MDFTYPE_DATE ||
+        $SortField->Type() == MetadataSchema::MDFTYPE_TIMESTAMP) ? 1 : 0;
+
+    $VarNameSuffix = $ItemType ? $ItemType : "";
+    $SortFieldVarName = TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix;
+    $ReverseSortVarName = TransportControlsUI::PNAME_REVERSESORT.$VarNameSuffix;
+
+    ob_start();
+    ?>
+    <div class="mv-search-sort-controls-container clearfix">
+    <form id="<?= $SafeUniqId ?>-sort-form"
+            class="mv-search-sort-form"
+            action="index.php"
+            method="get">
+        <?= $SortFieldHiddenTags  ?>
+        <div style="display:flex; justify-content: space-around; align-items: center">
+            <label for="<?= $SafeUniqId ?>_SF">Sort by: </label>
+            <select id="<?= $SafeUniqId ?>_SF" name="<?= $SortFieldVarName ?>">
+            <?PHP
+            $SortFieldId = is_object($SortField) ? $SortField->Id() : "R";
+            foreach ($SortableFields as $FieldId => $FieldName) {
+                $SafeFieldId = defaulthtmlentities($FieldId);
+                $SafeFieldName = defaulthtmlentities($FieldName);
+                print "<option value=\"".$SafeFieldId."\""
+                        .(($FieldId == $SortFieldId) ? " selected" : "")
+                        .">".$SafeFieldName."</option>\n";
+                if ($FieldId == $SortFieldId) {
+                    $SafeSortFieldId = $SafeFieldId;
+                }
+            }
+            ?>
+            </select>
+            <!-- START: Will be hidden via JS if enabled -->
+            <button class="btn btn-primary btn-sm mv-search-sort-submit-button"
+                type="submit" value="Sort">Sort</button>
+            <!-- END -->
+
+            <?PHP
+                $DescOrderLabel = "<span>".$DescOrderInfo["Text"][0]."</span>"
+                ."<span style='transform: rotate(90deg); margin:0'>&#x279c;</span>"
+                ."<span>".$DescOrderInfo["Text"][1]."</span>";
+
+                $AscOrderLabel = "<span>".$AscOrderInfo["Text"][0]."</span>"
+                ."<span style='transform: rotate(90deg); margin:0'>&#x279c;</span>"
+                ."<span>".$AscOrderInfo["Text"][1]."</span>";
+            ?>
+
+            <!-- START: Will be shown via JS if enabled -->
+            <style>
+                .mv-search-toggle-order-button {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-evenly;
+                }
+            </style>
+            <button class="btn btn-primary btn-sm mv-search-toggle-order-button"
+                style="display: none;">
+                <?= $SortDescending ? $DescOrderLabel : $AscOrderLabel ?>
+            </button>
+            <!-- END -->
+        </div>
+        <!-- START: Will be hidden via JS if enabled -->
+        <div class="mv-search-order-config-container"
+            style="display:flex; justify-content: flex-start; align-items: center">
+            <span style="margin-right: 8px">Order:</span>
+            <label for="<?= $SafeUniqId ?>_RS_0" class="btn btn-primary btn-sm"
+                style="margin:0 5px 0 10px">
+                <?= $AscOrderLabel; ?>
+            </label>
+            <input type="radio" id="<?= $SafeUniqId ?>_RS_0" value="<?= $ForwardSortValue ?>"
+                name="<?= $ReverseSortVarName ?>" <?= $SortDescending ? "" : "checked" ?>/>
+            <label for="<?= $SafeUniqId ?>_RS_1" class="btn btn-primary btn-sm"
+                style="margin:0 5px 0 10px">
+                <?= $DescOrderLabel; ?>
+            </label>
+            <input type="radio" id="<?= $SafeUniqId ?>_RS_1" value="<?= 1 - $ForwardSortValue ?>"
+                name="<?= $ReverseSortVarName ?>" <?= $SortDescending ? "checked" : ""?>/>
+        </div>
+        <!-- END -->
+    </form>
+    </div>
+    <?PHP
+
+    # return generated control HTML to caller
+    return ob_get_clean();
+}
+
+/**
+ * Get the details for the sort order button, e.g., the label and help text.
+ * @param MetadataField $Field The metadata field to use as context.
+ * @return Returns the details for the sort order button.
+ */
+function GetSortOrderButton(MetadataField $Field = null)
+{
+    $Ascending = [
+        "Message" => "Display the results in ascending order",
+        "Text" => ["", ""],
+        "Width" => 25
+    ];
+    $Descending = [
+        "Message" => "Display the results in descending order",
+        "Text" => ["", ""],
+        "Width" => 25
+    ];
+
+    # relevance or rating
+    if (is_null($Field) || $Field->Name() == "Cumulative Rating") {
+        $Ascending["Text"] = ["Lo", "Hi"];
+        $Descending["Text"] = ["Hi", "Lo"];
+        $Ascending["Width"] = 30;
+        $Descending["Width"] = 30;
+    } else { # based on field type
+        switch ($Field->Type()) {
+            case MetadataSchema::MDFTYPE_NUMBER:
+                $Ascending["Text"] = ["1", "10"];
+                $Descending["Text"] = ["10", "1"];
+                break;
+            case MetadataSchema::MDFTYPE_DATE:
+            case MetadataSchema::MDFTYPE_TIMESTAMP:
+                $Ascending["Text"] = ["JAN", "DEC"];
+                $Descending["Text"] = ["DEC", "JAN"];
+                $Ascending["Width"] = 35;
+                $Descending["Width"] = 35;
+                break;
+            default:
+                $Ascending["Text"] = ["A", "Z"];
+                $Descending["Text"] = ["Z", "A"];
+                break;
+        }
+    }
+
+    return [$Ascending, $Descending];
+}
+
+/**
+ * Print the search results display for specified item type.
+ * @param int $ItemType Type of item.
+ * @param object $SearchParams Search parameters.
+ * @param array $SearchResults Array of search results, with item IDs for the
+ *       index and relevance scores for the values.
+ * @param int $StartingIndex Starting index into search results for current page.
+ * @param int $ResultsPerPage Number of results to display per page.
+ * @param int $SortFieldId ID of field currently used for sorting results.
+ * @param bool $SortDescending TRUE if results are currently sorted in descending
+ *       order, otherwise FALSE.
+ * @param bool $UseTabs TRUE to indicate that a tabbed interface should be
+ *       displayed, otherwise FALSE.
+ * @param object $TransportUI Transport controls user interface object.
+ */
+function printSearchResults(
+    $ItemType,
+    $SearchParams,
+    $SearchResults,
+    $StartingIndex,
+    $ResultsPerPage,
+    $SortFieldId,
+    $SortDescending,
+    $UseTabs,
+    $TransportUI,
+    $ListChecksums
+) {
+    # ----- SETUP (STRING BUILDING) ----------------------------------------------
+
+    # get text description of search parameters
+    $SearchDescription = $SearchParams->TextDescription();
+
+    # build description of where we are in search results
+    $ResultCount = count($SearchResults);
+
+    # ----- SETUP (DATA LOADING) -------------------------------------------------
+
+    # load sort controls HTML
+    $Schema = new MetadataSchema($ItemType);
+    $SortField = (($SortFieldId != "R") && $Schema->ItemExists($SortFieldId))
+            ? new MetadataField($SortFieldId) : null;
+
+    # add a new local default sort field option (Relevance) to the list of available sort fields
+    $SortableFields = ["R" => "(Relevance)"] + $Schema->getSortFields();
+
+    $FullUrlParameterString = "P=SearchResults&"
+            .$SearchParams->UrlParameterString()
+        .$TransportUI->UrlParameterString(false);
+
+    # get data for faceted search
+    $BaseLink = "index.php?P=SearchResults";
+    # if a sort field was set, preserve it
+    if ($SortField !== null) {
+        $VarNameSuffix = $Schema->id() ? $Schema->id() : "";
+        $BaseLink .= "&amp;"
+            .TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix."=".$SortField->Id();
+    }
+
+    $FacetUI = new SearchFacetUI(
+        $SearchParams,
+        $SearchResults
+    );
+    $FacetUI->baseLink($BaseLink);
+
+    # load resources to be displayed
+    $ResultsToDisplay = [];
+    $ResultSliceIds = array_keys(array_slice(
+        $SearchResults,
+        $StartingIndex,
+        $ResultsPerPage,
+        true
+    ));
+    foreach ($ResultSliceIds as $Id) {
+        $ResultsToDisplay[] = new Record($Id);
+    }
+
+    $BaseLinkWithSearchParams = "index.php?P=SearchResults&amp;"
+            .http_build_query($SearchParams->UrlParameters(), "&amp;");
+    foreach ($ListChecksums as $Index => $Checksum) {
+        $BaseLinkWithSearchParams .= "&amp;" . $Index . "=" . $Checksum;
+    }
+
+    $OurLink = urlencode("index.php?".http_build_query($_GET));
+    $TransportUI->baseLink($BaseLinkWithSearchParams);
+    $RefineLink = "index.php?P=AdvancedSearch&amp;RF=1&amp;"
+        .$SearchParams->UrlParameterString();
+
+    ob_start();
+    $AF = ApplicationFramework::getInstance();
+    $AF->signalEvent(
+        "EVENT_HTML_INSERTION_POINT",
+        [
+            $AF->getPageName(),
+            "Search Results Buttons",
+            [
+                "ItemType" => $ItemType,
+                "SearchParameters" => $SearchParams,
+                "SortParamsForUrl" => $FullUrlParameterString,
+                "NumberSearchResults" => $ResultCount,
+                "ReturnToString" => $OurLink,
+                "SearchResults" => $ResultsToDisplay,
+            ]
+        ]
+    );
+    $ButtonHtml = ob_get_clean();
+
+    if ($ResultCount == 0) {
+        $ResultsHtml = ($SearchParams->parameterCount() > 0) ?
+            "<br><br>No matching results were found.<br><br><br>" :
+            "<br><br>No search parameters were specified.<br><br><br>";
+    } else {
+        $ShowScreenshots = RecordFactory::recordListHasAnyScreenshots($ResultsToDisplay);
+
+        ob_start();
+        foreach ($ResultsToDisplay as $Resource) {
+            $Summary = ResourceSummary::Create($Resource->id());
+            $Summary->showScreenshot($ShowScreenshots);
+            $Summary->termsToHighlight(implode(" ", $SearchParams->GetKeywordSearchStrings()));
+            $Summary->Display();
+        }
+        $ResultsHtml = ob_get_clean();
+    }
+
+    $SortControlsHtml = getSortControls(
+        $ItemType,
+        $SortField,
+        $SortDescending,
+        $SortableFields,
+        $FullUrlParameterString,
+        $SearchParams,
+        count($SearchResults)
+    );
+
+
+    $ContainerCssClasses = "container-fluid h-100";
+    $ContainerAttrs = '';
+    if ($UseTabs) {
+        $ContainerCssClasses .= " mv-tabs-container";
+        $ContainerAttrs .= ' id="mv-tabs-'.$ItemType.'"';
+    }
+    # ----- SETUP (PLUGINS) ---------------------------------------------------
+    $PluginMgr = PluginManager::getInstance();
+
+    $CalendarFeedNoticeHtml = "";
+
+    if ($PluginMgr->pluginEnabled("CalendarEvents")) {
+        $EventsPlugin = $PluginMgr->getPlugin("CalendarEvents");
+        if ($ItemType == $EventsPlugin->getSchemaId()) {
+            $CalendarFeedNoticeHtml = "{{P-CALENDARFEED-FEEDNOTICE}}";
+        }
+    }
+    ?>
+
+
+    <div class="<?= $ContainerCssClasses?>" <?= $ContainerAttrs ?>>
+      <div class="row h-100">
+        <div class="col">
+
+          <div class="row no-gutters mv-search-header">
+            <div class="col-7 mv-search-description">
+              Searched for: <strong><?= $SearchDescription ?></strong>
+            </div>
+            <div class="col text-right">
+              <?PHP $TransportUI->display(); ?>
+            </div>
+          </div>
+
+          <div class="row no-gutters mv-search-results">
+            <div class="col">
+              <div class='text-right'> <?= $ButtonHtml ?></div>
+              <?= $ResultsHtml ?>
+            </div>
+          </div>
+
+          <div class="row no-gutters mv-search-footer">
+            <div class="col"><?PHP $TransportUI->display(); ?></div>
+          </div>
+
+          <div class="row no-gutters mv-search-footer">
+            <div class="col"><?= $CalendarFeedNoticeHtml ?></div>
+          </div>
+        </div>
+
+        <div class="col-3 mv-narrow-your-search">
+          <?=  $SortControlsHtml ?>
+          <?PHP $FacetUI->printSearchFacets(); ?>
+        </div>
+      </div>
+    </div>
+    <?PHP
+}
+
+
+# ----- PAGE CONTENT ---------------------------------------------------------
+
+$RefineLink = "index.php?P=AdvancedSearch&amp;RF=1&amp;"
+    .$H_SearchParams->UrlParameterString();
+?>
+<div class="container-fluid">
+<div class="row">
+    <div class="col text-left">
+        <h1>
+            <span class="mv-title-image" aria-hidden="true">
+                <?= file_get_contents(__DIR__."/images/SearchResults.svg") ?>
+            </span>
+            Search Results
+        </h1>
+    </div>
+    <div class="col text-right">
+      <a class="mv-link-advancedsearch" href="<?= $RefineLink ?>"
+        ><span class="mv-link-image" aria-hidden="true">
+            <?= file_get_contents(__DIR__."/images/AdvancedSearch.svg") ?>
+        </span> Advanced Search</a>
+    </div>
+</div>
+</div>
+
+<?PHP
+# ----- TAB HEADER ----------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+$UseTabs = (count($H_SearchResults) > 1);
+if ($UseTabs) {
+    $AF->requireUIFile('jquery-ui.js');
+    $AF->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
+    ?>
+<div id="mv-tabs" class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <ul class="cw-tab-nav"><?PHP
+        foreach ($H_SearchResults as $ItemType => $TypeResults) {
+            $Schema = new MetadataSchema($ItemType); ?>
+            <li>
+                <a href="#mv-tabs-<?= $ItemType ?>">
+                    <strong><?= $Schema->Name() ?></strong> (<?=
+                        number_format(count($TypeResults)) ?>)
+                </a>
+            </li><?PHP
+        }
+        ?></ul>
+    </div>
+    <div class="col-3">&nbsp;</div>
+  </div>
+  <div class="row">
+    <div class="col">
+
+    <?PHP
+}
+
+# ----- SEARCH RESULTS ------------------------------------------------------
+foreach ($H_SearchResults as $ItemType => $TypeResults) {
+    if ($ItemType != MetadataSchema::SCHEMAID_USER) {
+        PrintSearchResults(
+            $ItemType,
+            $H_SearchParams,
+            $TypeResults,
+            $H_TransportUIs[$ItemType]->startingIndex(),
+            $H_ResultsPerPage,
+            $H_TransportUIs[$ItemType]->sortField(),
+            $H_SortDescending[$ItemType],
+            $UseTabs,
+            $H_TransportUIs[$ItemType],
+            $H_ListChecksums
+        );
+    }
+}
+
+if ($UseTabs) {
+    print "</div></div></div>";
+}
+
+# ----- SUPPORTING JAVASCRIPT -----------------------------------------------
+# (ORDER_FIRST is needed so that jquery.cookie.js will be loaded at the top of
+#  the page such that the JS code below can actually use it)
+$AF->requireUIFile('jquery.cookie.js', ApplicationFramework::ORDER_FIRST);
+
+?>
+<script type='text/javascript'>
+<?PHP
+if ($UseTabs) {
+    # (get array with item types for index and indexes of item tabs
+    #       for values because JS active tab parameter expects an index)
+    $ItemTypeIndexes = array_flip(array_keys($H_SearchResults));
+    $TabParameter = "{active: ".$ItemTypeIndexes[$H_ActiveTab]."}";
+    ?>
+    $(document).ready(function() {
+        $('#mv-tabs').tabs(<?= $TabParameter;  ?>);
+
+        $('.ui-tabs-anchor').click(function(){
+            var tabNo = $(this).attr("href").replace('#mv-tabs-','');
+            $.cookie('SearchResults_TabNo', tabNo);
+        });
+    });
+<?PHP } ?>
+
+function toggle_facet(no, cookieKey){
+    var cookieName = 'SearchResults_Facet_' + cookieKey;
+    $.cookie(cookieName, 1 - $.cookie(cookieName));
+
+    $('.DD_Toggle'+no).each(function(index, element){
+        if ($(element).is("ul")) {
+            $(element).slideToggle();
+        } else {
+            $(element).toggle();
+        }
+    });
+}
+
+// hide all the search order radio buttons and the labels
+$(".mv-search-order-config-container").hide();
+
+// when a label is clicked, toggle the radios button and submit the form
+/*$("label", ".mv-search-order-form").click(function(){
+    $("input[type='radio']", this.form).not(":checked").prop('checked', true);
+    this.form.submit();
+});*/
+
+// when a new sort field is selected, submit the form
+$("select", ".mv-search-sort-form").change(function() {
+    this.form.submit();
+});
+
+// when the ordering button is clicked, toggle the radio buttons and submit the form.
+$(".mv-search-toggle-order-button").click(function() {
+    $("input[type='radio']", this.form).not(":checked").prop('checked', true);
+    this.form.submit();
+});
+
+// hide the manual submit buttons
+$(".mv-search-sort-submit-button").hide();
+
+// show the order toggle buttons
+$(".mv-search-toggle-order-button").show();
+</script>

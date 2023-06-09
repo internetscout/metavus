@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="install/Boot.php" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd">
+  <coverage>
+    <include>
+      <directory suffix=".php">objects</directory>
+      <directory suffix=".php">lib</directory>
+      <directory suffix=".php">plugins</directory>
+      <directory suffix=".php">local/objects</directory>
+      <directory suffix=".php">interface/default/objects</directory>
+    </include>
+    <exclude>
+      <directory>objects/tests</directory>
+      <directory>lib/*/tests</directory>
+      <directory>plugins/*/objects/tests</directory>
+      <directory>local/objects/tests</directory>
+      <directory>plugins/*/lib</directory>
+      <directory>interface/default/objects/tests</directory>
+    </exclude>
+  </coverage>
+  <testsuites>
+    <testsuite name="Metavus Tests">
+      <directory>objects/tests</directory>
+      <directory>lib/*/tests</directory>
+      <directory>plugins/*/objects/tests</directory>
+      <directory>interface/default/objects/tests</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

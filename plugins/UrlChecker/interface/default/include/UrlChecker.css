@@ -1,0 +1,15 @@
+table.urlchecker-table-info {
+    margin-top: 30px;
+}
+
+table.urlchecker-table-invalidurls > tbody > tr > td {
+    white-space: nowrap;
+}
+
+.Limits {
+    min-width: 575px;
+}
+
+.Limits label {
+    margin-left: 10px;
+}

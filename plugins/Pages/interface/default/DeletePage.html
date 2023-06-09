@@ -1,0 +1,65 @@
+<?PHP
+#
+#   FILE:  DeletePage.html (Pages plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+
+# if no page ID available
+if ($H_DisplayMode == "NoPageSpecified") {
+    # display error message indicating no ID
+    ?><h1>Error</h1>
+    No page ID was supplied.<?PHP
+    PageTitle("No Page Specified");
+} elseif ($H_DisplayMode == "PageDoesNotExist") { # else if no page found with specified ID
+    # display error message indicating page not found
+    ?><h1>Error</h1>
+    No page found with specified ID.<?PHP
+    PageTitle("Page Not Found");
+} else {
+    # if page has been deleted
+    if ($H_DisplayMode == "PageDeleted") {
+        # display deleted notice
+        ?>
+        <div class="mv-form-error">
+            <h2>Page Deleted</h2>
+            <a href="index.php?P=P_Pages_ListPages" class="btn btn-primary mv-button-iconed"><img
+                src="<?= $AF->GUIFile('BackArrow.svg'); ?>"
+                alt="" class="mv-button-icon" /> Return to the list of pages</a>
+        </div>
+        <?PHP
+    } else {
+        # display delete confirmation prompt
+        ?>
+        <form method="POST" action="index.php?P=P_Pages_DeletePage&amp;ID=<?PHP
+                print $H_Page->Id();  ?>&amp;AC=Confirmation">
+        <input type="hidden" name="F_Referer" value="<?PHP
+                print htmlspecialchars($_SERVER["HTTP_REFERER"]);  ?>">
+        <div class="mv-form-error">
+        <h2>Confirm Page Deletion</h2>
+        <p><b>WARNING:</b> Content cannot be recovered after page is
+        deleted!</p>
+        <button type="submit" name="Submit" value="Delete"
+            class="btn btn-danger mv-button-iconed"><img
+            src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+            class="mv-button-icon" /> Delete</button>
+        <button type="submit" name="Submit" value="Cancel"
+            class="btn btn-primary mv-button-iconed"><img
+            src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+            class="mv-button-icon" /> Cancel</button>
+        </div>
+        </form>
+        <?PHP
+    }
+
+    # display page content
+    PageTitle($H_Page->Get("Title"));
+    $AF->requireUIFile('Pages_Controls.css');
+    print $H_Page->Get("Content");
+}

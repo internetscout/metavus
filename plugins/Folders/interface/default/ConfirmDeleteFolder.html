@@ -1,0 +1,35 @@
+<?PHP
+#
+#   FILE:  ConfirmDeleteFolder.html (Folders plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeId = defaulthtmlentities($Id);
+$SafeName = defaulthtmlentities($Name);
+
+?>
+
+<h1>Delete Folder</h1>
+
+<p>
+  Are you sure you want to delete <i><?= $SafeName; ?></i>?
+</p>
+
+<form method="get" action="index.php">
+  <input type="hidden" name="P" value="P_Folders_DeleteFolder" />
+  <input type="hidden" name="FolderId" value="<?= $SafeId; ?>" />
+  <?PHP if ($ReturnTo) { ?>
+    <input type="hidden" name="ReturnTo" value="<?= $ReturnTo; ?>" />
+  <?PHP } ?>
+
+  <button type="submit" value="Delete" class="btn btn-danger mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Delete.svg'); ?>" alt="" class="mv-button-icon" /> Delete</button>
+  <button type="submit" name="Cancel" value="Cancel"
+    class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
+    alt="" class="mv-button-icon" /> Cancel</button>
+</form>

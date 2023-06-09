@@ -1,0 +1,52 @@
+<?PHP
+#
+#   FILE:  ConfirmRebuildRecommenderDB.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Rebuild Recommender Database</h1>
+
+<p><b>Note:</b> Manually rebuilding the recommender database can take a
+<b>long time</b>, hours for a large collection, and your browser window must
+remain open on the progress page until the rebuild is complete.</p>
+
+<p>The <i>Rebuild Recommender Database</i> page allows administrators to
+manually rebuild the recommender database. The recommendation system tries to
+provide meaningful suggestions for resources that a user may find interesting or
+useful. Because they are dependent on part on user activity, recommendations are
+only available to registered users.</p>
+
+<p>Information in the recommender database is updated automatically whenever a
+user rates a resource record. Rebuilding the recommender database is unnecessary
+except when upgrading to a new version of
+<abbr title="Collection Workflow Integration System">CWIS</abbr> to take
+advantage of any improvements to the recommender engine or when recommendations
+seem inaccurate. Recommendations will be
+less meaningful while the recommender database is rebuilt.</p>
+
+<p>The recommender system considers the content of metadata fields that are
+configured to be included in keyword searches, and the search weight setting for
+those fields – the higher the search weight for a field, the more it influences
+recommendations.</p>
+
+<p>The recommender database can be rebuilt in either the foreground or
+background. Rebuilding the recommender database in the foreground requires that
+the web browser remain on the page until the rebuild is complete, but it
+provides a completion time estimate and current status. Rebuilding the
+recommender database in the background uses background tasks and does not
+require that the web browser remain on the page. It does not provide a
+completion time estimate or current status due to the nature of background
+tasks, but is highly recommended because rebuilding the recommender database can
+take a very long time and background tasks are less performance intensive.</p>
+
+<a class="btn btn-primary" href="index.php?P=RebuildRecommenderDB">Manual Rebuild</a>
+<a class="btn btn-primary"
+    href="index.php?P=RebuildRecommender&amp;AC=Background">Background Rebuild</a>
+<a class="btn btn-primary" href="index.php?P=SysAdmin">Cancel</a>

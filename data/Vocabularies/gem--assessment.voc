@@ -1,0 +1,25 @@
+<vocabulary>
+    <name>Assessment</name> <!-- (does not correlate to CWIS field) -->
+    <description>Words and phrases that describe student learning assessment methods and instruments.</description>
+    <version>Feb 2 2000</version>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-assessment</url>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>>
+        <name>GEM Assessment Vocabulary</name>
+        <namespace>http://purl.org/gem/instance/GEM-AM/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-assessment</url>
+    </qualifier>
+    <term>Alternative assessment</term>
+    <term>Authentic assessment</term>
+    <term>Curriculum based assessment</term>
+    <term>Informal assessment</term>
+    <term>Observation</term>
+    <term>Peer evaluation</term>
+    <term>Portfolio assessment</term>
+    <term>Self evaluation</term>
+    <term>Standardized testing</term>
+    <term>Testing</term>
+</vocabulary>

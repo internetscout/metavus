@@ -1,0 +1,187 @@
+<?PHP
+#
+#   FILE:  EventReports.html (MetricsReporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\BarChart;
+use Metavus\MultiDateChart;
+use Metavus\Plugins\CalendarEvents\Event;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function PrintEventTable($CountData, $StartDate, $Caption)
+{
+    ?>
+    <table class="table table-striped">
+      <tr style="background-color: #CFCFDD;">
+        <th align="left">Event</th><th align="right">Count</th>
+      </tr>
+        <?PHP
+        if (count($CountData) > 0) {
+            $Total = 0;
+            $Other = 0;
+            $Rows = 0;
+            foreach ($CountData as $Id => $Count) {
+                if (Event::ItemExists($Id)) {
+                    $Event = new Event($Id);
+
+
+                    $Total += $Count;
+
+                    if ($Rows < 20) {
+                        $Rows++;
+                        ?><tr valign="top"><td><a href="<?= $Event->EventUrl(); ?>"
+                               ><?= $Event->Get("Title");  ?></a></td>
+                           <td align="right"><?= $Count;  ?></td>
+                         </tr><?PHP
+                    } else {
+                        $Other++;
+                    }
+                }
+            }
+
+            if ($Other > 0) {
+                print "<tr><td><i>Other</i></td><td align=\"right\">".$Other."</td></tr>";
+            }
+
+            print "<tr><td><i>Total</i><td align=\"right\">".$Total."</td></tr>";
+        } else {
+            ?><tr><td colspan="2">(no <?= $Caption; ?> for this period)</td></tr><?PHP
+        }
+        print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
+                    .date("M j Y", strtotime($StartDate))." - " .date("M j Y")
+                    ."</i></td></tr>";
+
+        ?></table><?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+# convert events added summary to barchartable form
+$H_EventsAddedPerDay = array_map(function ($x) {
+    return [$x];
+}, $H_EventsAddedPerDay);
+
+# convert views summary to barchartable form
+$H_ViewsByDay = array_map(function ($x) {
+    return [$x];
+}, $H_ViewsByDay);
+
+$EventsAddedGraph = new MultiDateChart();
+$EventsAddedGraph->Data($H_EventsAddedPerDay);
+$EventsAddedGraph->LegendPosition(BarChart::LEGEND_NONE);
+$EventsAddedGraph->Labels(["New Events"]);
+$EventsAddedGraph->Width(800);
+
+$ViewsGraph = new MultiDateChart();
+$ViewsGraph->Data($H_ViewsByDay);
+$ViewsGraph->LegendPosition(BarChart::LEGEND_NONE);
+$ViewsGraph->Labels(["Event Views"]);
+$ViewsGraph->Width(800);
+
+$SharesGraph = new MultiDateChart();
+$SharesGraph->Data($H_SharesByDay);
+
+$SharesGraph->Labels($H_ShareTypeLabels);
+$SharesGraph->Colors($H_ShareTypeColors);
+$SharesGraph->Width(800);
+?>
+<style type="text/css">
+.mv-stat-header {
+  display: inline-block;
+  margin: 0;
+  padding-left: 4px;
+  padding-top: 5px;
+}
+</style>
+
+<h1>Event Usage Metrics</h1>
+
+<div style="min-width: 600px;">
+<table class="mv-table mv-table-fullsize" style="margin-bottom: 20px;">
+  <tr valign="top">
+    <td width="50%">
+      <div style="height: 2.5em">
+        <h2 class="mv-stat-header">Event Views</h2>
+        <ul class="mv-button-group mv-content-mfetabs" style="float: right;">
+          <li><a class="mv-button mv-button-weekly mv-button-views mv-button-active">Week</a></li>
+          <li><a class="mv-button mv-button-monthly mv-button-views">Month</a></li>
+          <li><a class="mv-button mv-button-yearly mv-button-views">Year</a></li>
+        </ul>
+      </div>
+
+      <div class="mv-stat-views mv-stat-weekly">
+      <?PHP PrintEventTable($H_TopViews["Week"], $H_WeekAgo, "event views"); ?>
+      </div>
+
+      <div class="mv-stat-views mv-stat-monthly">
+      <?PHP PrintEventTable($H_TopViews["Month"], $H_MonthAgo, "event views"); ?>
+      </div>
+
+      <div class="mv-stat-views mv-stat-yearly">
+      <?PHP PrintEventTable($H_TopViews["Year"], $H_YearAgo, "event views"); ?>
+      </div>
+
+    </td>
+    <td></td>
+    <td width="50%">
+
+      <div style="height: 2.5em">
+        <h2 class="mv-stat-header">Event Shares</h2>
+        <ul class="mv-button-group mv-content-mfetabs" style="float: right;">
+          <li><a class="mv-button mv-button-weekly mv-button-shares mv-button-active">Week</a></li>
+          <li><a class="mv-button mv-button-monthly mv-button-shares">Month</a></li>
+          <li><a class="mv-button mv-button-yearly mv-button-shares">Year</a></li>
+        </ul>
+      </div>
+
+     <div class="mv-stat-shares mv-stat-weekly">
+      <?PHP PrintEventTable($H_TopShares["Week"], $H_WeekAgo, "event shares"); ?>
+      </div>
+
+      <div class="mv-stat-shares mv-stat-monthly">
+      <?PHP PrintEventTable($H_TopShares["Month"], $H_MonthAgo, "event shares"); ?>
+      </div>
+
+      <div class="mv-stat-shares mv-stat-yearly">
+      <?PHP PrintEventTable($H_TopShares["Year"], $H_YearAgo, "event shares"); ?>
+      </div>
+
+    </td>
+  </tr>
+</table>
+</div>
+
+<script type="text/javascript">
+function toggle_stats(th, period){
+  var stat_type = '';
+  if      ($(th).hasClass('mv-button-views'))  { stat_type = 'views'; }
+  else if ($(th).hasClass('mv-button-shares')) { stat_type = 'shares'; }
+  else { return; }
+
+  $('.mv-stat-'+stat_type).hide();
+  $('.mv-button-'+stat_type).removeClass('mv-button-active');
+  $('.mv-stat-'+stat_type+'.mv-stat-'+period).show();
+  $('.mv-button-'+stat_type+'.mv-button-'+period).addClass('mv-button-active');
+}
+
+$('.mv-stat-monthly').hide();
+$('.mv-stat-yearly').hide();
+
+$(".mv-button-weekly").click( function(){ toggle_stats(this, 'weekly'); });
+$(".mv-button-monthly").click( function(){ toggle_stats(this, 'monthly'); });
+$(".mv-button-yearly").click( function(){ toggle_stats(this, 'yearly'); });
+</script>
+
+<h2>New Events</h2>
+<?PHP $EventsAddedGraph->Display("new_events"); ?>
+
+<h2>Event Views</h2>
+<?PHP $ViewsGraph->Display("event_views"); ?>
+
+<h2>Event Shares</h2>
+<?PHP $SharesGraph->Display("event_shares"); ?>

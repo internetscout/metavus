@@ -1,0 +1,28 @@
+<?PHP
+#
+#   FILE:  ErrorLog.html (GoogleMaps plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+
+PageTitle("GoogleMaps Error Log");
+
+$ListFields = [
+    "Address" => [
+    ],
+    "ErrorData" => [
+        "Heading" => "Error",
+    ],
+];
+
+# create and display list UI
+$ListUI = new ItemListUI($ListFields);
+$ListUI->Heading("Google Maps: Geocode Errors");
+$ListUI->ItemsPerPage($H_ItemsPerPage);
+$ListUI->BaseLink($H_BaseLink);
+$ListUI->fieldsSortableByDefault(false);
+$ListUI->Display($H_Items, $H_TotalItems);

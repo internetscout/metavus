@@ -1,0 +1,66 @@
+<?PHP
+#
+#   FILE:  ImportDataExecute.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+# ----- MAIN -----------------------------------------------------------------
+
+global $ReferenceMessages;
+
+$Header = ($ImportComplete) ? "Import Completed Successfully" : "Importing Data";
+
+?>
+
+<h1><?= $Header; ?></h1>
+
+<?PHP PrintDebugInfo(); ?>
+
+<table class="table table-striped">
+    <tbody>
+        <tr>
+            <th>Lines Read</th>
+            <td><?= $TotalLineCount - 1; ?></td>
+        </tr>
+        <tr>
+            <th>Resources Added</th>
+            <td><?= $ResourceCount; ?></td>
+        </tr>
+        <tr>
+            <th>Controlled Names Added</th>
+            <td><?= $ControlledNameCount; ?></td>
+        </tr>
+        <tr>
+            <th>Classifications Added</th>
+            <td><?= $ClassificationCount; ?></td>
+        </tr>
+    </tbody>
+</table>
+
+<?PHP if ($ImportComplete) { ?>
+<p>Both the search and recommender databases must be rebuilt so that searching
+and the recommender system will work correctly with the new resources.</p>
+
+<p><a href="index.php?P=ConfirmRebuildSearchDB" target="_blank">Rebuild Search DB</a></p>
+<p><a href="index.php?P=ConfirmRebuildRecommenderDB" target="_blank">Rebuild Recommender DB</a></p>
+
+    <?PHP if (count($ReferenceMessages) > 0) { ?>
+<h2>References</h2>
+<p>There were some problems with references in your data:</p>
+<ul>
+        <?PHP foreach ($ReferenceMessages as $ReferenceMessage) { ?>
+<li><?= $ReferenceMessage; ?> </li>
+        <?PHP } ?>
+    <?PHP } ?>
+<?PHP } else { ?>
+    <form name="importdata" method="post" action="index.php?P=ImportDataExecute">
+        <button class="btn btn-danger mv-button-iconed" type="submit"
+            name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+            class="mv-button-icon" /> Cancel</button>
+    </form>
+<?PHP } ?>

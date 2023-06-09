@@ -1,0 +1,176 @@
+<?PHP
+#
+#   FILE:  Home.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+use Metavus\User;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# configuration settings
+$NewsBlogName = "News";
+$CollageSchemaId = MetadataSchema::SCHEMAID_DEFAULT;
+$IntCfg = InterfaceConfiguration::getInstance();
+$FeaturedItemsSectionTitle = htmlspecialchars(
+    $IntCfg->getString("FeaturedItemsSectionTitle")
+);
+
+# initialize convenience values
+$AF = ApplicationFramework::getInstance();
+$User = User::getCurrentUser();
+$PluginMgr = PluginManager::getInstance();
+
+# verify that the collections variable is set
+if (!isset($H_Collections)) {
+    throw new Exception("Variable \$H_Collections not set.");
+}
+
+# retrieve news item list page link
+$NewsPageLink = "";
+if (isset($H_NewsItems)) {
+    $BlogPlugin = $PluginMgr->getPlugin("Blog");
+    $NewsBlogId = $BlogPlugin->getBlogIdByName($NewsBlogName);
+    if ($NewsBlogId !== false) {
+        $NewsPageLink = "index.php?P=P_Blog_Entries&ID=".$NewsBlogId;
+    }
+}
+
+# get HTML for image collage (if any)
+$ImageCollageHtml = $PluginMgr->pluginEnabled("Collage")
+        ? $PluginMgr->getPlugin("Collage")->getCollageHtml($CollageSchemaId)
+        : "";
+
+# get HTML for featured items list
+$NumItems = $IntCfg->getInt("NumResourcesOnHomePage");
+$FeaturedItemsHtml = $AF->formatInsertionKeyword(
+    "P-FEATUREDITEMS-DISPLAYFEATUREDITEMS",
+    ["NumItems" => $NumItems]
+);
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Home");
+
+?>
+<div class="container-fluid">
+  <div class="row no-gutters d-none d-lg-flex">
+    <?PHP if (strlen($ImageCollageHtml)) {
+        print $ImageCollageHtml;
+    } else { ?>
+    <div class="col mv-p-collage-wrapper">
+      <div class="mv-p-collage">
+        <div>
+          <img src="<?= $AF->gUIFile("Metavus--Hero-Image--1920x426.jpg") ?>"
+          alt=""/>
+        </div>
+      </div>
+    </div>
+    <?PHP } ?>
+  </div>
+
+  <div id="mv-content-wrapper" class="row">
+    <div class="col-12 col-lg-8">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col mv-section-header">
+            <h2><?= $FeaturedItemsSectionTitle ?></h2>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col mv-section-body mv-content-featuredresources"
+              ><?=  $FeaturedItemsHtml ?></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <?PHP if (is_array($H_Collections)) { ?>
+      <div class="mv-section-header">
+        <h2><a href="index.php?P=ListCollections">Collections</a></h2>
+      </div>
+      <div class="mv-collection-list">
+            <?PHP
+            if (!count($H_Collections)) {
+                ?>(no collections to display)<?PHP
+            } else {
+                foreach ($H_Collections as $CollectionId => $Collection) {
+                    # ----- SETUP (LOOP) ---------------------------------------------
+                    $Name = htmlspecialchars($Collection->get("Name"));
+                    $Size = $Collection->getSize();
+                    $Monogram = $Collection->getMonogram();
+                    $Color = $Collection->getColor();
+                    $Link = "index.php?P=DisplayCollection&amp;ID=".$CollectionId;
+                    # ----- DISPLAY (LOOP) -------------------------------------------
+                    ?><div class="mv-collection">
+                        <div class="mv-collection-tag" style="background-color:<?=
+                                $Color ?>;"><?= $Monogram ?></div>
+                        <div class="mv-collection-name"><a href="<?=
+                                $Link ?>"><?= $Name ?></a></div>
+                        <div class="mv-collection-items"><?= $Size ?> items</div>
+                    </div>
+                    <?PHP
+                }
+            }
+            ?>
+      </div>
+      <?PHP } ?>
+      <?PHP if (isset($H_NewsItems)) { ?>
+      <div class="mv-section-header">
+        <h2><a href="<?= $NewsPageLink ?>">News</a></h2>
+      </div>
+      <div class="mv-news">
+        <div class="contentbox mv-content-box">
+            <?PHP
+            if (!count($H_NewsItems)) {
+                ?>(no news items to display)<?PHP
+            } else {
+                foreach ($H_NewsItems as $NewsItem) {
+                    $Summary = ResourceSummary::create($NewsItem->id());
+                    $Summary->display();
+                }
+            }
+            ?>
+          <div class="mv-extra-space">&nbsp;</div>
+        </div>
+      </div>
+      <?PHP } ?>
+      <?PHP if (isset($H_Events)) { ?>
+      <div class="mv-section-header">
+        <h2><a href="events">Events</a></h2>
+      </div><?PHP
+        if (count($H_Events) == 0) {
+            ?><p><i>(no upcoming events)</i></p><?PHP
+        } else {
+            foreach ($H_Events as $Event) {
+                # ----- SETUP (LOOP) ---------------------------------------------
+                $EventDateRange = getPrettyDateRange(   // @phpstan-ignore-line
+                    $Event->get("Start Date"),
+                    $Event->get("End Date")
+                );
+                # ----- DISPLAY (LOOP) -------------------------------------------
+                ?><div class="mv-event">
+                    <h3 class="mv-event-title"><a href="<?=
+                            $Event->eventurl() ?>"><?=
+                            $Event->get("Title") ?></a></h3>
+                    <p>
+                        <span><?= $EventDateRange ?></span>
+                        <span class="mv-event-location"><?=
+                                $Event->locationSummaryString() ?></span>
+                    </p>
+                </div><?PHP
+            }
+        }
+      } ?>
+    </div>
+  </div>
+</div>

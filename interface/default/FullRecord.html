@@ -1,0 +1,180 @@
+<?PHP
+#
+#   FILE:  FullRecord.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# check for required variables
+if (!isset($H_Record)) {
+    throw new Exception("Expected \$H_Record variable not set.");
+}
+
+# quit if no record available
+if ($H_Record === false) {
+    print "<p>No record found with the specified ID.</p>";
+    return;
+}
+
+# set up some convenience variables
+$AF = ApplicationFramework::getInstance();
+$User = User::getCurrentUser();
+
+# get values for title and description
+FullRecordHelper::setRecord($H_Record);
+$FRHelper = FullRecordHelper::getInstance();
+$StdFields = $FRHelper->getStdFields();
+$StdValues = $FRHelper->getStdFieldValues();
+$Title = $StdValues["Title"] ?? "";
+$Description = $StdValues["Description"] ?? "";
+
+# get values for URLs/files
+$Urls = $StdValues["Url"] ?? [];
+if (isset($StdValues["File"])) {
+    $Urls = array_merge($Urls, $StdValues["File"]);
+}
+
+# get value (if any) for screenshot
+if (isset($StdValues["Screenshot"]) && count($StdValues["Screenshot"])) {
+    $Screenshot = reset($StdValues["Screenshot"]);
+    $ScreenshotFullImageLink = $FRHelper->getImageViewLink(
+        $StdFields["Screenshot"],
+        $Screenshot
+    );
+}
+
+# get field values and qualifiers
+$Fields = $FRHelper->getFields();
+$FieldValues = $FRHelper->getFieldValues();
+$FieldQualifiers = $FRHelper->getFieldQualifiers();
+
+# build and set page title
+$PageTitle = strlen($Title) ? strip_tags($Title) : "Full Record";
+PageTitle($PageTitle);
+
+# set up for record edit button
+$UserCanEdit = $H_Record->userCanEdit($User);
+$EditButtonLink = $FRHelper->getRecordEditLink();
+
+# set up for comments
+$DisplayComments = $H_Record->getSchema()->commentsEnabled();
+$CanAddComments = $User->hasPriv(PRIV_POSTCOMMENTS);
+$AddCommentLink = "index.php?P=AddResourceComment&amp;RI=".$H_Record->id();
+$Comments = $H_Record->comments();
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+?>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col mv-stdtitle">
+            <?PHP
+            if ($UserCanEdit) {
+                print $FRHelper->getButtonHtml("Edit", $EditButtonLink, "Edit", "Pencil");
+            }
+            foreach ($FRHelper->getButtonsForPage() as $ButtonInfo) {
+                print $FRHelper->getButtonHtml(
+                    $ButtonInfo["Label"],
+                    $ButtonInfo["Link"],
+                    $ButtonInfo["Title"],
+                    $ButtonInfo["IconName"],
+                    $ButtonInfo["AdditionalCssClasses"],
+                    $ButtonInfo["Attributes"]
+                );
+            }
+            ?>
+            <h1><?= $Title ?></h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col mv-stdurl">
+            <ul class="list-group list-group-flush">
+                <?PHP  foreach ($Urls as $Url => $Label) {  ?>
+                <li class="list-group-item"><a href="<?= $Url ?>"><?=
+                        htmlspecialchars($Label) ?></a></li>
+                <?PHP  }  ?>
+            </ul>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col mv-stdscreenshot">
+            <?PHP  if (isset($Screenshot) && isset($ScreenshotFullImageLink)) {  ?>
+            <a tabindex="-1" aria-hidden="true" class="mv-stdscreenshot" href="<?= $ScreenshotFullImageLink ?>">
+                <?= $Screenshot->getHtml("mv-image-thumbnail") ?></a>
+            </a>
+            <?PHP  }  ?>
+            <div class="mv-stddescription"><?= $Description ?></div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+        <?PHP
+        foreach ($FieldValues as $FieldId => $Value) {
+            # (numeric indexes are field IDs, non-numeric indexes are field group names)
+            if (is_numeric($FieldId)) {
+                $FRHelper->displayMFieldLabelAndValueRow(
+                    $Fields[$FieldId],
+                    $Value,
+                    $FieldQualifiers[$FieldId]
+                );
+            } else {
+                $GroupValues = $Value;
+                $GroupName = $FieldId;
+
+                # generate the HTML for the fields we will display
+                # (outputs nothing for non-viewable fields)
+                ob_start();
+                foreach ($GroupValues as $GroupFieldId => $GroupValue) {
+                    $FRHelper->displayMFieldLabelAndValueRow(
+                        $Fields[$GroupFieldId],
+                        $GroupValue,
+                        $FieldQualifiers[$FieldId][$GroupFieldId]
+                    );
+                }
+                $GroupHtml = ob_get_clean();
+
+                # if any fields were displayed, show the group
+                if (strlen($GroupHtml) > 0) {
+                    ?><div class="row container mv-mfield-group">
+                    <div class="col">
+                        <h3><?= $GroupName ?></h3>
+                        <?= $GroupHtml ?>
+                    </div>
+                </div><?PHP
+                }
+            }
+        }
+        ?>
+        </div>
+    </div>
+    <?PHP  if ($DisplayComments) {  ?>
+    <div class="mv-comments">
+        <div>
+            <?= $FRHelper->getButtonHtml("Add Comment", $AddCommentLink, "Add Comment", "Pencil") ?>
+            <h2>Comments</h2>
+        </div>
+        <?PHP  if (count($Comments) == 0) {  ?>
+        <div>(no comments available yet)</div>
+        <?PHP  } else {  ?>
+        <div>
+            <?PHP
+            foreach ($Comments as $Comment) {
+                MessageUI::printForumMessage($Comment, $H_Record);
+            }
+            ?>
+        </div>
+        <?PHP  }  ?>
+    </div>
+    <?PHP  }  ?>
+</div>

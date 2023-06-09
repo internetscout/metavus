@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+  <MetadataField>
+    <Name>Full Record View Count</Name>
+    <Type>MDFTYPE_NUMBER</Type>
+    <Label>Full Record Views</Label>
+    <Description>
+      This field is used by the Metrics Recorder plugin
+      to store a count of the number of times the full record page
+      for a resource has been viewed by non-privileged users.
+    </Description>
+    <Editable>FALSE</Editable>
+    <Enabled>TRUE</Enabled>
+    <Owner>MetricsRecorder</Owner>
+    <ViewingPrivileges>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </ViewingPrivileges>
+    <DefaultValue>-1</DefaultValue>
+  </MetadataField>
+  <MetadataField>
+    <Name>URL Field Click Count</Name>
+    <Type>MDFTYPE_NUMBER</Type>
+    <Label>Resource URL Clicks</Label>
+    <Description>
+      This field is used by the Metrics Recorder plugin to store a
+      count of the number of times the primary URL for a resource has
+      been clicked by non-privileged users.
+    </Description>
+    <Editable>FALSE</Editable>
+    <Enabled>TRUE</Enabled>
+    <Owner>MetricsRecorder</Owner>
+    <ViewingPrivileges>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </ViewingPrivileges>
+    <DefaultValue>-1</DefaultValue>
+  </MetadataField>
+</MetadataSchema>

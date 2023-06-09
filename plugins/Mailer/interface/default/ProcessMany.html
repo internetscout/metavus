@@ -1,0 +1,18 @@
+<?PHP
+#
+#   FILE:  ProcessMany.html (Mailer plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+PageTitle("Process Multiple Messages");
+?>
+<ul class='mv-form-error'>
+<?PHP foreach ($H_Errors as $Error) { ?>
+  <li><?= $Error ?></li>
+<?PHP } ?>
+</ul>
+
+<a href="index.php?P=P_Mailer_ListQueuedEmail">Return to Email Queue</a>

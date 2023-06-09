@@ -1,0 +1,19 @@
+<vocabulary>
+    <name>Intended End User Role</name>
+    <description>Principal user(s) for which this learning object was designed, most dominant first; indicate the role of the typical user of the resource. </description>
+    <version>2.0 (Nov 21 2003)</version>
+    <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    <owner>
+        <name>CanCore</name>
+        <url>http://cancore.athabascau.ca</url>
+    </owner>
+    <qualifier>
+        <name>CanCore Intended End User Role Vocabulary</name>
+        <namespace></namespace>
+        <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    </qualifier>
+    <term>Teacher</term>
+    <term>Author</term>
+    <term>Learner</term>
+    <term>Manager</term>
+</vocabulary>

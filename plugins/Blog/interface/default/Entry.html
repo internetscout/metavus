@@ -1,0 +1,428 @@
+<?PHP
+#
+#   FILE:  Entry.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\User;
+use Metavus\Message;
+use Metavus\Plugins\Blog;
+use Metavus\Plugins\Blog\Entry;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+* Print the comments associated with a blog entry.
+* @param Entry $Entry Blog entry for which to print comments.
+*/
+function Blog_PrintComments(Entry $Entry): void
+{
+    foreach ($Entry->Comments() as $Comment) {
+        Blog_PrintComment($Comment);
+    }
+}
+
+/**
+* Print a comment.
+* @param Message $Comment Comment to print.
+*/
+function Blog_PrintComment(Message $Comment): void
+{
+    $AF = ApplicationFramework::getInstance();
+
+    # retrieve user currently logged in
+    $User = User::getCurrentUser();
+
+    $Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+    $Author = new User(intval($Comment->PosterId()));
+    $CanEditComment = $Blog->UserCanEditComment($User, $Comment);
+    $CanDeleteComment = $Blog->UserCanDeleteComment($User, $Comment);
+    $CanEditUsers = $Blog->UserCanEditUsers($User);
+
+    # encode values for HTML output
+    $SafeCommentId = defaulthtmlentities($Comment->MessageId());
+    $SafeBody = nl2br(trim(defaulthtmlentities($Comment->Body())));
+    $SafeEntryId = defaulthtmlentities($Comment->ParentId());
+    $SafePosterId = defaulthtmlentities($Author->Id());
+    $SafePosterName = defaulthtmlentities($Author->GetBestName());
+    $SafePostedDate = preg_replace(
+        "/at /",
+        "<br/>at ",
+        defaulthtmlentities(StdLib::getPrettyTimestamp($Comment->DatePosted(), true))
+    );
+    $SafePostedDateForParsing = defaulthtmlentities(
+        Blog_FormatTimestampForParsing($Comment->DatePosted())
+    );
+    ?>
+  <article itemprop="comment" itemscope="itemscope" itemtype="http://schema.org/UserComments"
+      class="blog-comment" id="comment-<?= $SafeCommentId; ?>">
+    <link itemprop="url" href="#comment-<?= $SafeCommentId; ?>" />
+    <footer>
+      <span itemprop="creator" itemscope="itemscope" itemtype="http://schema.org/Person"
+          class="blog-author">
+        <?PHP if ($CanEditUsers) {
+            ?><a href="index.php?P=EditUser&amp;ID=<?= $SafePosterId; ?>"><?PHP
+        } ?>
+        <span itemprop="name" class="blog-name"><?= $SafePosterName; ?></span>
+        <?PHP if ($CanEditUsers) {
+            ?></a><?PHP
+        } ?>
+      </span>
+      <time itemprop="commentTime" datetime="<?= $SafePostedDateForParsing ?>"
+          class="blog-date"><?= $SafePostedDate ?></time>
+      <ul class="blog-actions list-inline">
+        <?PHP if ($CanEditComment) { ?>
+          <li class="list-inline-item"><a class="btn btn-primary btn-sm mv-button-iconed"
+            href="index.php?P=P_Blog_Comment&amp;ID=<?= $SafeEntryId; ?>&amp;CommentId=<?=
+            $SafeCommentId; ?>"><img class="mv-button-icon"
+            src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit</a></li>
+        <?PHP } ?>
+        <?PHP if ($CanDeleteComment) { ?>
+          <li class="list-inline-item">
+            <form method="post" action="index.php?P=P_Blog_Comment" class="blog-delete">
+              <input type="hidden" name="F_EntryId" value="<?= $SafeEntryId; ?>" />
+              <input type="hidden" name="F_CommentId" value="<?= $SafeCommentId; ?>" />
+              <button class="btn btn-primary btn-sm mv-button-iconed" name="F_Action"
+                value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                class="mv-button-icon" /> Delete</button>
+            </form>
+          </li>
+        <?PHP } ?>
+      </ul>
+    </footer>
+    <p itemprop="commentText" class="blog-body"><?= $SafeBody; ?></p>
+  </article>
+    <?PHP
+}
+
+/**
+* Format a timestamp for machine parsing.
+* @param string $Timestamp Timestamp to format.
+* @return string Returns a formatted timestamp.
+*/
+function Blog_FormatTimestampForParsing($Timestamp)
+{
+    $Timestamp = strtotime($Timestamp);
+
+    # invalid timestamp
+    if ($Timestamp === false) {
+        return "-";
+    }
+
+    return date("c", $Timestamp);
+}
+
+/**
+* Print the comment for for the given blog entry.
+* @param Entry $Entry Blog entry.
+*/
+function Blog_PrintCommentForm(Entry $Entry): void
+{
+    $AF = ApplicationFramework::getInstance();
+    $SafeEntryId = defaulthtmlentities($Entry->Id());
+
+    ?>
+  <form method="post" action="index.php?P=P_Blog_Comment" class="blog-comment-form"
+      id="add-comment">
+    <input type="hidden" name="F_EntryId" value="<?= $SafeEntryId; ?>" />
+
+    <label for="F_CommentBody" class="blog-label">Add a Comment</label>
+    <textarea name="F_CommentBody" id="F_CommentBody" class="blog-body"
+        placeholder="Add a comment"></textarea>
+
+    <div class="blog-actions">
+      <button name="F_Action" value="Post"
+        class="btn btn-primary blog-first_submit mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
+        class="mv-button-icon" /> Post Comment</button>
+    </div>
+  </form>
+  <script type="text/javascript">
+    // automatically adjust the textarea to its contents
+    (function(){
+      var body = jQuery(".blog-comment-form.blog-body");
+
+      body.autoheight({"minHeight": 52, "duration": 1});
+      body.doautoheight({"minHeight": 52, "duration": 1});
+    })();
+  </script>
+    <?PHP
+}
+
+/**
+* Print blog entry categories.
+* @param array $Categories Blog entry categories to print.
+*/
+function Blog_PrintCategories(array $Categories): void
+{
+    foreach ($Categories as $Category) {
+        $SafeCategory = defaulthtmlentities($Category);
+        ?>
+  <li class="list-inline-item"><i><?= $Category; ?></i></li>
+        <?PHP
+    }
+}
+
+/**
+* Print some blog entry metrics.
+* @param array $Metrics Array of blog entry metrics.
+*/
+function Blog_PrintEntryMetrics(array $Metrics): void
+{
+    $SafeNumViews = defaulthtmlentities(count($Metrics["Views"]));
+    $SafeNumEmail = defaulthtmlentities(count($Metrics["Shares/Email"]));
+    $SafeNumFacebook = defaulthtmlentities(count($Metrics["Shares/Facebook"]));
+    $SafeNumTwitter = defaulthtmlentities(count($Metrics["Shares/Twitter"]));
+    $SafeNumLinkedIn = defaulthtmlentities(count($Metrics["Shares/LinkedIn"]));
+    ?>
+  <table class="table table-striped blog-metrics-table">
+    <tbody>
+      <tr>
+        <th>Views</th>
+        <td><?= $SafeNumViews; ?></td>
+      </tr>
+      <tr>
+        <th>Shared via E-mail</th>
+        <td><?= $SafeNumEmail; ?></td>
+      </tr>
+      <tr>
+        <th>Shared to Facebook</th>
+        <td><?= $SafeNumFacebook; ?></td>
+      </tr>
+      <tr>
+        <th>Shared to Twitter</th>
+        <td><?= $SafeNumTwitter; ?></td>
+      </tr>
+      <tr>
+        <th>Shared to LinkedIn</th>
+        <td><?= $SafeNumLinkedIn; ?></td>
+      </tr>
+    </tbody>
+  </table>
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
+
+$CanAddComments = $H_Blog->UserCanPostComment($User);
+$CanViewMetrics = $H_Blog->UserCanViewMetrics($User);
+$IsLoggedIn = $User->IsLoggedIn();
+$PluginMgr = PluginManager::getInstance();
+$Blog = $PluginMgr->getPluginForCurrentPage();
+
+if ($H_State == "OK" || $H_State == "Not Email Blog") {
+    $SafeId = defaulthtmlentities($H_Entry->Id());
+    $SafeUrl = defaulthtmlentities($H_Entry->EntryUrl());
+    $SafeTitle = $H_Entry->TitleForDisplay();
+    $SafeAuthor = defaulthtmlentities($H_Entry->AuthorForDisplay());
+    $SafeEditor = defaulthtmlentities($H_Entry->EditorForDisplay());
+    $SafeCreationDate = defaulthtmlentities($H_Entry->CreationDateForDisplay());
+    $SafeModificationDate = defaulthtmlentities($H_Entry->ModificationDateForDisplay());
+    $SafePublicationDate = defaulthtmlentities($H_Entry->PublicationDateForDisplay());
+    $SafePublicationDatePrefix = defaulthtmlentities($H_Entry->PublicationDateDisplayPrefix());
+    $SafePublicationDateForParsing = defaulthtmlentities($H_Entry->PublicationDateForParsing());
+    $Body = $H_Entry->get(Blog::BODY_FIELD_NAME);
+    $Categories = $H_Entry->CategoriesForDisplay();
+    $BlogName = $H_Entry->BlogName();
+    $BlogUrl = $Blog->BlogUrl();
+
+    $NotificationsEnabled = $H_Blog->NotificationsCouldBeSent();
+    $UserIsLoggedIn = $User->IsLoggedIn();
+    $UserIsSubscribed =
+            $H_Blog->UserIsSubscribedToNotifications($User);
+    $DisplayNotificationButton = $H_Blog->NotificationsCouldBeSent(null, $User);
+    $NotificationButtonEnabled = $H_Blog->NotificationsCouldBeSent($H_Entry, $User);
+    $EntryFromEmailBlog = ($H_Entry->GetBlogId() == $H_Blog->ConfigSetting(
+        "EmailNotificationBlog"
+    ));
+
+    PageTitle(strip_tags($H_Entry->TitleForDisplay()));
+} else {
+    PageTitle("Blog Entry Not Found");
+}
+
+?>
+
+<?PHP if ($H_State == "OK" || $H_State == "Not Email Blog") { ?>
+  <article class="blog-entry blog-full">
+    <link itemprop="url" href="<?= $SafeUrl; ?>" />
+    <header class="blog-header">
+      <?PHP if ($H_State == "Not Email Blog") { ?>
+        <ul class="mv-form-error">
+          <li style="list-style: none">Cannot send notifications for this blog entry because
+            it is not the configured Email Blog</li>
+        </ul>
+      <?PHP } ?>
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col">
+            <h1 class="blog-title" itemprop="headline"><?= $SafeTitle; ?></h1>
+          </div>
+          <div class="col text-right">
+            <?PHP if ($NotificationsEnabled && $EntryFromEmailBlog) { ?>
+                <?PHP if ($UserIsSubscribed) { ?>
+                <a class="btn btn-primary mv-button-iconed"
+                   title="Unsubscribe from new blog entry e-mail"
+                   href="index.php?P=P_Blog_Unsubscribe"><img
+                    src="<?= $AF->GUIFile('BellMinus.svg'); ?>"
+                    alt="" class="mv-button-icon" /> Unsubscribe</a>
+                <?PHP } else { ?>
+                <a class="btn btn-primary mv-button-iconed"
+                   title="Subscribe to receive e-mail when new blog entries are posted"
+                   href="index.php?P=P_Blog_Subscribe"><img
+                    src="<?= $AF->GUIFile('BellPlus.svg'); ?>"
+                    alt="" class="mv-button-icon" /> Subscribe</a>
+                <?PHP } ?>
+            <?PHP } ?>
+            <?PHP if ($H_Entry->UserCanEdit($User)) { ?>
+                <?PHP if ($DisplayNotificationButton) { ?>
+                    <?PHP if ($NotificationButtonEnabled && $EntryFromEmailBlog) { ?>
+                  <a class="btn btn-primary mv-button-iconed"
+                     title="Send e-mail notifications to subscribers about this blog entry"
+                     href="index.php?P=P_Blog_ConfirmNotifySubscribers&amp;ID=<?=
+                        $SafeId; ?>"><img
+                        src="<?= $AF->GUIFile('NotifyEmail.svg'); ?>"
+                        alt="" class="mv-button-icon" /> Notify Subscribers</a>
+                    <?PHP } else { ?>
+                        <?PHP if ($EntryFromEmailBlog) { ?>
+                    <button class="btn btn-primary mv-button-disabled mv-button-iconed"
+                       title="E-mail notifications have already been sent for this blog entry"
+                        ><img src="<?= $AF->GUIFile('NotifyEmail.svg'); ?>" alt=""
+                            class="mv-button-icon" /> Notify Subscribers</button>
+                        <?PHP } ?>
+                    <?PHP } ?>
+                <?PHP } ?>
+              <a class="btn btn-primary mv-button-iconed"
+                  href="<?= str_replace('$ID', $SafeId, $H_Entry->getSchema()->editPage()); ?>"
+                  title="Edit blog entry">
+                  <img class="mv-button-icon"
+                        src="<?= $AF->GUIFile("Pencil.svg") ?>"
+                        alt="Edit blog entry" /> Edit</a>
+            <?PHP } ?>
+            <?PHP  $AF->SignalEvent(
+                "EVENT_HTML_INSERTION_POINT",
+                [
+                    $AF->GetPageName(),
+                    "Resource Display Buttons",
+                    ["Resource" => $H_Entry]
+                ]
+            ); ?>
+          </div>
+        </div>
+      </div>
+
+      <p class="blog-pubinfo">Posted
+        <?PHP if ($H_Blog->ShowAuthor()) { ?>
+          by <span class="blog-author" itemprop="author" itemscope="itemscope"
+              itemtype="http://schema.org/Person">
+            <span itemprop="name"><?= $SafeAuthor; ?></span>
+          </span>
+        <?PHP } ?>
+        <?= $SafePublicationDatePrefix; ?>
+        <time class="blog-date" itemprop="datePublished"
+            datetime="<?= $SafePublicationDateForParsing; ?>">
+          <?= $SafePublicationDate; ?></time>.</p>
+    </header>
+
+    <div class="blog-body" itemprop="articleBody"><?= $Body; ?></div>
+
+    <?PHP if (count($Categories)) { ?>
+      <b>Categories:</b>
+      <ul class="list-inline blog-categories" itemprop="keywords">
+        <?PHP Blog_PrintCategories($Categories); ?>
+      </ul>
+    <?PHP } ?>
+
+    <b>From:</b>
+    <ul class="list-inline blog-categories" itemprop="keywords">
+      <?= $BlogName; ?>
+    </ul>
+
+    <?PHP
+    if (strtotime($H_Entry->ModificationDate()) > (strtotime($H_Entry->PublicationDate()) + 3600)) {
+        ?><p><b>Last Edited:</b> <?PHP
+        print defaulthtmlentities(
+            StdLib::getPrettyTimestamp($H_Entry->ModificationDate(), true)
+        );
+        if ($H_Blog->ShowAuthor()) {
+            ?> by <span class="blog-editor" itemprop="editor" itemscope="itemscope"
+                itemtype="http://schema.org/Person"><?PHP
+                print defaulthtmlentities($H_Entry->AuthorForDisplay())."</span>";
+        }
+        print "</p>";
+    }
+    ?>
+
+    <section class="share">
+      <?PHP $PluginMgr->getPlugin("SocialMedia")->DisplayShareButtons($H_Entry); ?>
+    </section>
+
+    <a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $BlogUrl ?>"><img
+        src="<?= $AF->GUIFile('Other.svg'); ?>" alt=""
+        class="mv-button-icon" /> See More <?= $BlogName; ?></a>
+
+    <?PHP if ($CanViewMetrics) { ?>
+      <section id="metrics">
+        <h1 class="blog-metrics-header">Metrics</h1>
+        <?PHP Blog_PrintEntryMetrics($H_Metrics); ?>
+      </section>
+    <?PHP } ?>
+
+    <section id="comments">
+      <?PHP if ($H_Blog->EnableComments()) { ?>
+        <h1 class="blog-comment-header">Comments</h1>
+
+            <?PHP if ($H_Entry->NumberOfComments() > 0) { ?>
+                <?PHP Blog_PrintComments($H_Entry); ?>
+                <?PHP if (!$IsLoggedIn) { ?>
+              <a href="index.php?P=Login">Log in</a> to post a comment.
+                <?PHP } elseif ($CanAddComments) { ?>
+                    <?PHP Blog_PrintCommentForm($H_Entry); ?>
+                <?PHP } ?>
+            <?PHP } else { ?>
+          <p>
+            There are no comments yet for this entry.
+                <?PHP if (!$IsLoggedIn) { ?>
+              Please <a href="index.php?P=Login">Log In</a> to post one.
+                <?PHP } ?>
+          </p>
+                <?PHP if ($CanAddComments) {
+                    Blog_PrintCommentForm($H_Entry);
+                } ?>
+            <?PHP } ?>
+      <?PHP } ?>
+    </section>
+  </article>
+
+  <script type="text/javascript">
+    (function(){
+      // get the fragment ID, if any
+      fragment = window.location.hash.substring(1);
+
+      // there is a fragment ID
+      if (fragment) {
+        // add a class to selected items
+        jQuery(".blog-comment[id='"+fragment+"']").addClass("blog-selected");
+      }
+    })();
+  </script>
+
+<?PHP } else { ?>
+  <h1>Blog Entry Not Found</h1>
+
+  <p>The blog entry could not be found.Please
+    <a href="index.php?P=LeaveFeedback">contact the administrator</a> if you
+    believe this is an error.</p>
+
+<?PHP } ?>

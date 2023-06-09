@@ -1,0 +1,77 @@
+<?PHP
+#
+#   FILE:  Edit.html (BatchEdit plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Plugins\Folders\FolderDisplayUI;
+use Metavus\Plugins\Folders\FolderFactory;
+use Metavus\User;
+
+?>
+<style type="text/css">
+      .bulk-edit-button { display: none !important; }
+</style>
+
+<h1>Batch Editing</h1>
+
+<?PHP
+if (count($H_Plugin->ConfigSetting("AllowedFields")) == 0) {
+    print "<div class=\"alert alert-warning\">"
+            ."<p>No fields are set to be editable via Batch Edit.</p></div>";
+    if ($H_User->HasPriv(PRIV_SYSADMIN)) {
+        print "<p>You can add fields in the plugin's "
+                ."<a href=\"index.php?P=PluginConfig&amp;PN=BatchEdit\">configuration page</a>"
+                .".</p>";
+    }
+}
+
+if (isset($_POST["Submit"]) && $_POST["Submit"] == "Apply All Changes") {
+    print("<div class=\"cw-form-modified alert alert-success\">");
+    if (count($H_ChangedResources) == 0) {
+        print ("<p><i>No resources were modified</i></p>");
+    } else {
+        print("<p>The following ".count($H_ChangedResources)
+              ." resources were modified:</p><ul>");
+        foreach ($H_ChangedResources as $Resource) {
+            print("<li>".defaulthtmlentities(
+                $Resource->GetMapped("Title")
+            )."</li>");
+        }
+        print("</ul>");
+    }
+    print("</div>");
+}
+?>
+
+<div style="margin-bottom: 2em; width:80%">
+<form class="mv-feui-form"
+      action="index.php?P=P_BatchEdit_Edit&amp;FI=<?= $H_Folder->Id(); ?>"
+      method="post">
+    <table>
+  <?PHP foreach ($H_Editors as $SchemaId => $Editor) { ?>
+    <tr><td colspan="4"><h2 style="margin-bottom: 5px"
+        ><?= $H_Schemas[$SchemaId]->Name(); ?></h2></td></tr>
+        <?PHP $Editor->DisplayAsRows(); ?>
+  <?PHP } ?>
+  <tr><td colspan="4">&nbsp;</td></tr>
+  <tr>
+    <td colspan="4">
+      <span>
+        <button type="submit" name="Submit" value="Apply All Changes"
+            class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Check.svg'); ?>"
+            alt="" class="mv-button-icon" /> Apply All Changes</button>
+      </span>
+    </td>
+  </tr>
+</table>
+</form>
+</div>
+
+<?PHP
+$FolderFactory = new FolderFactory(User::getCurrentUser()->Id());
+$ResourceFolder = $FolderFactory->GetResourceFolder();
+FolderDisplayUI::PrintFolder($ResourceFolder->Id(), $H_Folder);

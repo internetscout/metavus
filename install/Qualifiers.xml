@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetadataQualifiers>
+    <Qualifier>
+        <Name>LCSH</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/LCSH</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>MeSH</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/MESH</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>DDC</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/DDC</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>LCC</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/LCC</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>UDC</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/UDC</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>DCMI Type Vocabulary</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/DCMIType</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>IMT</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/IMT</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>ISO 639-2</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/ISO639-2</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>RFC 1766</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/RFC1766</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>URI</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/URI</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>DCMI Point</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/Point</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>ISO 3166</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/ISO3166</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>DCMI Box</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/Box</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>TGN</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/TGN</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>DCMI Period</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/Period</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>W3C-DTF</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/W3CDTF</Namespace>
+    </Qualifier>
+    <Qualifier>
+        <Name>RFC 3066</Name>
+        <Url>http://purl.org/dc/terms/</Url>
+        <Namespace>http://purl.org/dc/terms/RFC3066</Namespace>
+    </Qualifier>
+</MetadataQualifiers>

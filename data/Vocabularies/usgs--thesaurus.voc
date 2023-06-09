@@ -1,0 +1,1392 @@
+<vocabulary>
+  <name>USGS Thesaurus</name>
+  <description>The USGS Thesaurus is specifically intended to help people
+    outside the U.S. Geological Survey (USGS) find information on USGS web
+    sites without specific knowledge
+    of the organizational structure and operations of the USGS. For those
+    inside USGS, the thesaurus provides a source of consistent index terms that
+    spans the full range of USGS activities; such terms can be used to refine
+    or clarify labels, to support internet search, and the relationships among
+    them suggest linkages across programs.</description>
+  <url>http://www.usgs.gov/science/about/thesaurus-full.php?thcode=2</url>
+  <version>Nov 08 2013</version>
+  <owner>
+      <name>United States Geological Survey</name>
+      <url>http://www.usgs.gov/</url>
+  </owner>
+  <term>
+    <value>Methods</value>
+    <term>
+      <value>Computational methods</value>
+      <term>Image analysis</term>
+      <term>
+      	<value>Mathematical modeling</value>
+        <term>Mathematical simulation</term>
+      </term>
+      <term>Relative abundance analysis</term>
+      <term>
+        <value>Spatial analysis</value>
+        <term>Geospatial analysis</term>
+      </term>
+      <term>
+        <value>Statistical analysis</value>
+        <term>Kriging</term>
+        <term>Multivariate statistical analysis</term>
+        <term>Regression analysis</term>
+        <term>Time series analysis</term>
+      </term>
+      <term>Topological analysis</term>
+      <term>Visualization methods</term>
+    </term>
+    <term>
+      <value>Field methods</value>
+      <term>
+        <value>Field experiments</value>
+        <term>Tracer study</term>
+      </term>
+      <term>
+        <value>Field inventory and monitoring</value>
+        <term>
+          <value>Acoustic methods</value>
+          <term>
+            <value>Sonar methods</value>
+            <term>Single-beam echo sounder</term>
+            <term>Multibeam sonar</term>
+            <term>Interferometric sonar</term>
+            <term>Sidescan sonar</term>
+          </term>
+          <term>Acoustic doppler current profiling</term>
+        </term>
+        <term>
+          <value>Borehole logging</value>
+          <term>Borehole temperature logging</term>
+          <term>Electrical resistivity logging</term>
+          <term>Gamma-ray logging</term>
+        </term>
+        <term>CTD measurement</term>
+        <term>
+          <value>Ecosystem monitoring</value>
+          <term>Long-term ecological monitoring</term>
+        </term>
+        <term>Electromagnetic surveying</term>
+        <term>Handheld field spectroscopy</term>
+        <term>
+          <value>Seismic methods</value>
+          <term>Seismic networking</term>
+          <term>Seismic reflection methods</term>
+          <term>Seismic refraction methods</term>
+        </term>
+        <term>Stream-gage measurement</term>
+        <term>Telemetry</term>
+        <term>Tiltmeter measurement</term>
+        <term>Video monitoring</term>
+        <term>Vocalization methods</term>
+        <term>Animal and plant census</term>
+        <term>Gravimeter measurement</term>
+        <term>Magnetometer measurement</term>
+        <term>Optical methods</term>
+        <term>Tomography</term>
+        <term>Statistical surveying</term>
+      </term>
+      <term>
+        <value>Field sampling</value>
+        <term>Animal tracking</term>
+        <term>Capturing (animals)</term>
+        <term>Drilling and coring</term>
+        <term>Plant and animal tagging</term>
+        <term>Plot sampling</term>
+        <term>Sexing (plants &amp; animals)</term>
+        <term>Specimen collecting</term>
+        <term>Transect sampling</term>
+        <term>Trenching</term>
+        <term>Water sampling</term>
+        <term>Dredge sampling</term>
+      </term>
+      <term>
+        <value>Geolocation measurement</value>
+        <term>Altimetry measurement</term>
+        <term>Bathymetry measurement</term>
+        <term>GPS measurement</term>
+        <term>Land surveying</term>
+      </term>
+      <term>Real-time monitoring and reporting</term>
+    </term>
+    <term>
+      <value>Laboratory methods</value>
+      <term>
+        <value>Chemical analysis</value>
+        <term>Atomic absorption analysis</term>
+        <term>
+          <value>Chromatography</value>
+          <term>Gas chromatography</term>
+          <term>Liquid chromatography</term>
+        </term>
+        <term>DNA sequencing</term>
+        <term>Electrophoresis</term>
+        <term>Flow cytometry</term>
+        <term>Mass spectroscopy</term>
+        <term>Neutron activation analysis</term>
+        <term>Particle-beam spectroscopy</term>
+        <term>Polymerase chain reaction</term>
+        <term>X-ray diffraction</term>
+        <term>Atomic emission spectroscopy</term>
+        <term>X-ray fluorescence</term>
+      </term>
+      <term>Core analysis</term>
+      <term>Culturing (specimens)</term>
+      <term>Faunal and floral census (microscopic)</term>
+      <term>
+        <value>Grain-size analysis</value>
+        <term>Sieve-size analysis</term>
+      </term>
+      <term>
+        <value>Isotopic analysis</value>
+        <term>
+          <value>Light stable isotope analysis</value>
+          <term>Beryllium isotope analysis</term>
+          <term>Carbon isotope analysis</term>
+          <term>Oxygen isotope analysis</term>
+          <term>Tritium analysis</term>
+        </term>
+        <term>
+          <value>Radiometric dating</value>
+          <term>Carbon-14 analysis</term>
+          <term>Rubidium-strontium analysis</term>
+          <term>Uranium-lead analysis</term>
+          <term>Uranium-thorium analysis</term>
+          <term>Potassium-argon analysis</term>
+        </term>
+      </term>
+      <term>Meristics</term>
+      <term>
+        <value>Microscopy</value>
+        <term>
+          <value>Electron microscopy</value>
+          <term>Scanning electron microscopy</term>
+        </term>
+        <term>
+          <value>Optical microscopy</value>
+          <term>Microtomy</term>
+        </term>
+      </term>
+      <term>
+        <value>Paleomagnetic analysis</value>
+        <term>Curie temperature analysis</term>
+        <term>Laboratory-induced magnetization analysis</term>
+        <term>Magnetic hysteresis analysis</term>
+        <term>Magnetic susceptibility analysis</term>
+        <term>Natural remanent magnetization analysis</term>
+      </term>
+      <term>Petrography</term>
+      <term>Plant and animal testing</term>
+      <term>Therapeutic methods</term>
+      <term>Tree ring analysis</term>
+      <term>Camera calibration</term>
+      <term>
+        <value>Age estimation methods</value>
+        <term>Fission-track dating</term>
+        <term>Luminescence dating</term>
+        <term>Tephrochronology</term>
+        <term>Sclerochronology</term>
+      </term>
+    </term>
+    <term>
+      <value>Management methods</value>
+      <term>Decision support methods</term>
+      <term>
+        <value>Environmental assessment</value>
+        <term>TMDL</term>
+      </term>
+      <term>
+        <value>Hazard preparedness</value>
+        <term>Earthquake preparedness</term>
+        <term>Aviation safety</term>
+      </term>
+      <term>
+      	<value>Information technology methods</value>
+   	   	<term>
+    	  <value>Data management</value>
+      	  <term>Improvement of scientific data usability</term>
+      	  <term>
+      		<value>Data preservation</value>
+      		<term>Data rescue</term>
+      	  </term>
+      	  <term>Metadata management</term>
+      	</term>
+      	<term>
+      	  <value>Information system administration</value>
+      	  <term>Database administration</term>
+      	  <term>Network administration</term>
+      	  <term>Information system security</term>
+      	</term>
+      	<term>
+      	  <value>Data communication</value>
+      	  <term>Social network development</term>
+      	  <term>
+      		<value>Web interface development</value>
+      		<term>Data packaging</term>
+      	  </term>
+      	  <term>Web service development</term>
+      	  <term>Markup and query language development</term>
+      	</term>
+      	<term>
+      	  <value>Data integration</value>
+      	  <term>Information architecture</term>
+      	  <term>Knowledge organization</term>
+      	</term>
+      	<term>Software development</term>
+      </term>
+      <term>
+        <value>Natural resource management</value>
+        <term>
+          <value>Biological population management</value>
+          <term>Fishery management</term>
+          <term>Reintroduction (organisms)</term>
+          <term>
+            <value>Wildlife population management</value>
+            <term>Game management</term>
+          </term>
+          <term>Pest control</term>
+        </term>
+        <term>Controlled flooding</term>
+        <term>Ecosystem management</term>
+        <term>Natural resource assessment</term>
+        <term>
+          <value>Remediation</value>
+          <term>Bioremediation</term>
+        </term>
+        <term>Water resource management</term>
+        <term>Watershed management</term>
+        <term>
+          <value>Fire control</value>
+          <term>Controlled fires</term>
+        </term>
+      </term>
+      <term>
+        <value>Risk assessment</value>
+        <term>Earthquake probabilities</term>
+        <term>Landslide susceptibility assessment</term>
+        <term>Volcanic eruption prediction</term>
+      </term>
+    </term>
+    <term>
+      <value>Photography</value>
+      <term>Underwater photography</term>
+    </term>
+    <term>
+      <value>Remote sensing</value>
+      <term>Aerial photography</term>
+      <term>Aeromagnetic surveying</term>
+      <term>Aeroradiometric surveying</term>
+      <term>Hyperspectral imaging</term>
+      <term>IFSAR</term>
+      <term>
+        <value>Infrared imaging</value>
+        <term>AVHRR</term>
+        <term>AVIRIS</term>
+      </term>
+      <term>LIDAR</term>
+      <term>
+        <value>Microwave imaging</value>
+        <term>SMMR</term>
+        <term>SSM/I</term>
+      </term>
+      <term>Multispectral imaging</term>
+      <term>Panchromatic imaging</term>
+      <term>
+        <value>Radar imaging</value>
+        <term>SLAR</term>
+        <term>Doppler radar imaging</term>
+      </term>
+      <term>Thermal imaging</term>
+      <term>Visible light imaging</term>
+    </term>
+    <term>Videography</term>
+  </term>
+  <term>
+    <value>Product types</value>
+    <term>
+      <value>Catalogs and indexes</value>
+      <term>Bibliographies</term>
+      <term>Directories</term>
+      <term>Gazetteers</term>
+    </term>
+    <term>
+      <value>Datasets</value>
+      <term>
+      	<value>Geospatial datasets</value>
+      	<term>Digital elevation models</term>
+      </term>
+      <term>Hydrographic datasets</term>
+      <term>Time series datasets</term>
+    </term>
+    <term>
+      <value>Reports</value>
+      <term>Checklists</term>
+      <term>Guidebooks</term>
+      <term>Manuals</term>
+      <term>Standards</term>
+      <term>Conference proceedings</term>
+      <term>Strategic plans</term>
+    </term>
+    <term>Image collections</term>
+    <term>
+      <value>Maps and atlases</value>
+      <term>Geologic maps</term>
+      <term>Topographic maps</term>
+    </term>
+    <term>Posters</term>
+    <term>Scientific software</term>
+    <term>
+    	<value>Official communications</value>
+    	<term>News releases</term>
+    	<term>Policies and regulations</term>
+    	<term>Speeches and testimony</term>
+    </term>
+    <term>Videos</term>
+    <term>Materials standards</term>
+    <term>Presentation materials</term>
+    <term>Sound recordings</term>
+    <term>Animations</term>
+    <term>
+      <value>Terminologies and classifications</value>
+      <term>Geologic time scales</term>
+    </term>
+  </term>
+  <term>
+    <value>Sciences</value>
+    <term>
+      <value>Earth sciences</value>
+      <term>
+        <value>Atmospheric sciences</value>
+        <term>Climatology</term>
+        <term>Meteorology</term>
+      </term>
+      <term>
+        <value>Geochemistry</value>
+        <term>Soil chemistry</term>
+        <term>
+          <value>Water chemistry</value>
+          <term>Marine chemistry</term>
+        </term>
+      </term>
+      <term>
+        <value>Geography</value>
+        <term>Cartography</term>
+        <term>Paleogeography</term>
+      </term>
+      <term>
+        <value>Geology</value>
+        <term>Economic geology</term>
+        <term>Geochronology</term>
+        <term>Geomorphology</term>
+        <term>Hydrogeology</term>
+        <term>Marine geology</term>
+        <term>Mineralogy</term>
+        <term>Petrology</term>
+        <term>Sedimentology</term>
+        <term>Stratigraphy</term>
+        <term>Structural geology</term>
+        <term>Volcanology</term>
+      </term>
+      <term>
+        <value>Geophysics</value>
+        <term>Geodesy</term>
+        <term>Marine geophysics</term>
+        <term>
+          <value>Seismology</value>
+          <term>Paleoseismology</term>
+        </term>
+        <term>Tectonophysics</term>
+      </term>
+      <term>Glaciology</term>
+      <term>
+        <value>Hydrology</value>
+        <term>Hydrodynamics</term>
+      </term>
+      <term>Limnology</term>
+      <term>
+        <value>Ocean sciences</value>
+        <term>Paleoceanography</term>
+      </term>
+      <term>
+        <value>Paleontology</value>
+        <term>Invertebrate paleontology</term>
+        <term>Micropaleontology</term>
+        <term>Paleobotany</term>
+        <term>Vertebrate paleontology</term>
+      </term>
+      <term>Soil sciences</term>
+    </term>
+    <term>
+      <value>Engineering sciences</value>
+      <term>Engineering geology</term>
+      <term>Hydraulic engineering</term>
+    </term>
+    <term>
+      <value>Information sciences</value>
+      <term>Biological informatics</term>
+      <term>Computer science</term>
+    </term>
+    <term>
+      <value>Life sciences</value>
+      <term>
+        <value>Anatomy and physiology</value>
+        <term>Endocrinology</term>
+        <term>Histology</term>
+        <term>Immunology</term>
+      </term>
+      <term>Aquatic biology</term>
+      <term>Biochemistry</term>
+      <term>
+        <value>Botany</value>
+        <term>Palynology</term>
+        <term>Phycology</term>
+      </term>
+      <term>Cell biology</term>
+      <term>Developmental biology</term>
+      <term>Ecology</term>
+      <term>Ecotoxicology</term>
+      <term>Genetics</term>
+      <term>Marine biology</term>
+      <term>
+        <value>Microbiology</value>
+        <term>Bacteriology</term>
+        <term>Virology</term>
+      </term>
+      <term>Molecular biology</term>
+      <term>Morphology (biological)</term>
+      <term>Mycology</term>
+      <term>Parasitology</term>
+      <term>Pathology</term>
+      <term>Systematics and taxonomy</term>
+      <term>
+        <value>Zoology</value>
+        <term>
+          <value>Invertebrate zoology</value>
+          <term>Entomology</term>
+        </term>
+        <term>
+          <value>Vertebrate zoology</value>
+          <term>Herpetology</term>
+          <term>Ichthyology</term>
+          <term>Mammalogy</term>
+          <term>Ornithology</term>
+        </term>
+        <term>Wildlife biology</term>
+        <term>Ethology</term>
+      </term>
+    </term>
+    <term>Planetary sciences</term>
+    <term>
+      <value>Social sciences</value>
+      <term>Archeology</term>
+    </term>
+  </term>
+  <term>
+    <value>Topics</value>
+    <term>
+      <value>Agriculture</value>
+      <term>Aquaculture</term>
+    </term>
+    <term>
+	  <value>Biological and physical processes</value>
+	  <term>
+	  	<value>Atmospheric and climatic processes</value>
+		<term>Atmospheric circulation</term>
+		<term>
+		  <value>Atmospheric deposition (chemical &amp; particulate)</value>
+		  <term>Acid deposition</term>
+	    </term>
+		<term>
+		  <value>Climate change</value>
+		  <term>Desertification</term>
+		</term>
+	    <term>Droughts</term>
+	    <term>Ocean-atmosphere interaction</term>
+	    <term>Precipitation (atmospheric)</term>
+	    <term>
+		  <value>Storms</value>
+		  <term>Blizzards</term>
+		  <term>Hurricanes</term>
+		  <term>Ice storms</term>
+		  <term>Tornadoes</term>
+		  <term>Dust storms</term>
+	    </term>
+	    <term>Evaporation</term>
+	    <term>Wind</term>
+	    <term>Greenhouse effect</term>
+	  </term>
+	  <term>
+	    <value>Ecological processes</value>
+	    <term>Algal blooms</term>
+	    <term>Bioaccumulation</term>
+	    <term>
+		  <value>Biogeochemical cycling</value>
+		  <term>Carbon cycling</term>
+		  <term>
+		    <value>Nutrient cycling</value>
+		    <term>Food web</term>
+		  </term>
+	    </term>
+	    <term>Biological productivity</term>
+	    <term>Contaminant transport</term>
+	    <term>Dispersal (organisms)</term>
+	    <term>Ecological competition</term>
+	    <term>
+		  <value>Ecosystem functions</value>
+		  <term>Wetland functions</term>
+	    </term>
+	    <term>Eutrophication</term>
+	    <term>Extinction and extirpation</term>
+	    <term>
+          <value>Habitat alteration</value>
+          <term>Fire damage</term>
+        </term>
+        <term>Migration (organisms)</term>
+        <term>Pollination</term>
+        <term>Succession (biological)</term>
+        <term>Transpiration</term>
+      </term>
+      <term>Fires</term>
+      <term>
+        <value>Geochemical processes</value>
+        <term>Biodegradation</term>
+        <term>Ore formation</term>
+        <term>Oxidation and reduction</term>
+        <term>Reaction transport</term>
+        <term>Sorption</term>
+        <term>Carbon sequestration</term>
+      </term>
+      <term>
+	    <value>Geologic processes</value>
+        <term>Diagenesis</term>
+        <term>
+          <value>Earthquakes</value>
+          <term>Earthquake occurrences</term>
+        </term>
+        <term>
+          <value>Erosion</value>
+          <term>Sinkhole formation</term>
+        </term>
+        <term>Glaciation</term>
+        <term>Heat flow (earth)</term>
+        <term>Hydrothermal processes</term>
+        <term>Isostasy</term>
+        <term>Subsidence</term>
+        <term>Liquefaction</term>
+        <term>
+          <value>Metamorphism (geological)</value>
+          <term>Alteration</term>
+        </term>
+        <term>Sediment transport</term>
+        <term>Sedimentation</term>
+        <term>
+          <value>Tectonic processes</value>
+          <term>Neotectonic processes</term>
+        </term>
+        <term>
+          <value>Volcanic activity</value>
+          <term>Volcanic gas emission</term>
+        </term>
+        <term>Earth tides</term>
+        <term>
+          <value>Deformation (geologic)</value>
+          <term>Folding (geologic)</term>
+          <term>
+            <value>Fracture (geologic)</value>
+            <term>Faulting (geologic)</term>
+          </term>
+        </term>
+        <term>Soil formation</term>
+        <term>Magnetic storms</term>
+        <term>
+          <value>Slope processes</value>
+          <term>
+            <value>Landslides</value>
+            <term>Lahars</term>
+          </term>
+        </term>
+        <term>Uplift</term>
+      </term>
+      <term>
+        <value>Ocean processes</value>
+        <term>Ocean circulation</term>
+        <term>Ocean currents</term>
+        <term>
+          <value>Ocean waves</value>
+          <term>Tsunamis</term>
+        </term>
+        <term>Tides (oceanic)</term>
+      </term>
+      <term>
+        <value>Physiological processes</value>
+        <term>
+          <value>Organism growth and development</value>
+          <term>Metamorphosis</term>
+          <term>Anatomical deformities</term>
+        </term>
+        <term>Bioluminescence</term>
+        <term>Osmosis</term>
+        <term>Photosynthesis</term>
+      </term>
+      <term>
+        <value>Hydrologic processes</value>
+        <term>
+          <value>Floods</value>
+          <term>Storm surge</term>
+        </term>
+        <term>Groundwater flow</term>
+        <term>
+          <value>Streamflow</value>
+          <term>Stream discharge</term>
+          <term>Turbidity</term>
+        </term>
+        <term>Water circulation</term>
+        <term>Water cycle</term>
+        <term>Percolation</term>
+        <term>Runoff</term>
+        <term>Saltwater intrusion</term>
+        <term>Scour</term>
+        <term>Groundwater and surface-water interaction</term>
+      </term>
+      <term>Evolution</term>
+      <term>Impact cratering</term>
+      <term>
+      	<value>Coastal processes</value>
+      	<term>Longshore currents</term>
+      </term>
+      <term>
+      	<value>Estuarine processes</value>
+      	<term>Estuarine currents</term>
+      	<term>Estuarine mixing</term>
+      </term>
+    </term>
+    <term>
+      <value>Culture and demographics</value>
+      <term>Administrative and political boundaries</term>
+      <term>
+      	<value>Business and economics</value>
+      	<term>Recycling</term>
+      </term>
+      <term>Cadastral and legal land descriptions</term>
+      <term>Laws and regulations</term>
+      <term>Transportation</term>
+      <term>Geographic names</term>
+      <term>Population (human)</term>
+    </term>
+    <term>
+      <value>Earth characteristics</value>
+      <term>
+        <value>Atmospheric properties</value>
+        <term>Air temperature</term>
+        <term>
+          <value>Atmospheric composition</value>
+          <term>Greenhouse gases</term>
+          <term>Ozone layer</term>
+        </term>
+      </term>
+      <term>
+        <value>Earth structure</value>
+        <term>
+          <value>Core (earth)</value>
+          <term>Inner core (earth)</term>
+          <term>Outer core (earth)</term>
+        </term>
+        <term>
+          <value>Crust (earth)</value>
+          <term>
+            <value>Lithosphere</value>
+            <term>Continental lithosphere</term>
+            <term>Oceanic lithosphere</term>
+          </term>
+        </term>
+        <term>
+          <value>Mantle (earth)</value>
+          <term>Asthenosphere</term>
+        </term>
+      </term>
+      <term>
+        <value>Geologic history</value>
+        <term>Biostratigraphy</term>
+        <term>Earth history</term>
+        <term>Lithostratigraphy</term>
+      </term>
+      <term>
+        <value>Geologic structure</value>
+        <term>Foliation (geologic)</term>
+        <term>Lineation (geologic)</term>
+        <term>Structure contours</term>
+      </term>
+      <term>
+        <value>Gravitational field (earth)</value>
+        <term>Isostatic anomaly</term>
+        <term>Free-air anomaly</term>
+        <term>Bouguer anomaly</term>
+      </term>
+      <term>
+      	<value>Land surface characteristics</value>
+      	<term>Karst</term>
+      </term>
+      <term>Magnetic field (earth)</term>
+      <term>
+        <value>Ocean characteristics</value>
+        <term>Ocean salinity</term>
+        <term>
+          <value>Ocean temperature</value>
+          <term>Sea surface temperature</term>
+        </term>
+        <term>Sea-floor characteristics</term>
+        <term>Sea-level change</term>
+      </term>
+      <term>
+        <value>Rocks and deposits</value>
+        <term>
+          <value>Fossils</value>
+          <term>Ichnofossils</term>
+        </term>
+        <term>
+          <value>Igneous rocks</value>
+          <term>Volcanic rocks</term>
+          <term>Plutonic rocks</term>
+        </term>
+        <term>Metamorphic rocks</term>
+        <term>
+          <value>Sedimentary rocks</value>
+          <term>Bedforms</term>
+        </term>
+        <term>
+          <value>Unconsolidated deposits</value>
+          <term>Clay deposits</term>
+          <term>Gravel deposits</term>
+          <term>Sand deposits</term>
+          <term>Mine waste</term>
+        </term>
+        <term>Permafrost</term>
+        <term>Petroleum</term>
+      </term>
+      <term>
+        <value>Snow and ice cover</value>
+        <term>Sea ice concentration</term>
+      </term>
+      <term>
+        <value>Stratigraphic sections</value>
+        <term>Bedrock geologic units</term>
+        <term>
+          <value>Geologic contacts</value>
+          <term>Unconformities</term>
+        </term>
+        <term>Surficial geologic units</term>
+      </term>
+      <term>
+        <value>Topography</value>
+        <term>Bathymetry</term>
+      </term>
+      <term>
+        <value>Earth material properties</value>
+        <term>Permeability</term>
+        <term>Porosity</term>
+        <term>Radioactivity</term>
+        <term>Resistivity</term>
+        <term>Bulk density</term>
+        <term>
+          <value>Magnetism</value>
+          <term>Remanent magnetism</term>
+          <term>Magnetic susceptibility</term>
+        </term>
+        <term>Soil moisture</term>
+        <term>Soil temperature</term>
+      </term>
+    </term>
+    <term>Effects of climate change</term>
+    <term>Hazards</term>
+    <term>
+      <value>Health and disease</value>
+      <term>Disease vectors</term>
+      <term>
+        <value>Environmental health (human)</value>
+        <term>Human environmental safety</term>
+      </term>
+      <term>Zoonotic diseases</term>
+      <term>
+      	<value>Wildlife disease</value>
+      	<term>Avian influenza</term>
+      	<term>Chronic wasting disease</term>
+      	<term>White-nose syndrome</term>
+      </term>
+    </term>
+    <term>
+      <value>Human impacts</value>
+	  <term>
+	  	<value>Land use change</value>
+	  	<term>Habitat fragmentation</term>
+	  </term>
+	  <term>Mining hazards</term>
+	  <term>Overfishing</term>
+	  <term>Overgrazing</term>
+	  <term>Waste treatment and disposal</term>
+      <term>Deforestation</term>
+      <term>Dredging</term>
+      <term>Abandoned mines and quarries</term>
+      <term>Ecosystem services</term>
+    </term>
+    <term>
+      <value>Information system design and development</value>
+      <term>Geographic information systems</term>
+      <term>Metadata development</term>
+    </term>
+    <term>Instrument design and development</term>
+    <term>Land use and land cover</term>
+    <term>Map coordinate systems</term>
+    <term>
+      <value>Contamination and pollution</value>
+      <term>Pesticide and herbicide contamination</term>
+      <term>Toxic radionuclide contamination</term>
+      <term>
+        <value>Toxic trace element contamination</value>
+        <term>Mercury contamination</term>
+      </term>
+      <term>Nonpoint-source pollution</term>
+      <term>Pharmaceutical contamination</term>
+      <term>
+        <value>Industrial pollution</value>
+        <term>Mine drainage</term>
+      </term>
+    </term>
+    <term>Natural resource exploration</term>
+    <term>
+      <value>Natural resource extraction</value>
+      <term>Mining and quarrying</term>
+      <term>Well drilling</term>
+      <term>Placer deposit mining</term>
+      <term>Enhanced oil recovery</term>
+      <term>Hydraulic fracturing</term>
+    </term>
+    <term>
+      <value>Natural resources</value>
+      <term>
+        <value>Fishery resources</value>
+        <term>Commercial fishery resources</term>
+        <term>Inland fishery resources</term>
+        <term>
+          <value>Marine fishery resources</value>
+          <term>Whaling</term>
+        </term>
+        <term>Recreational fishery resources</term>
+        <term>Subsistence fishery resources</term>
+      </term>
+	  <term>Forest resources</term>
+      <term>
+        <value>Mineral resources</value>
+        <term>Metallic mineral resources</term>
+        <term>
+          <value>Nonmetallic mineral resources</value>
+          <term>Building stone resources</term>
+          <term>Gem resources</term>
+        </term>
+      </term>
+      <term>
+        <value>Energy resources</value>
+        <term>Coal resources</term>
+		<term>Geothermal resources</term>
+        <term>
+          <value>Natural gas resources</value>
+          <term>Coalbed methane resources</term>
+          <term>Gas hydrate resources</term>
+        </term>
+        <term>
+          <value>Oil resources</value>
+          <term>Oil sand resources</term>
+          <term>Oil shale resources</term>
+        </term>
+        <term>Wind energy</term>
+      </term>
+      <term>Soil resources</term>
+      <term>
+        <value>Water resources</value>
+        <term>
+          <value>Groundwater</value>
+          <term>
+            <value>Groundwater level</value>
+            <term>Unsaturated zone</term>
+          </term>
+        </term>
+        <term>
+          <value>Surface water (non-marine)</value>
+          <term>
+            <value>River systems</value>
+            <term>River reaches</term>
+          </term>
+          <term>Surface-water level</term>
+        </term>
+      </term>
+    </term>
+    <term>
+      <value>Organism groupings (non-taxonomic)</value>
+      <term>Biota</term>
+      <term>
+        <value>Consumers (organisms)</value>
+        <term>Carnivores</term>
+        <term>Herbivores</term>
+        <term>Omnivores</term>
+      </term>
+      <term>Decomposers</term>
+      <term>Endangered species</term>
+      <term>Game species</term>
+      <term>Keystone species</term>
+      <term>Macroinvertebrates</term>
+      <term>Migratory species</term>
+      <term>
+        <value>Native species</value>
+        <term>Endemic species</term>
+      </term>
+      <term>Nekton</term>
+      <term>
+        <value>Nonindigenous species</value>
+        <term>Invasive species</term>
+      </term>
+      <term>
+        <value>Plankton</value>
+        <term>Phytoplankton</term>
+      </term>
+      <term>Pollinators</term>
+      <term>Producers (organisms)</term>
+      <term>Shellfish</term>
+      <term>
+        <value>Vegetation</value>
+        <term>Periphyton</term>
+        <term>Weeds</term>
+        <term>Aquatic vegetation</term>
+      </term>
+      <term>Wildlife</term>
+      <term>Benthos</term>
+      <term>Microbes</term>
+      <term>Parasites</term>
+      <term>Nuisance species</term>
+      <term>Genetically engineered organisms</term>
+    </term>
+    <term>
+      <value>Organisms</value>
+      <term>
+        <value>Algae</value>
+        <term>Calcareous nannoplankton</term>
+        <term>Diatoms</term>
+        <term>Dinoflagellates</term>
+      </term>
+      <term>
+        <value>Animals</value>
+        <term>
+          <value>Invertebrates</value>
+          <term>
+            <value>Arthropods</value>
+            <term>Arachnids</term>
+            <term>
+              <value>Crustaceans</value>
+              <term>Ostracodes</term>
+            </term>
+            <term>Horseshoe crabs</term>
+            <term>
+              <value>Insects</value>
+              <term>Butterflies and moths</term>
+              <term>Bees and wasps</term>
+            </term>
+            <term>Trilobites</term>
+          </term>
+          <term>Bryozoans and brachiopods</term>
+          <term>Coelenterates</term>
+          <term>Conodonts</term>
+          <term>Echinoderms</term>
+          <term>Mollusks</term>
+          <term>Sponges</term>
+          <term>
+            <value>Worms</value>
+            <term>Flatworms</term>
+            <term>Roundworms</term>
+            <term>Segmented worms</term>
+          </term>
+          <term>Tunicates</term>
+        </term>
+        <term>
+          <value>Vertebrates</value>
+          <term>Amphibians</term>
+          <term>Birds</term>
+          <term>Fish</term>
+          <term>
+            <value>Mammals</value>
+            <term>Bears</term>
+            <term>Bats</term>
+            <term>Walruses</term>
+          </term>
+          <term>
+            <value>Reptiles</value>
+            <term>Dinosaurs</term>
+          </term>
+        </term>
+      </term>
+      <term>Archaea</term>
+      <term>Bacteria</term>
+      <term>Fungi</term>
+      <term>Lichens</term>
+      <term>
+        <value>Plants (organisms)</value>
+        <term>
+          <value>Nonvascular plants</value>
+          <term>Liverworts and hornworts</term>
+          <term>Mosses</term>
+        </term>
+        <term>
+          <value>Vascular plants</value>
+          <term>Ferns and fern allies</term>
+          <term>Flowering plants</term>
+          <term>Gymnosperms</term>
+        </term>
+      </term>
+      <term>Protists</term>
+      <term>Viruses</term>
+    </term>
+    <term>
+      <value>Planetary bodies</value>
+      <term>Meteorites</term>
+    </term>
+    <term>
+      <value>Population and community ecology</value>
+      <term>Animal behavior</term>
+      <term>
+        <value>Biodiversity</value>
+        <term>Ecosystem diversity</term>
+        <term>
+          <value>Genetic diversity</value>
+          <term>Genotype</term>
+        </term>
+        <term>Species diversity</term>
+      </term>
+      <term>Biogeography</term>
+      <term>Community ecology</term>
+      <term>
+        <value>Ecosystems</value>
+        <term>
+          <value>Aquatic ecosystems</value>
+          <term>Benthic ecosystems</term>
+          <term>Estuarine ecosystems</term>
+          <term>Freshwater ecosystems</term>
+          <term>
+            <value>Marine ecosystems</value>
+            <term>Reef ecosystems</term>
+          </term>
+        </term>
+        <term>
+          <value>Terrestrial ecosystems</value>
+          <term>Coastal ecosystems</term>
+          <term>Desert ecosystems</term>
+          <term>Forest ecosystems</term>
+          <term>Grassland ecosystems</term>
+          <term>Shrubland ecosystems</term>
+          <term>Tundra ecosystems</term>
+          <term>Island ecosystems</term>
+        </term>
+        <term>Wetland ecosystems</term>
+      </term>
+      <term>Habitats</term>
+      <term>Population dynamics</term>
+      <term>Symbiosis</term>
+      <term>Phenology</term>
+    </term>
+    <term>Scientific careers</term>
+    <term>
+      <value>Water properties</value>
+      <term>Nutrient content (water)</term>
+      <term>Oxygen content (water)</term>
+      <term>Salinity</term>
+      <term>Suspended material (water)</term>
+      <term>Water hardness</term>
+      <term>Water pH</term>
+      <term>Water temperature</term>
+      <term>Dissolved gases</term>
+      <term>Dissolved metals</term>
+      <term>Dissolved organic compounds</term>
+    </term>
+    <term>
+      <value>Water quality</value>
+      <term>Groundwater quality</term>
+      <term>Marine water quality</term>
+      <term>Surface water quality</term>
+    </term>
+    <term>
+      <value>Water supply and demand</value>
+      <term>Water budget</term>
+      <term>
+        <value>Water use</value>
+        <term>
+          <value>Agricultural water use</value>
+          <term>Irrigation</term>
+        </term>
+        <term>Commercial water use</term>
+        <term>
+          <value>Domestic water use</value>
+          <term>Drinking water use</term>
+        </term>
+        <term>Industrial water use</term>
+        <term>Mining water use</term>
+        <term>Power generation water use</term>
+        <term>Wastewater use</term>
+      </term>
+    </term>
+    <term>Recreation</term>
+    <term>Field monitoring stations</term>
+    <term>
+      <value>Elements</value>
+      <term>
+        <value>Chemical element groups</value>
+        <term>Actinide series elements</term>
+        <term>Alkali metal elements</term>
+        <term>Alkaline earth elements</term>
+        <term>Halogen elements</term>
+        <term>Lanthanide series elements</term>
+        <term>Metal elements</term>
+        <term>Noble gas elements</term>
+        <term>Nonmetal elements</term>
+        <term>Rare earth elements</term>
+      </term>
+      <term>
+        <value>Chemical elements</value>
+        <term>Actinium</term>
+        <term>Aluminum</term>
+        <term>Americium</term>
+        <term>Antimony</term>
+        <term>Argon</term>
+        <term>Arsenic</term>
+        <term>Astatine</term>
+        <term>Barium</term>
+        <term>Berkelium</term>
+        <term>Beryllium</term>
+        <term>Bismuth</term>
+        <term>Bohrium</term>
+        <term>Boron</term>
+        <term>Bromine</term>
+        <term>Cadmium</term>
+        <term>Calcium</term>
+        <term>Californium</term>
+        <term>Carbon</term>
+        <term>Cerium</term>
+        <term>Cesium</term>
+        <term>Chlorine</term>
+        <term>Chromium</term>
+        <term>Cobalt</term>
+        <term>Copper</term>
+        <term>Curium</term>
+        <term>Darmstadtium</term>
+        <term>Dubnium</term>
+        <term>Dysprosium</term>
+        <term>Einsteinium</term>
+        <term>Erbium</term>
+        <term>Europium</term>
+        <term>Fermium</term>
+        <term>Fluorine</term>
+        <term>Francium</term>
+        <term>Gadolinium</term>
+        <term>Gallium</term>
+        <term>Germanium</term>
+        <term>Gold</term>
+        <term>Hafnium</term>
+        <term>Hassium</term>
+        <term>Helium</term>
+        <term>Holmium</term>
+        <term>Hydrogen</term>
+        <term>Indium</term>
+        <term>Iodine</term>
+        <term>Iron</term>
+        <term>Irridium</term>
+        <term>Krypton</term>
+        <term>Lanthanum</term>
+        <term>Lawrencium</term>
+        <term>Lead</term>
+        <term>Lithium</term>
+        <term>Lutetium</term>
+        <term>Magnesium</term>
+        <term>Manganese</term>
+        <term>Meitnerium</term>
+        <term>Mendelevium</term>
+        <term>Mercury</term>
+        <term>Molybdenum</term>
+        <term>Neodymium</term>
+        <term>Neon</term>
+        <term>Neptunium</term>
+        <term>Nickel</term>
+        <term>Niobium</term>
+        <term>Nitrogen</term>
+        <term>Nobelium</term>
+        <term>Osmium</term>
+        <term>Oxygen</term>
+        <term>Palladium</term>
+        <term>Phosphorus</term>
+        <term>Platinum</term>
+        <term>Plutonium</term>
+        <term>Polonium</term>
+        <term>Potassium</term>
+        <term>Praseodymium</term>
+        <term>Prometium</term>
+        <term>Protactinium</term>
+        <term>Radium</term>
+        <term>Radon</term>
+        <term>Rhenium</term>
+        <term>Rhodium</term>
+        <term>Rubidium</term>
+        <term>Ruthenium</term>
+        <term>Rutherfordium</term>
+        <term>Samarium</term>
+        <term>Scandium</term>
+        <term>Seaborgium</term>
+        <term>Selenium</term>
+        <term>Silicon</term>
+        <term>Silver</term>
+        <term>Sodium</term>
+        <term>Strontium</term>
+        <term>Sulfur</term>
+        <term>Tantalum</term>
+        <term>Technetium</term>
+        <term>Tellurium</term>
+        <term>Terbium</term>
+        <term>Thallium</term>
+        <term>Thorium</term>
+        <term>Thulium</term>
+        <term>Tin</term>
+        <term>Titanium</term>
+        <term>Tungsten</term>
+        <term>Ununnilium</term>
+        <term>Ununnubium</term>
+        <term>Ununnunium</term>
+        <term>Uranium</term>
+        <term>Vanadium</term>
+        <term>Xenon</term>
+        <term>Ytterbium</term>
+        <term>Yttrium</term>
+        <term>Zinc</term>
+        <term>Zirconium</term>
+      </term>
+    </term>
+  </term>
+  <term>
+    <value>Time periods</value>
+    <term>
+      <value>Geologic time periods</value>
+      <term>
+        <value>Phanerozoic</value>
+        <term>
+          <value>Cenozoic</value>
+          <term>
+            <value>Quaternary</value>
+            <term>Holocene</term>
+            <term>Pleistocene</term>
+          </term>
+          <term>
+            <value>Tertiary</value>
+            <term>
+              <value>Neogene</value>
+              <term>Miocene</term>
+              <term>Pliocene</term>
+            </term>
+            <term>
+              <value>Paleogene</value>
+              <term>Eocene</term>
+              <term>Oligocene</term>
+              <term>Paleocene</term>
+            </term>
+          </term>
+        </term>
+        <term>
+          <value>Mesozoic</value>
+          <term>Cretaceous</term>
+          <term>Jurassic</term>
+          <term>Triassic</term>
+        </term>
+        <term>
+          <value>Paleozoic</value>
+          <term>Cambrian</term>
+          <term>Devonian</term>
+          <term>Mississippian</term>
+          <term>Ordovician</term>
+          <term>Pennsylvanian</term>
+          <term>Permian</term>
+          <term>Silurian</term>
+        </term>
+      </term>
+      <term>
+        <value>Precambrian</value>
+        <term>Archaean</term>
+        <term>Hadean</term>
+        <term>
+          <value>Proterozoic</value>
+          <term>
+            <value>Neoproterozoic</value>
+            <term>Ediacaran</term>
+          </term>
+        </term>
+      </term>
+    </term>
+    <term>
+      <value>Seasons</value>
+      <term>Autumn</term>
+      <term>Spring (season)</term>
+      <term>Summer</term>
+      <term>Winter</term>
+    </term>
+  </term>
+  <term>
+    <value>Institutional structures and activities</value>
+    <term>
+      <value>Facilities</value>
+      <term>Field offices</term>
+      <term>Laboratories</term>
+      <term>
+      	<value>Libraries and archives</value>
+      	<term>Sample repositories</term>
+      </term>
+      <term>National centers</term>
+    </term>
+    <term>
+      <value>Organizational structure</value>
+      <term>Science centers</term>
+      <term>Science discipline offices</term>
+      <term>Regional offices</term>
+      <term>Support offices</term>
+      <term>Mission Directorates</term>
+    </term>
+    <term>Employment and volunteer opportunities</term>
+    <term>
+      <value>Science programs</value>
+      <term>Partnerships</term>
+      <term>Interagency programs</term>
+      <term>Interdisciplinary programs</term>
+      <term>International programs</term>
+      <term>External research support</term>
+      <term>Citizen science programs</term>
+    </term>
+    <term>
+      <value>User services</value>
+      <term>Standards development</term>
+      <term>Customer support and user feedback</term>
+      <term>
+        <value>Educational services</value>
+        <term>College resources</term>
+        <term>Internship programs</term>
+        <term>Lifelong learning resources</term>
+        <term>K-12 resources</term>
+      </term>
+      <term>
+        <value>Information services</value>
+        <term>Data services</term>
+        <term>Reference services</term>
+        <term>
+          <value>Map interfaces</value>
+          <term>Web map services</term>
+        </term>
+        <term>Sales and distribution services</term>
+        <term>Search services</term>
+        <term>News services</term>
+        <term>Publishing</term>
+      </term>
+      <term>Media relations</term>
+      <term>Community relations</term>
+    </term>
+  </term>
+</vocabulary>

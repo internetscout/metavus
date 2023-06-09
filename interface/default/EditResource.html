@@ -1,0 +1,143 @@
+<?PHP
+#
+#   FILE:  EditResource.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use ScoutLib\ApplicationFramework;
+
+function printButtons($Mode)
+{
+    $AF = ApplicationFramework::getInstance();
+
+    switch ($Mode) {
+        case "Add":
+            $Buttons = [
+                "Add" => "Plus.svg",
+                "Cancel" => "Cross.svg"
+            ];
+            break;
+
+        case "Edit":
+            $Buttons = [
+                "Save" => "Disk.svg",
+                "Duplicate" => "Copy.svg",
+                "Delete" => "Delete.svg",
+                "Cancel"  => "Cross.svg"
+            ];
+            break;
+
+        case "Confirm Delete":
+            $Buttons = [
+                "Confirm" => "Check.svg",
+                "Cancel" => "Cross.svg"
+            ];
+            break;
+
+        default:
+            $Buttons = [];
+            break;
+    }
+
+    foreach ($Buttons as $Button => $Icon) {
+        $CssClass = in_array($Button, ["Delete", "Confirm"]) ?
+            "danger" : "primary";
+        print '<button class="btn btn-'.$CssClass.' mv-button-iconed" type="submit" '
+            .'name="Submit" value="'.$Button.'"><img src="'.$AF->GUIFile($Icon)
+            .'" alt="" class="mv-button-icon" /> '.$Button.'</button> ';
+    }
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeResourceName = isset($H_Resource) ?
+    $H_Resource->getSchema()->resourceName() : "Record";
+
+# set page title
+PageTitle($H_Mode." ".$SafeResourceName);
+
+# handle error reporting
+if (is_null($H_ResourceId) || !isset($H_Resource)) {
+    print "<h1>".$H_Mode." ".$SafeResourceName."</h1>"
+        ."<p class='alert alert-danger'>";
+
+    if (is_null($H_ResourceId)) {
+        print "No ". $SafeResourceName." ID was specified.</p>";
+        return;
+    }
+
+    if (!isset($H_Resource) && $H_ResourceId == "NEW") {
+        print "Insufficient privileges to create "
+            .$SafeResourceName."</p>";
+        return;
+    }
+
+    print "No ".$SafeResourceName." found with the specified ID.</p>";
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+
+?>
+<form name="EditForm" method="post" enctype="multipart/form-data"
+      action="index.php?P=EditResource&amp;ID=<?= $H_Resource->Id();?>">
+  <div class="clearfix">
+    <div class="float-left">
+      <h1><?= $H_Mode ?> <?= $SafeResourceName ?></h1>
+      <p><i>(required fields are <span class="mv-form-requiredfield">circled</span>)</i></p>
+    </div>
+    <div class="float-right"><?PHP printButtons($H_Mode); ?></div>
+  </div>
+
+  <?PHP if ($H_Mode == "Confirm Delete") { ?>
+    <div class="alert alert-danger">
+      <p>Once deleted, all data associated with this <?= $SafeResourceName ?> will be purged
+        from the system and <b>CANNOT</b> be recovered.</p>
+    </div>
+  <?PHP } elseif ($H_Mode == "Delete") { ?>
+    <div class="alert alert-success">
+      <p><?= $SafeResourceName ?> has been deleted.</p>
+    </div>
+  <?PHP } ?>
+  <div class="mv-above-editform"><?PHP
+           $GLOBALS["AF"]->signalEvent(
+               "EVENT_HTML_INSERTION_POINT",
+               [
+                   $GLOBALS["AF"]->GetPageName(),
+                   "Above Edit Form",
+                   [
+                       "Resource" => $H_Resource,
+                       "AddingNewResource" => $H_Resource->isTempRecord(),
+                   ]
+               ]
+           );
+            ?></div>
+
+  <?PHP $H_RecordEditingUI->displayErrorBlock(); ?>
+  <?PHP $H_RecordEditingUI->displayFormTable(); ?>
+
+  <div class="float-right"><?PHP printButtons($H_Mode); ?></div>
+  <?PHP
+        $GLOBALS["AF"]->signalEvent(
+            "EVENT_HTML_INSERTION_POINT",
+            [
+                $GLOBALS["AF"]->getPageName(),
+                "Bottom of Edit Form",
+                [
+                    "Resource" => $H_Resource,
+                    "AddingNewResource" => $H_Resource->isTempRecord(),
+                ]
+            ]
+        );
+        ?>
+</form>
+<div class="clearfix">&nbsp;</div>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+      CKEDITOR.config.contentsCss.push('<?= $AF->pUIFile("MV-Theme-CKEditor.css")  ?>');
+  });
+</script>

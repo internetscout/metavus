@@ -1,0 +1,75 @@
+<?PHP
+#
+#   FILE:  Common-404.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# common content to display on pages reporting a 404 error
+
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+$ServerVarNames = [
+    "REQUEST_TIME",
+    "SERVER_PORT",
+    "REQUEST_METHOD",
+    "HTTPS",
+    "HTTP_HOST",
+    "REQUEST_URI",
+    "HTTP_USER_AGENT",
+    "HTTP_REFERER"
+];
+
+$SupportVars = [];
+
+foreach ($ServerVarNames as $ServerVarName) {
+    if (array_key_exists($ServerVarName, $_SERVER)) {
+        $SupportVars[$ServerVarName] = $_SERVER[$ServerVarName];
+    }
+}
+
+$Protocol = isset($_SERVER["HTTPS"]) ? "https://" : "http://";
+$RequestedUrl = $Protocol.$_SERVER["HTTP_HOST"].$_SERVER["REQUEST_URI"];
+
+$MailtoText = "mailto:"
+    .InterfaceConfiguration::getInstance()->getString("AdminEmail")
+    ."?subject=".rawurlencode("Page Not Found (HTTP 404 error)")
+    ."&amp;body=".rawurlencode("A Page Not Found (HTTP 404) error occured "
+    ."when trying to navigate to the following page: ".$RequestedUrl) ;
+
+ApplicationFramework::getInstance()
+    ->doNotCacheCurrentPage();
+
+# ----- DISPLAY --------------------------------------------------------------
+
+?>
+<h1>Page Not Found (HTTP Error 404)</h1>
+
+<p>Unfortunately, the page you requested could not be found. Please use the
+links at the top or side of this page to find the page you were looking for, or
+use the back button on your browser to return to the site or page from which you
+came.</p>
+
+<p>If you believe you reached this page in error, contact the
+<a href="<?= $MailtoText; ?>"> administrator</a>.</p>
+
+<h2>Requested URL</h2>
+
+<p><?= $RequestedUrl; ?></p>
+
+<h2>Support Information</h2>
+
+<table class="table table-striped">
+  <?PHP foreach ($SupportVars as $Label => $Value) { ?>
+  <tr>
+    <th><?= $Label; ?></th>
+    <td><?= $Value; ?></td>
+  </tr>
+  <?PHP } ?>
+</table>

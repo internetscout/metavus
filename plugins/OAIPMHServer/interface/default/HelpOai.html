@@ -1,0 +1,73 @@
+<?PHP
+#
+#   FILE:  HelpOai.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<p><b>Help</b> for <b>OAI</b>:</p>
+
+<dl>
+    <dt>What is OAI-PMH?</dt>
+    <dd>
+      <p>The Open Archives Initiative Protocol for Metadata Harvesting
+      (OAI-PMH) is a format for exchanging metadata records in a
+      standardized and machine-parseable way.  If you choose to enable
+      the OAI server plugin, then your CWIS site will also be an OAI
+      Repository from which others can pull records.
+
+      <p>Wikipedia's
+      <a href="http://en.wikipedia.org/wiki/Open_Archives_Initiative"
+         >Open Archives Initiative</a> page gives a more detailed summary
+      of the OAI project, and more technical data on OAI-PMH can be
+      obtained from the
+      <a href="http://www.openarchives.org/OAI/openarchivesprotocol.html"
+         >OAI-PMH protocol definition</a>
+    </dd>
+
+    <dt>What is XSD?</dt>
+    <dd>
+      <p>OAI-PMH provides data in an XML dialect.  While this
+      can be helpful in that there are numerous tools to work with XML
+      data, it can also be problematic in that XML is so extensible
+      that it can be difficult to interpret.  XSD a schema description
+      language which can be used to define the structure of an XML
+      document (see <a
+      href="http://en.wikipedia.org/wiki/XSD">Wikipedia: XSD</a> for
+      mor detail).
+
+      <p>CWIS can serve OAI data in a number of standard formats, and has
+      an XSD avaialble for each of those formats.
+
+      <p>If you choose to define a custom data format, then CWIS can
+      generate an XSD for you to use. To use this facility, specify
+      {CWIS_ROOT}/index.php?P=P_OAIPMHServer_XSD&amp;FN={FORMAT_NAME}
+      as the Schema Defintion URL when you define or edit your custom
+      format.  {CWIS_ROOT} should be replaced by the base URL of your
+      site, and {FORMAT_NAME} should be replaced by the name of your
+      custom format.
+
+      <p>The generated XSD will use &lt;xs:include&gt; elements to incorporate
+      namespaces defined by your schema.  When you have a field which
+      supports multiple qualifiers, CWIS will attempt to compose them with
+      an &lt;xs:union&gt;.  Depending on which qualifiers must be composed in this
+      way, and which validation tools are employed, this may result in an
+      XSD which fails to validate.
+
+      <p>Note that differing XSD validation suites will often give different
+      calidation results and that some of the more popular XML software,
+      most notably libxml2, contains incomplete or non-compliant XSD
+      validation functionality.  Therefore, if your schema includes fields
+      which compose multiple namespaces, then getting your XSD to validate
+      in a cross-parser way may be difficult.  In this case, your best
+      option may be to use the CWIS-generated XSD as a starting point which
+      can be refined.
+    </dd>
+
+</dl>

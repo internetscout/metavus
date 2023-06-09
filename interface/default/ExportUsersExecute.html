@@ -1,0 +1,30 @@
+<?PHP
+#
+#   FILE:  ExportUsersExecute.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<?PHP if ($H_ExportComplete) { ?>
+<h1>Export Completed Successfully</h1>
+
+<p><?= $H_UserCount; ?> users exported.</p>
+
+<p>Download the exported file by clicking <a href="<?= $H_FileName;?>" download>here</a>.</p>
+
+<?PHP } else { ?>
+<h1>Exporting Users</h1>
+
+<p><?= $H_UserCount; ?> users exported so far.</p>
+
+<form name="exportusers" method="post" action="index.php?P=ExportUsersExecute">
+    <button type="submit" name="Submit" value="Cancel">Cancel</button>
+</form>
+
+<?PHP } ?>

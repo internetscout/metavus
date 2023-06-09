@@ -1,0 +1,262 @@
+<?PHP
+#
+#   FILE:  Developer.html
+#
+#   Copyright 2011-2021 Internet Scout Research Group
+#   http://scout.wisc.edu/
+#
+
+use Metavus\MetadataSchema;
+use Metavus\Plugins\UrlChecker\InvalidUrl;
+use Metavus\Plugins\UrlChecker\Record;
+use Metavus\InterfaceConfiguration;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Print out resource data for a resource that will be checked next.
+ * @param $ResourceId
+ * @param $CheckDate
+ */
+function PrintNextResource($ResourceId, $CheckDate)
+{
+    $Resource = new Record($ResourceId, $CheckDate);
+    $Schema = $Resource->getSchema();
+
+    $TitleField = $Schema->GetFieldByMappedName("Title");
+
+    if ($TitleField === null) {
+        $Name = "<i>(No title field mapped)</i>";
+        $Title = "";
+    } else {
+        # format information for display
+        $DefaultCharSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
+        $Name = defaulthtmlentities(
+            StdLib::NeatlyTruncateString($Resource->Get($TitleField), 65),
+            ENT_QUOTES,
+            $DefaultCharSet,
+            false
+        );
+        $Title = defaulthtmlentities(
+            $Resource->Get($TitleField),
+            ENT_QUOTES,
+            $DefaultCharSet,
+            false
+        );
+    }
+
+    $CheckDate = ($Resource->GetCheckDate() == "N/A")  ?
+        $Resource->GetCheckDate() :
+        date("M jS, Y \a\\t g:i A", strtotime($Resource->GetCheckDate()));
+    ?>
+    <tr>
+        <td><?= $Resource->Id(); ?></td>
+        <td>
+            <a href="index.php?P=FullRecord&amp;ResourceId=<?= $Resource->Id(); ?>"
+                title="<?= $Title; ?>"><?= $Name; ?></a>
+        </td>
+        <td><?= $CheckDate; ?></td>
+        <td>
+            <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->Id(); ?>"
+                title="Validate this URL now. This may take awhile">
+                <img src="plugins/UrlChecker/interface/default/images/check.gif" alt="Check" />
+            </a>
+        </td>
+    </tr>
+    <?PHP
+}
+
+/**
+ * Print out a single invalid resource URL's data.
+ * @param $InvalidUrl InvalidUrl object
+ */
+function PrintNextUrl(InvalidUrl $InvalidUrl)
+{
+    $Resource = $InvalidUrl->GetAssociatedResource();
+    $Field = $InvalidUrl->GetAssociatedField();
+
+    $TitleField = $Resource->getSchema()->GetFieldByMappedName("Title");
+
+    # get the resource name and RFC anchor name
+    $DefaultCharSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
+    $Name = defaulthtmlentities(
+        StdLib::NeatlyTruncateString($Resource->Get($TitleField), 22),
+        ENT_QUOTES,
+        $DefaultCharSet,
+        false
+    );
+    $Title = defaulthtmlentities($Resource->Get($TitleField), ENT_QUOTES, $DefaultCharSet, false);
+    $Url = defaulthtmlentities($InvalidUrl->Url, ENT_QUOTES, $DefaultCharSet, false);
+
+    # basic url href sanitization (mainly to reject javascript)
+    $UrlHref = "#";
+    if (preg_match("/^(mailto|ftps?|https?):\/\//", $InvalidUrl->Url)) {
+        $UrlHref = $InvalidUrl->Url;
+    }
+
+    ?>
+    <!-- invalid url -->
+    <tr>
+        <td><?= $Resource->Id(); ?></td>
+        <td><a href="index.php?P=FullRecord&amp;ResourceId=<?= $Resource->Id(); ?>"
+            title="<?= $Title; ?>"><?= $Name; ?></a></td>
+        <td>
+            <?PHP if (strlen($Url) > 65) { ?>
+            <a href="<?= $UrlHref; ?>" title="<?= $Url; ?>"><?= substr($Url, 0, 65)."..."; ?></a>
+            <?PHP } else { ?>
+            <a href="<?= $UrlHref; ?>"><?= $Url; ?></a>
+            <?PHP } ?>
+        </td>
+        <td><a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->Id(); ?>"
+            title="Validate this URL now. This may take awhile">
+            <img src="plugins/UrlChecker/interface/default/images/check.gif" alt="Check" /></a>
+        </td>
+    </tr>
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+# format the dates in the information
+$LastResourceChecked = ($G_Info["DateLastResourceChecked"]) ?
+    date("M jS, Y \a\\t g:i A", strtotime($G_Info["DateLastResourceChecked"])) : "N/A";
+$DateNextCheck = ($G_Info["DateOfNextCheck"]) ?
+    date("M jS, Y \a\\t g:i A", strtotime($G_Info["DateOfNextCheck"])) : "N/A";
+
+?>
+
+<!-- stylesheets and scripts -->
+<link type="text/css" rel="stylesheet"
+    href="plugins/UrlChecker/interface/default/include/UrlChecker.css" media="all" />
+<script type="text/javascript" src="plugins/UrlChecker/interface/default/include/UrlChecker.js">
+</script>
+
+<div class="cw-content-sectioned">
+
+<h1>URL Checker Developer Page</h1>
+
+<!-- information block -->
+<h2>Settings and Information</h2>
+
+<table class="table table-striped">
+    <tbody>
+        <tr>
+            <th>Last Resource Checked</th>
+            <th>Next Check</th>
+            <th>URL Timeout</th>
+            <th>Threshold</th>
+        </tr>
+        <tr>
+            <td><?= $LastResourceChecked; ?></td>
+            <td><?= $DateNextCheck; ?></td>
+            <td><?= $G_Info["Timeout"]; ?></td>
+            <td><?= $G_Info["Threshold"]; ?></td>
+        </tr>
+    </tbody>
+    <tbody>
+        <tr>
+            <th>Enqueued Resources</th>
+            <th>Invalid URLs</th>
+            <th>Invalid, Hidden URLs</th>
+            <th>Possibly Invalid URLs</th>
+        </tr>
+        <tr>
+            <td><?= $G_Info["NumResourcesUnchecked"]; ?></td>
+            <td><?= $G_Info["NumInvalid"]; ?></td>
+            <td><?= $G_Info["NumInvalidAndHidden"]; ?></td>
+            <td><?= $G_Info["NumPossiblyInvalid"]; ?></td>
+        </tr>
+    </tbody>
+    <tbody>
+        <tr>
+            <th>URLs Checked Per Call</th>
+            <th>Checked Resources</th>
+            <th>URL Checker Version</th>
+        </tr>
+        <tr>
+            <td><?= $G_Info["NumToCheck"]; ?></td>
+            <td><?= $G_Info["NumResourcesChecked"]; ?></td>
+            <td><?= $G_Info["Version"]; ?></td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- statuses block -->
+<h2>HTTP Status Information</h2>
+
+<table class="table table-striped">
+    <tbody>
+        <tr><th colspan="2">Normal URLs</th></tr>
+        <?PHP if (count($G_Info["InvalidUrlsForStatusCodes"]) < 1) { ?>
+        <tr><td colspan="2"><i>(no information to display)</i></td></tr>
+        <?PHP } ?>
+        <?PHP foreach ($G_Info["InvalidUrlsForStatusCodes"] as $Code => $Count) { ?>
+        <tr>
+            <th><?= $Code; ?></th>
+            <td><?= $Count; ?></td>
+        </tr>
+        <?PHP } ?>
+    </tbody>
+    <tbody>
+        <tr><th colspan="2">Hidden URLs</th></tr>
+        <?PHP if (count($G_Info["HiddenInvalidUrlsForStatusCodes"]) < 1) { ?>
+        <tr><td colspan="2"><i>(no information to display)</i></td></tr>
+        <?PHP } ?>
+        <?PHP foreach ($G_Info["HiddenInvalidUrlsForStatusCodes"] as $Code => $Count) { ?>
+        <tr>
+            <th><?= $Code; ?></th>
+            <td><?= $Count; ?></td>
+        </tr>
+        <?PHP } ?>
+    </tbody>
+</table>
+
+<h2>Next Resources to be Checked</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Resource ID</th>
+            <th>Title</th>
+            <th>Date Checked</th>
+            <th>Check</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?PHP if (count($G_NextResourcesToBeChecked) < 1) { ?>
+        <tr><td colspan="4"><i>(no resources to display)</i></td></tr>
+        <?PHP } ?>
+        <?PHP foreach ($G_NextResourcesToBeChecked as $ResourceId => $CheckDate) {
+            PrintNextResource($ResourceId, $CheckDate);
+        } ?>
+    </tbody>
+</table>
+
+<h2>Next URLs to be Checked</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Resource ID</th>
+            <th>Title</th>
+            <th>URL</th>
+            <th>Check</th>
+        </tr>
+    </thead>
+    <?PHP if (count($G_NextUrlsToBeChecked) < 1) { ?>
+    <tr><td colspan="4"><i>(no URLs to display)</i></td></tr>
+    <?PHP } ?>
+    <tbody>
+        <?PHP foreach ($G_NextUrlsToBeChecked as $Url) {
+            PrintNextUrl($Url);
+        } ?>
+    </tbody>
+</table>
+
+</div>
+
+<a class="btn btn-primary mv-button-iconed"
+    href="index.php?P=P_UrlChecker_Developer&amp;QueueNow=1"
+    ><img src="<?= $AF->GUIFile('MagicWand.svg'); ?>"
+    alt="" class="mv-button-icon" /> Queue Check Tasks Now</a>

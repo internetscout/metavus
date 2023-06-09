@@ -1,0 +1,32 @@
+<?PHP
+#
+#   FILE:  PurgeSampleData.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Purge Sample Records</h1>
+
+<p>This will allow a system administrator to purge out all of the sample data
+records that are distributed with the software package. All sample records with
+<i>[--SAMPLE RECORD--]</i> in the description and all sample
+collections with <i>[--SAMPLE COLLECTION--]</i> in the description
+will be deleted from the database.  Once you click the purge button,
+the resources will be removed. Classifications and controlled names
+will also be removed automatically, provided they have not been
+assigned to other resources prior to purging.</p>
+
+<form method="post" action="index.php?P=PurgeSampleDataExecute">
+    <button class="btn btn-danger mv-button-iconed" type="submit"
+        name="Submit" value="Purge Sample Data"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
+        alt="" class="mv-button-icon" /> Purge Sample Data</button>
+    <button class="btn btn-primary mv-button-iconed" type="submit"
+        name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
+        alt="" class="mv-button-icon" /> Cancel</button>
+</form>

@@ -1,0 +1,22 @@
+<vocabulary>
+    <name>Audience</name> <!-- (correlates to CWIS Audience field)  -->
+    <description>A class or entity for whom the resource is intended or useful; a broad category that best describes the recipient or user for whom the resource is primarily intended.</description>
+    <version>Aug 27 2007</version>
+    <url>https://wiki.ucar.edu/display/nsdldocs/Audience</url>
+    <owner>
+        <name>NSDL</name>
+        <url>http://nsdl.org/</url>
+    </owner>
+    <qualifier>>
+        <name>NSDL Audience Vocabulary</name>
+        <namespace>http://ns.nsdl.org/audience_type_v1.00/</namespace>
+        <url>https://wiki.ucar.edu/display/nsdldocs/Audience</url>
+    </qualifier>
+    <term>Administrator</term>
+    <term>Educator</term>
+    <term>General Public</term>
+    <term>Learner</term>
+    <term>Parent/Guardian</term>
+    <term>Professional/Practitioner</term>
+    <term>Researcher</term>
+</vocabulary>

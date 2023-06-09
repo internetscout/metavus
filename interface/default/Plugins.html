@@ -1,0 +1,216 @@
+<?PHP
+#
+#   FILE:  Plugins.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+use Metavus\ItemListUI;
+use ScoutLib\Plugin;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Print list of error or status messages for plugins.
+ * @param array $MessagesList Array of arrays of messages, with plugin names
+ *      for the outer array index.
+ * @param string $Classes CSS classes to add to list container.
+ * @return void
+ */
+function printMessages(array $MessagesList, string $Classes)
+{
+    if (count($MessagesList)) {
+        ?><ul class="alert <?= $Classes ?>">
+        <?PHP
+        foreach ($MessagesList as $PluginName => $PluginMessages) {
+            foreach ($PluginMessages as $Message) {
+                ?><li><b><?= $PluginName ?>:</b> <?= $Message ?></li><?PHP
+            }
+        }
+        ?></ul>
+        <?PHP
+    }
+}
+
+/**
+ * Get content for "Enabled" column in plugin list.
+ * @param Plugin $Plugin Plugin for this row.
+ * @return string Generated content.
+ */
+function getContentForEnabled(Plugin $Plugin): string
+{
+    $BaseName = $Plugin->getBaseName();
+    $Identifier = "EnabledCheckbox-".$BaseName;
+    return "<input type='checkbox' id='".$Identifier."' name='".$Identifier."'"
+            .($Plugin->IsEnabled() ? " checked" : "")
+            .(($BaseName == "CWISCore" || $BaseName == "MetavusCore")
+                    ? " readonly disabled" : "")
+            ." onchange='this.form.submit();'>";
+}
+
+/**
+ * Get content for "Name" column in plugin list.
+ * @param Plugin $Plugin Plugin for this row.
+ * @return string Generated content.
+ */
+function getContentForName(Plugin $Plugin): string
+{
+    $Name = $Plugin->getName();
+    $BaseName = $Plugin->getBaseName();
+    return (str_replace(" ", "", $Name) == $BaseName) ? $Name : $Name." (".$BaseName.")";
+}
+
+/**
+ * Get content for "Dependencies" column in plugin list.
+ * @param Plugin $Plugin Plugin for this row.
+ * @return string Generated content.
+ */
+function getContentForDependencies(Plugin $Plugin): string
+{
+    $Content = "<ul class='list-group list-group-flush'>";
+    $Dependencies = $Plugin->getDependencies();
+    uksort(
+        $Dependencies,
+        function ($A, $B) {
+            return (($A == "CWISCore") || ($A == "MetavusCore")) ? -1 : ($A <=> $B);
+        }
+    );
+    foreach ($Dependencies as $Name => $Version) {
+        $Content .= "<li class='list-group-item'>".htmlspecialchars($Name)."&nbsp;"
+            .$Version."</li>";
+    }
+    return $Content."</ul>";
+}
+
+/**
+ * Get content (if any) for "Actions" column in plugin list.
+ * @param Plugin $Plugin Plugin for this row.
+ * @return string Generated content.
+ */
+function getContentForActions(Plugin $Plugin): string
+{
+    $Content = "<span>";
+    $Attribs = $Plugin->getAttributes();
+    $BaseName = $Plugin->getBaseName();
+    if ($Plugin->isInstalled()) {
+        $CfgLink = !is_null($Attribs["CfgPage"]) && strlen($Attribs["CfgPage"]) ?
+                $Attribs["CfgPage"]
+                : (count($Attribs["CfgSetup"])
+                ? "index.php?P=PluginConfig&amp;PN=".$BaseName
+                : "");
+        if (strlen($CfgLink)) {
+            $Content .= "<a href='".$CfgLink."'>"
+                    ."<img class='mv-plugin-settings-cog' src='"
+                    .$GLOBALS["AF"]->gUIFile("settings.png")
+                    ."' alt='Configure' title='Configure' /></a>";
+        }
+        if (($BaseName != "CWISCore") && ($BaseName != "MetavusCore")) {
+            $Content .= "<a href='index.php?P=PluginUninstall&amp;PN=".$BaseName."'>"
+                    ."<img src='"
+                    .$GLOBALS["AF"]->gUIFile("cross_gray.png")
+                    ."' alt='Uninstall' title='Uninstall' /></a>";
+        }
+    }
+    $Content .= "</span>";
+    return $Content;
+}
+
+/**
+ * Get CSS class (if any) for cells for item.
+ * @param Plugin $Plugin Plugin for this row.
+ * @return string CSS class (if any).
+ */
+function getCssClassForPluginRow(Plugin $Plugin)
+{
+    return (!$Plugin->isReady()) ? "text-muted" : "";
+}
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Plugins");
+
+if (!isset($H_StatusMsgs)) {
+    throw new Exception("Status messages not loaded.");
+}
+if (!isset($H_ErrMsgs)) {
+    throw new Exception("Error messages not loaded.");
+}
+
+$Plugins = $GLOBALS["G_PluginManager"]->GetPlugins();
+usort(
+    $Plugins,
+    function ($A, $B) {
+        return $A->getName() <=> $B->getName();
+    }
+);
+$BasePlugins = [];
+$LocalPlugins = [];
+foreach ($Plugins as $Plugin) {
+    if (preg_match("%/local/plugins/%", $Plugin->getClassFile())) {
+        $LocalPlugins[$Plugin->getBaseName()] = $Plugin;
+    } else {
+        $BasePlugins[$Plugin->getBaseName()] = $Plugin;
+    }
+}
+
+$ListFields = [
+    "Enabled" => [
+        "Heading" => "",
+        "ValueFunction" => "getContentForEnabled",
+        "AllowHTML" => true,
+    ],
+    "Name" => [
+        "ValueFunction" => "getContentForName",
+        "ClassFunction" => "getCssClassForPluginRow",
+    ],
+    "Version" => [
+        "Heading" => "Ver",
+        "ClassFunction" => "getCssClassForPluginRow",
+    ],
+    "Description" => [
+        "ClassFunction" => "getCssClassForPluginRow",
+        "AllowHTML" => true,
+    ],
+    "Dependencies" => [
+        "ValueFunction" => "getContentForDependencies",
+        "ClassFunction" => "getCssClassForPluginRow",
+        "AllowHTML" => true,
+    ],
+    "Actions" => [
+        "Heading" => "",
+        "ValueFunction" => "getContentForActions",
+        "AllowHTML" => true,
+    ],
+];
+
+$BaseListUI = new ItemListUI($ListFields);
+$BaseListUI->itemsPerPage(200);
+$BaseListUI->fieldsSortableByDefault(false);
+$LocalListUI = clone $BaseListUI;
+
+$BaseListUI->heading("Base Plugins");
+$LocalListUI->heading("Local Plugins");
+
+?>
+
+<h1>Plugins</h1>
+
+<?PHP
+printMessages($H_StatusMsgs, "alert-primary mv-form-modified");
+printMessages($H_ErrMsgs, "alert-danger mv-form-error");
+if ($GLOBALS["G_PluginManager"]->pluginEnabled("Developer")) {
+    print $GLOBALS["G_PluginManager"]->getPlugin("Developer")->getSettingsInfoHtml();
+}
+?>
+
+<form name="MainForm" method="post" action="index.php?P=Plugins">
+    <input type="hidden" name="SUBMITTED" value="1" />
+    <?PHP
+    $BaseListUI->display($BasePlugins);
+    $LocalListUI->display($LocalPlugins);
+    ?>
+</form>

@@ -1,0 +1,530 @@
+<?PHP
+#
+#   FILE:  AdvancedSearch.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\HtmlOptionList;
+use ScoutLib\SearchEngine;
+
+PageTitle("Advanced Search");
+
+/**
+* Display search limit form entry for a specified field type.
+* @param array $Fields Fields that have search limits (FieldId => LabelToDisplay)
+* @param array $SearchValues Values set for this search
+* @param int $TypeMask Bitmask of MetadataSchema::MDFTYPE_ values
+*     specifying which fields to display
+*/
+function DisplayLimits($Fields, $SearchParameters, $TypeMask)
+{
+    if (count($Fields) == 0) {
+        return;
+    }
+
+    $NumberOfListItems = 6;
+    $NumberOfListItemsForFlags = 2;
+
+    print "<div>";
+    foreach ($Fields as $FieldId => $DisplayName) {
+        $Field = new MetadataField($FieldId);
+
+        if ($Field->Type() & $TypeMask) {
+            $CurrentValues = $SearchParameters->GetSearchStringsForField($FieldId);
+
+            $CurrentValues = ConvertValueNamesToIds($Field, $CurrentValues);
+            $PossibleValues = DeterminePossibleValues($Field);
+            $DisabledOptions = DetermineDisabledValues($Field, $PossibleValues);
+
+            $AllowMultiple =
+                ($Field->SearchGroupLogic() == SearchEngine::LOGIC_OR) ||
+                ($Field->AllowMultiple());
+
+            if (count($PossibleValues) > 0) {
+                print "<div class=\"mv-search-limit-field\">"
+                      ."<label for=\"F_SearchLimit".$FieldId."[]\"><strong>"
+                      .htmlspecialchars($DisplayName)."</strong></label><br>";
+
+                $OptionList = new HtmlOptionList(
+                    "F_SearchLimit".$FieldId."[]",
+                    $PossibleValues,
+                    $CurrentValues
+                );
+                $OptionList->MultipleAllowed($AllowMultiple);
+                $OptionList->DisabledOptions($DisabledOptions);
+                $OptionList->Size(
+                    ($Field->Type() == MetadataSchema::MDFTYPE_FLAG) ?
+                    $NumberOfListItemsForFlags :
+                    $NumberOfListItems
+                );
+
+                $OptionList->PrintHtml();
+
+                print "</div>";
+            }
+        }
+    }
+    print "</div>";
+}
+
+?>
+<script type="text/javascript" src="<?PHP $AF->PUIFile("jquery.cookie.js"); ?>"></script>
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <h1>Advanced Search</h1>
+    </div>
+  </div>
+</div>
+
+<?PHP if (!is_null($H_Error)) {
+      print "<ul class=\"mv-form-error\"><li>".$H_Error."</li></ul>";
+} ?>
+
+<form name="advanced" id="advanced" method="post" action="index.php?P=SearchResults">
+    <input type="hidden" name="F_Spmbt" value="" />
+    <input type="hidden" name="F_JscptSpmbt" value="" />
+
+    <!-- text search fields -->
+    <div class="mv-content-boundingbox">
+      <div class="container container-fluid mv-content-searchfields bg-light border rounded">
+        <div class="row">
+          <div id="mv-adv-field-label" class="col-4 mv-advanced-field-column">Field</div>
+          <div id="mv-adv-terms-label" class="col-8 mv-advanced-terms-column">Search Terms</div>
+          <div class="col-4">&nbsp;</div>
+        </div>
+<?PHP
+         $SearchCatIndex = 0;
+         # for each selected field
+foreach ($H_SelectedFields as $FieldId) {
+    # extract current settings for this field
+    if ($FieldId == "KEYWORD") {
+        $CurrentValues = $H_SearchParameters->GetKeywordSearchStrings();
+    } else {
+        # if this is a multi-field search, display the value from
+        #  the first field as the remainder should all be identical
+        $FieldIds = explode("-", $FieldId);
+        $CurrentValues = $H_SearchParameters->GetSearchStringsForField(
+            current($FieldIds)
+        );
+    }
+
+    # if we have no values for this field, add a single empty value
+    #  so that the field is still displayed
+    if (count($CurrentValues) == 0) {
+        $CurrentValues = [""];
+    }
+
+    # iterate over all the currently set values, printing
+    #  corresponding HTML elements for each
+    foreach ($CurrentValues as $CurrentValue) {
+        print "<div class=\"row mv-clone-parent\">"
+            ."<div class=\"col-4 mv-advanced-field-column\">";
+
+        $OptionList = new HtmlOptionList(
+            "F_SearchCat".$SearchCatIndex,
+            $H_FieldsHavingTextForms,
+            $FieldId
+        );
+        $OptionList->AddAttribute("title", "Search Field ".$SearchCatIndex);
+        $OptionList->AddAttribute("aria-labelledby", "mv-adv-field-label");
+        $OptionList->PrintHtml();
+
+        print "</div><div class=\"col-8 mv-advanced-terms-column\">"
+            ."<input type=\"text\" "
+            ."id=\"F_SearchText".$SearchCatIndex."\" "
+            ."name=\"F_SearchText".$SearchCatIndex."\" "
+            ."title=\"Terms for Search Field ".$SearchCatIndex."\" "
+            ."aria-labelledby=\"mv-adv-terms-label\" "
+            ."value=\"".htmlspecialchars($CurrentValue)."\">"
+            ."</div>"
+            ."<div class=\"col-4 mv-advanced-operations-column\">&nbsp;</div>"
+            ."</div>";
+
+        $SearchCatIndex++;
+    }
+}
+?>
+            </div>
+        </div>
+    <!-- end text search fields -->
+
+    <span id="AdvancedSearchEnd"></span>
+
+    <!-- limits -->
+    <div class="container mv-search-limits">
+      <div class="row">
+        <div class="col mv-search-header">
+          <h2 class="mv-limits-main mv-limits-header">Limits (Optional)</h2>
+          <button type="button" class="mv-limits-showall btn btn-primary btn-sm mv-button-iconed"
+            ><img src="<?= $AF->GUIFile('Expand.svg'); ?>" alt=""
+            class="mv-button-icon" /> Show all</button>
+          <button type="button" class="mv-limits-hideall btn btn-primary btn-sm mv-button-iconed"
+            ><img src="<?= $AF->GUIFile('Minimize.svg'); ?>" alt=""
+            class="mv-button-icon" /> Hide all</button>
+          <?PHP if (CheckAuthorization(PRIV_RESOURCEADMIN)) { ?>
+           <button type="button" class="toggle-disabled btn btn-primary btn-sm mv-button-iconed"
+            ><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
+            class="mv-button-icon" /> Allow Unassigned Values</button>
+          <?PHP } ?>
+        </div>
+      </div>
+      <?PHP foreach ($H_SearchLimits as $SchemaId => $Limits) { ?>
+      <div class="row">
+        <div class="col mv-limits-section">
+          <span class="mv-limits-header">
+            <?PHP if (count($H_SearchLimits) > 1) { ?>
+            [<span class="mv-limits-status" style="display: none;"
+                   >+</span><span class="mv-limits-status">&ndash;</span>]
+              <strong><?= $H_SchemaNames[$SchemaId]; ?></strong>
+            <?PHP } ?>
+          </span>
+          <div class="mv-limits-entries mv-advanced-search bg-light border rounded"
+              data-schemaid="<?= $SchemaId; ?>">
+            <?PHP DisplayLimits($Limits, $H_SearchParameters, MetadataSchema::MDFTYPE_TREE); ?>
+            <?PHP DisplayLimits($Limits, $H_SearchParameters, MetadataSchema::MDFTYPE_OPTION); ?>
+            <?PHP DisplayLimits($Limits, $H_SearchParameters, MetadataSchema::MDFTYPE_FLAG); ?>
+            <?PHP DisplayLimits($Limits, $H_SearchParameters, MetadataSchema::MDFTYPE_USER); ?>
+          </div>
+        </div>
+      </div>
+      <?PHP } ?>
+    </div>
+    <!-- end limits -->
+
+    <div id="mv-form-buttons" style="clear: both;" class="container">
+      <div class="row">
+        <div class="col-4 text-left">
+          <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Search"><img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
+            class="mv-button-icon" /> Search</button>
+          <?PHP if (User::getCurrentUser()->IsLoggedIn()) { ?>
+          <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+            class="mv-button-icon" /> Save</button>
+          <?PHP } ?>
+          <a class="btn btn-primary mv-button-iconed"
+             title="Reset all search terms"
+             href="index.php?P=AdvancedSearch"
+            ><img src="<?= $AF->GUIFile('Broom.svg'); ?>" alt=""
+                class="mv-button-icon" /> Clear</a>
+        </div>
+        <div class="col text-right mv-container-right">
+          <?PHP if (isset($H_SavedSearch)) { ?>
+          <input type="hidden" name="F_SavedSearchId"
+                 value="<?= $H_SavedSearch->Id(); ?>">
+          <label for="F_SearchName">Save Search As:</label>
+          <input class="mv-saved-search-name"
+               type="text" maxlen="20" id="F_SearchName" name="F_SearchName"
+                 value="<?= $H_SavedSearch->SearchName(); ?>">
+          &nbsp;&nbsp;&nbsp;&nbsp;
+          <?PHP } ?>
+
+          <label for="F_SortField">Sort by:</label>
+          <?PHP (new HtmlOptionList(
+              "F_SortField",
+              $H_SortFields,
+              $H_SelectedSortField
+          ))->PrintHtml(); ?>
+
+          <label for="F_RecordsPerPage">Records per page:</label>
+          <?PHP
+            $DisplayOptions = [
+                5 =>  5,
+                10 => 10,
+                20 => 20,
+                30 => 30,
+                50 => 50,
+                100 => 100
+            ];
+            $OptList = new HtmlOptionList("F_RecordsPerPage", $DisplayOptions, $H_RecordsPerPage);
+            $OptList->PrintHtml();
+            ?>
+        </div>
+      </div>
+    </div>
+
+<?PHP
+if (count($H_SavedSearches)) {
+    print "<div class=\"mv-load-saved-search\"><h2>Load Saved Search:</h2></div>"
+            ."<ul class=\"mv-saved-search-list mv-content-boundingbox\">\n";
+    foreach ($H_SavedSearches as $SearchId => $Search) {
+        try {
+            $Descrip = addslashes(strip_tags(
+                $Search->SearchParameters()->TextDescription()
+            ));
+
+            print "<li><a href=\"index.php?P=AdvancedSearch"
+                ."&amp;ID=".$Search->id()."\" "
+                ."title=\"Search Parameters:\n".$Descrip."\">"
+                .htmlspecialchars($Search->SearchName())."</a></li>\n" ;
+        } catch (Exception $e) {
+            ; # continue on if search data was invalid
+        }
+    }
+    print "</ul>\n";
+}
+?>
+
+<div class="container mv-adv-search-tips mv-advanced-search border rounded" style="clear: both;">
+  <div class="row">
+    <div class="col">
+      <h3>Advanced Search Tips</h3>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col mv-column-one">
+        <dl>
+            <dt><strong>Phrase Searching</strong></dt>
+            <dd><p>You can search for several words
+                        next to each other by enclosing them in quotation marks:</p>
+                <blockquote><code>"a key phrase"</code></blockquote>
+                <p>This also works for keyword searches.</p>
+            </dd>
+            <dt><strong>Excluding Terms</strong></dt>
+            <dd><p>If you want only results that do
+                        <strong>not</strong> mention a specific term, you can exclude that
+                        term by prepending a minus sign:
+                <blockquote>
+                    <code>-unwanted</code><br/>
+                    <code>good words -bad -words</code><br/>
+                    <code>words we want -"phrase to exclude"</code>
+                </blockquote>
+                <p>This also works for keyword searches.</p>
+            </dd>
+            <dt><strong>Comparisons</strong></dt>
+            <dd><p>To search for values before or after a certain
+                        date, precede the date with the appropriate operator:</p>
+                <blockquote>
+                    <code>&gt; 2018
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            </code>
+                            <i>(after 2018)</i><br/>
+                    <code>&lt;= Feb 20 2021
+                            &nbsp;&nbsp;&nbsp;</code>
+                            <i>(on or before 2/20/21)</i>
+                </blockquote>
+                <p>It is also possible to specify relative to the current time:</p>
+                <blockquote>
+                    <code>&lt; 90 minutes ago
+                            &nbsp;</code>
+                            <i>(less than 90 minutes ago)</i><br/>
+                    <code>&gt;= ten days ago
+                            &nbsp;&nbsp;</code>
+                            <i>(10 or more days ago)</i>
+                </blockquote>
+                <p>Comparisons also work with numeric fields:</p>
+                <blockquote>
+                    <code>&gt;= 42
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            </code>
+                            <i>(greater than or equal to 42)</i><br/>
+                    <code>!= 65535
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code>
+                            <i>(not equal to 65535)</i><br/>
+                </blockquote>
+                <p>For dates, most common formats will work. Comparisons are
+                        only for <i>Date</i>, <i>Timestamp</i>, and <i>Number</i>
+                        fields.</p>
+            </dd>
+        </dl>
+    </div>
+    <div class="col-1 mv-column-padding">&nbsp;</div>
+    <div class="col mv-column-two">
+        <dl>
+            <dt><strong>Exact Matches</strong></dt>
+            <dd><p>To match a word or phrase exactly, immediately precede it
+                        with an equals sign:</p>
+                <blockquote>
+                    <code>=National Nanotechnology Network</code><br/>
+                    <code>=http://www.science.org/journals</code>
+                </blockquote>
+                <p>This is usually used with <i>URL</i> and <i>Controlled Name</i> fields.
+
+                        Exact match differs from phrase searching in that with
+                        an exact match, the content of the field has to be identical
+                        to the search string to be considered a match.</p>
+            </dd>
+            <dt><strong>Date Ranges</strong></dt>
+            <dd><p>You can search for dates within a specific
+                        range by entering a beginning and end date separated
+                        by spaces and a dash:</p>
+                <blockquote>
+                    <code>June 10 2021 - March 19 2022</code><br/>
+                    <code>5/1/16 - 2/10/20</code>
+                </blockquote>
+                <p>Ranges are inclusive, and most common date formats will work.</p>
+            </dd>
+            <dt><strong>Last Modified</strong></dt>
+            <dd><p>To search for when a field was last modified, enter a <code>@</code>
+                        symbol followed by a date:</p>
+                <blockquote>
+                    <code>@ Feb 20 2022
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code>
+                    <i>(changed on or since 2/20/22)</i><br/>
+                    <code>@ five days ago
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code>
+                    <i>(changed within the past 5 days)</i>
+                </blockquote>
+                <p>Comparison operators can also be used:</p>
+                <blockquote>
+                    <code>@< January 10 2022
+                            &nbsp;</code>
+                    <i>(last changed before 1/10/22)</i><br/>
+                </blockquote>
+                <p>Dates are inclusive, and most common date formats will work.</p>
+            </dd>
+        </dl>
+    </div>
+  </div>
+</div>
+</form>
+
+<!-- this needs to come after the limits are printed -->
+<script type="text/javascript">
+var OpenSearchLimits = [ <?= implode(",", $H_OpenSearchLimits); ?> ];
+var DisplayByDefault = "<?= $H_OpenByDefault; ?>";
+
+(function() {
+    // total number of text fields
+    var TotalFields = <?= count($H_SelectedFields); ?>;
+
+    // Create, properly position, and show the add field link
+    tgtElement = $('.mv-advanced-operations-column',
+                     $("#F_SearchText"+(TotalFields-1)).parent().parent());
+
+    $('<button type="button" class="btn btn-primary btn-sm mv-content-addfield mv-button-iconed">' +
+      '<img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt="+" class="mv-button-icon" /> ' +
+      'Add Field</button>').appendTo(tgtElement);
+
+    // make text display a cursor on hover
+    $(".mv-limits-header").css("cursor", "pointer");
+
+    // add a field
+    function addFieldClick(event) {
+        // don't follow href if JS is enabled.
+        event.preventDefault();
+
+        // get the first field and clone it
+        var $clone = $(".mv-clone-parent").first().clone();
+
+        // input id and select id
+        var iid = "F_SearchText"+TotalFields;
+        var sid = "F_SearchCat"+TotalFields;
+
+        // update the select box's attributes
+        $("select", $clone).attr({ id: sid, name: sid });
+
+        // randomly select an option in the select box
+        $("select option:selected", $clone).removeAttr("selected");
+        var $options = $("select option", $clone);
+        var random = Math.floor(Math.random() * ($options.size() + 1));
+        $($options.get(random)).attr("selected", "selected");
+
+        // update the input box's attributes
+        $("input", $clone).attr({ id: iid, name: iid}).val('');
+
+        // add clone to parent and increment field total
+        $(".mv-content-searchfields").append($clone);
+        TotalFields++;
+
+        //Remove the add-field button and move to new location
+        var button = $(".mv-content-addfield").detach();
+
+        // we always place the add field button row at the end of the list of options
+        $(".mv-advanced-operations-column").last().append(button);
+
+        // readjust scrolling if difference is > 8 pixels
+        var offset = parseInt($("#AdvancedSearchEnd").position().top - $(window).height());
+        if (offset > 10) {
+            $(window).scrollTop(offset)
+        }
+    };
+
+    // set the initial button click handler listener
+    $("button.mv-content-addfield.btn").click(addFieldClick);
+
+    // show/hide limits
+    $(".mv-limits-entries").each( function(){
+      var schemaid = $(this).data('schemaid');
+      if ((OpenSearchLimits.length > 0 && jQuery.inArray(schemaid, OpenSearchLimits) == -1) ||
+          (OpenSearchLimits.length == 0 && $.cookie("mv-limits-"+schemaid) != 1) ||
+          DisplayByDefault != 1) {
+        $(this).hide();
+        $(".mv-limits-status", $(this).parent()).toggle();
+      }
+    });
+
+    $(".mv-limits-header").click(function(){
+      var container = $(".mv-limits-entries", $(this).parent());
+
+      $.cookie("mv-limits-" + container.data('schemaid'),
+        1 - container.is(':visible') );
+
+      container.slideToggle();
+      $(".mv-limits-status", $(this)).toggle();
+    });
+
+    $(".mv-limits-showall").click(function(){
+        $(".mv-limits-entries").each(function(){
+            if (!$(this).is(':visible')) {
+                $(this).slideToggle();
+                $(".mv-limits-status", $(this).parent()).toggle();
+                $.cookie("mv-limits-"+ $(this).data('schemaid'), 1);
+            }
+        });
+    });
+
+    $(".mv-limits-hideall").click(function(){
+        $(".mv-limits-entries").each(function(){
+            if ($(this).is(':visible')) {
+                $(this).slideToggle();
+                $(".mv-limits-status", $(this).parent()).toggle();
+                $.cookie("mv-limits-"+ $(this).data('schemaid'), 0);
+            }
+        });
+    });
+}());
+</script>
+
+<script type="text/javascript">
+    $("input[type=hidden][name=F_JscptSpmbt]", $(this)).val("8304RPC");
+</script>
+
+<?PHP if (CheckAuthorization(PRIV_RESOURCEADMIN)) { ?>
+<script type="text/javascript">
+  const allowIconSrc = "<?= $AF->GUIFile('Check.svg'); ?>";
+  const disableIconSrc = "<?= $AF->GUIFile('Ban.svg'); ?>";
+  $(".toggle-disabled").click(function(){
+    //Get elements to toggle
+    var toToggle = $('[data-term-unused="1"]');
+    const buttonIcon = $(this).children(".mv-button-icon").get(0);
+    //If options are currently disabled
+    if($(this).data("enabled") == 0){
+      //Un-disable options and update the button info
+      toToggle.removeAttr("disabled");
+      $(this).data("enabled", 1);
+      $(this).html("Disable Unassigned Values");
+      $(buttonIcon).attr("src", disableIconSrc);
+      $(this).prepend(buttonIcon);
+    } else {
+      //Otherwise unselect, disable, and update info button
+      toToggle.removeAttr("selected");
+      toToggle.attr("disabled", "disabled");
+      $(this).data("enabled", 0);
+      $(this).html("Allow Unassigned Values");
+      $(buttonIcon).attr("src", allowIconSrc);
+      $(this).prepend(buttonIcon);
+    }
+  });
+  $(document).ready(function(){
+    $("option:disabled",".mv-search-limits").attr("data-term-unused", "1");
+    $(".toggle-disabled").data("enabled", 0);
+  });
+</script>
+<?PHP } ?>

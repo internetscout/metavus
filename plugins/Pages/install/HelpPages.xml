@@ -1,0 +1,1117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ResourceCollection>
+    <Resource>
+        <Title>Collection Administration Help: Introduction</Title>
+        <Content><![CDATA[
+<h2>Sections</h2>
+<p>
+<a href="help/collections/customizing_metadata_fields">Customizing Metadata Fields</a><br/>
+<a href="help/collections/metadata_field_editor">Metadata Field Editor</a><br/>
+<a href="help/metadata/updating_controlled_names">Controlled Names</a><br/>
+<a href="help/metadata/updating_option_lists">Option Lists</a><br/>
+<a href="help/collections/permissions">Permissions</a><br/>
+<a href="help/users/user_access_privilege_flags">Privilege Flags</a><br/>
+</p>
+<h2>Introduction</h2>
+
+<p>The Collection Administration tools are designed to aid in the production,
+maintenance, and sharing of item records. At the most basic level, the
+information contained in individual item records can be considered data
+about data, often called <i>metadata</i>. Metadata is the background information
+which describes the content, quality, condition, and other appropriate
+characteristics or properties of the items. It allows for the organization,
+indexing, and classification of data for storage, discovery, and precise
+retrieval by users.</p>
+
+<p>As shipped, the software offers a default set of metadata fields drawn from
+the Dublin Core Metadata Element Set
+(<abbr title="American National Standards Institute">ANSI</abbr>/<abbr title="National Information Standards Organization">NISO</abbr>
+Z39.85-2001), additions from Dublin Core Metadata Initiative
+(<abbr title="Dublin Core Metadata Initiative">DCMI</abbr>) proposals,
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> recommended
+refinements, and three from the Institute of Electrical and Electronics
+Engineers
+(<abbr title="Institute of Electrical and Electronics Engineers">IEEE</abbr>)
+Learning Object Metadata (<abbr title="Learning Object Metadata">LOM</abbr>)
+standard. The <abbr title="Dublin Core">DC</abbr> element set was developed by
+the <abbr title="Dublin Core Metadata Initiative">DCMI</abbr>, an organization
+dedicated to promoting the widespread adoption of interoperable metadata
+standards and developing specialized metadata vocabularies for describing
+items that enable more intelligent information discovery systems. These
+fields are meant to be both broadly applicable and easily understood.</p>
+
+<p>Generally a Dublin Core Metadata Inititative
+(<abbr title="Dublin Core Metadata Inititative">DCMI</abbr>) qualifier can be
+either an element refinement or an encoding scheme and helps provide context or
+narrow meaning to a metadata value. This can be especially important when
+aggregating heterogeneous metadata. Any portal intent on sharing metadata with
+other digital library projects or portals should consider qualifying its
+metadata.</p>
+
+<p>This software package provides for the qualification of the Dublin Core
+metadata fields with encoding schemes. The software is shipped with default
+values drawn from DCMI recommendations. Although these
+<abbr title="Dublin Core Metadata Inititative">DCMI</abbr> terms are provided
+for convenience, they are not required by the software. The software allows for
+the qualification of a particular field both at the metadata field and the
+record level. The Qualifier Editor is the first step in this process. Here
+administrators specify the encoding scheme and provide the machine readable
+specification <abbr title="Uniform Resource Locator">URL</abbr> (as maintained
+by <abbr title="Dublin Core Metadata Inititative">DCMI</abbr> or other standard
+maintenance organization) and namespace.</p>
+
+<p>In order to add and edit records, users must use the work template that is
+available from the <a href="index.php?P=EditResource&amp;ID=NEW"><i>Add New
+Resource</i></a> and the <i>Edit Resources</i> pages. Initially, each cataloging
+record template has this default set of fields available. The default fields
+parallel (at a basic level) the structured approach of a library catalog or
+commercially available database. The default fields are supplied for convenience
+only. Apart from the few required fields, Collection Administrators may disable
+and delete fields as needed. For completing these default fields, no particular
+cataloging rules, syntax, taxonomy, or other descriptive encoding level are
+prescribed or required by the portal software. Organizations are encouraged to
+carefully examine organizational cataloging needs and keep them in mind when
+establishing which standards, classification schemes, and encoding levels to
+follow for portal development. Additionally, organizations that customize the
+database should appropriately modify all help texts to reflect the changes.</p>
+
+<p>Collection Administrators may customize the metadata fields as desired using
+the <a href="index.php?P=DBEditor">Metadata Field Editor</a>. Why would Portal
+Creators want to use the Metadata Field Editor? Most simply, the Metadata Field
+Editor allows Collection Administrators the option of creating, editing, and
+deleting database fields and their content. For example, if the Collection
+Administrator wants to add a database field for the date an item will be
+updated in the future, he or she would use the Metadata Field Editor to create a
+new date field called <i>Date of Future Update.</i> Display, cataloging
+templates, searching, and indexes throughout the portal are automatically
+updated after a change is implemented.</p>
+
+<p>The required fields for the Metadata Tool to establish a record are the <i>
+<abbr title="Uniform Resource Locator">Url</abbr></i>, <i>Title</i>,
+<i>Description</i>, <i>Date Record Checked</i>, <i>Date of Record Creation</i>,
+and <i>Release Flag</i>. These fields may not be deleted from the database, the
+class type changed, or made optional. In some cases, a default value may be
+supplied. In the case of <i>Date of Record Creation</i> and <i>Date Record
+Checked</i>, the portal software will supply these dates with the current date
+when no other information is given.</p>
+
+<p>The Metadata Tool has special authorization features for components of the
+metadata separate from the authorization to add and edit item records to the
+database. Because of the nature of Classifications and Names, an organization
+may wish to restrict access and editing permission of these two tables within
+the database. This permission only applies to adding/editing/deleting
+classification or name entries from the database. Unauthorized persons will not
+be able to view these options. This authorization is controlled by the system
+administrator.</p>
+
+<h2>Qualified Metadata</h2>
+
+<p>This software package provides for the qualification of the Dublin Core
+metadata fields by encoding schemes and element refinements. These features
+offer additional information regarding the metadata value and provides context
+for that value when sharing metadata. Portal software handles encoding schemes
+differently than element refinements. An example of an encoding scheme,
+qualifying Classification with the Dewey Decimal Classification
+(<abbr title="Dewey Decimal Classification">DDC</abbr>) informs of a particular
+value for Classification and that value is to be interpreted within the
+<abbr title="Dewey Decimal Classification">DDC</abbr> realm vs. other similar
+schemes. An element refinement example would be a more specific Date such as
+Date Submitted or Date Copyrighted.</p>
+
+<p>The portal software is shipped with default encoding scheme values drawn from
+Dublin Core Metadata Inititative
+(<abbr title="Dublin Core Metadata Initiative">DCMI</abbr>) recommendations.
+These <abbr title="Dublin Core Metadata Initiative">DCMI</abbr> recognized
+encoding schemes are provided for convenience. To make use of the metadata
+qualifying features, portal Administrators must define (in the Administration
+section) whether a metadata field uses encoding schemes and at what level
+(record or field level). They are not required by the software either at the
+metadata field or the record level.</p>
+
+<p>Item Level Qualifiers means that a particular field could possibly have more
+than one possible encoding scheme. For example, drawing upon both Library of
+Congress Subject Headings
+(<abbr title="Library of Congress Subject Headings">LCSH</abbr>) and the
+National Library of Medicine's Medical Subject Headings
+(<abbr title="National Library of Medicine's Medical Subject Headings">MeSH</abbr>)
+vocabularies for Subject. Resource editors, when completing a item record in
+the Metadata Tool, then choose between the allowed qualifying values provided to
+them by the portal Administrator. The scheme name will appear next the the value
+in the metadata record. For option lists (for example, <i>Resource Type</i>) encoding
+schemes are selected when added to a list of Metadata Tool Options. The
+alternative to item level is for a metadata field to be refined at the field
+level, in other words, any particular metadata field within a given portal uses
+the same qualifier. One qualifying encoding scheme can be selected as a default
+by the Administrator. This is the value the software will supply when no value
+is selected by the editor.</p>
+
+<p><abbr title="Dublin Core Metadata Initiative">DCMI</abbr> recommended element
+refinement fields are handled differently by portal software. As the software is
+shipped, these are supplied as default metadata fields. To make use of these
+Collection Administrators should enable all desired fields on the
+<a href="index.php?P=DBEditor"><i>Metadata Field Editor</i></a> page.</p>
+
+<p><abbr title="Dublin Core Metadata Initiative">DCMI</abbr> recommended
+refinements share meaning with the
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> simple elements but
+have narrower semantic properties. For example, <i>Title</i> and <i>Alternate
+Title</i> share meaning, but <i>Alternate Title</i> is more specific
+interpretation. The portal software handles refinements differently than
+qualifying with encoding schemes.
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> recommended element
+refinements are supplied as metadata fields. These fields in the
+<abbr title="Open Archives Initiative">OAI</abbr> harvested metadata portal
+software will give the correct
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> tags with
+corresponding <abbr title="Dublin Core Metadata Initiative">DCMI</abbr>
+<abbr title="Uniform Resource Identifier">URI</abbr>(s). This is also the case
+for the three Institute of Electrical and Electronics Engineers
+(<abbr title="Institute of Electrical and Electronics Engineers">IEEE</abbr>)
+Learning Object Metadata (<abbr title="Learning Object Metadata">LOM</abbr>)
+and the <abbr title="Dublin Core">DC</abbr> Education Working Group recommended
+fields.</p>
+
+<p><strong>Note</strong>: Presently the Import,
+<abbr title="Rich Site Summary">RSS</abbr>, and manual export functions do not
+support <abbr title="Dublin Core Metadata Initiative">DCMI</abbr> Qualifiers.
+Qualified metadata is supported in
+<abbr title="Open Archives Initiative">OAI</abbr> harvesting at this time.</p>
+
+<p>For an up-to-date specification of all metadata terms maintained by the
+Dublin Core Metadata Initiative, including elements, element refinements,
+encoding schemes, and vocabulary terms (for example,
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> Type Vocabulary) see
+the <a href="https://www.dublincore.org/specifications/dublin-core/dcmi-terms/"><i>
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> Metadata Terms</i></a>
+document. A basic discussion of the application of the Dublin Core Element Set
+is the <a href="https://www.dublincore.org/resources/userguide/">Dublin Core
+<i>User Guide</i></a>.</p>]]>
+        </Content>
+		<CleanURL>help/collections</CleanURL>
+    </Resource>
+    <Resource>
+    	<Title>Collection Administration Help: Customizing Metadata Fields</Title>
+        <Content><![CDATA[<h2>Customizing Metadata Fields</h2>
+
+<p>Collection Administrators can customize the database's metadata fields by
+adding new fields, editing existing fields, or deleting unnecessary fields.
+Portal developers are strongly encouraged to evaluate their metadata and
+cataloging needs before populating the portal item database. The use of
+existing standards, vocabularies, and rules is likewise encouraged.</p>
+
+<p>To customize a metadata field, administrators must define the characteristics
+of the field and its functionality. These customizations will be automatically
+propagated throughout the search engines, displays, and metadata cataloging
+templates. After extensive alterations to the metadata schema, administrators
+may be required to <a href="index.php?P=ConfirmRebuildSearchDB">rebuild the
+search database</a> and <a href="index.php?P=ConfirmRebuildRecommenderDB">
+rebuild the recommender database</a>.</p>
+
+<p>When adding a new field, ensure that <i>Hide Disabled Fields</i> is unchecked
+in order to assess whether a standard field already exists and can be enabled
+for use. If no existing field can be found, administrators may wish to add a new
+field. To do so, click the <kbd><samp>Add New Field</samp></kbd> button at the
+top of the <a href="index.php?P=DBEditor"><i>Metadata Field Editor</i></a> page.
+Newly created <i>Text</i>, <i>Paragraph</i>, <i>Number</i> and <i>Flag</i>
+fields, when enabled, are immediately appended to all existing item records.
+For individual records, the default value may be overwritten or edited using the
+Edit Resource functions. The field also will appear immediately on the Metadata
+Tool cataloging template. The corresponding default value is written into the
+item record if no other value is specified.</p> <p>To edit an existing
+metadata field, click the name of the field to be edited, make the necessary
+changes, and click the <kbd><samp>Update Field</samp></kbd> button.</p>
+
+<p>Due to conflicts of functionality between field types, changing existing
+fields between types is constrained to limit data loss. <i>Text</i>,
+<i>Paragraph</i>, <i>Flag</i>, and <i>Number</i> fields are interchangeable.
+<i>Option</i>, <i>Controlled Name</i>, and <i>Tree</i> fields are interchangeable. <i>Date</i>
+fields can be changed to <i>Text</i> fields.</p> <p>To delete an existing
+metadata field, click the name of the field to be removed and click the
+<kbd><samp>Delete Field</samp></kbd> button.</p> <p>The only field required to
+establish an item record is the field designated as the Resource Title Field
+in the <a href="index.php?P=SysConfig">System Configuration</a>, a required
+setting. Fields designated as Resource
+<abbr title="Uniform Resource Locator">URL</abbr>, Resource Screenshot, Resource
+File, and Resource Description in the System Configuration also cannot be
+deleted from the database, but those values need not be set.</p> <h3>Metadata
+Field Types</h3> <p>The most fundamental attribute of a field is its type. There
+are 17 types or classes of fields. The field types include:</p>
+
+<h4>Text</h4>
+
+<p>This field is a free text field. Portal software default metadata field
+examples for this type include: <i>Title</i>, <i>Alternate Title</i>,
+<i><abbr title="Uniform Resource Locator">Url</abbr></i>, <i>Source</i>,
+<i>Relation</i>, <i>Coverage</i>, and <i>Rights</i>. Limited
+<abbr title="HyperText Markup Language">HTML</abbr> tags are permitted to
+increase visual appeal in the <i>Text</i> field types. The allowable
+<abbr title="HyperText Markup Language">HTML</abbr> tags include the following:
+bold <code>&lt;b&gt;</code>, italics <code>&lt;i&gt;</code>, underline
+<code>&lt;u&gt;</code>, strike <code>&lt;s&gt;</code>, anchor
+<code>&lt;a&gt;</code>, superscript <code>&lt;sup&gt;</code>, subscript
+<code>&lt;sub&gt;</code>, paragraph <code>&lt;p&gt;</code>, quote
+<code>&lt;q&gt;</code>, and preformatted text <code>&lt;pre&gt;</code>. Any
+break <code>&lt;br&gt;</code> tags or other unsupported
+<abbr title="HyperText Markup Language">HTML</abbr> tag in <i>Text</i> fields
+will be stripped after adding or updating the record in the Metadata Tool. All
+<abbr title="HyperText Markup Language">HTML</abbr> tags will be stripped from
+metadata harvested via <abbr title="Rich Site Summary">RSS</abbr> and
+<abbr title="Open Archives Initiative">OAI</abbr>.</p>
+
+<h4>Paragraph</h4>
+
+<p>This field is a free text field for block of text. The portal software
+default metadata field example for this type is the <i>Description</i>. Limited
+<abbr title="HyperText Markup Language">HTML</abbr> tags are permitted to
+increase visual appeal in the <i>Paragraph</i> field types. The allowable
+<abbr title="HyperText Markup Language">HTML</abbr> tags include the following:
+bold <code>&lt;b&gt;</code>, italics <code>&lt;i&gt;</code>, underline
+<code>&lt;u&gt;</code>, strike <code>&lt;s&gt;</code>, anchor
+<code>&lt;a&gt;</code>, superscript <code>&lt;sup&gt;</code>, subscript
+<code>&lt;sub&gt;</code>, paragraph <code>&lt;p&gt;</code>, quote
+<code>&lt;q&gt;</code>, preformatted text <code>&lt;pre&gt;</code>, and break
+<code>&lt;br&gt;</code>. All <abbr title="HyperText Markup Language">HTML</abbr>
+tags will be stripped from metadata harvested via
+<abbr title="Rich Site Summary">RSS</abbr> and
+<abbr title="Open Archives Initiative">OAI</abbr>.</p>
+
+<h4>Number</h4>
+
+<p>The number field provides for a whole number. The portal software default
+example is the <i>Cumulative Rating</i>.</p>
+
+<h4>Date</h4>
+
+<p>This field records a date in a standard format. Users do not need to enter
+the date in this format. The software will translate a provided date into the
+standard format (<i>YYYY-MM-DD</i>). For instance, if one enters <i>January 6,
+2001</i> the date is stored as <i>2001-01-06</i>. An example of this
+field type in the default schema is <i>Date Issued</i>. For
+searching purposes, this field type can be searched in the field search on the
+<a href="index.php?P=AdvancedSearch"><i>Advanced Search</i></a> page.</p>
+
+<h4>Timestamp</h4>
+
+<p>This field is intended for recording a specific date and time.  Like
+the <i>Date</i> field type, values may be entered in an array of common
+formats and will be automatically normalized to a standard format.
+An example of this field type in the default schema is <i>Date Record
+Checked</i>.</p>
+
+<h4>Flag</h4>
+
+<p>This field allows for toggled values (<i>Yes</i>/<i>No</i>, <i>On</i>/
+<i>Off</i>, etc.). A portal software default example is the <i>Release Flag</i>.
+The <i>Release Flag</i> does not appear to the public either in a full record
+display or the Advanced Search. It appears as a search option in the Metadata
+Tool. Newly created <i>Flag</i> type fields, when enabled, will be searchable
+via the Advanced Search and the Metadata Tool Search. <i>Flag</i> fields cannot
+be optional.</p> <h4>Tree</h4> <p><i>Tree</i> fields allow for the use of an
+existing standard classification schema or your organization's homegrown
+taxonomy. A tree field in the portal provides users with a way of browsing
+through the items in hierarchical tiers. This approach guides users
+unfamiliar with terminology to appropriate items descending in complexity
+from simple to more precise. Privilege to build or edit the vocabulary or
+taxonomy of classifications requires authorization from the collection
+administrator. The <i>Classification</i> field is an example of a tree field.</p>
+
+<h4>Controlled Name</h4>
+
+<p>This field type allows for the central control of names and vocabularies.
+Many persons or entities are known by multiple names, or have names that take
+multiple forms (e.g. <i>IBM</i>, <i>International Business Machines</i>, <i>IBM
+Inc.</i>, etc.). A Controlled Name designates a single official name for that
+entity within the database. The Variant Names are other names, or forms of
+names, associated with that entity. These may include acronyms, names with
+honorary titles included, dropped initials, diminutives, etc.</p>
+
+<p>Having both a Controlled Name and Variant Names allows all records associated
+with a single entity to be linked. Editing names is also simplified by requiring
+only one central edit. The ability to add variants makes it possible to retrieve
+those name forms when searching records. Edits to the Controlled Name
+will be propagated to all associated records bearing Variant Names. Portal
+software default examples for this field are <i>Publisher</i>, <i>Creator</i>,
+and <i>Subject</i>.</p> <h4>Option</h4> <p><i>Option</i> fields are most useful
+when a limited number of thematically related terms are needed to describe an
+item. These fields provide Limit options in the Advanced Search. Examples of
+this field type from the portal software default metadata fields are
+<i>Audience</i>, <i>Resource Type</i>, and <i>Language</i>. Options can be
+modified through the <a href="index.php?P=EditOptionList"><i>Edit Option
+Lists</i></a> page.</p> <h4>User Fields</h4> <p><i>User</i> fields record the
+user account that adds or modifies an item. Some user fields are required by
+the portal system and may not be modified.</p>
+
+<h4>Image</h4>
+
+<p>Images of .jpg, .gif, and .bmp file types may be added to the record for
+illustration or other purposes. File selection begins using the
+<kbd><samp>Choose File</samp></kbd> button found to the right of field. After
+selecting the image, the file name will automatically be added to the item
+record. To complete the process, click on the <kbd><samp>Upload
+Image</samp></kbd> button. A small image (thumbnail) will appear within the
+item record.</p>
+
+<ul>
+  <li>
+    <p>After an image has been added to a record
+      a <kbd><samp>Delete</samp></kbd> button will appear. To remove an image
+      already associated with an item record simply click on this button. The
+      desired image should then be deleted from the item record.</p>
+  </li>
+  <li>
+    <p>Collection administrators are strongly encouraged to complete
+      the <i>Description</i> field when adding images to an
+      item record. It provides explanatory text for images and follows
+      well-established guidelines for accessibility. It is essential for users
+      who have vision disabilities and those using screen reader software.</p>
+  </li>
+  <li>
+    <p>Additionally, the <i>Description</i> field provides text that can
+      be searched (when enabled by Collection Administrators) by the Keyword,
+      Advanced Search, and Metadata Tool search engine.</p>
+  </li>
+</ul>
+
+<h4>File</h4>
+
+<p>A <i>File</i> field allows an electronic file to be uploaded from the user's
+computer directly into the item record.</p>
+
+<h4><abbr title="Uniform Resource Locator">Url</abbr></h4>
+
+<p>A <i><abbr title="Uniform Resource Locator">Url</abbr></i> field points to a
+web address that either contains the full version of the information described
+in the item record, or contains other pertinent information or metadata for
+the record.</p>
+
+<h4>Point</h4>
+
+<p>A <i>Point</i> field allows a point in any two-dimensional coordinate system,
+e.g., the latitude and longitude of a location on a map, to be associated with an
+item record.</p>
+
+<h4>Reference</h4>
+
+<p>A <i>Reference</i> field allows Collection Administrators to associate one or
+more item records with another item record. The values of
+<i>Reference</i> fields appear as links to the full record of an item.</p>
+
+<h3>Other Considerations</h3>
+
+<p>After considering the function of a desired metadata field and selecting form
+the list above, other considerations must be made. Each field must be given
+attributes in four different areas: <b>Basic Information</b>, <b>Qualifiers</b>,
+<b>Type Specific Information</b>, and <b>Privileges</b>. These attributes
+are:</p>
+
+<h4>Basic Information</h4>
+
+<dl>
+  <dt>Name</dt>
+  <dd><p>(Required) A clear, easily understood label.</p></dd>
+
+  <dt>Display Name</dt>
+  <dd><p>The name displayed to users, if different from the Name.</p></dd>
+
+  <dt>Definition</dt>
+  <dd><p>(Required) A statement of explanation, meaning, intent and
+      scope.</p></dd>
+
+  <dt>Instructions</dt>
+  <dd><p>Allows administrators to give instructions, guidelines, or best
+      practices for the cataloging of the field.  The Instructions are visible
+      from the Edit/Add Resource page when the mouse is hovered over the field
+      Name.</p></dd>
+
+  <dt>Enabled</dt>
+  <dd><p>Yes/No; determines if the field is actively in use.</p></dd>
+
+  <dt>Editable</dt>
+  <dd><p>Yes/No; determines if the data in the field can be edited.</p></dd>
+
+  <dt>Optional</dt>
+  <dd><p>Yes/No; determines if data is required in the field or if that data is
+    optional.</p></dd>
+</dl>
+
+<h4>Qualifiers</h4>
+
+<dl>
+  <dt>Uses Qualifiers</dt>
+  <dd><p>Yes/No; determines whether a particular field will make use of
+      qualifiers. If an administrator answers <i>Yes</i>, but fails to specify
+      further information below, no metadata will be refined.</p></dd>
+
+  <dt>Has Item Level Qualifiers</dt>
+  <dd><p>Yes/No; determines whether the field qualified at the item level or
+      not. Selecting <i>Yes</i> means that a particular field may have more than
+      one encoding scheme. Resource editors when completing an item record
+      then choose between all possible qualifier values provided to them by the
+      Collection Administrator. Selecting <i>No</i> means the metadata field is
+      qualified at the field level, and any data within that field uses the same
+      encoding scheme.</p></dd>
+
+  <dt>Allowed Qualifiers</dt>
+  <dd><p>List of encoding schemes a Collection Administrator permits for a given
+      metadata field. This box is populated by the Qualifier Editor. Multiple
+      qualifiers can be selected by holding the command button (for Mac) or
+      control button (for Windows) and clicking the desired
+      qualifiers. <strong>Note</strong>: Removing an item from this list may
+      result in a loss of data.</p></dd>
+
+  <dt>Default Qualifier</dt>
+  <dd><p>One encoding scheme is selected as a default. This is the value the
+      software will supply when no value is selected by the item
+      editor.</p></dd>
+</dl>
+
+<h4>Search</h4>
+
+<dl>
+  <dt>Include in Keyword Search</dt>
+  <dd><p>Yes/No; determines if the field should be included among fields
+      searched for keywords, either by the Keyword Search function at the top of
+      every page, or the fielded Keyword search on the Advanced Search.</p></dd>
+
+  <dt>Include in Advanced Search</dt>
+  <dd><p>Yes/No; determines if the field should be included among fields
+      available in Advanced Search and Limits.</p></dd>
+
+  <dt>Include in Faceted Search</dt>
+  <dd><p>Yes/No; determines if the field should be included among fields
+      available in the faceted search interface.</p></dd>
+
+  <dt>Include in Sort Options</dt>
+  <dd><p>Yes/No; determines if the field should be included in the list of
+      options by which users may sort search results.</p></dd>
+
+  <dt>Search Weight</dt>
+  <dd><p>(Required) 1-20; determines the importance relative to other searched
+      fields in search results. The search weight must be set to be greater than
+      zero to have an affect on keyword searches. The default values for the
+      portal software as shipped are <i>Title</i>=5, <i>Alternate Title</i>=3,
+      <i>Description</i>=1, Controlled Names (<i>Subject</i>, <i>Publisher</i>,
+      and <i>Creator</i>)=3. The higher the number, the more important to search
+      relevance the field is.</p></dd>
+</dl>
+
+<h4>Type-Specific Information</h4>
+
+<h5>Text</h5>
+
+<dl>
+  <dt>Field Size</dt>
+  <dd><p>(Required) Defines the display size of the text box in number of
+      characters.</p></dd>
+
+  <dt>Max Length</dt>
+  <dd><p>(Required) Defines the total length of text available for data entry in
+      number of characters.</p></dd>
+
+  <dt>Allow <abbr title="HyperText Markup Language">HTML</abbr> in Text</dt>
+  <dd><p>Yes/No; describes if basic HTML tags are allowed in the text of the
+      field.</p></dd>
+
+  <dt>Default Value</dt>
+  <dd><p>Content of field if no other value entered.</p></dd>
+<dl>
+
+<h5>Paragraph</h5>
+
+<dl>
+  <dt>Paragraph Rows</dt>
+  <dd><p>(Required) Defines the total length of text available to enter
+      data.</p></dd>
+
+  <dt>Paragraph Columns</dt>
+  <dd><p>(Required) Defines the total height of text available to enter
+      data.</p></dd>
+
+  <dt>Allow <abbr title="HyperText Markup Language">HTML</abbr> in Text</dt>
+  <dd><p>Yes/No; describes if basic HTML tags are allowed in the text of the
+      field.</p></dd>
+
+  <dt>Use <abbr title="What You See Is What You Get">WYSIWYG</abbr> Editor</dt>
+  <dd><p>Yes/No when <i>Allow
+      <abbr title="HyperText Markup Language">HTML</abbr> in Text</i> is set
+      to <i>Yes</i>; describes if word-processor style buttons are available to
+      user when adding or editing text in the field.</p></dd>
+</dl>
+
+<h5>Number</h5>
+
+<dl>
+  <dt>Field Size</dt>
+  <dd><p>(Required) Defines the total space of text available to enter
+      data.</p></dd>
+
+  <dt>Minimum Value</dt>
+  <dd><p>(Required) Smallest positive whole number allowed.</p></dd>
+
+  <dt>Maximum Value</dt>
+  <dd><p>(Required) Largest positive whole number allowed.</p></dd>
+
+  <dt>Default Value</dt>
+  <dd><p>Content of field if no other value entered.</p></dd>
+</dl>
+
+<h5>Date</h5>
+
+<dl>
+  <dt>Field Size</dt>
+  <dd><p>(Required) Defines the total length of text available to enter
+      data.</p></dd>
+</dl>
+
+<h5>Timestamp</h5>
+
+<dl>
+  <dt>Update Method</dt>
+  <dd><p>The rules for when or if the timestamp in the field is
+      updated.</p></dd>
+</dl>
+
+<h5>Flag</h5>
+
+<dl>
+  <dt>Flag On Label</dt>
+  <dd><p>(Required) The display value when the flag is set to
+      <i>On</i>.</p></dd>
+
+  <dt>Flag Off Label</dt>
+  <dd><p>(Required) The display value when the flag is set to
+      <i>Off</i>.</p></dd>
+
+  <dt>Default Value</dt>
+  <dd><p>On/Off; content of field if no other value entered.</p></dd>
+</dl>
+
+<h5>Option</h5>
+
+<dl>
+  <dt>Allow Multiple</dt>
+  <dd><p>Yes/No; defines if multiple values an be entered for an option
+      field.</p></dd>
+</dl>
+
+<h5>User</h5>
+
+<dl>
+  <dt>Restrict to Users With One of the Following</dt>
+  <dd><p>Defines the user privilege level or custom privilege flag needed on a
+      user account to display that username in the list of possible users to
+      choose from.</p></dd>
+</dl>
+
+<h5>Image</h5>
+
+<dl>
+  <dt>Default Alt Text</dt>
+  <dd><p>(Required) Text that will display when the image cannot be viewed or
+      when image is scanned by assistive devices.</p></dd>
+
+  <dt>Max Height</dt>
+  <dd><p>(Required) The maximum height for the full display of the
+      image.</p></dd>
+
+  <dt>Max Width</dt>
+  <dd><p>(Required) The maximum width for the full display of the
+      image.</p></dd>
+
+  <dt>Max Preview Height</dt>
+  <dd><p>(Required) The maximum height for the display of the image in the full
+      record page.</p></dd>
+
+  <dt>Max Preview Width</dt>
+  <dd><p>(Required) The maximum width for the display of the image in the full
+      record page.</p></dd>
+
+  <dt>Max Thumbnail Height</dt>
+  <dd><p>(Required) The maximum height for the display of the image thumbnail in
+      search results, browse items, and new items displays.</p></dd>
+
+  <dt>Max Thumbnail Width</dt>
+  <dd><p>(Required) The maximum width for the display of the image thumbnail in
+      search results, browse items, and new items displays.</p></dd>
+</dl>
+
+<h5><abbr title="Uniform Resource Locator">Url</abbr></h5>
+
+<dl>
+  <dt>Field Size</dt>
+  <dd><p>(Required) Defines in number of characters and the display size of the
+      text box.</p></dd>
+
+  <dt>Max Length</dt>
+  <dd><p>(Required) Defines in number of characters and the total length of text
+      available for data entry.</p></dd>
+</dl>
+
+<h5>Point</h5>
+
+<dl>
+  <dt>Field Size</dt>
+  <dd><p>(Required) Defines in number of characters and the display size of the
+      text box.</p></dd>
+
+  <dt>Point Precision</dt>
+  <dd><p>(Required) Determines how many digits should be allowed to the left of
+      the decimal point for both values.</p></dd>
+
+  <dt>Decimal Digits in Point</dt>
+  <dd><p>(Required) Determines how many digits should be allowed to the right of
+      the decimal point for both values</p></dd>
+</dl>
+
+<h4>Resource Editing</h4>
+
+<dl>
+  <dt>Option List Field Threshold</dt>
+  <dd><p>(Required for <i>Tree</i> and <i>Controlled Name</i> Fields only) The
+      number of possible values for the metadata field at which the form field
+      used to modify the value changes from checkboxes to option lists.</p></dd>
+  <dt>Incremental Search Field Threshold</dt>
+  <dd><p>(Required for <i>Tree</i> and <i>Controlled Name</i> Fields only) The
+      number of possible values for the metadata field at which the form field
+      used to modify the value changes from option lists to an incremental
+      search field.</p></dd>
+  <dt>Max Number of Search Results</dt>
+  <dd><p>(Required for <i>Tree</i>, <i>Controlled Name</i>, and <i>Reference</i>
+      Fields only) The maximum number of displayed results when the tree field's
+      vocabulary is searched.</p></dd>
+</dl>
+
+<h4><abbr title="Open Archives Initiative">OAI</abbr></h4>
+
+<dl>
+  <dt>Use for <abbr title="Open Archives Intiative">OAI</abbr> Sets</dt>
+  <dd><p>(For <i>Tree</i>, <i>Controlled Name</i>, and <i>Option Fields</i>
+      only) Yes/No; determines if the value in the field can be used to define
+      sets for <abbr title="Open Archives Intiative">OAI</abbr>
+      harvesting.</p></dd>
+</dl>
+
+<h4>Privileges</h4>
+
+<dl>
+  <dt>Privilege Required for Viewing</dt>
+  <dd><p>The privilege level, custom privilege flag, and/or user value required
+      to view the data contained in the field.</p></dd>
+
+  <dt>Privilege Required for Editing</dt>
+  <dd><p>The privilege level, custom privilege flag, and/or user value required
+      to edit the data contained in the field.</p></dd>
+
+  <dt>Privilege Required for Authoring</dt>
+  <dd><p>The privilege level, custom privilege flag, and/or user value required
+      to add data to the field.</p></dd>
+
+  <dt>Privilege Required for Browsing (<i>Tree</i> Fields Only)</dt>
+  <dd><p>The privilege level, custom privilege flag, and/or user value required
+      for the field to display on the Browse Resources page.</p></dd>
+
+  <dt>Privilege Required to View Full Image (<i>Image</i> Fields Only)</dt>
+  <dd><p>The privilege level, custom privilege flag, and/or user value required
+      to view the full size image uploaded in the field.</p></dd>
+</dl>
+
+<h3>Important Reminder</h3>
+
+<p>After customizing the database configuration,
+Administrators are reminded to reflect these changes in the appropriate Help
+texts. Since these help texts guide and instruct portal users in use, searching,
+and maintenance, every effort should be made to accurately guide and educate
+users as to portal features.</p>]]>
+		</Content>
+        <CleanURL>help/collections/customizing_metadata_fields</CleanURL>
+    </Resource>
+    <Resource>
+    	<Title>Collection Administration Help: Metadata Field Editor</Title>
+    	<Content><![CDATA[<h2>Metadata Field Editor</h2>
+
+<p>The Metadata Field Editor is designed to customize the item database and
+metadata structure. Metadata is the background information which describes the
+content, quality, condition, and other appropriate characteristics of the
+item. At the most basic level, this information can be considered data about
+data. It allows for the organization, indexing, and classification of data for
+storage, discovery, and precise retrieval by users. The set of chosen metadata
+fields for a particular collection is a called <i>Metadata Schema</i>.</p>
+
+<p>The Metadata Field Editor allows System and Collection Administrators to
+create, edit, and delete database fields and their content. For example, if the
+System Administrator wants to add a database field for the date an item will
+be updated in the future, the System Administrator would use the Metadata Field
+Editor to create a new <i>Date</i> field called <i>Date of Future Update</i>.</p>
+
+<p>The default fields parallel (at a basic level) the structured approach one
+find in a library catalog or commercially available database. For completing
+these default fields, no particular cataloging rules, syntax, taxonomy, or other
+descriptive encoding level are prescribed or required. Organizations are
+encouraged to carefully examine organizational cataloging needs and keep them in
+mind when establishing which standards, classification schemes, and encoding
+levels to follow in the application of
+Metavus for portal development.</p>
+
+<p>The configuration of metadata for individual fields can largely be broken out
+into four categories: <b>Metadata</b>, <b>Display</b>, <b>Access</b>, and
+<b>Search</b>. On the <a href="index.php?P=DBEditor"><i>Metadata Field
+Editor</i></a> page, a summary for each of these sections is listed in a tabbed
+interface. By default, disabled metadata fields are hidden. Uncheck the <i>Hide
+Disabled Fields</i> box to display all metadata fields available.</p>
+
+<h3>Metadata</h3>
+
+<p>Separated by field type, this tab displays the field name and the
+configuration of its metadata attributes: <i>Editable</i>, <i>Optional</i>,
+<i>Default Value</i>, <i>Allow Multiple</i>, <i>Uses Qualifiers</i>,
+<i>Item-Level Qualifiers</i>, and <i>Default Qualifiers</i>. Click on any field
+name or the <kbd><samp>Edit</samp></kbd> button to the far right to add or
+change the field metadata configurations. <strong>Note</strong>: All attributes
+listed do not apply to all fields.</p> <h3>Display</h3> <p>Separated by field
+type, this tab displays the field name and how that field is displayed to users:
+<i>Field Size</i>, <i>Max Length</i>, <i>Allow
+<abbr title="HyperText Markup Language">HTML</abbr></i>, and <i>Max Number of
+Search Results</i>. Click on any field name or the <kbd><samp>Edit</samp></kbd>
+button to the far right to add or change the field's display configurations.
+<strong>Note</strong>: All attributes listed do not apply to all fields.</p>
+
+<h3>Access</h3>
+
+<p>Separated by field type, this tab displays the field name and how access and
+privileges required for that field are configured: <i>Full Image Privilege</i>,
+<i>Browsing Privilege</i>, <i>Viewing Privilege</i>, <i>Authoring Privilege</i>,
+and <i>Editing Privilege</i>. Click on any field name or the
+<kbd><samp>Edit</samp></kbd> button to the far right to add or change the
+field's access configuration. <strong>Note</strong>: All attributes listed do
+not apply to all fields.</p> <h3>Search</h3> <p>Separated by field type, this
+tab displays the field name and how its search functionality is configured:
+<i>Include in Keyword Search</i>, <i>Include in Advanced Search</i>, <i>Include
+in Sort Options</i>, and <i>Search Weight</i>. Click on any field name or the
+<kbd><samp>Edit</samp></kbd> button to the far right to add or change the
+field's search configuration. <strong>Note</strong>: All attributes listed do
+not apply to all fields.</p>]]>
+		</Content>
+    	<CleanURL>help/collections/metadata_field_editor</CleanURL>
+    </Resource>
+    <Resource>
+    	<Title>Collection Administration Help: Permissions and Access Control</Title>
+    	<Content><![CDATA[<h1>Permissions and Access Control</h1>
+
+<p>The permissions system in Metavus determines who can create, edit, and view
+items.</p>
+
+<p>In Metavus, <b>Authoring</b> refers to the creation of new items,
+<b>Editing</b> refers to the modification of existing items, and
+<b>Viewing</b> refers to the display of items.</p>
+
+<h2>How Permissions are Applied</h2>
+
+<p>This system works in two levels: <b>Schema permissions</b> and
+<b>field permissions</b>. The schema permissions establish minimum
+requirements that apply to all fields. Field permissions can be used
+to provide additional restrictions for specific fields beyond what the
+schema requires. Note that for each field, Metavus first evaluates the
+schema permissions and <i>only if those requirements are satisfied</i>
+does it proceed to check the field permissions.</p>
+
+<p>For your reference, schema permissions are repeated on the Editing
+page for each metadata field, along with an 'edit' button to modify
+the schema permissions. Any changes to schema permissions will apply
+to all fields from that schema, not just to the field you were editing
+when the 'edit' button was clicked.</p>
+
+<h2>Conditions Used in Permissions</h2>
+
+<p>Each authoring/editing/viewing permission is made up of a series of
+conditions, combined with a logical operator, which must be satisfied
+to perform the corresponding action. Each condition may be either a
+check against item field values, a check of user privilege flags,
+or a condition subgroup containing its own logical operator.</p>
+
+<p>In contexts where no one specific item can provide values for
+evaluating conditions, checks against item field values will be
+considered satisfied if the collection contains any items that
+could satisfy them. For example, on the Advanced Search page, no
+items are displayed. Therefore, there is no one specific item
+to use for privilege checks on that page. So, a condition like
+&quot;Language is English&quot; will be satisfied if the collection
+contains any items where the <i>Language</i> is &quot;English&quot.</p>
+
+<h2>Example Viewing Permissions</h2>
+
+<p>An examination of the default Viewing permissions illustrates how the system
+works:</p>
+
+<table>
+  <tr>
+    <td class="cw-help-paragraph">Top level logic: OR</td>
+    <td>Conditions will all be ORed together (satisfying any one of
+      them is sufficient to satisfy the requirements).</td>
+  </tr><tr>
+    <td class="cw-help-paragraph">Current user has <i>Master
+        Resource Administrator</i> privilege</td>
+    <td>All users having 'Master Resource Administrator' are able to
+      view all fields, unless the field specifies further
+      restrictions.</td>
+  </tr><tr>
+    <td class="cw-help-paragraph"><i>Record Status</i> contains &quot;Published&quot;</td>
+    <td>All fields on any item marked Published should be
+      viewable, unless the field specifies further restrictions.
+      Note that this check is skipped when there is not a specific
+      item to check (e.g., on the Advanced Search page).
+    </td>
+  </tr><tr>
+    <td class="cw-help-paragraph">( Top level logic: AND </td>
+    <td>Begin a new privilege subgroup where conditions are ANDed
+      together (all conditions are required in order to satisfy the
+      subgroup).  This subgroup allows all users having <i>Personal
+      Resource Administrator</i> to view any field on items for
+      which their user account is the value of the 'Added By Id'
+      metadata field.</td>
+  </tr><tr>
+    <td class="cw-help-paragraph mv-indented-help">
+      Added By Id is Current User
+    </td>
+    <td> </td>
+  </tr><tr>
+    <td class="cw-help-paragraph">)</td>
+    <td> End the privilege subgroup.</td>
+  </tr>
+</table>
+
+<h2>Advanced Example: sub-collections</h2>
+
+<p>Suppose you manage a collection to be used for both public
+items and private instructional materials.  There are two kinds
+of private instructional materials, assignments and answer keys,
+along with three kinds of users: students, teaching assistants, and
+instructors.  Students should only be able to view the assignments,
+teaching assistants should be able to view both types, and
+instructors should be able to edit answer keys and assignments but
+not public items.</p>
+
+<p>To accomplish this, you'll first create
+<a href="index.php?P=EditPrivilegeNames">Custom Privilege Flags</a> for each of
+your three user types. Then, you'll use <i><a href="index.php?P=EditOptionList">
+Edit Option Lists</a></i> to update <i>Resource Type</i> to include your material
+types (i.e. assignment and answer key) along with 'Public'.
+
+<p>Then, configure the following Schema-level <b>viewing</b> privileges:</p>
+<div>
+    <i>Current User</i> has Master Resource Administrator privilege OR <br/>(
+    <div style="margin-left: 4em;">
+      <i>Record Status</i> contains &quot;Published&quot; AND <br/> (
+      <div style="margin-left: 4em;">
+        <i>Resource Type</i> is Public OR <br/> (
+        <div style="margin-left: 4em;">
+          <i>Resource Type</i> is Assignment AND <br/>
+          <i>Current User</i> has Student privilege
+        </div>) <br/> OR <br/>(
+        <div style="margin-left: 4em;">
+          <i>Resource Type</i> is Answer Key AND <br/> (
+          <div style="margin-left: 4em;">
+            <i>Current User</i> has Teaching Assistant privilege OR <br/>
+            <i>Current User</i> has Instructor privilege
+          </div>)
+        </div>)
+      </div>)
+    </div>)
+</div>
+
+<p>The corresponding schema-level <b>editing</b> privileges would then be:</p>
+
+<div>
+    <i>Current User</i> has Master Resource Administrator privilege OR <br/>(
+     <div style="margin-left: 4em;">
+     <i>Current User</i> has Instructor privilege AND <br/>
+     <i>Release Flag</i> is true AND <br/> (
+     <div style="margin-left: 4em;">
+       <i>Resource Type</i> is Assignment OR <br/>
+       <i>Resource Type</i> is Answer Key
+     </div>)
+   </div>)
+</div>]]>
+		</Content>
+    	<CleanURL>help/collections/permissions</CleanURL>
+    </Resource>
+    <Resource>
+    	<Title>Metadata Tool Help: Updating Controlled Names</Title>
+    	<Content><![CDATA[<h2>Updating Controlled Names</h2>
+
+<p>Controlled Names allow for the central control of proper individual or
+institutional names and vocabularies. Many persons or entities are known by
+multiple names, or have names that take multiple forms (e.g. <i>IBM</i>,
+<i>International Business Machines</i>, <i>IBM Inc.</i>, etc.). A Controlled
+Name designates a single official name for that entity within the database. The
+Variant Names are other names, or forms of names, associated with that
+entity. These include acronyms, names with honorary titles included, dropped
+initials, diminutives, etc.</p>
+
+<p>The Metadata Tool allows Collection Administrators to add, update, and delete
+controlled names and has special authorization features for components of the
+metadata separate from the authorization to add/edit item records. Because
+of the complex nature of Controlled Names, an organization may wish to restrict
+access and editing or deleting permission within the database. This
+authorization is controlled by the Collection Administrator.</p>
+
+<p>This section details the procedures for updating Controlled Names.
+Edits and corrections appear immediately in each associated record. To add,
+update, or delete a Controlled Name:</p>
+
+<ol>
+  <li>
+    <p><a href="index.php?P=Login">Log in</a> to the portal with an authorized
+    account and then go to the <a href="index.php?P=EditControlledName"><i>Edit
+    Controlled Names</i></a> page.</p>
+  </li>
+  <li>
+    <p>Search for a name or a list of names by entering the name into the search
+    box and clicking the <kbd><samp>Search</samp></kbd> button for the
+    appropriate field (<i>Publisher</i>, <i>Creator</i>, etc.). Searches will
+    return matches from the Controlled Name and the Variant Name fields. The
+    Variant Name is searched here to allow Collection Administrators to record name
+    variations and add flexibility to the Controlled Name feature. Multiple
+    entries are allowed within the Variant Name field. It is recommended
+    practice to use a semi-colon to separate the distinct values of Variant
+    Names.</p>
+  </li>
+  <li>
+    <p>The Metadata Tool will generate a list of results matching the
+    search. Edit every entry desired, and the Metadata Tool will update all
+    entries simultaneously and propagate changes to associated item
+    records.</p>
+  </li>
+  <li>
+    <p>A Controlled Name can be remapped to another existing Controlled
+    Name. For instance, <i>University of Wisconsin, Madison</i> can be remapped
+    to <i>University of Wisconsin - Madison</i> if the latter already exists as
+    a controlled name. Type in the Controlled Name you wish to map to, and click
+    the <kbd><samp>Save Changes</samp></kbd> button. This will change all
+    instances of the Controlled Name in question to the new one, and present
+    users with a list of records that were altered.</p>
+  </li>
+  <li>
+    <p>To delete any names from the database, check the box to the left and
+    click the <kbd><samp>Save Changes</samp></kbd> button. The name(s) will be
+    removed from all associated records and present users with a list of records
+    that were altered.</p>
+  </li>
+</ol>]]>
+		</Content>
+    	<CleanURL>help/metadata/updating_controlled_names</CleanURL>
+    </Resource>
+    <Resource>
+    	<Title>Metadata Tool Help: Updating Option Lists</Title>
+    	<Content><![CDATA[<h2>Updating Option Lists</h2>
+
+<p>Options are the standardized list of possible terms for <i>Option</i>
+metadata fields. <i>Option</i> fields are most useful when a limited number of
+thematically related terms are needed to describe an item. After the field is
+created using the <a href="help/collections/metadata_field_editor">Metadata Field
+Editor</a>, the vocabulary can then be added, edited, or deleted from the
+Metadata Tool's <a href="index.php?P=EditOptionList"><i>Edit Option
+Lists</i></a> page. These fields provide Limit options in the Advanced Search
+engine. Examples of this class of fields from the portal software default
+metadata fields are the <i>Audience</i>, <i>Resource Type</i>, and
+<i>Language</i> field. Options can be modified through the
+<a href="index.php?P=EditOptionList"><i>Edit Option Lists</i></a> page. To
+add, edit, remap, delete, or set default Options:</p>
+
+<ol>
+  <li>
+    <p><a href="index.php?P=Login">Log in</a> to the portal with an authorized
+    account and then go to the
+    <a href="index.php?P=EditOptionList"><i>Edit Option Lists</i></a> page.</p>
+  </li>
+  <li>
+    <p>Select the appropriate field.</p>
+  </li>
+  <li>
+    <p>To add an Option, select the <i>Add New Option</i> box and type the
+    option in the space provided. Click the <kbd><samp>Save Changes</samp></kbd>
+    button.</p>
+  </li>
+  <li>
+    <p>To edit an Option, find the appropriate one and update it. Click the
+    <kbd><samp>Save Changes</samp></kbd> button.</p>
+  </li>
+  <li>
+    <p>To delete an Option, find the appropriate one and select the
+    <i>Delete</i> box to the right. Click the <kbd><samp>Save
+    Changes</samp></kbd> button.</p>
+  </li>
+  <li>
+    <p>To remap an Option, find the appropriate one and select the <i>Remap
+    To</i> radio button, followed by the appropriate Option in the box
+    provided. Click the <kbd><samp>Save Changes</samp></kbd> button.</p>
+  </li>
+  <li>
+    <p>To set a default Option, find the appropriate one and place a check mark
+    in the box furthest to the left. Click the <kbd><samp>Save
+    Changes</samp></kbd> button.</p>
+  </li>
+</ol>
+
+<p>When changes are made, the <a href="index.php?P=EditOptionList"><i>Edit
+Option List</i></a> page appears with a summary of the changes.</p>]]>
+		</Content>
+    	<CleanURL>help/metadata/updating_option_lists</CleanURL>
+    </Resource>
+    <Resource>
+    	<Title>User Administration Help: User Access Privilege Flags</Title>
+    	<Content><![CDATA[<h2>User Access Privilege Flags</h2>
+
+<p>There are 12 default access privilege flags. These privilege flags allow
+system administrators to assign different types of work to different users. This
+allows an organization the flexibility to create the most efficient and
+practical workflow possible for its needs. The ability to disperse the workflow
+across individuals allows project managers to create discrete tasks in the
+workflow as needed, which is particularly useful for projects located in more
+than one geographic location.</p>
+
+<p>For example, System Administrators can designate one or more users to update
+the news and announcements section of the home page by giving them the <i>News
+Administrator</i> privilege flag. The <i>News Administrator</i> privilege flag
+will allow only those users to add news and announcements to the
+site. Similarly, System Administrators can designate one or more users to add,
+edit, and delete any item records by giving them the <i>Resource
+Administrator</i> privilege flag.</p>
+
+<p>Other privilege flags facilitate finer-grained workflows. For example, a
+System Administrators could give one or more users the <i>Release Flag
+Administrator</i> privilege flag if he or she wants to allow many users to
+create item records but doesn't want to make those records publicly viewable
+until they are checked and edited.</p>
+
+<p>Privilege flags are assigned by selecting the ones appropriate for the user
+being edited (<kbd>Shift</kbd>+<kbd>Click</kbd>) and then clicking
+the <kbd><samp>Save Changes</samp></kbd> button. The definitions of the default
+access privilege flags are:</p>
+
+<dl>
+  <dt><b>Can Post Resource Comments</b></dt>
+  <dd><p>Users with this privilege flag may add comments to item records on the site. Resource comments must be enabled for this privilege flag to be useful and new user accounts have this privilege by default, unless the <i>Default New User Privileges</i> setting has been customized.</p></dd>
+  <dt><b>Classification Administrator</b></dt>
+  <dd><p>Users with this privilege flag may build and maintain the classification taxonomy (e.g., <i>Computers &gt; Hardware &gt; Keyboards &gt; Wireless Keyboards</i>) for the collection.</p></dd>
+  <dt><b>Collection Administrator</b></dt>
+  <dd><p>Users with this privilege flag may manage the collection, i.e., edit the <abbr title="Open Archives Initiative">OAI</abbr> server settings, export data, modify the metadata schema, etc.</p></dd>
+  <dt><b>Controlled Names Administrator</b></dt>
+  <dd><p>Users with this privilege flag may create and modify Controlled Name fields, e.g., <i>Publisher</i> and <i>Creator</i>, and are generally responsible for codifying and editing the name forms across the Controlled Name fields.</p></dd>
+  <dt><b>Master Resource Administrator</b></dt>
+  <dd><p>Users with this privilege flag may edit the metadata records for every item on the site, and are typically in charge of developing, editing, and maintaining the item records in the collection. They are not able to add names or vocabulary to any of the controlled name attribute lists or classification schema.</p></dd>
+  <dt><b>News Administrator</b></dt>
+  <dd><p>Users with this privilege flag may add and edit the news item announcements that are displayed on the home page.</p></dd>
+  <dt><b>Personal Resource Administrator</b></dt>
+  <dd><p>Users with this privilege flag may create item records but only edit the ones that they created. They are not allowed to add names or vocabulary to any of the controlled name attribute lists or classification schema.</p></dd>
+  <dt><b>Release Flag Administrator</b></dt>
+  <dd><p>Users with this privilege flag may modify the value of the <i>Release Flag</i> field for any item record. The <i>Release Flag</i> field is a default metadata field that controls whether item records are publicly viewable. This privilege flag can be used in tandem with or distinct from the <i>Resource Administrator</i> privilege flag, depending on the desired workflow.</p></dd>
+  <dt><b>System Administrator</b></dt>
+  <dd><p>Users with this privilege flag may control the overall management and configuration of the site. They may not remove this privilege flag from their accounts, which is meant to prevent them from accidentally making it impossible to manage or configure the site.</p></dd>
+  <dt><b>User Account Administrator</b></dt>
+  <dd><p>Users with this privilege flag may view, edit, and delete registered user accounts. They may not remove this privilege flag from their own accounts, which is meant to prevent them from accidentally making it impossible to manage user accounts.</p></dd>
+</dl>]]>
+		</Content>
+    	<CleanURL>help/users/user_access_privilege_flags</CleanURL>
+    </Resource>
+
+</ResourceCollection>

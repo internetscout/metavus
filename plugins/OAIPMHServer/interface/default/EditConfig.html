@@ -1,0 +1,185 @@
+<?PHP
+#
+#   FILE:  EditConfig.html (OAI-PMH Server plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+# convenience functions
+function pv($Value)
+{
+    print defaulthtmlentities($Value);
+}
+function pc($Setting)
+{
+    print($Setting ? " checked" : "");
+}
+function pe($MatchVal, $CurrVal)
+{
+    print(($CurrVal == $MatchVal) ? " checked" : "");
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("OAI-PMH Server - Configuration");
+
+?>
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <h1>
+        <abbr title="Open Archives Initiative">OAI</abbr>-<abbr
+            title="Protocol for Metadata Harvesting">PMH</abbr> Server Configuration
+      </h1>
+    </div>
+    <div class="col">
+      <a href="index.php?P=P_OAIPMHServer_HelpOai" rel="help">(Need Help?)</a>
+    </div>
+  </div>
+</div>
+
+<?PHP if (isset($H_ErrorMessages)) { ?>
+  <ul class="alert alert-danger">
+    <?PHP foreach ($H_ErrorMessages as $Msg) { ?>
+      <li><?= $Msg; ?></li>
+    <?PHP } ?>
+  </ul>
+<?PHP } ?>
+
+<form method="post" action="index.php?P=P_OAIPMHServer_EditConfig">
+  <table class="table table-striped">
+    <colgroup>
+      <col width="*" />
+      <col width="*" />
+      <col width="250" />
+    </colgroup>
+    <tbody>
+      <tr><th colspan="3" scope="rowgroup">Repository Description</th></tr>
+      <tr>
+        <th><label for="F_RepDescr_Name">Repository Name</label></th>
+        <td colspan="2">
+          <input type="text" id="F_RepDescr_Name" name="F_RepDescr_Name" value="<?PHP
+                @pv($H_RepDescr["Name"]);  ?>" size="24" maxlength="80" />
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <label for="F_RepDescr_BaseURL">
+            Base <abbr title="Uniform Resource Locator">URL</abbr>
+          </label>
+        </th>
+        <td colspan="2">
+          <input type="text" id="F_RepDescr_BaseURL" name="F_RepDescr_BaseURL" value="<?PHP
+                @pv($H_RepDescr["BaseURL"]);  ?>" size="64" maxlength="80" />
+        </td>
+      </tr>
+      <tr>
+        <th><label for="F_RepDescr_AdminEmail">Administrator Email</label></th>
+        <td colspan="2">
+          <input type="text" id="F_RepDescr_AdminEmail" name="F_RepDescr_AdminEmail" value="<?PHP
+                @pv($H_RepDescr["AdminEmail"][0]);  ?>" size="24" maxlength="80" />
+        </td>
+      </tr>
+      <tr>
+        <th><label for="F_RepDescr_IDDomain"><abbr title="Identifier">ID</abbr> Domain</label></th>
+        <td>
+          <input type="text" id="F_RepDescr_IDDomain" name="F_RepDescr_IDDomain" value="<?PHP
+                @pv($H_RepDescr["IDDomain"]);  ?>" size="24" maxlength="80" />
+        </td>
+        <td>(used in the identifiers for OAI-PMH records for your collection, this
+        should correspond to the primary domain for your site)</td>
+      </tr>
+      <tr>
+        <th><label for="F_RepDescr_IDPrefix"><abbr title="Identifier">ID</abbr> Prefix</label></th>
+        <td>
+          <input type="text" id="F_RepDescr_IDPrefix" name="F_RepDescr_IDPrefix" value="<?PHP
+                @pv($H_RepDescr["IDPrefix"]);  ?>" size="24" maxlength="80" />
+        </td>
+        <td>(also used in the identifiers for OAI-PMH records identifiers for your
+        collection, this should contain only letters, numbers, and underscores)</td>
+      </tr>
+      <tr>
+        <th><span class="cw-form-pseudolabel">Date Granularity</span></th>
+        <td colspan="2">
+          <input type="radio" id="F_RepDescr_DateGranularity_Date"
+              name="F_RepDescr_DateGranularity" value="DATE"
+              <?PHP pe("DATE", $H_RepDescr["DateGranularity"]); ?> />
+          <label for="F_RepDescr_DateGranularity_Date">Date</label>
+          <input type="radio" id="F_RepDescr_DateGranularity_DateTime"
+              name="F_RepDescr_DateGranularity" value="DATETIME"
+              <?PHP  pe("DATETIME", $H_RepDescr["DateGranularity"]); ?> />
+          <label for="F_RepDescr_DateGranularity_DateTime">Date+Time</label>
+        </td>
+      </tr>
+      <tr>
+        <th><label for="F_RepDescr_EarliestDate">Earliest Date</label></th>
+        <td colspan="2">
+          <input type="text" id="F_RepDescr_EarliestDate" name="F_RepDescr_EarliestDate"
+              value="<?PHP pv($H_RepDescr["EarliestDate"]);  ?>" size="16" maxlength="16" />
+        </td>
+      </tr>
+    </tbody>
+    <tbody>
+      <tr><th colspan="3" scope="rowgroup">Options</th></tr>
+      <tr>
+        <th>
+          <span class="cw-form-pseudolabel"><abbr
+                title="Open Archives Initiative">OAI</abbr>-SQ Support</span>
+        </th>
+        <td colspan="2">
+          <input type="radio" id="F_SQEnabled_True" name="F_SQEnabled" value="1"
+                 <?PHP  pc($H_SQEnabled);  ?> />
+          <label for="F_SQEnabled_True">Enabled</label>
+          <input type="radio" id="F_SQEnabled_False" name="F_SQEnabled" value="0"
+                 <?PHP  pc(!$H_SQEnabled);  ?> />
+          <label for="F_SQEnabled_False">Disabled</label>
+        </td>
+      </tr>
+    </tbody>
+    <tbody>
+      <tr><th colspan="3" scope="rowgroup">Formats</th></tr>
+      <?PHP
+         $Index = 0;
+        foreach ($H_Formats as $FormatName => $Format) { ?>
+      <tr>
+        <th>
+          <span class="cw-form-pseudolabel"><?PHP  pv($FormatName);  ?></span>
+          <input type="hidden" name="H_FormatName<?= $Index;?>" value="<?PHP  pv($FormatName);  ?>">
+        </th>
+        <td>
+            <?PHP
+            print count($Format["Namespaces"])." namespaces, "
+                 .count($Format["Elements"])." elements, "
+                 .count($Format["Qualifiers"])." qualifiers";
+            ?>
+        </td>
+        <td>
+          <button type="submit" name="FormatEdit<?= $Index; ?>" value="Edit"
+                class="btn btn-primary mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
+                class="mv-button-icon" /> Edit</button>
+        </td>
+      </tr>
+            <?PHP $Index++;
+        } ?>
+    </tbody>
+  </table>
+
+  <button type="submit" name="Submit" value="Save Changes"
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Disk.svg'); ?>"
+        alt="" class="mv-button-icon" /> Save Changes</button>
+  <button type="submit" name="Submit" value="Add Format"
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Plus.svg'); ?>"
+        alt="" class="mv-button-icon" /> Add Format</button>
+  <button type="submit" name="Submit" value="Cancel"
+        class="btn btn-danger mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>"
+        alt="" class="mv-button-icon" /> Cancel</button>
+</form>

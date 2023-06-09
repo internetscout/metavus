@@ -1,0 +1,106 @@
+<?PHP
+#
+#   FILE:  AddControlledName.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\HtmlOptionList;
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$SafeFieldId = !is_null($H_Field) ? defaulthtmlentities($H_Field->Id()) : "";
+$SafeErrorMessage = defaulthtmlentities($H_ErrorMessage);
+$SafeControlledName = defaulthtmlentities($H_ControlledName);
+$SafeVariantName = defaulthtmlentities($H_VariantName);
+
+$SchemaOptions = [];
+foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+    $SchemaOptions[$Schema->Id()] = $Schema->Name() . " Schema";
+}
+
+$SchemaOptionList = new HtmlOptionList("SC", $SchemaOptions, $H_Schema->Id());
+$SchemaOptionList->SubmitOnChange(true);
+
+if (!is_null($H_Field)) {
+    $FieldList = $H_Schema->getFieldsAsOptionListObject(
+        "F_FieldId",
+        MetadataSchema::MDFTYPE_CONTROLLEDNAME,
+        $H_Field->Id(),
+        false
+    );
+    $FieldList->SubmitOnChange(true);
+    $FieldList->PrintIfEmpty(false);
+    $H_FormUI->addHiddenField("F_FieldId", $H_Field->Id());
+}
+
+?>
+
+<?PHP if ($H_SuccessfullyAdded) { ?>
+  <h1>Controlled Name Added</h1>
+
+  <p>The following controlled name has been added:</p>
+
+  <p>
+    <b><?= $SafeControlledName; ?></b><?PHP if ($H_VariantName) {
+        ?>,
+        <?= $SafeVariantName; ?>
+       <?PHP } ?>
+  </p>
+
+  <p><a href="index.php?P=AddControlledName&amp;SC=<?= $SafeSchemaId; ?>&amp;FieldId=<?=
+        $SafeFieldId; ?>">Add Another Controlled Name</a></p>
+  <p><a href="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId;
+    ?>">Edit Controlled Names</a></p>
+<?PHP } else { ?>
+  <div class="container">
+    <div class="row">
+      <div class="col">
+        <h1>Add Controlled Name</h1>
+      </div>
+      <div class="col">
+        <form method="get" action="index.php">
+          <input type="hidden" name="P" value="AddControlledName" />
+          <?PHP $SchemaOptionList->PrintHtml(); ?>
+        </form>
+      </div>
+    </div>
+  </div>
+
+    <?PHP if ($H_ErrorMessage) { ?>
+    <p class="alert alert-danger"><?= $SafeErrorMessage; ?></p>
+    <?PHP } ?>
+
+    <?PHP if (!is_null($H_Field)) { ?>
+    <form method="post"
+          action="index.php?P=AddControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+      <table class="table">
+        <tbody>
+          <tr>
+            <th><label for="F_FieldId">Field:</label></th>
+            <td><?PHP $FieldList->PrintHtml(); ?></td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+
+    <form method="post"
+          action="index.php?P=AddControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+        <?PHP $H_FormUI->DisplayFormTable(); ?>
+      <button class="btn btn-primary mv-button-iconed" name="F_Submit" type="Submit"
+        value="Add"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add</button>
+    </form>
+    <?PHP } else { ?>
+    <p>
+      No controlled name fields exist. Use the
+      <a href="index.php?P=DBEditor&amp;SC=<?= $SafeSchemaId; ?>">metadata
+      field editor</a> to add controlled name fields.
+    </p>
+    <?PHP } ?>
+<?PHP } ?>

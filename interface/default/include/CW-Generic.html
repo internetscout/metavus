@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Generic CSS Styles</title>
+
+    <script type="text/javascript" src="jQuery.js"></script>
+    <script type="text/javascript" src="CW-Generic.js"></script>
+    <!--[if lt IE 9]><script type="text/javscript" src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+
+    <link rel="stylesheet" type="text/css" media="all" href="CW-Generic.css" />
+    <script type="text/javascript" src="CW-Generic.js"></script>
+    <!--[if IE 7]><link rel="stylesheet" type="text/css" media="all" href="CW-Generic-IE7.css" /><![endif]-->
+    <!--[if IE 8]><link rel="stylesheet" type="text/css" media="all" href="CW-Generic-IE8.css" /><![endif]-->
+    <!--[if IE 9]><link rel="stylesheet" type="text/css" media="all" href="CW-Generic-IE9.css" /><![endif]-->
+    <script type="text/javascript">
+      if ($.browser.mozilla) {
+        $("head").append('<link rel="stylesheet" type="text/css" media="all" href="CW-Generic-Firefox.css" />');
+      }
+    </script>
+
+    <!--[if lt IE 8]>
+    <script type="text/javascript" src="CW-IECSS.js"></script>
+    <![endif]-->
+
+    <style type="text/css">
+      body > ul > li > .mv-section {
+        margin: 5px 0;
+      }
+
+      body > ul > li > .mv-section > .mv-section-body > code {
+        display: block;
+      }
+    </style>
+
+    <script type="text/javascript">
+      $(document).ready(function(){
+        var $sections = $("body > ul > li > .mv-section");
+
+        $sections.each(function(){
+            // temporarily show everything
+            // return;
+
+            var $this = $(this),
+                $header = $("> .mv-section-header", $this),
+                $body = $("> .mv-section-body", $this),
+                $show = $("<a>");
+
+            $header.css({"position": "relative"});
+
+            $body.hide();
+
+            $show.html("Show");
+            $show.css({"position": "absolute", "top": "1px", "right": "1px"});
+            $show.addClass("mv-button mv-button-constrained mv-button-elegant");
+            $show.appendTo($header);
+
+            $show.click(function(){
+                var $this = $(this);
+
+                $body.toggle();
+
+                if ($this.html() == "Show") {
+                    $this.html("Hide");
+                } else {
+                    $this.html("Show");
+                }
+
+                return false;
+            });
+        });
+      });
+    </script>
+
+  </head>
+  <body>
+
+<nav>
+  Go:
+  <ol class="mv-list mv-list-undecorated mv-list-horizontal">
+    <li><a href="#links">Links</a></li>
+    <li><a href="#text">Text</a></li>
+    <li><a href="#buttons">Buttons</a></li>
+    <li><a href="#images">Images</a></li>
+    <li><a href="#sections">Sections</a></li>
+    <li><a href="#links">Links</a></li>
+    <li><a href="#tables">Tables</a></li>
+    <li><a href="#forms">Forms</a></li>
+    <li><a href="#lists">Lists</a></li>
+  </ol>
+</nav>
+
+<a id="links"></a>
+<h1>Links</h1>
+
+<ul>
+  <li>
+    <h2><code>.mv-link</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;a class="mv-link" href="#"&gt;...&lt;/a&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <a class="mv-link" href="#">...</a>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-link-external</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;a class="mv-link mv-link-external" href="#"&gt;...&lt;/a&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <a class="mv-link mv-link-external" href="#">...</a>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="text"></a>
+<h1>Text</h1>
+
+<ul>
+  <li>
+    <h2><code>.mv-text</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;span class="mv-text"&gt;...&lt;/span&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <span class="mv-text">...</span>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="buttons"></a>
+<h1>Buttons</h1>
+
+<p><b>Note:</b> the button classes work reliably only with <code>a</code>,
+  <code>button</code>, <code>input[type=submit]</code>,
+  <code>input[type=button]</code>, and <code>input[type=reset]</code></p>
+
+<ul>
+  <li>
+    <h2><code>.mv-button</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;a class="mv-button" href="#"&gt;...&lt;/a&gt;</code>
+        <code>&lt;button class="mv-button"&gt;...&lt;/button&gt;</code>
+        <code>&lt;input class="mv-button" type="submit" value="..." /&gt;</code>
+        <code>&lt;input class="mv-button" type="button" value="..." /&gt;</code>
+        <code>&lt;input class="mv-button" type="reset" value="..." /&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <a class="mv-button" href="#">Button</a>
+        <button class="mv-button">Button</button>
+        <input class="mv-button" type="submit" value="Button" />
+        <input class="mv-button" type="button" value="Button" />
+        <input class="mv-button" type="reset" value="Button" />
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-button-constrained</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;a class="mv-button mv-button-constrained" href="#"&gt;...&lt;/a&gt;</code>
+        <code>&lt;button class="mv-button mv-button-constrained"&gt;...&lt;/button&gt;</code>
+        <code>&lt;input class="mv-button mv-button-constrained" type="submit" value="..." /&gt;</code>
+        <code>&lt;input class="mv-button mv-button-constrained" type="button" value="..." /&gt;</code>
+        <code>&lt;input class="mv-button mv-button-constrained" type="reset" value="..." /&gt;</code>
+
+<pre><code>&lt;ul class="mv-button-group mv-button-constrained"&gt;
+    &lt;li&gt;&lt;a href="#"&gt;...&lt;/a&gt;&lt/li&gt;
+    &lt;li&gt;&lt;button&gt;...&lt;/button&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="submit" value="..." /&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="button" value="..." /&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="reset" value="..." /&gt;&lt/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <a class="mv-button mv-button-constrained" href="#">...</a>
+        <button class="mv-button mv-button-constrained">...</button>
+        <input class="mv-button mv-button-constrained" type="submit" value="..." />
+        <input class="mv-button mv-button-constrained" type="button" value="..." />
+        <input class="mv-button mv-button-constrained" type="reset" value="..." />
+
+        <ul class="mv-button-group mv-button-constrained">
+            <li><a href="#">...</a></li>
+            <li><button>...</button></li>
+            <li><input type="submit" value="..." /></li>
+            <li><input type="button" value="..." /></li>
+            <li><input type="reset" value="..." /></li>
+        </ul>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-button-group</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>ul</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;ul class="mv-button-group"&gt;
+    &lt;li&gt;&lt;a href="#"&gt;...&lt;/a&gt;&lt/li&gt;
+    &lt;li&gt;&lt;button&gt;...&lt;/button&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="submit" value="..." /&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="button" value="..." /&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="reset" value="..." /&gt;&lt/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <ul class="mv-button-group">
+            <li><a href="#">...</a></li>
+            <li><button>...</button></li>
+            <li><input type="submit" value="..." /></li>
+            <li><input type="button" value="..." /></li>
+            <li><input type="reset" value="..." /></li>
+        </ul>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-button-active</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;a class="mv-button mv-button-active" href="#"&gt;...&lt;/a&gt;</code>
+        <code>&lt;button class="mv-button mv-button-active"&gt;...&lt;/button&gt;</code>
+        <code>&lt;input class="mv-button mv-button-active" type="submit" value="..." /&gt;</code>
+        <code>&lt;input class="mv-button mv-button-active" type="button" value="..." /&gt;</code>
+        <code>&lt;input class="mv-button mv-button-active" type="reset" value="..." /&gt;</code>
+
+<pre><code>&lt;ul class="mv-button-group"&gt;
+    &lt;li&gt;&lt;a class="mv-button-active" href="#"&gt;...&lt;/a&gt;&lt/li&gt;
+    &lt;li&gt;&lt;button&gt;...&lt;/button&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="submit" value="..." /&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="button" value="..." /&gt;&lt/li&gt;
+    &lt;li&gt;&lt;input type="reset" value="..." /&gt;&lt/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <a class="mv-button mv-button-active" href="#">...</a>
+        <button class="mv-button mv-button-active">...</button>
+        <input class="mv-button mv-button-active" type="submit" value="..." />
+        <input class="mv-button mv-button-active" type="button" value="..." />
+        <input class="mv-button mv-button-active" type="reset" value="..." />
+
+        <ul class="mv-button-group">
+            <li><a class="mv-button-active" href="#">...</a></li>
+            <li><button>...</button></li>
+            <li><input type="submit" value="..." /></li>
+            <li><input type="button" value="..." /></li>
+            <li><input type="reset" value="..." /></li>
+        </ul>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-button-elegant</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;a class="mv-button mv-button-elegant" href="#"&gt;Button&lt;/a&gt;
+&lt;button class="mv-button mv-button-elegant"&gt;Button&lt;/button&gt;
+&lt;input class="mv-button mv-button-elegant" type="submit" value="Button" /&gt;
+&lt;input class="mv-button mv-button-elegant" type="button" value="Button" /&gt;
+&lt;input class="mv-button mv-button-elegant" type="reset" value="Button" /&gt;
+
+&lt;a class="mv-button mv-button-constrained mv-button-elegant" href="#"&gt;...&lt;/a&gt;
+&lt;button class="mv-button mv-button-constrained mv-button-elegant"&gt;...&lt;/button&gt;
+&lt;input class="mv-button mv-button-constrained mv-button-elegant" type="submit" value="..." /&gt;
+&lt;input class="mv-button mv-button-constrained mv-button-elegant" type="button" value="..." /&gt;
+&lt;input class="mv-button mv-button-constrained mv-button-elegant" type="reset" value="..." /&gt;
+
+&lt;ul class="mv-button-group mv-button-constrained mv-button-elegant"&gt;
+    &lt;li&gt;&lt;a href="#"&gt;...&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;button&gt;...&lt;/button&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="submit" value="..." /&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="button" value="..." /&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="reset" value="..." /&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;ul class="mv-button-group mv-button-elegant"&gt;
+    &lt;li&gt;&lt;a href="#"&gt;...&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;button&gt;...&lt;/button&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="submit" value="..." /&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="button" value="..." /&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="reset" value="..." /&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;a class="mv-button mv-button-active mv-button-elegant" href="#"&gt;...&lt;/a&gt;
+&lt;button class="mv-button mv-button-active mv-button-elegant"&gt;...&lt;/button&gt;
+&lt;input class="mv-button mv-button-active mv-button-elegant" type="submit" value="..." /&gt;
+&lt;input class="mv-button mv-button-active mv-button-elegant" type="button" value="..." /&gt;
+&lt;input class="mv-button mv-button-active mv-button-elegant" type="reset" value="..." /&gt;
+
+&lt;ul class="mv-button-group mv-button-elegant"&gt;
+    &lt;li&gt;&lt;a class="mv-button-active" href="#"&gt;...&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;button&gt;...&lt;/button&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="submit" value="..." /&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="button" value="..." /&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;input type="reset" value="..." /&gt;&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <a class="mv-button mv-button-elegant" href="#">Button</a>
+        <button class="mv-button mv-button-elegant">Button</button>
+        <input class="mv-button mv-button-elegant" type="submit" value="Button" />
+        <input class="mv-button mv-button-elegant" type="button" value="Button" />
+        <input class="mv-button mv-button-elegant" type="reset" value="Button" />
+
+        <a class="mv-button mv-button-constrained mv-button-elegant" href="#">...</a>
+        <button class="mv-button mv-button-constrained mv-button-elegant">...</button>
+        <input class="mv-button mv-button-constrained mv-button-elegant" type="submit" value="..." />
+        <input class="mv-button mv-button-constrained mv-button-elegant" type="button" value="..." />
+        <input class="mv-button mv-button-constrained mv-button-elegant" type="reset" value="..." />
+
+        <ul class="mv-button-group mv-button-constrained mv-button-elegant">
+            <li><a href="#">...</a></li>
+            <li><button>...</button></li>
+            <li><input type="submit" value="..." /></li>
+            <li><input type="button" value="..." /></li>
+            <li><input type="reset" value="..." /></li>
+        </ul>
+
+        <ul class="mv-button-group mv-button-elegant">
+            <li><a href="#">...</a></li>
+            <li><button>...</button></li>
+            <li><input type="submit" value="..." /></li>
+            <li><input type="button" value="..." /></li>
+            <li><input type="reset" value="..." /></li>
+        </ul>
+
+        <a class="mv-button mv-button-active mv-button-elegant" href="#">...</a>
+        <button class="mv-button mv-button-active mv-button-elegant">...</button>
+        <input class="mv-button mv-button-active mv-button-elegant" type="submit" value="..." />
+        <input class="mv-button mv-button-active mv-button-elegant" type="button" value="..." />
+        <input class="mv-button mv-button-active mv-button-elegant" type="reset" value="..." />
+
+        <ul class="mv-button-group mv-button-elegant">
+            <li><a class="mv-button-active" href="#">...</a></li>
+            <li><button>...</button></li>
+            <li><input type="submit" value="..." /></li>
+            <li><input type="button" value="..." /></li>
+            <li><input type="reset" value="..." /></li>
+        </ul>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="images"></a>
+<h1>Images</h1>
+
+<ul>
+  <li>
+    <h2><code>.mv-image</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;img class="mv-image" src="../images/feature.jpg" alt="..." /&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <img class="mv-image" src="../images/feature.jpg" alt="..." />
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-image-thumbnail</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;img class="mv-image mv-image-thumbnail" src="../images/feature.jpg" alt="..." /&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <img class="mv-image mv-image-thumbnail" src="../images/feature.jpg" alt="..." />
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-image-preview</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;img class="mv-image mv-image-preview" src="../images/feature.jpg" alt="..." /&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <img class="mv-image mv-image-preview" src="../images/feature.jpg" alt="..." />
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-image-large</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;img class="mv-image mv-image-large" src="../images/feature.jpg" alt="..." /&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <img class="mv-image mv-image-large" src="../images/feature.jpg" alt="..." />
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-image-full</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+        <code>&lt;img class="mv-image mv-image-full" src="../images/feature.jpg" alt="..." /&gt;</code>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <img class="mv-image mv-image-full" src="../images/feature.jpg" alt="..." />
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="sections"></a>
+<h1>Sections</h1>
+
+<p><b>Note:</b> any or all of the header, body, or footer segments within a
+  section can be omitted</p>
+
+<ul>
+  <li>
+    <h2><code>.mv-section</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-header</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-body</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-footer</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-shadowed</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section mv-section-shadowed"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section mv-section-shadowed">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-popup</code></h2>
+
+    <p><b>Note:</b> The exact position of pop-ups must be declared separately</p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section mv-section-popup"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+<pre><code>&lt;div class="mv-section mv-section-shadowed mv-section-popup"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <i>No example yet</i>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-elegant</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section mv-section-elegant"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section mv-section-elegant">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-section-simple</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-section mv-section-simple"&gt;
+    &lt;div class="mv-section-header"&gt;
+        ...header...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-body"&gt;
+        ...body...
+    &lt;/div&gt;
+
+    &lt;div class="mv-section-footer"&gt;
+        ...footer...
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-section mv-section-simple">
+            <div class="mv-section-header">
+                ...header...
+            </div>
+
+            <div class="mv-section-body">
+                ...body...
+            </div>
+
+            <div class="mv-section-footer">
+                ...footer...
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="tables"></a>
+<h1>Tables</h1>
+
+<ul>
+  <li>
+    <h2><code>.mv-table</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table"&gt;
+    &lt;caption&gt;...&lt;/caption&gt;
+
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;th&gt;...&lt;th&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;...&lt;td&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;th&gt;...&lt;th&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;...&lt;td&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;th&gt;...&lt;th&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;...&lt;td&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table">
+            <caption>...</caption>
+
+            <thead>
+                <tr>
+                    <th>...<th>
+                    <th>...<th>
+                </tr>
+            </thead>
+
+            <tfoot>
+                <tr>
+                    <th>...<th>
+                    <th>...<th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-padded</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-padded"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-padded">
+            <tbody>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-emphasizedcells</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-emphasizedcells"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-emphasizedcells">
+            <tbody>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-sideheaders</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-sideheaders"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-sideheaders">
+            <tbody>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-sectioned</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-sectioned"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-sectioned">
+            <tbody>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-fullsize</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-fullsize"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;th&gt;
+            &lt;td&gt;...&lt;td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-fullsize">
+            <tbody>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+                <tr>
+                    <th>...<th>
+                    <td>...<td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-pagination</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-pagination"&gt;
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;&larr; Previous&lt;/th&gt;
+            &lt;th&gt;Next &rarr;&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-pagination">
+            <tfoot>
+                <tr>
+                    <th>&larr; Previous</th>
+                    <th>Next &rarr;</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-fauxtable</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-table mv-table-fauxtable"&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C2&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C2&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;div class="mv-table mv-table-padded mv-table-fauxtable"&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C2&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C2&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-table mv-table-fauxtable">
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R1, C1</div>
+                <div class="mv-table-fauxcell">R1, C2</div>
+            </div>
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R2, C1</div>
+                <div class="mv-table-fauxcell">R2, C2</div>
+            </div>
+        </div>
+
+        <div class="mv-table mv-table-padded mv-table-fauxtable">
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R1, C1</div>
+                <div class="mv-table-fauxcell">R1, C2</div>
+            </div>
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R2, C1</div>
+                <div class="mv-table-fauxcell">R2, C2</div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-fauxrow</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-table mv-table-fauxtable"&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C2&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C2&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-table mv-table-fauxtable">
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R1, C1</div>
+                <div class="mv-table-fauxcell">R1, C2</div>
+            </div>
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R2, C1</div>
+                <div class="mv-table-fauxcell">R2, C2</div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-fauxcell</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;div class="mv-table mv-table-fauxtable"&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R1, C2&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="mv-table-fauxrow"&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C1&lt;/div&gt;
+        &lt;div class="mv-table-fauxcell"&gt;R2, C2&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <div class="mv-table mv-table-fauxtable">
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R1, C1</div>
+                <div class="mv-table-fauxcell">R1, C2</div>
+            </div>
+            <div class="mv-table-fauxrow">
+                <div class="mv-table-fauxcell">R2, C1</div>
+                <div class="mv-table-fauxcell">R2, C2</div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-striped</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-striped"&gt;
+    &lt;caption&gt;...&lt;/caption&gt;
+
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-padded mv-table-striped"&gt;
+    &lt;caption&gt;...&lt;/caption&gt;
+
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-emphasizedcells mv-table-striped"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-sideheaders mv-table-striped"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-sectioned mv-table-striped"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;&lt;th scope="rowspan" colspan="2"&gt;Section 1&lt;/th&gt;&lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;&lt;th scope="rowspan" colspan="2"&gt;Section 2&lt;/th&gt;&lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-fullsize mv-table-striped"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-pagination mv-table-striped"&gt;
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;&larr; Previous&lt;/th&gt;
+            &lt;th&gt;Next &rarr;&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-striped">
+            <caption>...</caption>
+
+            <thead>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </thead>
+
+            <tfoot>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-padded mv-table-striped">
+            <caption>...</caption>
+
+            <thead>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </thead>
+
+            <tfoot>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-emphasizedcells mv-table-striped">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-sideheaders mv-table-striped">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-sectioned mv-table-striped">
+            <tbody>
+                <tr><th scope="rowspan" colspan="2">Section 1</th></tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+
+            <tbody>
+                <tr><th scope="rowspan" colspan="2">Section 2</th></tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-fullsize mv-table-striped">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-pagination mv-table-striped">
+            <tfoot>
+                <tr>
+                    <th>&larr; Previous</th>
+                    <th>Next &rarr;</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-simple</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-simple"&gt;
+    &lt;caption&gt;...&lt;/caption&gt;
+
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-padded mv-table-simple"&gt;
+    &lt;caption&gt;...&lt;/caption&gt;
+
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;th&gt;...&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-emphasizedcells mv-table-simple"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-sideheaders mv-table-simple"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-sectioned mv-table-simple"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;&lt;th scope="rowspan" colspan="2"&gt;Section 1&lt;/th&gt;&lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;&lt;th scope="rowspan" colspan="2"&gt;Section 2&lt;/th&gt;&lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-fullsize mv-table-simple"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-pagination mv-table-simple"&gt;
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;&larr; Previous&lt;/th&gt;
+            &lt;th&gt;Next &rarr;&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-simple">
+            <caption>...</caption>
+
+            <thead>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </thead>
+
+            <tfoot>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-padded mv-table-simple">
+            <caption>...</caption>
+
+            <thead>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </thead>
+
+            <tfoot>
+                <tr>
+                    <th>...</th>
+                    <th>...</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-emphasizedcells mv-table-simple">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-sideheaders mv-table-simple">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-sectioned mv-table-simple">
+            <tbody>
+                <tr><th scope="rowspan" colspan="2">Section 1</th></tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+
+            <tbody>
+                <tr><th scope="rowspan" colspan="2">Section 2</th></tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-fullsize mv-table-simple">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-pagination mv-table-simple">
+            <tfoot>
+                <tr>
+                    <th>&larr; Previous</th>
+                    <th>Next &rarr;</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-map</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-map"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-padded mv-table-map"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-sectioned mv-table-map"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-fullsize mv-table-map"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-pagination mv-table-map"&gt;
+    &lt;tfoot&gt;
+        &lt;tr&gt;
+            &lt;th&gt;&larr; Previous&lt;/th&gt;
+            &lt;th&gt;Next &rarr;&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/tfoot&gt;
+
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-map">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-padded mv-table-map">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-sectioned mv-table-map">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-fullsize mv-table-map">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-pagination mv-table-map">
+            <tfoot>
+                <tr>
+                    <th>&larr; Previous</th>
+                    <th>Next &rarr;</th>
+                </tr>
+            </tfoot>
+
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-table-boxed</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>table</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;table class="mv-table mv-table-boxed"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-padded mv-table-boxed"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table class="mv-table mv-table-fullsize mv-table-boxed"&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;th&gt;...&lt;/th&gt;
+            &lt;td&gt;...&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <table class="mv-table mv-table-boxed">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-padded mv-table-boxed">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="mv-table mv-table-fullsize mv-table-boxed">
+            <tbody>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+                <tr>
+                    <th>...</th>
+                    <td>...</td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="forms"></a>
+<h1>Forms</h1>
+
+<ul>
+  <li>
+    <h2><code>.mv-form</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;form class="mv-form"&gt;
+   &lt;fieldset&gt;
+       &lt;legend&gt;&lt;label&gt;...&lt;/label&gt;&lt;/legend&gt;
+
+       &lt;ul&gt;
+           &lt;li&gt;&lt;input type="..." value="..." /&gt;&lt;/li&gt;
+           &lt;li&gt;&lt;input type="..." value="..." /&gt;&lt;/li&gt;
+           &lt;li&gt;&lt;input type="..." value="..." /&gt;&lt;/li&gt;
+       &lt;/ul&gt;
+   &lt;/fieldset&gt;
+
+   &lt;fieldset&gt;
+       &lt;legend&gt;...&lt;/legend&gt;
+
+       &lt;label&gt;...&lt;/label&gt;
+       &lt;input type="..." value="..." /&gt;
+
+       &lt;label&gt;...&lt;/label&gt;
+       &lt;textarea&gt;...&lt;/textarea&gt;
+
+       &lt;label&gt;...&lt;/label&gt;
+       &lt;select&gt;
+           &lt;option value="..."&gt;...&lt;/option&gt;
+           &lt;option value="..."&gt;...&lt;/option&gt;
+       &lt;/select&gt;
+   &lt;/fieldset&gt;
+&lt;/form&gt;</code></pre>
+
+<pre><code>
+&lt;form class="mv-form"&gt;
+   &lt;label&gt;...&lt;/label&gt;
+   &lt;input type="..." value="..." /&gt;
+
+   &lt;label&gt;...&lt;/label&gt;
+   &lt;textarea&gt;...&lt;/textarea&gt;
+
+   &lt;label&gt;...&lt;/label&gt;
+   &lt;select&gt;
+       &lt;option value="..."&gt;...&lt;/option&gt;
+       &lt;option value="..."&gt;...&lt;/option&gt;
+   &lt;/select&gt;
+&lt;/form&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <form class="mv-form">
+           <fieldset>
+               <legend><label>...</label></legend>
+
+               <ul>
+                   <li><input type="..." value="..." /></li>
+                   <li><input type="..." value="..." /></li>
+                   <li><input type="..." value="..." /></li>
+               </ul>
+           </fieldset>
+
+           <fieldset>
+               <legend>...</legend>
+
+               <label>...</label>
+               <input type="..." value="..." />
+
+               <label>...</label>
+               <textarea>...</textarea>
+
+               <label>...</label>
+               <select>
+                   <option value="...">...</option>
+                   <option value="...">...</option>
+               </select>
+           </fieldset>
+        </form>
+
+        <form class="mv-form">
+           <label>...</label>
+           <input type="..." value="..." />
+
+           <label>...</label>
+           <textarea>...</textarea>
+
+           <label>...</label>
+           <select>
+               <option value="...">...</option>
+               <option value="...">...</option>
+           </select>
+        </form>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-form-nonessential</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;form&gt;
+  &lt;p class="mv-form-nonessential"&gt;This is some helpful text pertaining to a form, but is not essential.&lt;/p&gt;
+
+  &lt;label class="mv-form-nonessential"&gt;Helpful Text&lt;/label&gt;
+  &lt;input type="text" value="..." /&gt;
+&lt;/form></code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <form>
+          <p class="mv-form-nonessential">This is some helpful text pertaining
+            to a form, but is not essential.</p>
+
+          <label class="mv-form-nonessential">Helpful Text</label>
+          <input type="text" value="..." />
+        </form>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-form-requiredfield</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;form&gt;
+  &lt;label class="mv-form-requiredfield"&gt;Label&lt;/label&gt;
+  &lt;input type="text" class="mv-form-requiredfield" value="..." /&gt;
+
+  &lt;p&gt;A long-form message about &lt;span class="mv-form-requiredfield"&gt;required&lt;/span&gt; fields.&lt;/p&gt;
+&lt;/form></code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <form>
+          <label class="mv-form-requiredfield">Label</label>
+          <input type="text" class="mv-form-requiredfield" value="..." />
+
+          <p>A long-form message about <span class="mv-form-requiredfield">required</span> fields.</p>
+        </form>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-form-error</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;form&gt;
+  &lt;label class="mv-form-error"&gt;Label&lt;/label&gt;
+  &lt;input type="text" class="mv-form-error" value="..." /&gt;
+
+  &lt;ul class="mv-form-error"&gt;
+    &lt;li&gt;Error message&lt;/li&gt;
+    &lt;li&gt;Error message&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p class="mv-form-error"&gt;A long-form &lt;span class="mv-form-error"&gt;error&lt;/span&gt; message.&lt;/p&gt;
+&lt;/form></code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <form>
+          <label class="mv-form-error">Label</label>
+          <input type="text" class="mv-form-error" value="..." />
+
+          <ul class="mv-form-error">
+            <li>Error message</li>
+            <li>Error message</li>
+          </ul>
+
+          <p class="mv-form-error">A long-form
+            <span class="mv-form-error">error</span> message.</p>
+        </form>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-form-modified</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;form&gt;
+  &lt;label class="mv-form-modified"&gt;Label&lt;/label&gt;
+  &lt;input type="text" class="mv-form-modified" value="..." /&gt;
+
+  &lt;ul class="mv-form-modified"&gt;
+    &lt;li&gt;Message about a modified field&lt;/li&gt;
+    &lt;li&gt;Message about a modified field&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p class="mv-form-modified"&gt;A long-form message about &lt;span class="mv-form-modified"&gt;modified&lt;/span&gt; fields.&lt;/p&gt;
+&lt;/form></code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <form>
+          <label class="mv-form-modified">Label</label>
+          <input type="text" class="mv-form-modified" value="..." />
+
+          <ul class="mv-form-modified">
+            <li>Message about a modified field</li>
+            <li>Message about a modified field</li>
+          </ul>
+
+          <p class="mv-form-modified">A long-form message about modified
+            fields.</p>
+        </form>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<a id="lists"></a>
+<h1>Lists</h1>
+
+<ul>
+  <li>
+    <h2><code>.mv-list</code></h2>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;ol class="mv-list"&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+
+<pre><code>&lt;ul class="mv-list"&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+
+<pre><code>&lt;dl class="mv-list"&gt;
+    &lt;dt&gt;Term&lt;/dt&gt;
+    &lt;dd&gt;Definition&lt;/dd&gt;
+    &lt;dt&gt;Term&lt;/dt&gt;
+    &lt;dd&gt;Definition&lt;/dd&gt;
+&lt;/dl&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <ol class="mv-list">
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+        </ol>
+
+        <ul class="mv-list">
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+        </ul>
+
+        <dl class="mv-list">
+            <dt>Term</dt>
+            <dd>Definition</dd>
+            <dt>Term</dt>
+            <dd>Definition</dd>
+        </dl>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-list-nobullets</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>ol</code> and
+      <code>ul</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;ol class="mv-list mv-list-nobullets"&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+
+<pre><code>&lt;ul class="mv-list mv-list-nobullets"&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <ol class="mv-list mv-list-nobullets">
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+        </ol>
+
+        <ul class="mv-list mv-list-nobullets">
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+        </ul>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-list-noindent</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>ol</code> and
+      <code>ul</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;ol class="mv-list mv-list-noindent"&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+
+<pre><code>&lt;ul class="mv-list mv-list-noindent"&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <ol class="mv-list mv-list-noindent">
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+        </ol>
+
+        <ul class="mv-list mv-list-noindent">
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+        </ul>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-list-unmarked</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>ol</code> and
+      <code>ul</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;ol class="mv-list mv-list-unmarked"&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+
+<pre><code>&lt;ul class="mv-list mv-list-unmarked"&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <ol class="mv-list mv-list-unmarked">
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+        </ol>
+
+        <ul class="mv-list mv-list-unmarked">
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+        </ul>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>.mv-list-horizontal</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>ol</code>,
+      <code>ul</code>, and <code>dl</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;ol class="mv-list mv-list-horizontal"&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+    &lt;li&gt;Ordered Item&lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+
+<pre><code>&lt;ul class="mv-list mv-list-horizontal"&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+    &lt;li&gt;Unordered Item&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+
+<pre><code>&lt;dl class="mv-list mv-list-horizontal"&gt;
+    &lt;dt&gt;Term&lt;/dt&gt;
+    &lt;dd&gt;Definition&lt;/dd&gt;
+    &lt;dt&gt;Term&lt;/dt&gt;
+    &lt;dd&gt;Definition&lt;/dd&gt;
+&lt;/dl&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <ol class="mv-list mv-list-horizontal">
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+            <li>Ordered Item</li>
+        </ol>
+
+        <ul class="mv-list mv-list-horizontal">
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+            <li>Unordered Item</li>
+        </ul>
+
+        <dl class="mv-list mv-list-horizontal">
+            <dt>Term</dt>
+            <dd>Definition</dd>
+            <dt>Term</dt>
+            <dd>Definition</dd>
+        </dl>
+      </div>
+    </div>
+  </li>
+  <li>
+    <h2><code>dl.mv-list-dictionary</code></h2>
+
+    <p><b>Note:</b> Currently implemented using <code>dl</code> only<p>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Code</div>
+      <div class="mv-section-body">
+<pre><code>&lt;dl class="mv-list mv-list-dictionary"&gt;
+    &lt;dt&gt;Term&lt;/dt&gt;
+    &lt;dd&gt;Definition&lt;/dd&gt;
+    &lt;dt&gt;Term&lt;/dt&gt;
+    &lt;dd&gt;Definition&lt;/dd&gt;
+&lt;/dl&gt;</code></pre>
+      </div>
+    </div>
+
+    <div class="mv-section mv-section-simple">
+      <div class="mv-section-header">Example</div>
+      <div class="mv-section-body">
+        <dl class="mv-list mv-list-dictionary">
+            <dt>Term</dt>
+            <dd>Definition</dd>
+            <dt>Term</dt>
+            <dd>Definition</dd>
+        </dl>
+      </div>
+    </div>
+  </li>
+</ul>
+
+  </body>
+</html>

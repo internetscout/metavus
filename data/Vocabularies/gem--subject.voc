@@ -1,0 +1,277 @@
+<vocabulary>
+    <name>Subject</name>
+    <description>Two-level subject vocabulary from the Gateway to Educational Materials project.</description>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-subject</url>
+    <version></version>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>
+        <name>Subject</name>
+        <namespace>http://purl.org/gem/instance/subject/GEM-S/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-subject</url>
+    </qualifier>
+    <term>
+        <value>Arts</value>
+        <term>Architecture</term>
+        <term>Art therapy</term>
+        <term>Careers</term>
+        <term>Computers in art</term>
+        <term>Dance</term>
+        <term>Drama/dramatics</term>
+        <term>Film</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Music</term>
+        <term>Photography</term>
+        <term>Popular culture</term>
+        <term>Process skills</term>
+        <term>Technology</term>
+        <term>Theater arts</term>
+        <term>Visual arts</term>
+    </term>
+    <term>
+        <value>Educational Technology</value>
+        <term>Audio-visual equipment</term>
+        <term>Careers</term>
+        <term>Educational media</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Integrating technology into the classroom</term>
+        <term>Language laboratories</term>
+        <term>Multimedia education</term>
+        <term>Process skills</term>
+        <term>Staff inservice</term>
+        <term>Technology</term>
+        <term>Technology planning</term>
+    </term>
+    <term>
+        <value>Foreign Languages</value>
+        <term>Alphabet</term>
+        <term>Bilingualism</term>
+        <term>Careers</term>
+        <term>Cultural awareness</term>
+        <term>Grammar</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Linguistics</term>
+        <term>Listening comprehension</term>
+        <term>Process skills</term>
+        <term>Reading</term>
+        <term>Speaking</term>
+        <term>Spelling</term>
+        <term>Technology</term>
+        <term>Vocabulary</term>
+        <term>Writing</term>
+    </term>
+    <term>
+        <value>Health</value>
+        <term>Aging</term>
+        <term>Body systems and senses</term>
+        <term>Careers</term>
+        <term>Chronic conditions</term>
+        <term>Consumer health</term>
+        <term>Death and dying</term>
+        <term>Disease</term>
+        <term>Environmental health</term>
+        <term>Family life</term>
+        <term>History</term>
+        <term>Human sexuality</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Mental/emotional health</term>
+        <term>Nutrition</term>
+        <term>Process skills</term>
+        <term>Safety</term>
+        <term>Smoking</term>
+        <term>Substance abuse prevention</term>
+        <term>Technology</term>
+    </term>
+    <term>
+        <value>Language Arts</value>
+        <term>Alphabet</term>
+        <term>Careers</term>
+        <term>Debate</term>
+        <term>Grammar</term>
+        <term>Handwriting</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Journalism</term>
+        <term>Listening comprehension</term>
+        <term>Literature</term>
+        <term>Mechanics</term>
+        <term>Phonics</term>
+        <term>Process skills</term>
+        <term>Reading</term>
+        <term>Reading aloud</term>
+        <term>Speech</term>
+        <term>Spelling</term>
+        <term>Story telling</term>
+        <term>Technology</term>
+        <term>Vocabulary</term>
+        <term>Whole language</term>
+        <term>Writing (composition)</term>
+    </term>
+    <term>
+        <value>Mathematics</value>
+        <term>Algebra</term>
+        <term>Applied mathematics</term>
+        <term>Arithmetic</term>
+        <term>Calculus</term>
+        <term>Careers</term>
+        <term>Discrete mathematics</term>
+        <term>Functions</term>
+        <term>Geometry</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Measurement</term>
+        <term>Number sense</term>
+        <term>Number theory</term>
+        <term>Patterns</term>
+        <term>Probability</term>
+        <term>Process skills</term>
+        <term>Statistics</term>
+        <term>Technology</term>
+        <term>Trigonometry</term>
+    </term>
+    <term>
+        <value>Philosophy</value>
+        <term>Aesthetics</term>
+        <term>Careers</term>
+        <term>Educational philosophy</term>
+        <term>Epistemology</term>
+        <term>Ethics</term>
+        <term>Existentialism</term>
+        <term>Hermeneutics</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Logic</term>
+        <term>Marxism</term>
+        <term>Phenomenology</term>
+        <term>Platonism</term>
+        <term>Process skills</term>
+        <term>Semiotics</term>
+        <term>Technology</term>
+    </term>
+    <term>
+        <value>Physical Education</value>
+        <term>Adventure and risk challenge activities</term>
+        <term>Aquatics</term>
+        <term>Careers</term>
+        <term>Games (educational)</term>
+        <term>Gymnastics (educational)</term>
+        <term>History</term>
+        <term>Individual sports</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Motor/movement skills</term>
+        <term>Outdoor education</term>
+        <term>Process skills</term>
+        <term>Rhythms and dance</term>
+        <term>Skill-related fitness</term>
+        <term>Team sports</term>
+        <term>Technology</term>
+    </term>
+    <term>
+        <value>Religion</value>
+        <term>Buddhism</term>
+        <term>Careers</term>
+        <term>Christianity</term>
+        <term>Confucianism</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Islam</term>
+        <term>Judaism</term>
+        <term>Process skills</term>
+        <term>Taoism</term>
+        <term>Technology</term>
+    </term>
+    <term>
+        <value>Science</value>
+        <term>Agriculture</term>
+        <term>Astronomy</term>
+        <term>Biological and life sciences</term>
+        <term>Biology</term>
+        <term>Botany</term>
+        <term>Careers</term>
+        <term>Chemistry</term>
+        <term>Earth science</term>
+        <term>Ecology</term>
+        <term>Embryology</term>
+        <term>Engineering</term>
+        <term>Entomology</term>
+        <term>General science</term>
+        <term>Geology</term>
+        <term>Histology</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Metallurgy</term>
+        <term>Meteorology</term>
+        <term>Natural history</term>
+        <term>Oceanography</term>
+        <term>Paleontology</term>
+        <term>Pharmacology</term>
+        <term>Physical sciences</term>
+        <term>Physics</term>
+        <term>Process skills</term>
+        <term>Space sciences</term>
+        <term>Technology</term>
+    </term>
+    <term>
+        <value>Social studies</value>
+        <term>Anthropology</term>
+        <term>Careers</term>
+        <term>Civics</term>
+        <term>Comparative political systems</term>
+        <term>Criminology</term>
+        <term>Current events/issues</term>
+        <term>Economics</term>
+        <term>Geography</term>
+        <term>Gerontology</term>
+        <term>History</term>
+        <term>Human behavior</term>
+        <term>Human relations</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Process skills</term>
+        <term>Psychology</term>
+        <term>Social work</term>
+        <term>Sociology</term>
+        <term>State history</term>
+        <term>Technology</term>
+        <term>Technology and civilization</term>
+        <term>United States Constitution</term>
+        <term>United States government</term>
+        <term>United States history</term>
+        <term>Urban studies</term>
+        <term>World history</term>
+    </term>
+    <term>
+        <value>Vocational Education</value>
+        <term>Agriculture</term>
+        <term>Allied health occupations</term>
+        <term>Business</term>
+        <term>Careers</term>
+        <term>Cooperative education</term>
+        <term>Distributive</term>
+        <term>History</term>
+        <term>Informal education</term>
+        <term>Instructional issues</term>
+        <term>Occupational home economics</term>
+        <term>Process skills</term>
+        <term>School-to-work</term>
+        <term>Tech prep</term>
+        <term>Technical</term>
+        <term>Technology</term>
+        <term>Trade and industrial</term>
+    </term>
+</vocabulary>

@@ -1,0 +1,28 @@
+<?PHP
+#
+#   FILE:  EditNavigation.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<link type="text/css" rel="stylesheet" href="<?PHP $AF->PUIFile("NavEditor.css"); ?>" media="all" />
+
+<h1>Primary Navigation</h1>
+
+<?PHP $H_FormUI->displayErrorBlock(); ?>
+<form method="post" action="index.php?P=P_NavEditor_EditNavigation">
+  <?PHP $H_FormUI->displayFormTable(); ?>
+
+  <button class="btn btn-primary mv-button-iconed" name="Submit" type="submit"
+        value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon" /> Save</button>
+  <button class="btn btn-danger mv-button-iconed" name="Submit" type="submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>

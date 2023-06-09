@@ -1,0 +1,258 @@
+<?PHP
+#
+#   FILE:  ViewFolder.html (Folders plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Record;
+use Metavus\MetadataSchema;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\ResourceSummary;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+/**
+ * Print the given folder item.
+ * @param Record $Resource resource object
+ * @param Folder $Folder the folder the resource belongs to
+ * @param Resource|null $Previous previous resource or NULL if at the beginning
+ * @param Resource|null $Next next resource or NULL if at the end
+ * @return void
+ */
+function PrintFolderItem(Folder $Folder, Record $Resource, $Previous, $Next)
+{
+    $SafeFolderId = defaulthtmlentities(urlencode($Folder->Id()));
+    $SafeItemId = defaulthtmlentities(urlencode($Resource->Id()));
+
+    $Summary = ResourceSummary::Create($Resource->id());
+    $Summary->IncludeResourceType(true);
+    $Summary->AdditionalContext([ "FolderId" => $Folder->Id() ]);
+    ?>
+    <div class="mv-folders-resource" data-parentfolderid="<?= $SafeFolderId; ?>"
+          data-itemid="<?= $SafeItemId; ?>">
+    <?PHP  $Summary->Display();  ?>
+    </div>
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+if (isset($H_ErrorMessage)) {
+    print '<div class="alert alert-danger">'
+        .$H_ErrorMessage
+        .'</div>';
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+$AF->RequireUIFile("jquery-ui.css", AF::ORDER_FIRST);
+$AF->RequireUIFile("jquery-ui.js");
+
+$SafeId = defaulthtmlentities(urlencode($Id));
+$SafeName = defaulthtmlentities($Name);
+$SafeTruncatedName = defaulthtmlentities($TruncatedName);
+$SafeNote = defaulthtmlentities($Note);
+$SafeIsShared = defaulthtmlentities($IsShared);
+$SafeIsSelected = defaulthtmlentities($IsSelected);
+$SafeShareUrl = defaulthtmlentities($ShareUrl);
+$SafeOffset = defaulthtmlentities($Offset);
+$SafeLength = defaulthtmlentities($Length);
+$SafePreviousOffset = defaulthtmlentities($PreviousOffset);
+$SafeNextOffset = defaulthtmlentities($NextOffset);
+$LengthValues = [10 => 10, 25 => 25, 50 => 50, 100 => 100];
+$ShowLimit = $HasPreviousItems || $HasNextItems || min($LengthValues) < $TotalItemCount;
+$HasItems = ($TotalItemCount > 0) ? true : false;
+
+$PaginationUrl = "index.php?P=P_Folders_ViewFolder&amp;FolderId=".$SafeId
+    ."&amp;Length=".$SafeLength;
+if ($H_CurrentSortField != "Placeholder") {
+    $PaginationUrl .= "&amp;F_SortFieldId=".$H_CurrentSortField."&amp;AO="
+        .intval($H_AscSortingOrder);
+}
+
+$SortItemList["Placeholder"] = "-- select an option --";
+$FieldTypesForSorting = [
+    MetadataSchema::MDFTYPE_TEXT,
+    MetadataSchema::MDFTYPE_NUMBER,
+    MetadataSchema::MDFTYPE_DATE,
+    MetadataSchema::MDFTYPE_TIMESTAMP,
+    MetadataSchema::MDFTYPE_CONTROLLEDNAME,
+    MetadataSchema::MDFTYPE_OPTION,
+    MetadataSchema::MDFTYPE_USER
+];
+
+# schemas to retrieve field (for sorting) from
+foreach ($H_FolderSchemas as $SchemaId => $Val) {
+    $Schema = new MetadataSchema($SchemaId);
+    $SchemaName = $Schema->Name();
+
+    # retrieve field names for all field type
+    foreach ($FieldTypesForSorting as $Type) {
+        $Fields = $Schema->GetFields($Type);
+        foreach ($Fields as $FieldId => $Field) {
+            $SortItemList[$SchemaName][$FieldId] = $Field->Name();
+        }
+    }
+}
+
+
+?>
+
+<div id="Folders_Errors<?= $SafeId?>"></div>
+<div class="container-fluid mv-folders-header <?PHP if ($IsShared) {
+    print "mv-folders-isshared";
+                                              } ?> mb-2">
+  <div class="row">
+    <div class="col">
+      <h1 class="mv-folders-folder-name"
+          id="mv-folders-nametitle<?= $SafeId; ?>"
+          data-folderid="<?= $SafeId; ?>"><?= $SafeName; ?>
+      </h1>
+      <a class="mv-folders-folder-shareurl" href="<?= $SafeShareUrl; ?>"><?= $SafeShareUrl; ?></a>
+    </div>
+    <div class="col text-center">
+      <form method="get" action="index.php">
+        <input type="hidden" name="P" value="P_Folders_ViewFolder" />
+        <input type="hidden" name="FolderId" value="<?= $SafeId; ?>" />
+        <input type="hidden" name="Length" value="<?= $SafeLength ?>">
+        <input type="hidden" name="Offset" value="<?= $SafeOffset ?>">
+
+        <label for="F_SortFieldId">Sort By:</label>
+        <?PHP
+        $OptionList = new HtmlOptionList("F_SortFieldId", $SortItemList, $H_CurrentSortField);
+        $OptionList->SubmitOnChange(true);
+        $OptionList->DisabledOptions("Placeholder");
+        $OptionList->PrintHtml();
+        ?>
+        <button id="mv-folders-sort-order-button" type="submit"
+          value="Update" class="mv-search-order-button btn btn-primary btn-sm"
+          <?= ($H_CurrentSortField == "Placeholder") ? "disabled" : "" ?>>
+          <?= $H_AscSortingOrder ?
+            "<span class='mv-search-arrow' style='transform: rotate(90deg);'>&#x279c;</span>" :
+            "<span class='mv-search-arrow' style='transform: rotate(-90deg);'>&#x279c;</span>" ?>
+        </button>
+        <div style="display: none;">
+          <label for="AO_0">Descending Order</label>
+          <input type="radio" name="AO" id="AO_0" value="0"
+            <?= $H_AscSortingOrder ? "" : "checked" ?> />
+        </div>
+        <div style="display: none;">
+          <label for="AO_1">Ascending Order</label>
+          <input type="radio" name="AO" id="AO_1" value="1"
+            <?= $H_AscSortingOrder ? "checked" : "" ?>/>
+        </div>
+      </form>
+    </div>
+    <div class="col text-right">
+      <?PHP if ($IsOwner) { ?>
+        <a class="mv-button-iconed mv-folders-editnamelink btn btn-primary btn-sm "
+           id="mv-folders-foldernamelink<?= $SafeId; ?>"
+           href="index.php?P=P_Folders_ChangeFolderName&amp;FolderId=<?= $SafeId; ?>"
+           title="Edit the name of this folder"
+           data-folderid="<?= $SafeId?>"
+        ><img class="mv-button-icon" src="<?= $AF->GUIFile("Pencil.svg"); ?>"
+            alt="" /> Edit Name</a>
+        <div class="mv-folders-dialog-namechange cw-no-close"
+              id="mv-folders-namechange<?= $SafeId;?>""
+              data-ajaxlink="index.php?P=P_Folders_UpdateFolderName&FolderId=<?=
+                $SafeId;?>&FolderName="
+              data-folderid="<?= $SafeId?>"
+              data-foldername="<?= $SafeTruncatedName; ?>"
+              title="Rename ">
+            <input type="text" name="FolderName" value="<?= $SafeName; ?>" required="true" />
+        </div>
+          <a class="btn btn-danger btn-sm mv-button-iconed"
+              href="index.php?P=P_Folders_ConfirmDeleteFolder&amp;FolderId=<?=$SafeId; ?>"
+              title="Delete this folder">
+            <img class="mv-button-icon"
+                src="<?= $AF->GUIFile("Delete.svg"); ?>"
+                alt="" /> Delete</a>
+            <?PHP if ($HasItems) {?>
+                <a class="btn btn-danger btn-sm mv-button-iconed
+                mv-folders-removeresource mv-folders-clear-confirmlink"
+                href="index.php?P=P_Folders_RemoveAllItems&amp;FolderId=<?= $SafeId; ?>"
+                title="Remove all resources from this folder"
+                id="mv-folders-folderlink<?= $SafeId;?>"
+                data-parentfolderid="<?= $SafeId;?>"
+                data-folderid="<?= $SafeId; ?>"><img src="<?= $AF->GUIFile('Broom.svg'); ?>"
+                alt="" class="mv-button-icon" /> Clear</a>
+                <div class="cw-dialog-confirm cw-no-close" id="mv-folders-folderclear<?=
+                $SafeId?>" title="Clear <?= $SafeTruncatedName; ?>">
+                Clear contents of folder <em><?= $SafeName; ?></em>?
+                </div>
+            <?PHP } ?>
+        <a class="btn btn-primary btn-sm mv-button-iconed"
+            href="index.php?P=P_Folders_ManageFolders">
+          <img class="mv-button-icon" src="<?= $AF->GUIFile("cog.png"); ?>"
+            alt="" /> Manage Folders</a>
+            <?PHP $AF->SignalEvent(
+                "EVENT_HTML_INSERTION_POINT",
+                [
+                    "PageName" => $AF->GetPageName(),
+                    "Location" => "Folder Buttons",
+                    "Context" => ["FolderId" => $Folder->Id()]
+                ]
+            ); ?>
+
+      <?PHP } ?>
+    </div>
+  </div>
+</div>
+
+<p class="mv-folders-folder-description" data-folderid="<?=
+    $SafeId; ?>"><?= nl2br($SafeNote); ?></p>
+
+<div class="mv-folders-items<?PHP if (!$IsOwner) {
+    print ' mv-folders-nojs';
+                            } ?>">
+  <?PHP if ($HasItems) { ?>
+        <?PHP PrintFolderItems($Folder, $Items); ?>
+  <?PHP } else { ?>
+    <p class="mv-folders-noitems">There are no items in this folder.</p>
+  <?PHP } ?>
+</div>
+
+<div class="container">
+  <div class="row">
+    <div class="col mv-folders-pagination-left">
+      <?PHP if ($HasPreviousItems) {
+            $PaginationUrl .= "&amp;Offset=".$SafePreviousOffset;
+            ?>
+        <a class="btn btn-primary"
+            href="<?= $PaginationUrl; ?>">&larr; Previous</a>
+      <?PHP } ?>
+    </div>
+    <div class="col mv-folders-pagination-center">
+      <?PHP if ($ShowLimit) { ?>
+        <form method="get" action="index.php">
+          <input type="hidden" name="P" value="P_Folders_ViewFolder" />
+          <input type="hidden" name="FolderId" value="<?= $SafeId; ?>" />
+          <input type="hidden" name="Offset" value="<?= $Offset; ?>">
+            <?PHP if ($H_CurrentSortField != "Placeholder") { ?>
+            <input type="hidden" name="F_SortFieldId" value="<?= $SortFieldId; ?>">
+            <input type="hidden" name="AO" value="<?= intval($H_AscSortingOrder); ?>">
+            <?PHP } ?>
+
+          <label for="Length">Resources Per Page:</label>
+            <?PHP
+            $OptionList = new HtmlOptionList("Length", $LengthValues, $Length);
+            $OptionList->SubmitOnChange(true);
+            $OptionList->PrintHtml();
+            ?>
+        </form>
+      <?PHP } ?>
+    </div>
+    <div class="col mv-folders-pagination-right">
+      <?PHP if ($HasNextItems) {
+            $PaginationUrl .= "&amp;Offset=".$SafeNextOffset;
+            ?>
+        <a class="btn btn-primary" href="<?= $PaginationUrl; ?>">Next &rarr;</a>
+      <?PHP } ?>
+    </div>
+  </div>
+</div>

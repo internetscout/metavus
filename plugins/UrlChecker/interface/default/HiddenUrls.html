@@ -1,0 +1,319 @@
+<?PHP
+#
+#   FILE:  HiddenUrls.html (UrlChecker plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\MetadataSchema;
+use Metavus\Plugins\UrlChecker\InvalidUrl;
+use Metavus\InterfaceConfiguration;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+/**
+ * Print out a single invalid resource URL's data.
+ * @param $Values array of values of data related to the invalid URL
+ */
+function PrintInvalidResourceUrl(InvalidUrl $InvalidUrl)
+{
+    global $NumUrlFields, $AF, $StatusCode;
+
+    $Resource = $InvalidUrl->GetAssociatedResource();
+    $Field = $InvalidUrl->GetAssociatedField();
+
+    $Schema = new MetadataSchema($Resource->getSchemaId());
+    $TitleField = $Schema->GetFieldByMappedName("Title");
+
+    # get the resource name and RFC anchor name
+    $DefaultCharSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
+    $Name = defaulthtmlentities(
+        StdLib::NeatlyTruncateString($Resource->Get($TitleField), 22),
+        ENT_QUOTES,
+        $DefaultCharSet,
+        false
+    );
+    $Title = defaulthtmlentities($Resource->Get($TitleField), ENT_QUOTES, $DefaultCharSet, false);
+    $Url = defaulthtmlentities($InvalidUrl->Url, ENT_QUOTES, $DefaultCharSet, false);
+    $FinalUrl = defaulthtmlentities($InvalidUrl->FinalUrl, ENT_QUOTES, $DefaultCharSet, false);
+    $FieldName = defaulthtmlentities($Field->GetDisplayName(), ENT_QUOTES, $DefaultCharSet, false);
+    $StatusText = $InvalidUrl->ReasonPhrase;
+    $TitleWithSpaces = defaulthtmlentities(
+        $Resource->Get($TitleField),
+        ENT_QUOTES,
+        $DefaultCharSet,
+        false
+    );
+
+    # basic url href sanitization (mainly to reject javascript)
+    $UrlHref = "#";
+    if (preg_match("/^(mailto|ftps?|https?):\/\//", $InvalidUrl->Url)) {
+        $UrlHref = $InvalidUrl->Url;
+    }
+
+    $FinalUrlHref = "#";
+    if (preg_match("/^(mailto|ftps?|https?):\/\//", $InvalidUrl->FinalUrl)) {
+        $FinalUrlHref = $InvalidUrl->FinalUrl;
+    }
+
+    $CodeString = strval($InvalidUrl->StatusCode);
+
+    # construct a search query string
+    $Search = $Resource->Get($TitleField);
+
+    # add the publisher value if the field exists
+    if ($Schema->fieldExists("Publisher")) {
+        $Publisher = $Schema->getField("Publisher");
+
+        if ($Publisher->Type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+            foreach ($Resource->Get($Publisher) as $PublisherName) {
+                $Search .= " ".$PublisherName;
+            }
+        }
+    }
+
+    $Search = urlencode($Search);
+
+    $MyPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+
+    # determine if we should display the release/withhold buttons
+    if ($MyPlugin->ConfigSetting("ReleaseConfiguration") !== null) {
+        $DisplayReleaseActions = true;
+    } else {
+        $DisplayReleaseActions = false;
+    }
+
+    ?>
+    <!-- invalid url -->
+    <tr>
+        <!-- error type -->
+        <td><?PHP print StatusCodeToText($InvalidUrl->StatusCode); ?></td>
+
+        <?PHP  if ($NumUrlFields > 1) {  ?>
+        <!-- field -->
+        <td><?PHP print $FieldName; ?></td>
+        <?PHP  } ?>
+
+        <!-- resource -->
+        <td>
+            <a href="index.php?P=FullRecord&amp;ResourceId=<?= $Resource->Id(); ?>"
+                title="<?= $Title; ?>"><?= $Name; ?></a>
+        </td>
+
+        <!-- url -->
+        <td>
+            <?PHP if (strlen($Url) > 65) { ?>
+            <a href="<?= $UrlHref; ?>" target="_blank" title="<?= $Url; ?>">
+                <?= substr($Url, 0, 65)."..."; ?></a>
+            <?PHP } else { ?>
+            <a href="<?= $UrlHref; ?>" target="_blank"><?= $Url; ?></a>
+            <?PHP } ?>
+            <?PHP if ($CodeString[0] == "3" && $InvalidUrl->FinalStatusCode == 200) { ?>
+            [<a href="<?= $FinalUrlHref; ?>" target="_blank">Redirect Page</a>]
+            </div>
+            <?PHP } ?>
+        </td>
+
+        <!-- actions -->
+        <td>
+            <a href="<?=
+                str_replace('$ID', $Resource->id(), $Resource->getSchema()->editPage()); ?>"
+                title="Edit &quot;<?= $TitleWithSpaces; ?>&quot;">
+                <img src="plugins/UrlChecker/interface/default/images/edit.gif" alt="Edit" />
+            </a>
+            <?PHP if ($DisplayReleaseActions) { ?>
+                <?PHP if ($MyPlugin->IsResourceReleased($Resource)) { ?>
+            <a href="index.php?P=P_UrlChecker_Withhold&amp;ResourceId=<?=
+                $Resource->Id(); ?>&amp;FieldId=<?= $Field->Id(); ?>"
+                title="Remove &quot;<?= $TitleWithSpaces; ?>&quot; from public collection">
+                <img src="plugins/UrlChecker/interface/default/images/withhold.gif" alt="Withold" />
+            </a>
+                <?PHP } else { ?>
+            <a href="index.php?P=P_UrlChecker_Release&amp;ResourceId=<?=
+                $Resource->Id(); ?>&amp;FieldId=<?= $Field->Id(); ?>"
+                title="Add &quot;<?= $TitleWithSpaces; ?>&quot; to public collection">
+                <img src="plugins/UrlChecker/interface/default/images/release.gif" alt="Release" />
+            </a>
+                <?PHP } ?>
+            <?PHP } ?>
+            <?PHP if (
+                    $CodeString[0] == "3" &&
+                    $InvalidUrl->FinalStatusCode == 200 &&
+                    !$InvalidUrl->IsFinalUrlInvalid
+) { ?>
+            <a href="index.php?P=P_UrlChecker_ConfirmAutofix&amp;ResourceId=<?=
+                $Resource->Id(); ?>&amp;FieldId=<?= $Field->Id(); ?>"
+                title="Automatically edit the resource and change the URL to the redirected page">
+                <img src="plugins/UrlChecker/interface/default/images/autofix.gif" alt="Auto-fix" />
+            </a>
+            <?PHP } else { ?>
+            <a><img src="plugins/UrlChecker/interface/default/images/invisible.gif"
+                alt="Auto-fix" /></a>
+            <?PHP } ?>
+            <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->Id(); ?>"
+                title="Validate this URL now. This may take awhile">
+                <img src="plugins/UrlChecker/interface/default/images/check.gif" alt="Check" />
+            </a>
+            <a href="http://www.google.com/search?q=<?= $Search; ?>"
+                title="Perform a Google search for &quot;<?= $TitleWithSpaces; ?>&quot;">
+                <img src="plugins/UrlChecker/interface/default/images/search.gif" alt="Search" />
+            </a>
+        </td>
+    </tr>
+    <?PHP
+}
+
+/**
+ * Print the given status code option.
+ * @param $StatusCode HTTP status code
+ * @param $Count the number of invalid URLs with a status code of $StatusCode
+ * @param $IsSelected whether the option should be selected
+ */
+function PrintStatusCodeOption($StatusCode, $Count, $IsSelected)
+{
+    print "<option";
+
+    if ($IsSelected) {
+        print " selected=\"selected\"";
+    }
+
+    print " value=\"".$StatusCode."\">".$StatusCode." (".$Count.")</option>";
+}
+
+?>
+
+<link type="text/css" rel="stylesheet"
+    href="plugins/UrlChecker/interface/default/include/UrlChecker.css" media="all" />
+<script type="text/javascript" src="plugins/UrlChecker/interface/default/include/UrlChecker.js">
+</script>
+
+<div class="container">
+<div class="row">
+    <div class="col">
+        <h1>Hidden URLs</h1>
+    </div>
+    <div class="col Limits"<?PHP if (!count($Info["HiddenInvalidUrlsForStatusCodes"])) {
+        ?> style="visibility: hidden;"<?PHP
+                           } ?>>
+        <form method="GET" action="index.php">
+            <input type="hidden" name="P" value="P_UrlChecker_HiddenUrls" />
+
+            <label for="Limit">Results Per Page:</label>
+            <select id="Limit" name="Limit">
+                <option<?PHP if ($Limit == 15) {
+                    print " selected=\"selected\"";
+                       } ?>>15</option>
+                <option<?PHP if ($Limit == 25) {
+                    print " selected=\"selected\"";
+                       } ?>>25</option>
+                <option<?PHP if ($Limit == 50) {
+                    print " selected=\"selected\"";
+                       } ?>>50</option>
+                <option<?PHP if ($Limit == 100) {
+                    print " selected=\"selected\"";
+                       } ?>>100</option>
+            </select>
+
+            <label for="OrderBy">Sort By:</label>
+            <select id="OrderBy" name="OrderBy">
+                <option value="Title"<?= (($OrderBy instanceof Metavus\MetadataField) &&
+                    $OrderBy->Name() == "Title") ? " selected=\"selected\"" : ""; ?>>
+                    <?= $Schema->GetFieldByMappedName("Title")->GetDisplayName(); ?>
+                </option>
+                <option value="Url"<?= $OrderBy == "Url" ?
+                    " selected=\"selected\"" : ""; ?>>URL</option>
+                <option value="CheckDate"<?= $OrderBy == "CheckDate" ?
+                    " selected=\"selected\"" : ""; ?>>Date Checked</option>
+                <?PHP if (is_null($StatusCode)) { ?>
+                <option value="StatusCode"<?= $OrderBy == "StatusCode" ?
+                    " selected=\"selected\"" : ""; ?>>Status</option>
+                <?PHP } ?>
+            </select>
+
+            <label for="StatusCode">Status:</label>
+            <select id="StatusCode" name="StatusCode">
+                <option value="All">All (<?= $Info["NumInvalidAndHidden"]; ?>)</option>
+                <?PHP PrintStatusCodeOptions($StatusCode); ?>
+            </select>
+        </form>
+    </div>
+</div>
+</div>
+
+<?PHP if (!is_null($StatusCode)) { ?>
+<p><i><?= StatusCodeToLongText($StatusCode); ?></i></p>
+<?PHP } ?>
+
+
+<table class="table table-striped urlchecker-table-invalidurls">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <?PHP if ($NumUrlFields > 1) {
+                ?><th>Field</th><?PHP
+            } ?>
+            <th>Resource</th>
+            <th>URL</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <?PHP if ($NumPages > 1) {
+        $Percent = ceil($NumPages / 5); ?>
+    <tfoot>
+        <tr>
+          <td colspan="<?= ($NumUrlFields > 1) ?
+            (is_null($StatusCode) ? 4 : 3) : (is_null($StatusCode) ? 3 : 2); ?>">
+             <?PHP if ($NumPages >= 1 && $PageNumber > 1) { ?>
+             <a class="btn btn-primary btn-sm"
+                href="index.php?P=P_UrlChecker_HiddenUrls&amp;Page=1"
+                title="Go to the first page">&#124;&lt;</a>
+             <?PHP } ?>
+             <?PHP  if ($Percent > 1 && $PageNumber - $Percent > 0) { ?>
+             <a class="btn btn-primary btn-sm"
+                href="index.php?P=P_UrlChecker_HiddenUrls&amp;Page=<?=
+                ($PageNumber - $Percent); ?>"
+                title="Go back <?= $Percent; ?> pages">&lt;&lt;</a>
+             <?PHP } ?>
+             <?PHP if ($PageNumber - 1 > 0) { ?>
+             <a class="btn btn-primary btn-sm"
+                href="index.php?P=P_UrlChecker_HiddenUrls&amp;Page=<?=
+                ($PageNumber - 1); ?>">&lt;</a>
+             <?PHP } ?>
+          </td>
+          <td>
+             <?PHP if ($PageNumber < $NumPages) { ?>
+             <a class="btn btn-primary btn-sm"
+                href="index.php?P=P_UrlChecker_HiddenUrls&amp;Page=<?=
+                ($PageNumber + 1); ?>">&gt;</a>
+             <?PHP } ?>
+             <?PHP if ($Percent > 1 && $PageNumber + $Percent < $NumPages) { ?>
+             <a class="btn btn-primary btn-sm"
+                href="index.php?P=P_UrlChecker_HiddenUrls&amp;Page=<?=
+                ($PageNumber + $Percent); ?>"
+                title="Go ahead <?= $Percent; ?> pages">&gt;&gt;</a>
+             <?PHP } ?>
+             <?PHP if ($NumPages >= 1 && $PageNumber < $NumPages) { ?>
+             <a class="btn btn-primary btn-sm"
+                href="index.php?P=P_UrlChecker_HiddenUrls&amp;Page=<?=
+                $NumPages; ?>" title="Go to the last page">
+                &gt;<span style="position:relative; bottom: 1px;">&#124;</span>
+             </a>
+             <?PHP } ?>
+          </td>
+        </tr>
+    </tfoot>
+    <?PHP } ?>
+    <tbody>
+        <?PHP if (count($InvalidUrls)) { ?>
+            <?PHP  PrintInvalidResourceUrls($InvalidUrls);  ?>
+        <?PHP } elseif ($NumUrlFields > 1) { ?>
+        <tr><td colspan="5"><i>(no invalid URLs to display)</i></td></tr>
+        <?PHP } else { ?>
+        <tr><td colspan="4"><i>(no invalid URLs to display)</i></td></tr>
+        <?PHP } ?>
+    </tbody>
+</table>

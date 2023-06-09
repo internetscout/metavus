@@ -1,0 +1,56 @@
+<?PHP
+#
+#   FILE:  EditClassification.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Classification;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classification");
+?>
+
+<?PHP if ($H_ConfirmDelete) { ?>
+<h1>Confirm Delete <i><?= $H_Class->FullName() ?></i></h1>
+
+    <?PHP if ($H_Class->ChildCount()) { ?>
+<p>The following classifications below <i><?= $H_Class->FullName() ?></i>
+    will also be deleted:</p>
+        <?= implode("<br/>", $H_ChildClasses) ?>
+    <?PHP } ?>
+
+<p><strong>Caution:</strong> Removing a classifier and its descendants cannot
+    be undone.</p>
+
+<form method="post" action="index.php?P=EditClassification<?= $H_JumpParams ?>">
+    <input type="hidden" name="F_ClassificationId" value="<?= $H_ClassId ?>"/>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Confirm Delete Classification"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Confirm Delete Classification</button>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+<?PHP } else { ?>
+<h1>Edit Classification</h1>
+
+    <?PHP $H_FormUI->displayErrorBlock(); ?>
+<form method="post" action="index.php?P=EditClassification<?= $H_JumpParams ?>">
+    <?PHP $H_FormUI->displayFormTable(); ?>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon" /> Save Changes</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Delete Classification"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete Classification</button>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+<?PHP } ?>

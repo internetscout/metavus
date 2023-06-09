@@ -1,0 +1,84 @@
+<?PHP
+#
+#   FILE:  ImportUsers.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Import Users");
+
+?>
+
+<h1>Import Users</h1>
+
+<?PHP if (isset($H_ErrorMessage)) { ?>
+<ul class="alert alert-danger mv-form-error">
+    <li><b><?= $H_ErrorMessage ?></b></li>
+</ul>
+<?PHP } ?>
+
+<p class="alert alert-primary"><strong>Important:</strong> Importing
+users into the database should be handled by a knowledgeable and
+skilled staff member. Please carefully read the instructions
+below.</p>
+
+<p>The required format for import is a file containing tab separated fields with
+each record terminated by a newline character (\n). Any line containing a
+newline character (\n) within any field will cause the import to be terminated
+on that record.</p>
+
+<ol>
+  <li>Below is the format that is required for import. If
+    <code>UserPassword</code> is left blank, it will default
+    to <code>UserName</code>. Users should be instructed to change
+    their password after they login.</li>
+  <li>The fields must be in the following order:
+    <ul>
+      <li><code>UserName</code> (required)</li>
+      <li><code>UserPassword</code></li>
+      <li><code>Email</code> (required)</li>
+      <li><code>Website</code></li>
+      <li><code>RealName</code></li>
+      <li><code>Address1</code></li>
+      <li><code>Address2</code></li>
+      <li><code>City</code></li>
+      <li><code>State</code></li>
+      <li><code>Country</code></li>
+      <li><code>Zipcode</code></li>
+      <li><code>ActiveUI</code> (e.g., <code>default</code>)</li>
+      <li><code>DefaultBrowsingField</code>
+          (e.g., <code>Classification</code>, <code>Subject</code>,
+          etc.)</li>
+      <li><code>UserAccessPrivilege</code> (e.g., <code>System Administrator</code>,
+        <code>Classification Administrator</code>, etc)</li>
+    </ul>
+  </li>
+  <li>There should be one line for each User Access Privilege
+    assigned to the user. The <code>UserName</code> field must be filled in, but
+    the other fields may be left blank, provided the tab characters
+    remain.  The file should end with an empty line.</li>
+  <li>If the <code>UserPassword</code> column contains hashed
+    passwords (e.g., in a file exported from another site), select
+    the "Hashed" password format. Otherwise select "Plain Text".</li>
+  <li>Use the "Browse..." button below to locate your local file for
+    import and then upload it with the "Upload" button.</li>
+  <li>Initiate import by clicking on the "Begin Import" button.</li>
+</ol>
+
+<form method="post" enctype="multipart/form-data" action="index.php?P=ImportUsers">
+    <input type="hidden" name="FSeek" value="0" />
+
+    <?PHP $H_FormUI->DisplayFormTable(); ?>
+
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Begin Import"><img src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
+        class="mv-button-icon" /> Begin Import</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+
+</form>

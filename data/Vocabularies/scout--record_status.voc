@@ -1,0 +1,13 @@
+<vocabulary>
+    <name>Record status</name>
+    <description>The workflow status of a given record.</description>
+    <version>1.0 (Mar 14 2017)</version>
+    <url>http://scout.wisc.edu/cwis/vocabs/</url>
+    <owner>
+        <name>Internet Scout Research Group</name>
+        <url>http://scout.wisc.edu/</url>
+    </owner>
+    <term>Prepublication</term>
+    <term>Published</term>
+    <term>Extinct</term>
+</vocabulary>

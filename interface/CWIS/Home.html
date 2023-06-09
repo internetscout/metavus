@@ -1,0 +1,108 @@
+<?PHP
+#
+#   FILE:  Home.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+use Metavus\User;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+require_once($AF->gUIFile("Home-Compat.php"));
+
+# ----- MAIN -----------------------------------------------------------------
+
+# non-standard global variables
+global $AnnouncementOffset;
+global $MoreResources;
+global $ResourceOffset;
+global $ReleaseResourceTotal;
+
+$SysConfig = SystemConfiguration::getInstance();
+$IntConfig = InterfaceConfiguration::getInstance();
+
+# get the total number of released resources
+if ($IntConfig->getBool("ShowNumResourcesEnabled")) {
+    $ResourceFactory = new RecordFactory();
+    $ReleaseResourceTotal = $ResourceFactory->getReleasedRecordTotal();
+}
+
+$ResourceOffset = isset($_GET["ResourceOffset"]) ?
+    intval($_GET["ResourceOffset"]) : 0;
+
+# retrieve any announcement content
+ob_start();
+$GLOBALS["AF"]->SignalEvent(
+    "EVENT_HTML_INSERTION_POINT",
+    [
+        $GLOBALS["AF"]->GetPageName(),
+        "Blog Entries", [
+            "Blog Name" => "News",
+            "Max Entries" => $IntConfig->getInt("NumAnnounceOnHomePage")
+        ]
+    ]
+);
+
+$Announcements = ob_get_contents();
+ob_end_clean();
+
+
+// phpcs:disable Generic.Files.LineLength.MaxExceeded
+?>
+<?PHP if (AnnouncementsEnabled() && strlen($Announcements)) { ?>
+    <h1>Announcements</h1>
+    <div class="contentbox mv-content-box">
+        <?= $Announcements ?>
+        <div class="mv-extra-space">&nbsp;</div>
+    </div>
+<?PHP } ?>
+
+<div class="container mv-section mv-section-elegant mv-content-newresources">
+  <div class="row">
+    <div class="col mv-section-header">
+        <strong>New Resources</strong>
+        <?PHP if (User::getCurrentUser()->HasPriv(PRIV_RESOURCEADMIN, PRIV_COLLECTIONADMIN)) { ?>
+        <a class="btn btn-sm btn-primary" href="index.php?P=EditResource&amp;ID=NEW">Add Resource</a>
+        <?PHP } elseif ($IntConfig->getBool("ShowNumResourcesEnabled")) { ?>
+          <span class="mv-content-resource_count">Currently: <?= number_format($ReleaseResourceTotal); ?> Resources</span>
+        <?PHP } ?>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col mv-section-body">
+        <?PHP PrintNewResourceTableRows(); ?>
+    </div>
+  </div>
+  <div class="row">
+      <div class="col">
+        <div class="container mv-section-footer">
+          <div class="row">
+            <div class="col text-left">
+                <?PHP if (NextResourcesAvailable()) { ?>
+                <a class="btn btn-primary"
+                href="<?PHP PrintNextResourceLink(); ?>">&larr; Previous</a>
+                <?PHP } ?>
+            </div>
+            <div class="col text-center">
+                <a class="mv-resource-suggestion-link"
+                href="index.php?P=LeaveFeedback&amp;FT=ResourceSuggestion"
+                >Suggest a New Resource</a>
+            </div>
+            <div class="col text-right">
+                <?PHP if (PreviousResourcesAvailable()) { ?>
+                <a class="btn btn-primary" href="<?PHP PrintPrevResourceLink(); ?>">Next &rarr;</a>
+                <?PHP } ?>
+            </div>
+        </div>
+        </div>
+      </div>
+  </div>
+</div>

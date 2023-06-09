@@ -1,0 +1,70 @@
+<?PHP
+#
+#   FILE:  TrackUserComments.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\Record;
+use Metavus\RecordFactory;
+use ScoutLib\StdLib;
+
+checkAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN);
+
+$BaseLink = "index.php?P=TrackUserComments&amp;CK=".$H_ListChecksum;
+$EditLink = "index.php?P=AddResourceComment&amp;MI=\$ID";
+
+$Fields = [
+    "Date" => [
+        "ValueFunction" => function ($Item) {
+            return StdLib::getPrettyTimestamp($Item->datePosted());
+        }
+    ],
+    "Subject" => [
+        "MaxLength" => 80,
+    ],
+    "Body" => [
+        "AllowHTML" => true,
+        "MaxLength" => 320,
+    ],
+    "PosterName" => [
+        "Heading" => "Posted by",
+        "ValueFunction" => function ($Item) {
+            return $Item->posterName()." (".$Item->posterEmail().")";
+        }
+    ],
+    "Resource" => [
+        "Heading" => "About",
+        "ValueFunction" => function ($Item) {
+            if (!RecordFactory::recordExistsInAnySchema($Item->parentId())) {
+                return "(unavailable)";
+            }
+            $Record = new Record($Item->parentId());
+            return "<a href=\"".$Record->getViewPageUrl()."\" target=\"_blank\">"
+                    .$Record->getMapped("Title")."</a>";
+        }
+    ],
+];
+
+$ListUI = new ItemListUI($Fields);
+$ListUI->noItemsMessage("There are no new user comments.");
+$ListUI->baseLink($BaseLink);
+$ListUI->addActionButton("Edit/Delete", $EditLink, "pencil.png");
+$SpammerLinkFunc = function ($Item) {
+        return "index.php?P=CleanSpam&amp;PI=".$Item->posterId()
+                ."&amp;RI=".$Item->parentId();
+};
+$ListUI->addActionButton("Spammer", $SpammerLinkFunc, "cross.png");
+$ListUI->heading("Track User Comments");
+$ListUI->itemsPerPage($H_ItemsPerPage);
+$ListUI->fieldsSortableByDefault(false);
+$ListUI->display($H_Messages, $H_MessageCount, $H_StartingIndex);
+
+?>
+
+<p>Flagging a user as a spammer with the <kbd>Spammer</kbd> button
+will delete all their comments, remove their posting privilege, and
+disable their account.</p>

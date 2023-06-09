@@ -1,0 +1,71 @@
+<?PHP
+#
+#   FILE:  PluginUninstall.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+$BaseName = (isset($_GET["PN"])) ? $_GET["PN"] : null;
+
+if (!is_null($H_Plugin)) {
+    $Attributes = $H_Plugin->GetAttributes();
+}
+
+?>
+
+<?PHP if (is_null($H_Plugin)) { ?>
+<h1>Plugin Error</h1>
+
+<p>No plugin found with a base name of <i><?= $BaseName; ?></i>.</p>
+
+<?PHP } elseif ($H_UninstallFailed) { ?>
+<h1>Uninstall Error</h1>
+
+<p>
+  The <i><?= $BaseName; ?></i> plugin could not be uninstalled. The
+  error message follows:
+</p>
+
+<p class="alert alert-danger mv-form-error"><?= defaulthtmlentities($H_UninstallResult); ?></p>
+
+<?PHP } else { ?>
+<h1>Uninstall Plugin: <i><?= $Attributes["Name"]; ?></i></h1>
+
+<form method="post" action="index.php?P=PluginUninstall&amp;PN=<?= $H_Plugin->getBaseName() ?>">
+    <?PHP  if (count($H_Dependents)) {  ?>
+    <div>
+        <b>NOTE:</b>  Uninstalling this plugin will also disable (though not
+        uninstall) the following plugins:<ul>
+        <?PHP
+        foreach ($H_Dependents as $Dependent) {
+            print "<li>".$Dependent."</li>\n";
+        }
+        ?>
+        </ul>
+    </div>
+    <?PHP  }  ?>
+    <?PHP  if ($Attributes["EnabledByDefault"]) {  ?>
+    <p>
+    <b>NOTE:</b>  Because this plugin is designed to be enabled by default,
+    it will be re-installed and enabled automatically, immediately after it
+    is uninstalled.
+    </p>
+    <?PHP  }  ?>
+    <p class="alert alert-danger mv-form-error"><b>WARNING:</b> <i>Plugin configuration settings
+    and data created or managed by the </i><?= $BaseName;  ?><i> plugin
+    will be deleted and CANNOT be recovered after uninstall!</i></p>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Uninstall"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Uninstall</button>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+<?PHP } ?>

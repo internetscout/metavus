@@ -1,0 +1,27 @@
+<?PHP
+#
+#   FILE:  EditSystemConfig.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+# ----- SETUP ----------------------------------------------------------------
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("System Configuration");
+
+?>
+<h1>System Configuration</h1>
+<?PHP  FormUI::DisplayErrorBlock();  ?>
+<form method="POST" action="?P=EditSystemConfig" class="priv-form">
+<?PHP  $H_Form->DisplayFormTable();  ?>
+<?= $H_Form->getSubmitButtonHtml("Save") ?>
+ <?= $H_Form->getSubmitButtonHtml("Cancel") ?>
+</form>
+

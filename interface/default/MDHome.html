@@ -1,0 +1,222 @@
+<?PHP
+#
+#   FILE:  MDHome.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\MetadataSchema;
+use Metavus\TransportControlsUI;
+use Metavus\User;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function PrintOurMenuEntry()
+{
+    $Args = func_get_args();
+    $Label = array_shift($Args);
+    $Link = array_shift($Args);
+
+    if (call_user_func_array([User::getCurrentUser(), "HasPriv"], $Args)) {
+        ?><li class="list-group-item">
+            <a href="<?= $Link; ?>"><?= $Label; ?></a>
+        </li><?PHP
+    }
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+# build link to search for recently modified resources
+$Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
+$DateLastModified = $Schema->GetField("Date Last Modified");
+$DateOfRecordCreation = $Schema->GetField("Date Of Record Creation");
+
+$ModParams = new SearchParameterSet();
+$ModParams->AddParameter(
+    "< 1 year ago",
+    $DateLastModified
+);
+
+$RecentlyModifiedSearchLink = "index.php?P=SearchResults&".
+    $ModParams->UrlParameterString().
+    "&".TransportControlsUI::PNAME_SORTFIELD
+    ."=".$DateLastModified->Id();
+
+# build link to search for recently added resources
+$AddedParams = new SearchParameterSet();
+$AddedParams->AddParameter(
+    "< 1 year ago",
+    $DateOfRecordCreation
+);
+
+$RecentlyAddedSearchLink = "index.php?P=SearchResults"
+    ."&".$AddedParams->UrlParameterString()
+    ."&".TransportControlsUI::PNAME_SORTFIELD
+    ."=".$DateOfRecordCreation->Id();
+
+# retrieve local collection stats (if any)
+global $G_CollectionStats;
+$LocalStats = (isset($G_CollectionStats) && array_key_exists("LocalStats", $G_CollectionStats))
+        ? $G_CollectionStats["LocalStats"] : [];
+
+$ModResourceList = new ItemListUI([
+    "Date Last Modified" => [
+        "Heading" => "Date",
+        "ValueFunction" => function ($Item) {
+            return StdLib::getPrettyTimestamp($Item->Get("Date Last Modified"));
+        },
+    ],
+    "Title" => [
+        "ValueFunction" => function ($Item) {
+            $Title = $Item->getMapped("Title") ?? "";
+            return "<a href=\"index.php?P=FullRecord&amp;ID=".$Item->Id()."\">".
+                htmlspecialchars($Title)."</a>";
+        },
+    ],
+    "Last Modified By Id" => [
+        "Heading" => "User",
+    ],
+]);
+$ModResourceList->AddActionButton(
+    "Edit",
+    $Schema->editPage(),
+    "pencil.png"
+);
+$ModResourceList->fieldsSortableByDefault(false);
+
+$NewResourceList = clone $ModResourceList;
+
+$ModResourceList->Heading("Resources Recently Modified");
+$ModResourceList->AddTopButton(
+    "More Recently Modified",
+    $RecentlyModifiedSearchLink
+);
+
+$NewResourceList->Heading("Resources Recently Added");
+$NewResourceList->AddTopButton(
+    "More Recently Added",
+    $RecentlyAddedSearchLink
+);
+
+?>
+
+<div class="mv-content-sectioned">
+
+<h1>Metadata Tool Functions</h1>
+
+<ul class="list-group list-group-flush">
+    <?PHP
+    PrintOurMenuEntry(
+        "Add New Resource",
+        str_replace('$ID', "NEW", $Schema->editPage()),
+        PRIV_RESOURCEADMIN,
+        PRIV_COLLECTIONADMIN
+    );
+    PrintOurMenuEntry(
+        "Add New Controlled Name",
+        "index.php?P=AddControlledName",
+        PRIV_NAMEADMIN
+    );
+    PrintOurMenuEntry(
+        "Edit Controlled Names",
+        "index.php?P=EditControlledName&amp;FieldId=0",
+        PRIV_NAMEADMIN
+    );
+    PrintOurMenuEntry(
+        "Edit Option Lists",
+        "index.php?P=EditOptionList",
+        PRIV_NAMEADMIN
+    );
+    PrintOurMenuEntry(
+        "Add/Edit Classifications",
+        "index.php?P=EditClassifications",
+        PRIV_CLASSADMIN
+    );
+    ?>
+</ul>
+<?PHP $ModResourceList->Display($H_RecentlyModified); ?>
+
+<br/>
+
+<?PHP $NewResourceList->Display($H_RecentlyAdded); ?>
+
+<h1>Collection Statistics</h1>
+
+<table class="table mv-content-colstats">
+    <tbody>
+        <tr>
+            <th>Number of Classifications</th>
+            <td><?PHP PrintTotalNumberOfClassifications(); ?></td>
+        </tr>
+        <tr>
+            <th>Number of Controlled Names</th>
+            <td><?PHP PrintTotalNumberOfControlledNames(); ?></td>
+        </tr>
+    </tbody>
+    <tbody>
+        <tr>
+            <th>Publicly-Visible Resources</th>
+            <td><?PHP PrintNumberOfReleasedResources(); ?></td>
+        </tr>
+        <tr>
+            <th>Resources Rated</th>
+            <td><?PHP PrintNumberOfRatedResources(); ?></td>
+        </tr>
+        <tr>
+            <th>Total Number of Resources</th>
+            <td><?PHP PrintTotalNumberOfResources(); ?></td>
+        </tr>
+    </tbody>
+    <tbody>
+        <tr>
+            <th>Total Distinct Resource Search Terms</th>
+            <td><?PHP PrintTotalSearchTerms(); ?></td>
+        </tr>
+        <?PHP foreach ($LocalStats as $Label => $Value) { ?>
+        <tr>
+            <th><?= $Label; ?></th>
+            <td><?= $Value; ?></td>
+        </tr>
+        <?PHP } ?>
+    </tbody>
+    <tbody>
+        <tr>
+          <th>Stats last updated</th>
+          <td><?= $G_StatsUpdateTime ?></td>
+        </tr>
+        <tr>
+          <td>&nbsp;</td>
+          <td>
+            <button class="btn btn-primary mv-button-iconed"
+                onclick="window.location=`index.php?P=MDHome&amp;US=1`;"><img
+                src="<?= $AF->GUIFile('RefreshArrow.svg'); ?>" alt=""
+                class="mv-button-icon" /> Update Now</button>
+          </td>
+        </tr>
+    </tbody>
+</table>
+
+<h1>Collection Development Resources</h1>
+<table class="table mv-content-cdresources">
+    <tbody>
+        <?PHP
+        $CDResources = [
+            "https://dublincore.org/resources/userguide/" => "Dublin Core User Guide",
+            "http://framework.niso.org" => "IMLS Digital Collection Framework",
+            "http://www.openarchives.org" => "Open Archives Initiative",
+        ];
+        foreach ($CDResources as $Link => $Label) {
+            ?><tr>
+                <th><?= $Label ?></th>
+                <td><a href="<?= $Link ?>" target="_blank"><?= $Link ?></a></td>
+            </tr><?PHP
+        }
+        ?>
+    </tbody>
+</table>
+
+</div>

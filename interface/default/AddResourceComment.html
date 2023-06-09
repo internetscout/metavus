@@ -1,0 +1,175 @@
+<?PHP
+#
+#   FILE:  AddResourceComment.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+# ----- MAIN -----------------------------------------------------------------
+
+if (isset($H_MessageId)) {
+    PageTitle("Update Resource Comment");
+} elseif ($H_Preview) {
+    PageTitle("Preview Resource Comment");
+} else {
+    PageTitle("Add Resource Comment");
+}
+
+# we have to use ResourceCommentPreview's old HTML here because:
+# 1) we can't display HTML in comments with FormUI paragraphs, as FormUI's ReadOnly fields
+# do not display HTML with the proper formatting, and
+# 2) it's difficult to pull values out of the FormUI and place them into a different field,
+# which is why we don't move the comment values into a HTML-friendly custom-content box.
+?>
+<?PHP if ($H_Preview) { ?>
+<h1>Preview Comment</h1>
+
+<form name="updatemessage" action="<?PHP
+print "index.php?P=AddResourceComment&amp;RI=".$H_Resource->Id();
+if (isset($H_MessageId)) {
+    print "&amp;MI=".$H_MessageId;
+}
+?>" method="post">
+<table class="table table-striped">
+    <tbody>
+    <tr>
+        <th>Resource</th>
+
+        <td><?= defaulthtmlentities("Comment On: ".$H_Title) ?></td>
+    </tr>
+    <tr>
+        <th>Body</th>
+        <td><?= nl2br(defaulthtmlentities($H_Body)); ?></td>
+    </tr>
+    </tbody>
+</table>
+
+<input type="hidden" name="F_Body" value="<?= defaulthtmlentities($H_Body); ?>">
+    <?PHP if (isset($H_MessageId)) { ?>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Update Comment"><img src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
+        class="mv-button-icon" /> Update Comment</button>
+    <?PHP } else { ?>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Add Comment"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add Comment</button>
+    <?PHP } ?>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Edit Comment"><img class="mv-button-icon"
+        src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit Comment</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+
+<?PHP } else { ?>
+<h1><?= isset($H_MessageId) ? "Update" : "Add"; ?> Comment</h1>
+
+    <?PHP FormUI::displayErrorBlock(); ?>
+    <?PHP if (isset($H_FormUI)) { ?>
+<form name="addresourcecomment" method="post" action="index.php?P=AddResourceComment">
+        <?PHP $H_FormUI->displayFormTable(); ?>
+
+        <?PHP if (isset($H_MessageId)) { ?>
+        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Update Comment"><img src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
+            class="mv-button-icon" /> Update Comment</button>
+        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+            value="Delete Comment"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+            class="mv-button-icon" /> Delete Comment</button>
+        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+            value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+            class="mv-button-icon" /> Cancel</button>
+        <?PHP } else { ?>
+        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Preview"><img src="<?= $AF->GUIFile('EyeOpen.svg'); ?>" alt=""
+            class="mv-button-icon"  /> Preview</button>
+        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Add Comment"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+            class="mv-button-icon" /> Add Comment</button>
+        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+            value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+            class="mv-button-icon" /> Cancel</button>
+        <?PHP } ?>
+</form>
+    <?PHP } ?>
+
+<?PHP } ?>
+
+<script>
+    const maxLength = <?= $H_MaxCommentLength; ?>;
+
+    var commentCharCountContainer = document.createElement("div");
+    $(commentCharCountContainer).attr("id", "mv-comment-char-count-container");
+    $("#row-F_Comment td").prepend(commentCharCountContainer);
+
+    var commentCharCountLabel = document.createElement("span");
+    $(commentCharCountLabel).attr("id", "mv-comment-char-count-label");
+    $(commentCharCountContainer).append(commentCharCountLabel);
+
+    var commentCharCountProgress = document.createElement("div");
+    $(commentCharCountProgress).attr("id", "mv-comment-char-count-progress");
+    $(commentCharCountProgress).hide();
+    $(commentCharCountContainer).append(commentCharCountProgress);
+
+    // set the upper limit of the progress bar to match the max char count
+    $(commentCharCountProgress).progressbar({max: maxLength});
+    updateProgressBarValue();
+
+    $("#F_Comment").on("input", function() {
+        updateProgressBarValue();
+    });
+
+    function updateProgressBarValue() {
+        // get the current number of characters in the comment box
+        var currentLength = $("#F_Comment").val().length;
+
+        // there is no need to show the progress bar when the progress is 0
+        // also to avoid possible confusion for input box
+        if (currentLength == 0) {
+            $(commentCharCountProgress).hide(400);
+        } else {
+            $(commentCharCountProgress).show(400, function () {
+                // update the progress bar value and color
+                $(commentCharCountProgress).progressbar({value: currentLength});
+                updateProgressBarColor(currentLength);
+            });
+        }
+
+        // update the characters used counter
+        $(commentCharCountLabel).text(`Characters: ${currentLength} / ${maxLength}`);
+    }
+
+    function updateProgressBarColor(progress) {
+        // calculate the progress percentage
+        var progressPercentage = (progress / maxLength) * 100;
+
+        // initially we assume that the percentage is below 80%
+        // we want to show a green color
+        var color = "#197A1F";
+
+        // if the percentage is between 80% and 95% (inclusive)
+        // we want to show an orange color
+        if (progressPercentage >= 80) {
+            color = "#B95A00";
+        }
+
+        // if the percentage is between 95% and 100% (inclusive)
+        // we want to show a red color
+        if (progressPercentage >= 95) {
+            color = "#B90000";
+        }
+
+        // change the progress bar color with respect to the current progress percentage
+        $(commentCharCountProgress).find('.ui-widget-header').css({'background':`${color}`});
+    }
+</script>

@@ -1,0 +1,15 @@
+Directory:  install/DBUpgrades
+
+Files containing database upgrade code or PHP upgrade code to be run before the
+application framework has been intialized can be placed in this directory.  PHP
+code that can be run after the application framework has been initialized
+should go into install/SiteUpgrades.
+
+All code must be idempotent (no additional effect if run multiple times).
+
+For PHP code, any error messages should be returned by putting them in an array
+in $GLOBALS["G_ErrMsgs"].
+
+Upgrade files should be named "DBUpgrade--VERSION.sql" (for SQL code) or
+"DBUpgrade--VERSION.php" (for PHP code), where VERSION is the version being
+upgraded to.

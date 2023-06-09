@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+	<MetadataField>
+		<Name>Date Record Checked</Name>
+		<Type>TIMESTAMP</Type>
+		<Description>Date the URL of the resource being described was determined to be accurate and adequately addressed by the cataloging record. This date may be entered in the same manner as described above in Date Issued definition.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>1</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+		<DefaultQualifier>16</DefaultQualifier>
+                <AddQualifier>W3C-DTF</AddQualifier>
+                <UpdateMethod>Button</UpdateMethod>
+                <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<ViewingPrivileges>
+			<AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+			<PrivilegeSet>
+				<UsesAndLogic>TRUE</UsesAndLogic>
+				<AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+				<AddCondition>
+					<Field>Added By Id</Field>
+				</AddCondition>
+			</PrivilegeSet>
+		</ViewingPrivileges>
+		<EditingPrivileges>
+			<AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+			<PrivilegeSet>
+				<UsesAndLogic>TRUE</UsesAndLogic>
+				<AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+		                <AddCondition>
+					<Field>Added By Id</Field>
+				</AddCondition>
+			</PrivilegeSet>
+		</EditingPrivileges>
+	</MetadataField>
+	<MetadataField>
+		<Name>Record Status</Name>
+		<Type>OPTION</Type>
+		<Description>This internal administrative feature allows resource administrators to withhold record from public view and searching. Intended to provide a method for internal review and editing. The record will only be available for view by authorized resource editors and site administrator and is not available in the Advanced search. This is a required field. Required fields may not be customized as to the field type or disabled. In the Administration database editor feature, portal administrators may set the default value for this field.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+                <Editable>1</Editable>
+		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>0</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+                <VocabularyFile>scout--record_status.voc</VocabularyFile>
+                <ViewingPrivileges>
+			<AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+			<PrivilegeSet>
+				<UsesAndLogic>TRUE</UsesAndLogic>
+				<AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+				<AddCondition>
+					<Field>Added By Id</Field>
+				</AddCondition>
+			</PrivilegeSet>
+		</ViewingPrivileges>
+	</MetadataField>
+	<MetadataField>
+		<Name>Date Of Record Creation</Name>
+		<Type>TIMESTAMP</Type>
+		<Description>Date the resource being described was entered into the database collection. This date must be entered in the YYYY-MM-DD format. The software automatically enters the current date if this field is left uncompleted.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>1</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+		<DefaultQualifier>16</DefaultQualifier>
+                <AddQualifier>W3C-DTF</AddQualifier>
+		<UpdateMethod>OnRecordCreate</UpdateMethod>
+                <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<Owner>MetavusCore</Owner>
+		<Editable>0</Editable>
+                <EditingPrivileges>
+                	<AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+                </EditingPrivileges>
+                <AuthoringPrivileges>
+                	<AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+                </AuthoringPrivileges>
+	</MetadataField>
+	<MetadataField>
+		<Name>Date Of Record Release</Name>
+		<Type>TIMESTAMP</Type>
+		<Description>Date the resource being described was release (Release Flag changed from Not OK for Viewing to OK For Viewing). This date must be entered in the YYYY-MM-DD format. The software automatically enters the current date if this field is left uncompleted.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>1</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+		<DefaultQualifier>16</DefaultQualifier>
+		<Owner>MetavusCore</Owner>
+		<Editable>0</Editable>
+                <UpdateMethod>OnRecordRelease</UpdateMethod>
+                <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+	</MetadataField>
+	<MetadataField>
+		<Name>Date Last Modified</Name>
+		<Type>TIMESTAMP</Type>
+		<Description>This is a time stamp recording the last time anything in a given resource record was altered. This date cannot be manually edited.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+		<CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>1</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+		<DefaultQualifier>16</DefaultQualifier>
+                <AddQualifier>W3C-DTF</AddQualifier>
+		<UpdateMethod>OnRecordChange</UpdateMethod>
+                <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<Owner>MetavusCore</Owner>
+		<Editable>0</Editable>
+	</MetadataField>
+	<MetadataField>
+		<Name>Added By Id</Name>
+		<Type>USER</Type>
+		<Description>System supplied field which records the account name of the person creating the resource record. This field cannot be directly edited. All resource editors login name with automatically appear as an option in the Metadata Tool search limits and on the full record display.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+		<IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<SearchWeight>1</SearchWeight>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>0</UsesQualifiers>
+                <UpdateMethod>OnRecordCreate</UpdateMethod>
+                <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+		<Owner>MetavusCore</Owner>
+		<Editable>0</Editable>
+                <ViewingPrivileges>
+                	<AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+                        <PrivilegeSet>
+	                        <UsesAndLogic>TRUE</UsesAndLogic>
+                                <AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+                                <AddCondition>
+	                        	<Field>Added By Id</Field>
+                                </AddCondition>
+                        </PrivilegeSet>
+                </ViewingPrivileges>
+                <EditingPrivileges>
+	                <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+                </EditingPrivileges>
+                <AuthoringPrivileges>
+                	<AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+                </AuthoringPrivileges>
+	</MetadataField>
+	<MetadataField>
+		<Name>Last Modified By Id</Name>
+		<Type>USER</Type>
+		<Description>System supplied field which records the account name of the person who last modified the resource record. This field cannot be directly edited. All resource editors login name with automatically appear as an option in the Metadata Tool search limits and on the full record display.</Description>
+		<Enabled>1</Enabled>
+		<Optional>0</Optional>
+		<IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<SearchWeight>1</SearchWeight>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>0</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+                <UpdateMethod>OnRecordChange</UpdateMethod>
+                <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<Owner>MetavusCore</Owner>
+		<Editable>0</Editable>
+        <ViewingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <PrivilegeSet>
+                <UsesAndLogic>TRUE</UsesAndLogic>
+                <AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+                <AddCondition>
+                    <Field>Added By Id</Field>
+                </AddCondition>
+            </PrivilegeSet>
+        </ViewingPrivileges>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </EditingPrivileges>
+        <AuthoringPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+        </AuthoringPrivileges>
+	</MetadataField>
+	<MetadataField>
+		<Name>Cumulative Rating</Name>
+		<Type>NUMBER</Type>
+		<Description>This field records the evaluative ratings given to a particular resource by portal users.</Description>
+		<Enabled>1</Enabled>
+		<Optional>1</Optional>
+		<CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+		<IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+		<IncludeInRecommender>0</IncludeInRecommender>
+		<MinValue>0</MinValue>
+		<MaxValue>5</MaxValue>
+		<RecommenderWeight>0</RecommenderWeight>
+		<UsesQualifiers>0</UsesQualifiers>
+		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+		<Owner>MetavusCore</Owner>
+		<Editable>0</Editable>
+        <EditingPrivileges>
+            <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+        </EditingPrivileges>
+	</MetadataField>
+	<SchemaPrivileges>
+	  <ViewingPrivileges>
+	    <AddCondition>
+	      <Field>Record Status</Field>
+	      <Value>Published</Value>
+	    </AddCondition>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+	    <PrivilegeSet>
+	      <UsesAndLogic>TRUE</UsesAndLogic>
+	      <AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+	      <AddCondition>
+		<Field>Added By Id</Field>
+	      </AddCondition>
+            </PrivilegeSet>
+	  </ViewingPrivileges>
+          <EditingPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <PrivilegeSet>
+              <UsesAndLogic>TRUE</UsesAndLogic>
+              <AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+	      <AddCondition>
+		<Field>Added By Id</Field>
+	      </AddCondition>
+            </PrivilegeSet>
+          </EditingPrivileges>
+          <AuthoringPrivileges>
+            <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_MYRESOURCEADMIN</AddPrivilege>
+          </AuthoringPrivileges>
+        </SchemaPrivileges>
+</MetadataSchema>

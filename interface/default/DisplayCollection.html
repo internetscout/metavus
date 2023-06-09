@@ -1,0 +1,127 @@
+<?PHP
+#
+#   FILE:  DisplayCollection.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_Collection) || ($H_Collection == null)) {
+    print "ERROR: No collection specified.";
+    return;
+}
+if (!isset($H_Items)) {
+    throw new Exception("Collection items not loaded.");
+}
+if (!isset($H_LinkedCategories)) {
+    throw new Exception("Collection category links not loaded.");
+}
+
+# configuration settings
+$MaxCategoriesToDisplay = 3;
+
+# initialize convenience values
+$AF = ApplicationFramework::getInstance();
+$User = User::getCurrentUser();
+
+# retrieve collection info
+$EditCollectionLink = $H_Collection->getEditPageUrl();
+$CollectionName = $H_Collection->get("Name");
+$CollectionDescription = $H_Collection->get("Description");
+
+# get HTML for transport controls (if any)
+$TransportControlsHtml = isset($H_TransportUI) ? $H_TransportUI->getHtml() : "";
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Display Collection: ".$CollectionName);
+
+?>
+
+<?PHP  if ($H_Collection->userCanEdit($User)) {  ?>
+<a class="btn btn-primary btn-sm mv-button-iconed" style="float:right;"
+    href="<?= $EditCollectionLink ?>">
+    <img class="mv-button-icon" src="<?= $AF->gUIFile("Pencil.svg") ?>"> Edit</a>
+<?PHP  }  ?>
+<h1><?= htmlspecialchars($CollectionName) ?></h1>
+<div><?= $CollectionDescription ?></div>
+
+<?PHP
+if (count($H_Items) == 0) {
+    print "(no items to display)";
+    return;
+}
+?>
+
+<?= $TransportControlsHtml ?>
+<div>
+    <div class="row mv-tileset"><?PHP
+    $SearchUrlBase = ApplicationFramework::baseUrl()."index.php?P=SearchResults";
+    foreach ($H_Items as $ItemId => $Item) {
+        # ----- SETUP (WITHIN LOOP) --------------------------------------
+        # retrieve basic item info
+        $Title = htmlspecialchars($Item->getMapped("Title"));
+        $Screenshots = $Item->getMapped("Screenshot", true);
+
+        # build item-related links
+        $EditLink = $Item->getEditPageUrl();
+        $FullRecordLink = $Item->getViewPageUrl();
+        $FullRecordOpenTag = "<a href=\"".htmlspecialchars($FullRecordLink)."\">";
+
+        # retrieve categories to display
+        $Categories = array_slice(
+            $H_LinkedCategories[$ItemId],
+            0,
+            $MaxCategoriesToDisplay,
+            true
+        );
+
+        # ----- DISPLAY (WITHIN LOOP) ------------------------------------
+        # begin tile structure
+        ?><div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-tile-collection"
+        title="<?= $Title ?>"><div><?PHP
+
+        # display edit button if appropriate
+        if ($Item->userCanEdit($User)) {
+            ?><a class="btn btn-primary btn-sm mv-button-iconed"
+                href="<?= $EditLink ?>"><img class="mv-button-icon" src="<?=
+                    $AF->gUIFile("Pencil.svg") ?>"> Edit</a><?PHP
+        }
+
+        # continue tile structure
+        print "<div>\n";
+
+        # display screenshot if available, otherwise display larger title
+        if (($Screenshots !== null) && (count($Screenshots) > 0)) {
+            $Screenshot = array_pop($Screenshots);
+            ?>
+            <div><?= $FullRecordOpenTag ?><img src="<?=
+                    $Screenshot->url("mv-image-thumbnail") ?>"></a></div>
+            <h3><?= $FullRecordOpenTag ?><?= $Title ?></a></h3>
+            <?PHP
+        } else {
+            ?><h2><?= $FullRecordOpenTag ?><?= $Title ?></a></h2><?PHP
+        }
+
+        # display categories
+        foreach ($Categories as $CategoryId => $LinkedCategory) {
+            ?><h4><?= $LinkedCategory ?></h4><?PHP
+        }
+
+        # end tile structure
+        ?></div></div></div><?PHP
+    }
+    ?></div>
+</div>
+<?= $TransportControlsHtml ?>

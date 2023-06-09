@@ -1,0 +1,162 @@
+<?PHP
+#
+#   FILE:  Status.html (AutoFetch plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2016-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\File;
+use Metavus\ItemListUI;
+use Metavus\Record;
+use Metavus\TransportControlsUI;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+$ErrorListFields =
+    [
+        "Date" => [
+            "Heading" => "Date",
+            "DefaultToDescendingSort" => true,
+            "DefaultSortField" => true,
+            "ValueFunction" => function ($Item, $FieldId) {
+                return StdLib::getPrettyTimestamp($Item["Date"]);
+            }
+        ],
+        "Url" => [
+            "Heading" => "Url",
+            "AllowHTML" => true,
+            "Sortable" => false,
+            "ValueFunction" => function ($Item, $FieldId) {
+                return '<a href="'.$Item["Url"].'">'
+                    .StdLib::NeatlyTruncateString($Item["Url"], 50).'</a>';
+            }
+        ],
+        "Resource" => [
+            "Heading" => "Resource",
+            "AllowHTML" => true,
+            "Sortable" => false,
+            "ValueFunction" => function ($Item, $FieldId) {
+                $RecordId = $Item["RecordId"];
+                $Resource = new Record($RecordId);
+                return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
+                        .htmlspecialchars($Resource->GetMapped("Title")).'</a>';
+            },
+        ],
+        "Error" => [
+            "Heading" => "Error",
+        ],
+    ];
+$ErrorList = new ItemListUI($ErrorListFields, $H_TransportUIs[TAB_ERRORS]);
+$ErrorList->Heading("Fetch Errors");
+$ErrorList->ItemsPerPage($H_ResultsPerPage);
+$ErrorList->BaseLink($H_BaseLink."&amp;AT=".TAB_ERRORS);
+
+$FetchLogFields =
+    [
+        "FetchDate" => [
+            "Heading" => "Date",
+            "DefaultToDescendingSort" => true,
+            "DefaultSortField" => true,
+            "ValueFunction" => function ($Item, $FieldId) {
+                return StdLib::getPrettyTimestamp($Item["FetchDate"]);
+            }
+        ],
+        "Url" => [
+            "Heading" => "File",
+            "AllowHTML" => true,
+            "Sortable" => false,
+            "ValueFunction" => function ($Item, $FieldId) {
+                $FileId = $Item["FileId"];
+                $File = new File($FileId);
+
+                return '<a href="'.$File->GetLink().'" '
+                    .' title="'.htmlspecialchars($File->Comment())
+                    .'&#13;Source URL: '.htmlspecialchars($Item["Url"]).'">'
+                    .htmlspecialchars($File->Name()).'</a>';
+            }
+        ],
+        "Resource" => [
+            "Heading" => "Resource",
+            "AllowHTML" => true,
+            "Sortable" => false,
+            "ValueFunction" => function ($Item, $FieldId) {
+                $FileId = $Item["FileId"];
+                $File = new File($FileId);
+                $RecordId = $File->ResourceId();
+
+                $Resource = new Record($RecordId);
+                return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
+                        .htmlspecialchars($Resource->GetMapped("Title")).'</a>';
+            },
+        ],
+    ];
+$FetchLog = new ItemListUI($FetchLogFields, $H_TransportUIs[TAB_FETCHES]);
+$FetchLog->Heading("Successful Fetch Log");
+$FetchLog->ItemsPerPage($H_ResultsPerPage);
+$FetchLog->BaseLink($H_BaseLink."&amp;AT=".TAB_FETCHES);
+
+$RPOptionList = new HtmlOptionList(
+    "RP",
+    [
+        50  =>  50,
+        100 => 100,
+        250 => 250,
+        500 => 500,
+        750 => 750
+    ],
+    $H_ResultsPerPage
+);
+$RPOptionList->SubmitOnChange(true);
+
+# pull out the currently active tab
+$TabParameter = "{active: ".$H_ActiveTab."}";
+
+# load the js and css necessary for a tabbed interface
+$GLOBALS["AF"]->RequireUIFile(
+    'jquery-ui.css',
+    ApplicationFramework::ORDER_FIRST
+);
+$GLOBALS["AF"]->RequireUIFile('jquery-ui.js');
+?>
+<style type="text/css">
+.ac-main-container table { table-layout: fixed; }
+</style>
+
+<div style="display: flex;">
+  <span style="margin: auto;"
+    >Monitoring <?= number_format($H_NumberMonitored) ?> URLs</span>
+  <form style="display: inline; text-align: right; flex-grow: 1;"
+    name="AutoFetchStatusForm" action="index.php" method="GET">
+    <input type="hidden" name="P" value="P_AutoFetch_Status"/>
+    <input type="hidden" name="<?= TransportControlsUI::PNAME_SORTFIELD ?>"
+           value="<?= $H_SortFields[$H_ActiveTab] ?>"/>
+    <input type="hidden" name="<?= TransportControlsUI::PNAME_REVERSESORT ?>"
+           value="<?= $H_RevSort[$H_ActiveTab] ?>"/>
+    <input type="hidden" name="<?= TransportControlsUI::PNAME_STARTINGINDEX ?>"
+           value="<?= $H_StartIndexes[$H_ActiveTab] ?>"/>
+    Entries Per Page: <?= $RPOptionList->GetHtml(); ?>
+  </form>
+</div>
+
+<div class="mv-tabs-container">
+<div id="mv-tabs">
+  <ul class="mv-tab-nav">
+    <li><a href="#mv-tabs-0"><b>Errors</b></a></li>
+    <li><a href="#mv-tabs-1"><b>Fetch Log</b></a></li>
+  </ul>
+
+<div id="mv-tabs-<?= TAB_ERRORS ?>">
+<?PHP $ErrorList->Display($H_ErrorList, $H_TotalErrors, $H_StartIndexes[TAB_ERRORS]); ?>
+</div>
+<div id="mv-tabs-<?= TAB_FETCHES ?>">
+<?PHP $FetchLog->Display($H_FetchList, $H_TotalFetches, $H_StartIndexes[TAB_FETCHES]); ?>
+</div>
+</div>
+</div>
+<script type='text/javascript'>
+    jQuery(document).ready(function() {
+        jQuery('#mv-tabs').tabs(<?= $TabParameter; ?>); });
+</script>

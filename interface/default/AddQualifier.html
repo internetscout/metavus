@@ -1,0 +1,120 @@
+<?PHP
+#
+#   FILE:  AddQualifier.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+use Metavus\ItemListUI;
+
+PageTitle("Add/Edit Qualifiers");
+
+?>
+
+<div class="mv-content-sectioned">
+
+<h1>Qualifier Editor</h1>
+
+<?PHP FormUI::DisplayErrorBlock(); ?>
+
+<h2>Add Qualifier</h2>
+
+<form method="post" action="index.php?P=AddQualifier">
+    <?PHP $H_FormUI->DisplayFormTable(); ?>
+
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Add"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+
+<?PHP if ($QualifierFactory->GetItemCount()) { ?>
+<h2>Edit Existing Qualifiers</h2>
+
+<p>
+    <?PHP if (isset($H_ErrorMessages) && count($H_ErrorMessages) > 0) { ?>
+        <ul class="alert alert-danger mv-form-error">
+            <?PHP foreach ($H_ErrorMessages as $Message) { ?>
+                <li><?= $Message ?></li>
+            <?PHP } ?>
+        </ul>
+    <?PHP } ?>
+</p>
+
+<p>For <a href="http://www.dublincore.org/documents/dcmi-terms/" target="_blank">Dublin Core</a>
+compliant schemas, <i>Qualifiers</i> are equivalent to DC <i>Encoding
+Schemes</i>.</p>
+
+<p class="alert alert-primary"><strong>Note</strong>: Removing a qualifier that is in use
+throughout the database may result in data loss.</p>
+
+<p>For an up-to-date specification of all metadata terms maintained by the
+Dublin Core Metadata Initiative, including elements, element refinements,
+encoding schemes, and vocabulary terms (for example,
+<abbr title="Dublin Core Metadata Inititative">DCMI</abbr> Type Vocabulary) see
+the <a href="http://dublincore.org/documents/dcmi-terms/"><i>DCMI Metadata
+Terms</i></a> document. These terms are also explained in the
+<a href="http://dublincore.org/documents/usageguide/">Dublin Core <i>User
+Guide</i></a>.</p>
+
+    <?PHP
+
+    $Fields = [
+        "Checkbox" => [
+            "AllowHTML" => true,
+            "ValueFunction" => function ($Item) {
+                return '<input type="checkbox" name="qid_'.$Item->Id().'"
+                value="'.$Item->Id().'" />';
+            },
+            "Heading" => "",
+        ],
+        "Name" => [
+            "AllowHTML" => true,
+            "ValueFunction" => function ($Item) {
+                return '<input type="text" size="15" maxlength="30" '
+                    .'id="qn_'.$Item->Id().'" name="qn_'.$Item->Id().'"'
+                    .' value="'.htmlspecialchars($Item->Name()).'" />';
+            },
+        ],
+        "Namespace" => [
+            "AllowHTML" => true,
+            "ValueFunction" => function ($Item) {
+                return '<input type="text" size="15" maxlength="30" '
+                    .'id="qs_'.$Item->Id().'" name="qs_'.$Item->Id().'"'
+                    .' value="'.$Item->NSpace().'" />';
+            },
+        ],
+        "URL" => [
+            "AllowHTML" => true,
+            "ValueFunction" => function ($Item) {
+                return '<input type="text" size="25" maxlength="90" '
+                    .'id="qu_'.$Item->Id().'" name="qu_'.$Item->Id().'"'
+                    .' value="'.$Item->Url().'" />';
+            },
+        ],
+    ];
+
+    $ListUI = new ItemListUI($Fields);
+    $ListUI->noItemsMessage("There are no qualifiers to edit.");
+    $ListUI->fieldsSortableByDefault(false);
+
+    ?>
+<form name="updatequalifiers" action="index.php?P=AddQualifier" method="post">
+    <?PHP $ListUI->Display($H_Qualifiers); ?>
+
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon" /> Save</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Delete Selected"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete Selected</button>
+</form>
+
+<?PHP } ?>
+
+</div

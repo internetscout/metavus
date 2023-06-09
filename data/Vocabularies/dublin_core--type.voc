@@ -1,0 +1,27 @@
+<vocabulary>
+    <name>DCMIType</name> <!-- (correlates to CWIS Resource Type) -->
+    <description>Used to categorize the nature or genre of the resource.</description>
+    <version>Jun 14 2012</version>
+    <url>http://dublincore.org/documents/dcmi-terms/#H7</url>
+    <owner>
+        <name>Dublin Core</name>
+        <url>http://dublincore.org/</url>
+    </owner>
+    <qualifier>
+        <name>DCMI Type Vocabulary</name>
+        <namespace>http://purl.org/dc/terms/dcmitype/</namespace>
+        <url>http://dublincore.org/documents/dcmi-type-vocabulary</url>
+    </qualifier>
+    <term>Collection</term>
+    <term>Dataset</term>
+    <term>Event</term>
+    <term>Image</term>
+    <term>InteractiveResource</term>
+    <term>MovingImage</term>
+    <term>PhysicalObject</term>
+    <term>Service</term>
+    <term>Software</term>
+    <term>Sound</term>
+    <term>StillImage</term>
+    <term>Text</term>
+</vocabulary>

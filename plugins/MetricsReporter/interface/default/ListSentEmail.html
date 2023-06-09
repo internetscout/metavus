@@ -1,0 +1,76 @@
+<?PHP
+#
+#   FILE:  ListSentEmail.html (MetricsReporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\ApplicationFramework;
+
+PageTitle("Sent Email Log");
+
+$AF = ApplicationFramework::getInstance();
+
+# set up fields to display
+$ListFields = [
+    "FromAddr" => [
+        "Heading" => "From",
+    ],
+    "ToAddr" => [
+        "Heading" => "To",
+    ],
+    "Subject" => [
+    ],
+    "DateSent" => [
+        "Heading" => "Date Sent",
+    ],
+];
+
+# add in template filtering and display when Mailer is enabled
+if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) {
+    $ListFields["Template"] = [
+        "Heading" => "Mailer Template",
+        "Sortable" => false,
+        "ValueFunction" => function ($Item, $FieldName) use ($H_Templates) {
+            $LogData = $Item["LogData"];
+            if (strlen($LogData) == 0) {
+                return "";
+            }
+
+            $LogData = unserialize($LogData);
+            if (!isset($LogData["TemplateId"])) {
+                return "";
+            }
+
+            return $H_Templates[$LogData["TemplateId"]];
+        }
+    ];
+}
+
+# create and display list UI
+$ListUI = new ItemListUI($ListFields);
+$ListUI->Heading("Sent Email Log");
+$ListUI->ItemsPerPage($H_ItemsPerPage);
+$ListUI->BaseLink($H_BaseLink);
+$OptList = new HtmlOptionList("TID", $H_Templates, $H_SelectedTemplate);
+$OptList->SubmitOnChange(true);
+?>
+<div id="SearchSentMessages" style="float: right; margin-top: 15px;">
+  <form action="index.php" method="get">
+    <input type="hidden" name="P" value="P_MetricsReporter_ListSentEmail">
+    <?PHP if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) { ?>
+    <b>Template:</b> <?= $OptList->GetHtml() ?>&nbsp;&nbsp;
+    <?PHP } ?>
+    <b>Search:</b>
+    <input type="text" name="SS" value="<?= htmlspecialchars($H_SearchString) ?>">
+    <button class="btn btn-primary btn-sm mv-button-iconed" type="submit" value="GO"><img
+        src="<?= $AF->GUIFile('MagnifyingGlass.svg.svg'); ?>" alt=""
+        class="mv-button-icon" /> Search</button>
+  </form>
+</div>
+
+<?= $ListUI->Display($H_EmailList, $H_TotalItems); ?>

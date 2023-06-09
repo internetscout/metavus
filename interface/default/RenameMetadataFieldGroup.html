@@ -1,0 +1,55 @@
+<?PHP
+#
+#   FILE:  RenameMetadataFieldGroup.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\MetadataField;
+use ScoutLib\ApplicationFramework;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+function PrintFieldInGroup(MetadataField $Field)
+{
+    $SafeFieldName = defaulthtmlentities($Field->GetDisplayName());
+    ?>
+    <li class="list-group-item"><?= $SafeFieldName; ?></li>
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($SchemaId);
+$SafeGroupId = defaulthtmlentities($Group->Id());
+$SafeGroupName = defaulthtmlentities($Group->Name());
+$AF = ApplicationFramework::getInstance();
+
+?>
+
+<h1>Rename Metadata Field Group</h1>
+
+<p>For reference, the following metadata fields are in this group:</p>
+
+<ul class="list-group">
+  <?PHP PrintGroupItems($Group); ?>
+</ul>
+
+<form method="post" action="index.php?P=MetadataFieldOrdering" class="mv-fieldordering-renameform">
+  <input type="hidden" name="F_SchemaId" value="<?= $SafeSchemaId; ?>" />
+  <input type="hidden" name="F_GroupId" value="<?= $SafeGroupId; ?>" />
+
+  <label for="F_GroupName">Group Name:</label>
+  <input type="text" name="F_GroupName" value="<?= $SafeGroupName; ?>" />
+
+  <div class="mv-fieldordering-renamebuttons">
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="EditGroupName"><img class="mv-button-icon"
+        src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Rename</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+  </div>
+</form>

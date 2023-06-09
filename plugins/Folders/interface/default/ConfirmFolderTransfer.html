@@ -1,0 +1,46 @@
+<?PHP
+#
+#   FILE:  ConfirmFolderTransfer.html (Folders plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Confirm Folder Transfer");
+
+?>
+
+<h1>Confirm Folder Transfer</h1>
+
+<p>
+    Please enter the user name of the user whom you want to transfer this
+    folder("<?= $H_Folder->Name(); ?>") to.<br>
+    You will lose ownership of this folder.<br>
+    <b>Caution</b>: This operation cannot be undone.
+</p>
+
+
+<?PHP if (strlen($H_ErrorMessage) != 0) { ?>
+    <span id="cw-confirm-folder-transfer-error">Error: <?= $H_ErrorMessage; ?></span>
+<?PHP } elseif (strlen($H_SuccessMessage) != 0) { ?>
+    <span id="cw-confirm-folder-transfer-success"><?= $H_SuccessMessage; ?></span>
+<?PHP } ?>
+
+<form name="confirmfoldertransfer" method="post"
+        action="index.php?P=P_Folders_TransferFolders&amp;FID=<?= $H_FolderID ; ?>">
+    <br/>
+    <label id='username-label'>User Name:</label>
+    <input id="username" type="text" name="username" />
+    <br/>
+    <br/>
+    <button type="submit" name="F_Submit" value="Transfer"
+        class="btn btn-danger mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
+        class="mv-button-icon" /> Transfer</button>
+    <a class="btn btn-primary mv-button-iconed" type="button"
+        href="index.php?P=P_Folders_ManageFolders"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
+        alt="" class="mv-button-icon" /> Cancel</a>
+</form>

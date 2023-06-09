@@ -1,0 +1,35 @@
+<?PHP
+#
+#   FILE:  UserNotActivated.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\User;
+
+if (User::getCurrentUser()->isLoggedIn()) {
+    $GLOBALS["AF"]->setJumpToPage("Preferences");
+}
+
+PageTitle("Account Not Activated");
+
+?>
+
+<h1>Account Not Activated</h1>
+
+<p>Your account must be activated before you can log in.</p>
+
+<p>An e-mail message has been sent to the email address you registered with,
+containing a link to activate your new account.</p>
+
+<p>If you have trouble with the link in the email, you can
+<a href="index.php?P=ManuallyActivateAccount">manually activate</a> your
+account.</p>
+
+<p>If you haven't received an e-mail message with your activation information
+(please double check your spam folder),
+you can <a href="index.php?P=ResendAccountActivation&amp;UN=<?PHP
+print urlencode($_GET["UN"]); ?>">have the message resent</a>.</p>
+

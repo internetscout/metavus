@@ -1,0 +1,45 @@
+<?PHP
+#
+#   FILE:  ConfirmRebuildSearchDB.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Rebuild Search Database</h1>
+
+<p><b>Note:</b> Manually rebuilding the search database can take a <b>long
+time</b>, hours for a large collection, and your browser window must remain open
+on the progress page until the rebuild is complete.</p>
+
+<p>The <i>Rebuild Search Database</i> page allows administrators to manually
+rebuild the search database.</p>
+
+<p>Resource information in the search database is updated automatically whenever
+a new resource record is added, updated, or deleted from the collection.
+Rebuilding the search database is unnecessary except after importing resource
+records, when upgrading to a new version of
+<abbr title="Collection Workflow Integration System">CWIS</abbr> to take
+advantage of any improvements to the search engine, or when search results seem
+inaccurate.</p>
+
+<p>The search database can be rebuilt in either the foreground or background.
+Rebuilding the search database in the foreground requires that the web browser
+remain on the page until the rebuild is complete, but it provides a completion
+time estimate and current status. Rebuilding the search database in the
+background uses ackground tasks and does not require that the web browser remain
+on the page. It does not provide a completion time estimate or current status
+due to the nature of background tasks, but is highly recommended except for
+small collections, i.e., those with fewer than 100 or so resource records,
+because rebuilding the search database can take a very long time and background
+tasks are less performance intensive.</p>
+
+<a class="btn btn-primary" href="index.php?P=RebuildSearchDB">Manual Rebuild</a>
+<a class="btn btn-primary"
+    href="index.php?P=RebuildSearch&amp;AC=Background">Background Rebuild</a>
+<a class="btn btn-primary" href="index.php?P=SysAdmin">Cancel</a>

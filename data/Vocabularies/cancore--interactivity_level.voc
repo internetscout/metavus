@@ -1,0 +1,20 @@
+<vocabulary>
+    <name>Interactivity Level</name> <!-- (correlates to CWIS Interactivity Level) -->
+    <description>The degree of interactivity characterizing this learning object. Interactivity in this context refers to the degree to which the learner can influence the aspect or behavior of the learning object; indicate the degree to which the learning resource is able to respond to the actions and input of the user.</description>
+    <version>2.0 (Nov 21 2003)</version>
+    <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    <owner>
+        <name>CanCore</name>
+        <url>http://cancore.athabascau.ca</url>
+    </owner>
+    <qualifier>
+        <name>CanCore Interactivity Level Vocabulary</name>
+        <namespace></namespace>
+        <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    </qualifier>
+    <term>Very low</term>
+    <term>Low</term>
+    <term>Medium</term>
+    <term>High</term>
+    <term>Very high</term>
+</vocabulary>

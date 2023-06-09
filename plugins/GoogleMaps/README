@@ -1,0 +1,21 @@
+The GoogleMaps plugin provides a way to display geographic data culled
+from your CWIS installation on a google map.
+
+In the simplest use case, where all you want is to place a map
+somewhere in your interface with point data on the map plotted from
+either a Point metadata field which contains Lat/Long data, or a text
+metadata field which contains street addresses, you will need to:
+
+1. Select the desired Metadata field in the GoogleMaps plugin
+configuration.
+
+2. Insert the following in your UI files where you want the map
+displayed:
+<?PHP
+$AF = ApplicationFramework::getInstance();
+$AF->SignalEvent("GoogleMaps_EVENT_HTML_TAGS_SIMPLE");
+?>
+
+For explanations of how to do more complex things, like providing
+custom marker stylings, or allowing multiple sets of markers, see the
+comments in GoogleMaps.php.

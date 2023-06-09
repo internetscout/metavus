@@ -1,0 +1,87 @@
+/** Support for legacy CWIS interface with new Bootstrap-friendly HTML */
+
+/* this file should primarily contain @extend directives to translate
+   from legacy class names to Bootstrap-based ones. It can also
+   contain css attributes (like column widths) that apply globally to
+   every Bootstrap-based intefrace. Directives that shouldn't be
+   global for every interface belong in CW-Theme rather than in this
+   file. */
+
+.mv-content-resourcesummary.table-sm,
+.cw-content-resourcesummary.table-sm {
+    @extend .cw-table !optional;
+    @extend .cw-table-fullsize !optional;
+}
+
+.list-group {
+    @extend .cw-list !optional;
+}
+
+.list-group-flush {
+    @extend .cw-list-unmarked !optional;
+    @extend .cw-list-dematte !optional;
+}
+
+
+.list-inline {
+    @extend .cw-list !optional;
+    @extend .cw-list-noindent !optional;
+    @extend .cw-list-nobullets !optional;
+    @extend .cw-list-horizontal !optional;
+}
+
+.list-inline.blog-categories {
+    @extend .cw-list-separated !optional;
+}
+
+table.container {
+    @extend .cw-table !optional;
+}
+
+.table-striped {
+    @extend .cw-table-striped !optional;
+}
+
+.container, .container-fluid {
+    @extend .cw-table-fauxtable !optional;
+
+    .row {
+        @extend .cw-table-fauxrow !optional;
+
+        .col, .col-1, .col-2, .col-3, .col-4, .col-5, .col-6,
+        .col-7, .col-8, .col-9, .col-10, .col-11, .col-12 {
+            @extend .cw-table-fauxcell !optional;
+        }
+
+        .col-1  { width:   8.3%; }
+        .col-2  { width:  16.7%; }
+        .col-3  { width:  25.0%; }
+        .col-4  { width:  33.3%; }
+        .col-5  { width:  41.7%; }
+        .col-6  { width:  50.0%; }
+        .col-7  { width:  58.3%; }
+        .col-8  { width:  66.7%; }
+        .col-9  { width:  75.0%; }
+        .col-10 { width:  83.3%; }
+        .col-11 { width:  91.7%; }
+        .col-12 { width: 100.0%; }
+    }
+}
+
+// don't need to extend .mv- classes because .cw- classes still exist in CWIS's CWIS.scss
+.container-fluid {
+    @extend .cw-table-fullsize !optional;
+}
+
+.btn {
+    @extend .cw-button !optional;
+    @extend .cw-button-elegant !optional;
+}
+
+.btn-sm {
+    @extend .cw-button-constrained !optional;
+}
+
+.alert-danger {
+    @extend .cw-form-error !optional;
+}

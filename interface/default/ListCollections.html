@@ -1,0 +1,99 @@
+<?PHP
+#
+#   FILE:  ListCollections.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_Collections)) {
+    throw new Exception("Collections not loaded.");
+}
+
+$User = User::getCurrentUser();
+$CollectionSchemaId = MetadataSchema::getSchemaIdForName("Collections");
+$CSchema = new MetadataSchema($CollectionSchemaId);
+if ($CSchema->userCanAuthor($User)) {
+    $AddCollectionLink = str_replace('$ID', "NEW", $CSchema->editPage());
+    $AddCollectionLink .= "&SC=".$CollectionSchemaId;
+}
+
+$AF = ApplicationFramework::getInstance();
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("List Collections");
+
+if (isset($AddCollectionLink)) {  ?>
+    <a class="btn btn-primary btn-sm mv-button-iconed" style="float:right;"
+        href="<?= $AddCollectionLink ?>">
+        <img class="mv-button-icon" src="<?= $AF->GUIFile("Plus.svg"); ?>"> New</a>
+<?PHP  }  ?>
+
+<h1>Collections</h1>
+
+<?PHP
+if (count($H_Collections) == 0) {
+    print "(no collections to display)";
+    return;
+}
+?>
+
+<div>
+    <div class="row mv-tileset">
+    <?PHP
+    foreach ($H_Collections as $CollectionId => $Collection) {
+        # ----- SETUP (LOOP) ---------------------------------------------
+        # retrieve basic collection info
+        $Name = htmlspecialchars($Collection->get("Name"));
+        $Description = htmlspecialchars($Collection->get("Description"));
+        $Size = $Collection->getSize();
+        $Icons = $Collection->get("Icon", true);
+        $Icon = (count($Icons) > 0) ? array_pop($Icons) : null;
+
+        # build collection-related links
+        $EditLink = str_replace('$ID', $CollectionId, $CSchema->editPage());
+        $LinkOpenTag = "<a href=\"index.php?P=DisplayCollection&ID="
+                .$CollectionId."\">";
+
+        # ----- DISPLAY (LOOP) -------------------------------------------
+        # begin tile
+        ?><div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-tile-collection"
+                title="<?= $Description ?>"><div><div><?PHP
+
+        # display icon if available, otherwise display larger title
+                if ($Icon != null) {
+                    ?><div><?= $LinkOpenTag ?><img src="<?=
+                            $Icon->url("mv-image-thumbnail") ?>"></a></div>
+                    <h3><?= $LinkOpenTag ?><?= $Name ?></a></h3><?PHP
+                } else {
+                    ?><h2><?= $LinkOpenTag ?><?= $Name ?></a></h2><?PHP
+                }
+
+        # display count of items
+                ?><div><?= $LinkOpenTag ?><?= $Size ?> <?=
+                StdLib::pluralize("item", $Size) ?></a></div><?PHP
+
+        # display edit button if appropriate
+if ($Collection->userCanEdit($User)) {
+    ?><div><a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $EditLink; ?>"
+            ><img class="mv-button-icon" src="<?= $AF->GUIFile("Pencil.svg"); ?>"> Edit</a>
+    </div><?PHP
+}
+
+        # end tile
+?></div></div></div><?PHP
+    }
+    ?></div>
+</div>

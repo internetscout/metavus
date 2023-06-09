@@ -1,0 +1,47 @@
+<?PHP
+#
+#   FILE:  LeaveFeedback.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+# escaped values that are safe for printing
+$SafePageHeader = defaulthtmlentities(GetPageHeader($H_FeedbackType));
+$SafeReturnTo = defaulthtmlentities($H_ReturnTo);
+?>
+
+<h1><?= $SafePageHeader; ?></h1>
+
+<?PHP if ($H_InvalidRecord) { ?>
+    <p>Invalid record supplied.</p>
+<?PHP } elseif ($H_FeedbackSent) { ?>
+    <?= getSentMessage($H_FeedbackType); ?>
+    <?PHP if ($H_ReturnTo) { ?>
+    <p><a class="btn btn-primary mv-button-iconed"
+        href="<?= $SafeReturnTo; ?>"><img src="<?= $AF->GUIFile('BackArrow.svg'); ?>"
+        alt="" class="mv-button-icon" /> Return</a></p>
+    <?PHP } ?>
+<?PHP } else { ?>
+    <?=(getSubheader($H_FeedbackType)); ?>
+    <?PHP $H_FormUI->displayErrorBlock(); ?>
+  <form id="FeedbackForm" method="post" action="index.php?P=LeaveFeedback">
+      <?PHP $H_FormUI->displayFormTable(); ?>
+      <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Submit Feedback"><img src="<?= $AF->GUIFile('PaperPlane.svg'); ?>" alt=""
+        class="mv-button-icon" /> Submit Feedback</button>
+      <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+  </form>
+
+  <script type="text/javascript">
+    $("form#FeedbackForm").submit(function(){
+      $("input[name='F_Spmbt']", $(this)).val("2001ASO");
+    });
+  </script>
+
+<?PHP } ?>

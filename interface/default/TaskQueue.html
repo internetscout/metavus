@@ -1,0 +1,323 @@
+<?PHP
+#
+#   FILE:  TaskQueue.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use ScoutLib\PluginCaller;
+use ScoutLib\StdLib;
+
+PageTitle("Task Queue");
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function GetTaskCallbackName($Task)
+{
+    $Name = null;
+    $Callback = $Task["Callback"];
+    $Parameters = $Task["Parameters"];
+    if (is_array($Parameters) && (count($Parameters) == 3) &&
+        $GLOBALS["AF"]->isStaticOnlyEvent($Parameters[0])) {
+        $Callback = $Parameters[1];
+        $Parameters = $Parameters[2];
+    }
+
+    # function name
+    if (!is_array($Callback)) {
+        $Name = $Callback;
+    } else { # callback array or object
+        if (is_object($Callback[0])) {
+            if ($Callback[0] instanceof PluginCaller) {
+                $Name = $Callback[0]->getCallbackAsText();
+            } else {
+                $ClassName = get_class($Callback[0]);
+                $BaseClassName = basename(str_replace("\\", "/", $ClassName));
+                $Name = $BaseClassName."::".$Callback[1];
+            }
+        } else {
+            $Name = $Callback[0] . "::" . $Callback[1];
+        }
+    }
+
+    return $Name;
+}
+
+function GetTaskCallbackParameterString($Task)
+{
+    $String = null;
+    $Parameters = $Task["Parameters"];
+    if (is_array($Parameters) && (count($Parameters) == 3) &&
+        $GLOBALS["AF"]->isStaticOnlyEvent($Parameters[0])) {
+        $Parameters = $Parameters[2];
+    }
+
+    if (is_array($Parameters)) {
+        if (isset($Parameters[0]) && (strpos($Parameters[0], "EVENT_") === 0) &&
+            isset($Parameters[1][0]) && ($Parameters[1][0] instanceof PluginCaller)) {
+            return $String;
+        }
+
+        $Separator = "";
+
+        foreach ($Parameters as $Parameter) {
+            $String .= $Separator;
+
+            if (is_int($Parameter) || is_float($Parameter)) {
+                $String .= $Parameter;
+            } elseif (is_string($Parameter)) {
+                $String .= "\"".htmlspecialchars($Parameter)."\"";
+            } elseif (is_array($Parameter)) {
+                $String .= "ARRAY";
+            } elseif (is_object($Parameter)) {
+                $String .= "OBJECT";
+            } elseif (is_null($Parameter)) {
+                $String .= "NULL";
+            } elseif (is_bool($Parameter)) {
+                $String .= $Parameter ? "TRUE" : "FALSE";
+            } elseif (is_resource($Parameter)) {
+                $String .= get_resource_type($Parameter);
+            } else {
+                $String .= "????";
+            }
+
+            $Separator = ", ";
+        }
+    }
+
+    return $String;
+}
+
+function GetTaskCrashInfo($Task)
+{
+    $CrashInfo = null;
+
+    if (isset($Task["CrashInfo"])) {
+        $CrashData = unserialize($Task["CrashInfo"]);
+
+        if (isset($CrashData["LastError"])) {
+            $Error = $CrashData["LastError"];
+            $File = preg_replace(":".getcwd()."/:", "", $Error["file"]);
+            $Message = $Error["message"];
+            $Line = $Error["line"];
+
+            $CrashInfo = "ERROR: ".htmlspecialchars($Message)." &#10;"
+                    ."FILE: ".$File." &#10;"
+                    ."LINE: ".$Line;
+            if (isset($CrashData["REQUEST_URI"])) {
+                $CrashInfo .= " &#10;URI: "
+                        .$CrashData["REQUEST_URI"];
+            }
+            if (isset($CrashData["ElapsedTime"])) {
+                $CrashInfo .= " &#10;ELAPSED: "
+                        .gmdate("i:s", $CrashData["ElapsedTime"]);
+            }
+            if (isset($CrashData["FreeMemory"])) {
+                $CrashInfo .= " &#10;FREE: "
+                        .sprintf("%.1F", (
+                                $CrashData["FreeMemory"] / 1000000))
+                        ." MB";
+            }
+        }
+    }
+
+    return $CrashInfo;
+}
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+$MaxTasksToDisplay = 50;
+$RunningTasks = $GLOBALS["AF"]->GetRunningTaskList();
+$RunningTaskCount = count($RunningTasks);
+$QueuedTasks = $GLOBALS["AF"]->GetQueuedTaskList($MaxTasksToDisplay);
+$QueuedTaskCount = $GLOBALS["AF"]->GetTaskQueueSize();
+$OrphanedTasks = $GLOBALS["AF"]->GetOrphanedTaskList($MaxTasksToDisplay);
+$OrphanedTaskCount = $GLOBALS["AF"]->GetOrphanedTaskCount();
+$PeriodicEventInfo = $GLOBALS["AF"]->GetKnownPeriodicEvents();
+$PeriodicEventCount = count($PeriodicEventInfo);
+uasort($PeriodicEventInfo, function ($A, $B) {
+    return ($A["NextRun"] < $B["NextRun"]) ? -1 : 1;
+});
+
+$BaseFields = [
+    "TaskId" => [
+        "Heading" => "Task ID",
+    ],
+    "Callback" => [
+        "ValueFunction" => function ($Task) {
+            return GetTaskCallbackName($Task)."(".GetTaskCallbackParameterString($Task).")";
+        },
+    ],
+    "Description" => [
+        "AllowHTML" => true
+    ],
+    "Priority" => [
+        "ValueFunction" => function ($Task) {
+            return AF::$AvailablePriorities[$Task["Priority"]];
+        },
+    ],
+];
+
+$BaseLink = "index.php?P=TaskQueue";
+$ButtonLinkPrefix = $BaseLink."&amp;ID=\$ID&amp;AC=";
+$DeleteLink = $ButtonLinkPrefix."DELETE";
+$RequeueLink = $ButtonLinkPrefix."REQUEUE";
+$RunLink = $ButtonLinkPrefix."RUN";
+$RequeueAllLink = $BaseLink."&amp;ID=ALL&amp;AC=REQUEUEALL";
+
+# ----- RUNNING TASKS
+$RFields = [
+    "TaskId" => $BaseFields["TaskId"],
+    "Callback" => $BaseFields["Callback"],
+    "Description" => $BaseFields["Description"],
+    "Priority" => $BaseFields["Priority"],
+    "Started" => [
+        "ValueFunction" => function ($Task) {
+            return StdLib::getPrettyTimestamp($Task["StartedAt"]);
+        },
+    ],
+];
+$RListUI = new ItemListUI($RFields);
+$RListUI->fieldsSortableByDefault(false);
+$RListUI->heading("Running Tasks");
+if ($RunningTaskCount) {
+    $RListUI->subheading($RunningTaskCount." "
+        .StdLib::pluralize("task", $RunningTaskCount)." currently running");
+}
+$RListUI->baseLink($BaseLink);
+$RListUI->noItemsMessage("(no tasks currently running)");
+$RListUI->willDisplayEmptyTable(true);
+$RListUI->addTopCheckbox(
+    "Automatic Task Execution Enabled<br/><span id=\"mv-reload-timer\">&nbsp;</span>",
+    $GLOBALS["AF"]->TaskExecutionEnabled(),
+    "F_TaskExecutionEnabled",
+    $BaseLink."&amp;CE=1"
+);
+
+# ----- QUEUED TASKS
+$QFields = $BaseFields;
+$QListUI = new ItemListUI($QFields);
+$QListUI->fieldsSortableByDefault(false);
+$QListUI->heading("Queued Tasks");
+if ($QueuedTaskCount) {
+    $Subheading = $QueuedTaskCount." "
+            .StdLib::pluralize("task", $QueuedTaskCount)." currently queued";
+    if ($QueuedTaskCount > count($QueuedTasks)) {
+        $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
+    }
+    $QListUI->subheading($Subheading);
+}
+$QListUI->baseLink($BaseLink);
+$QListUI->addActionButton("Delete", $DeleteLink, "cross.png");
+$QListUI->addActionButton("Run", $RunLink, "accept.png");
+$QListUI->noItemsMessage("(no tasks currently in queue)");
+$QListUI->willDisplayEmptyTable(true);
+
+# ----- ORPHANED TASKS
+if ($OrphanedTaskCount) {
+    $OListUI = new ItemListUI($RFields);
+    $OListUI->fieldsSortableByDefault(false);
+    $OListUI->heading("Orphaned Tasks");
+    if ($OrphanedTaskCount) {
+        $Subheading = $OrphanedTaskCount." "
+                .StdLib::pluralize("task", $OrphanedTaskCount)." currently orphaned";
+        if ($OrphanedTaskCount > count($OrphanedTasks)) {
+            $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
+        }
+        $OListUI->subheading($Subheading);
+    }
+    $OListUI->heading("Orphaned Tasks");
+    $OListUI->baseLink($BaseLink);
+    $OListUI->addActionButton("Requeue", $RequeueLink, "RefreshArrow.svg");
+    $OListUI->addActionButton("Run", $RunLink, "accept.png");
+    $OListUI->addActionButton("Delete", $DeleteLink, "cross.png");
+    $OListUI->addTopButton("Requeue All", $RequeueAllLink, "RefreshArrow.svg");
+}
+
+# ----- PERIODIC EVENTS
+$PFields = [
+    "Callback" => $BaseFields["Callback"],
+    "Frequency" => [
+        "ValueFunction" => function ($Task) {
+            return ucfirst(strtolower(preg_replace("/EVENT_/", "", $Task["Period"])));
+        },
+    ],
+    "Last Run" => [
+        "ValueFunction" => function ($Task) {
+            return ($Task["LastRun"] === false)
+                ? "-" : StdLib::getPrettyTimestamp($Task["LastRun"]);
+        },
+    ],
+    "Next Queued" => [
+        "ValueFunction" => function ($Task) {
+            $NextRun = $Task["NextRun"];
+            if ($NextRun === false) {
+                $Value = "-";
+            } else {
+                $Value = StdLib::getPrettyTimestamp($NextRun);
+                $MinutesUntil = floor(max(($NextRun - time()), 0) / 60);
+                if ($MinutesUntil < 60) {
+                    $Value .= " (".$MinutesUntil." ".StdLib::pluralize("minute", $MinutesUntil).")";
+                }
+            }
+            return $Value;
+        },
+    ],
+];
+$PListUI = new ItemListUI($PFields);
+$PListUI->fieldsSortableByDefault(false);
+$PListUI->heading("Periodic Events");
+if ($PeriodicEventCount) {
+    $PListUI->subheading($PeriodicEventCount." periodic "
+            .StdLib::pluralize("events", $PeriodicEventCount)." found");
+}
+$PListUI->baseLink($BaseLink);
+$PListUI->addActionButton("Run", $RunLink, "accept.png");
+$PListUI->noItemsMessage("(no periodic events found)");
+$PListUI->willDisplayEmptyTable(true);
+
+$RListUI->display($RunningTasks);
+$QListUI->display($QueuedTasks);
+if ($OrphanedTaskCount) {
+    $OListUI->display($OrphanedTasks);
+}
+$PListUI->display($PeriodicEventInfo);
+
+if ($GLOBALS["AF"]->TaskExecutionEnabled()) {
+    ?><script type="text/javascript">
+    // refresh the page in case the HTTP header (in TaskQueue.php) fails
+    setTimeout(function(){
+      window.location = "<?= $H_PageUrl ?>";
+    }, 32000);
+
+    $(document).ready(function(){
+        // show when the browser will reload again
+        $("#mv-reload-timer") .append(
+            '<span style="color: #777777;">' +
+            '(this page will refresh in ' +
+            '00:<span id="prefix"></span>' +
+            '<span id="countdown">30</span>)</span>');
+        var interval = null;
+        interval = setInterval(function(){
+            var $countdown = $("#countdown");
+            var value = parseInt($countdown.html());
+
+            if (value > 1) {
+                if (value < 11) {
+                    $("#prefix").html("0");
+                }
+                $countdown.html(--value);
+            } else {
+                clearInterval(interval);
+                $("#prefix").html("0");
+                $countdown.html("0");
+            }
+        }, 1000);
+    });
+    </script><?PHP
+}
+

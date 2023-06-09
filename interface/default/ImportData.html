@@ -1,0 +1,103 @@
+<?PHP
+#
+#   FILE:  ImportData.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Import Data");
+
+?>
+
+<h1>Import Data</h1>
+
+<?PHP FormUI::DisplayErrorBlock(); ?>
+
+<p class="alert alert-primary"><strong>Important:</strong> Importing
+records into the database should be handled by a knowledgeable and
+skilled staff member. Please carefully read the instructions
+below.</p>
+
+<p>The <i>Import Data</i> page allows system administrators to import
+resource records or controlled vocabularies from a text file. This
+data can be from another Metavus site or anywhere else, as long as the
+data is in the correct format.</p>
+
+<p>The required format for import is a file containing tab separated fields with
+each record terminated by a newline character. Any line containing a newline
+character within any field will cause the import to be terminated on that
+record. The first line of the import file must contain a list of tab separated
+database field names as defined in the Metadata Field Editor.</p>
+
+<p><b>Controlled vocabularies</b> -- The first line of the file must
+give the name of the field. All other lines give terms to create, one
+per line.</p>
+
+<p>Example:</p>
+<pre>
+Format
+HTML
+DOCX
+PPTX
+PDF
+</pre>
+
+<p><b>Resource records</b> -- If the header line contains a Title
+field, then resource records will be imported. Each line of the import
+file will be matched against existing records using the <i>Unique
+Field</i> selected below or Title + Description if no <i>Unique
+Field</i> is selected. In the latter case, every row of the file must
+contain values in the Title and Description columns. When no existing
+record matches the unique value, a new one will be created.</p>
+
+<p>Multiple values for controlled names, classifications, or option
+fields for a resource record <em>must</em> be provided on separate
+lines. Each record will have a number of lines corresponding to the
+maximum number of terms in any vocabulary assigned to that record.</p>
+
+<p>Once the records have been imported, both the search and
+recommender databases must be rebuilt so that searching and the
+recommender system will work correctly.</p>
+
+<p>Example (to be used with "Title" selected as <i>Unique Field</i>):</p>
+
+<pre>
+Title	Format	Subject
+Record One	HTML	Biology
+Record One	PDF
+Record Two	HTML	Physics
+Record Three	HTML	Chemistry
+Record Three	PPTX
+Record Three	DOCX
+</pre>
+
+<p>Important considerations when importing resource records are:</p>
+
+<ul>
+  <li>Importing a large number of resource records can take a while.</li>
+  <li>Importing resource records with files or images is not
+    supported.</li>
+  <li>Flag fields should use <var>1</var> for a true value
+    and <var>0</var> for a false value.</li>
+  <li>Both the <a href="index.php?P=ConfirmRebuildSearchDB">search</a>
+    and <a href="index.php?P=ConfirmRebuildRecommenderDB">recommender</a>
+    databases should be rebuilt once the resource records have been
+    imported.</li>
+</ul>
+
+<form method="post" enctype="multipart/form-data" action="index.php?P=ImportData">
+    <?PHP $H_FormUI->DisplayFormTable(); ?>
+
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Begin Import"><img src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
+        class="mv-button-icon" /> Begin Import</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>

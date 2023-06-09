@@ -1,0 +1,41 @@
+<?PHP
+#
+#   FILE:  EditInterfaceConfig.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+
+# ----- SETUP ----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+$AvailableInterfaces = $AF->getUserInterfaces();
+$InterfaceOptList = new HtmlOptionList(
+    "F_SelectedInterface",
+    $AvailableInterfaces,
+    $H_SelectedInterface
+);
+$InterfaceOptList->submitOnChange(true);
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Interface Configuration");
+
+?>
+<form method="POST" action="?P=EditInterfaceConfig" class="priv-form">
+<span style="float: right;">Interface: <?PHP  $InterfaceOptList->printHtml();  ?></span>
+<h1>Interface Configuration</h1>
+<?PHP  FormUI::DisplayErrorBlock();  ?>
+<input type="hidden" name="IF" value="<?= addslashes($H_SelectedInterface) ?>">
+<?PHP  $H_Form->DisplayFormTable();  ?>
+<?= $H_Form->getSubmitButtonHtml("Save") ?>
+ <?= $H_Form->getSubmitButtonHtml("Cancel") ?>
+</form>
+

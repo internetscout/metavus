@@ -1,0 +1,55 @@
+#page-p_pages_displaypage div.cw-pages-content h2 {
+    min-width: 570px;
+}
+
+#page-p_pages_displaypage .cw-pages-float-barrier + .ui-tabs {
+    margin-top: 4px;
+}
+
+span.cw-pages-controls {
+    float: right;
+}
+
+div.mv-inline-edit-controls,
+span.cw-pages-tab-controls {
+    height: 2.5em;
+}
+
+img.cw-pages-image-left {
+    float: left;
+    clear: left;
+    margin: 10px 10px 10px 0;
+}
+
+img.cw-pages-image-right {
+    float: right;
+    clear: right;
+    margin: 10px 0 10px 10px;
+}
+
+.cw-pages-controls > li {
+    list-style: none;
+    float: right;
+    margin-top: 5px;
+}
+
+.cw-pages-controls > .cw-folders-resourceresponse {
+    text-align: right;
+    margin-bottom: 0px;
+}
+
+div.cw-pages-float-barrier {
+    clear: both;
+    height: 0;
+}
+
+/*
+  the following tab-specific classes are defined by jquery-ui and can also be customized:
+
+   .ui-tabs -- container for the tab box
+   .ui-tabs-nav -- container for the tab navigation
+   .ui-tabs-active -- the currently selected tab
+
+  In addition, the tab UI elements support all the standard jquery-ui classes,
+    which are documented at: http://api.jqueryui.com/theming/css-framework/
+*/

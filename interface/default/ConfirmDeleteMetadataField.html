@@ -1,0 +1,46 @@
+<?PHP
+#
+#   FILE:  ConfirmDeleteMetadataField.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeFieldId = defaulthtmlentities($Field->Id());
+$SafeFieldName = defaulthtmlentities($Field->Name());
+
+?>
+
+<h1>Confirm Metadata Field Deletion</h1>
+
+<?PHP if ($IsFinalTreeField) { ?>
+  <p class="alert alert-danger">
+    <strong>
+      <i><?= $SafeFieldName; ?></i> is the last tree field. It is
+      required by browsing and cannot be deleted.
+    </strong>
+  </p>
+<?PHP } else { ?>
+  <p class="alert alert-danger">
+    <strong>Caution:</strong> Removing a metadata field cannot be undone.
+  </p>
+  <p>
+    Are you sure you want to delete <i><?= $SafeFieldName; ?></i>?
+  </p>
+<?PHP } ?>
+
+<form method="post" action="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>">
+  <input type="hidden" name="F_Confirmation" value="1" />
+
+  <?PHP if (!$IsFinalTreeField) { ?>
+  <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+    value="Delete Field"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+    class="mv-button-icon" /> Delete Field</button>
+  <?PHP } ?>
+  <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+    value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+    class="mv-button-icon" /> Cancel</button>
+</form>

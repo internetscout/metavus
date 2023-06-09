@@ -1,0 +1,18 @@
+<?PHP
+#   FILE:  FixityChecks.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+?>
+<h1>Fixity Checks</h1>
+
+<p>Items listed below have changed since they were uploaded and may need to be restored from backup.
+  (See <a href="https://en.wikipedia.org/wiki/File_fixity">Wikipedia: File fixity</a>).</p>
+
+<h2>Files</h2>
+<?PHP $H_FileListUI->display($H_Files, $H_NumFiles); ?>
+
+<h2>Images</h2>
+<?PHP $H_ImageListUI->display($H_Images, $H_NumImages); ?>

@@ -1,0 +1,9 @@
+table.naveditor-content-navtable > tbody > tr > td > textarea {
+    width: 99%;
+    min-width: 475px;
+    height: 300px;
+}
+
+table.naveditor-content-navtable > tbody > tr > td > p {
+    margin: 0 0 3px 0;
+}

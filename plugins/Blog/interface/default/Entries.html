@@ -1,0 +1,74 @@
+<?PHP
+#
+#   FILE:  Entries.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\MetadataSchema;
+use Metavus\Plugins\Blog\BlogEntryUI;
+use Metavus\User;
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
+
+$SafeSchemaId = defaulthtmlentities($H_SchemaId);
+$SafeBlogName = defaulthtmlentities($H_BlogName);
+
+$NotificationsEnabled = $H_Blog->NotificationsCouldBeSent();
+$UserIsSubscribed = $H_Blog->UserIsSubscribedToNotifications($User);
+
+$BlogSchema = new MetadataSchema($H_Blog->GetSchemaId());
+
+?>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <h1 class="blog-name"><?= $SafeBlogName ?></h1>
+    </div>
+    <div class="col text-right">
+      <?PHP if ($NotificationsEnabled) { ?>
+            <?PHP if ($UserIsSubscribed) { ?>
+          <a class="btn btn-primary mv-button-iconed"
+             title="Unsubscribe from new blog entry e-mail"
+             href="index.php?P=P_Blog_Unsubscribe"><img
+             src="<?= $AF->GUIFile('BellMinus.svg'); ?>"
+             alt="" class="mv-button-icon" /> Unsubscribe</a>
+            <?PHP } else { ?>
+          <a class="btn btn-primary mv-button-iconed"
+             title="Subscribe to receive e-mail when new blog entries are posted"
+             href="index.php?P=P_Blog_Subscribe"><img
+             src="<?= $AF->GUIFile('BellPlus.svg'); ?>"
+             alt="" class="mv-button-icon" /> Subscribe</a>
+            <?PHP } ?>
+      <?PHP } ?>
+      <?PHP if ($BlogSchema->UserCanEdit($User)) { ?>
+        <a class="btn btn-primary mv-button-iconed"
+            href="index.php?P=P_Blog_ListEntries">
+          <img class="mv-button-icon"
+            src="<?= $AF->GUIFile('settings.png') ?>"
+            alt="" /> Admin List</a>
+      <?PHP } ?>
+      <?PHP if ($BlogSchema->UserCanAuthor($User)) { ?>
+        <a class="btn btn-primary mv-button-iconed"
+            href="<?= str_replace('$ID', "NEW&SC=".$SafeSchemaId, $BlogSchema->editPage()) ?>">
+            <img class="mv-button-icon"
+                src="<?= $AF->GUIFile('Plus.svg') ?>"
+                alt="" />New Entry</a>
+      <?PHP } ?>
+    </div>
+  </div>
+</div>
+
+<?PHP
+if (count($H_Entries)) {
+    foreach ($H_Entries as $Entry) {
+        BlogEntryUI::printBlogEntry($Entry);
+    }
+
+    $H_TransportControls->display();
+} else {
+    ?><p>There are no blog entries.</p><?PHP
+}

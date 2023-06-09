@@ -1,0 +1,78 @@
+<?PHP
+#
+#   FILE:  Events.html (CalendarEvents plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\User;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+* Print the marker used to determine where "today" begins.
+*/
+function CalendarEvents_PrintTodayMarker()
+{
+    ?><div id="today" class="calendar_events-today"></div><?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
+
+$SafeSchemaId = defaulthtmlentities($H_SchemaId);
+$SafeMonth = defaulthtmlentities($H_Month);
+
+$PreviousMonthTimestamp = CalendarEvents_GetPreviousMonth($H_EventCounts, $H_Month);
+$NextMonthTimestamp = CalendarEvents_GetNextMonth($H_EventCounts, $H_Month);
+
+?>
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <h1 class="calendar_events-name"><?= $SafeMonth; ?></h1>
+    </div>
+    <div class="col">
+      <?PHP if ($H_Plugin->UserCanEditEvents($User)) { ?>
+        <a class="btn btn-primary mv-button-iconed"
+          href="index.php?P=P_CalendarEvents_ListEvents"><img
+          src="<?= $AF->GUIFile('cog.png'); ?>" alt=""
+          class="mv-button-icon" /> Admin List</a>
+      <?PHP } ?>
+      <?PHP if ($H_Plugin->UserCanAuthorEvents($User)) { ?>
+        <a class="btn btn-primary mv-button-iconed"
+          href="index.php?P=EditResource&amp;ID=NEW&amp;SC=<?=$SafeSchemaId; ?>">
+          <img class="mv-button-icon" alt=""
+            src="<?= $AF->GUIFile('Plus.svg') ?>"/> Add Event</a>
+      <?PHP } ?>
+    </div>
+  </div>
+</div>
+
+<?PHP $H_Plugin->PrintTransportControls(
+    $H_EventCounts,
+    $H_FirstMonth,
+    $H_Month,
+    $H_LastMonth,
+    $PreviousMonthTimestamp,
+    $NextMonthTimestamp
+); ?>
+
+<?PHP if ($H_EventCount > 0) { ?>
+    <?PHP CalendarEvents_PrintEvents($H_Events, $H_Month); ?>
+    <?PHP $H_Plugin->PrintTransportControls(
+        $H_EventCounts,
+        $H_FirstMonth,
+        $H_Month,
+        $H_LastMonth,
+        $PreviousMonthTimestamp,
+        $NextMonthTimestamp
+    ); ?>
+<?PHP } else { ?>
+  <p>There are no events taking place during <?= $SafeMonth; ?>.</p>
+<?PHP } ?>

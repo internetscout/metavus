@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+    <MetadataField>
+      <Name>Subscribe to Blog Entries</Name>
+      <Type>MDFTYPE_FLAG</Type>
+      <Description>Select "Yes" to subscribe to notifications sent when a new blog entry is published.</Description>
+      <Owner>Blog</Owner>
+      <FlagOnLabel>Yes</FlagOnLabel>
+      <FlagOffLabel>No</FlagOffLabel>
+      <ViewingPrivileges>
+        <AddPrivilege>PRIV_USERADMIN</AddPrivilege>
+        <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+    	<AddCondition>
+    	  <Field>UserId</Field>
+    	</AddCondition>
+      </ViewingPrivileges>
+      <EditingPrivileges>
+        <AddPrivilege>PRIV_USERADMIN</AddPrivilege>
+        <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+    	<AddCondition>
+    	  <Field>UserId</Field>
+    	</AddCondition>
+      </EditingPrivileges>
+    </MetadataField>
+</MetadataSchema>

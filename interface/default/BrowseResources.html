@@ -1,0 +1,227 @@
+<?PHP
+#
+#   FILE:  BrowseResources.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\ApplicationFramework;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+function PrintClassificationEntry($ClassName, $LinkAddress, $ResourceCount, $EditLinkAddress)
+{
+    ?>
+    <a href="<?= $LinkAddress ?>"><?= $ClassName ?></a>
+    (<?= number_format($ResourceCount) ?>)
+    <?PHP if (EditingEnabled()) { ?>
+    <a class="btn btn-primary btn-sm" href="<?= $EditLinkAddress; ?>">
+        <img class="mv-button-icon"
+            src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
+    <?PHP } ?>
+    <br />
+    <?PHP
+}
+
+function MoveToNextClassificationColumn()
+{
+    ?>
+    </td><td style="vertical-align: top;">
+    <?PHP
+}
+
+function PrintResourceEntry(
+    $Resource,
+    $FullRecordLink,
+    $EditOkay,
+    $EditLink,
+    $CumulativeRating,
+    $ShowScreenshot = true
+) {
+    $Summary = ResourceSummary::Create($Resource->id());
+    $Summary->Editable($EditOkay);
+    $Summary->showScreenshot($ShowScreenshot);
+    $Summary->Display();
+}
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Pluralize the given word with the given suffix if the count is not +/- 1.
+ * @param $Word word
+ * @param $PluralSuffix suffix added to $Word to make it plural
+ * @param $Count number of items counted
+ * @return the pluralized word if it should be pluralized
+ */
+function Pluralize($Word, $PluralSuffix, $Count)
+{
+    # singular, just use the word
+    if ($Count == 1 || $Count == -1) {
+        return $Word;
+    }
+
+    # pluralize
+    $Plural = $Word . $PluralSuffix;
+
+    return $Plural;
+}
+
+/**
+ * Highlight the current browsing letter
+ * @param $AlphabeticClassificationString the original string to display letter
+ *        classfications
+ * @return the highlighted string
+ */
+function HighlightCurrentBrowsingLetter($AlphabeticClassificationString)
+{
+    # determine current browsing StartingLetter and EndingLetter
+    if (isset($_GET["StartingLetter"])) {
+        $StartingLetter = substr($_GET["StartingLetter"], 0, 2);
+    } else {
+        $StartingLetter = null;
+    }
+
+    if (isset($_GET["EndingLetter"])) {
+        $EndingLetter = substr($_GET["EndingLetter"], 0, 2);
+    } else {
+        $EndingLetter = null;
+    }
+
+    if ($StartingLetter == null || $EndingLetter == null) {
+        return $AlphabeticClassificationString;
+    }
+
+    $StartingLetter = preg_quote($StartingLetter, "/");
+    $EndingLetter = preg_quote($EndingLetter, "/");
+    $HighlightString = "<span class=\"mv-classfication-tag-highlight\">" .
+            $StartingLetter . "-" . $EndingLetter . "</span>";
+    $MatchingString = "/" . $StartingLetter . "-" . $EndingLetter . "/";
+
+    # match and replace current browsing classification with the highlighted one
+    $Result = preg_replace($MatchingString, $HighlightString, $AlphabeticClassificationString);
+
+    return $Result;
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+$Header = EditingEnabled() ? "Add/Edit Classifications" : "Browse Resources";
+$Schema = new MetadataSchema();
+
+?>
+
+<h1><?= $Header; ?></h1>
+
+<?PHP if (GetClassificationCount() > 0) { ?>
+<p>
+    (<?= GetClassificationCount(); ?>
+            <?= Pluralize("classification", "s", GetClassificationCount()); ?>)
+
+    <?PHP if (GetResourceCount() > 0) { ?>
+    (<?= GetResourceCount(); ?>
+            <?= Pluralize("resource", "s", GetResourceCount()); ?>)
+    <?PHP } ?>
+</p>
+<?PHP } ?>
+
+<p class="mv-content-boundingbox"><?PHP PrintRootClassification("BrowsePageClassHeading"); ?>
+<?= HighlightCurrentBrowsingLetter(PrintAlphabeticClassificationLinks()); ?></p>
+
+<?PHP if (EditingEnabled()) { ?>
+<p><a href="<?PHP PrintAddClassificationLink(); ?>">Add Classification Here</a></p>
+<p><i>(browse hierarchy to add or edit classifications at other levels)</i></p>
+<hr />
+<?PHP } ?>
+
+<?PHP if (GetClassificationCount() < 1 && ($ParentId < 1)) { ?>
+    <p>There are currently no classifications to browse by in this field.</p>
+<?PHP } ?>
+
+<?PHP if (GetClassificationCount() > 0) { ?>
+<table class="table mv-table mv-table-fullsize mv-content-browsetable">
+    <thead>
+        <tr><th>
+            <form name="browse" method="post" action="index.php?P=BrowseResources&amp;Editing=1">
+            <?PHP
+            if (EditingEnabled()) {
+                    $FieldNames = $Schema->GetFieldNames(MetadataSchema::MDFTYPE_TREE);
+                    $OptList = new HtmlOptionList(
+                        "F_BrowsingFieldId",
+                        $FieldNames,
+                        GetBrowsingFieldId()
+                    );
+                    $OptList->SubmitOnChange(true);
+                    $OptList->PrintIfEmpty(false);
+                    $OptList->PrintHtml();
+                ?> Classifications<?PHP
+            } else {
+                print(GetTreeName());
+                if ((strpos(GetTreeName(), "Classification") === false) &&
+                    (strpos(GetTreeName(), "classification") === false)) {
+                    ?> Classifications<?PHP
+                }
+            }
+            ?>
+            </form>
+        </th></tr>
+    </thead>
+    <tbody>
+        <tr><td><?PHP DisplayClassificationList(); ?></td></tr>
+    </tbody>
+</table>
+<?PHP } ?>
+
+<?PHP if ((GetClassificationCount() > 0) && (GetResourceCount())) { ?>
+<hr />
+<?PHP } ?>
+
+<?PHP if (GetResourceCount()) { ?>
+<table class="mv-table mv-table-fullsize mv-table-pagination mv-content-browsetable">
+    <thead>
+        <tr><th colspan="2" scope="col"><h2 style="font-size: 1.0rem">Resources</h2></th></tr>
+    </thead>
+    <tbody>
+        <tr><td colspan="2"><?PHP DisplayResourceList(); ?></td></tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td>
+                <?PHP if (PreviousResourcesAvailable()) { ?>
+                <a class="btn btn-primary"
+                   href="<?PHP PrintPreviousResourcesLink(); ?>"
+                   title="Previous <?PHP
+                       PrintNumberOfPreviousResources(); ?> resources">&larr; Previous</a>
+                <?PHP } ?>
+            </td>
+            <td>
+                <?PHP if (NextResourcesAvailable()) { ?>
+                <a class="btn btn-primary"
+                   href="<?PHP PrintNextResourcesLink(); ?>"
+                   title="Next <?PHP PrintNumberOfNextResources(); ?> resources"
+                    >Next &rarr;</a>
+                <?PHP } ?>
+            </td>
+        </tr>
+    </tfoot>
+</table>
+<?PHP } ?>
+
+<?PHP if (!EditingEnabled()) { ?>
+    <ul class="list-group list-group-flush">
+        <?PHP foreach (GetBrowseLinks() as $Name => $Link) { ?>
+        <li class="list-group-item"><a href="<?= $Link; ?>">Browse by <?= $Name; ?></a></li>
+        <?PHP } ?>
+    </ul>
+<?PHP } ?>
+
+<?PHP if (User::getCurrentUser()->HasPriv(PRIV_RESOURCEADMIN, PRIV_COLLECTIONADMIN)) { ?>
+    <p class="pt-2">
+        <i><b>NOTE:</b> Only publicly visible records are shown in Browse Resources.</i>
+    </p>
+<?PHP } ?>

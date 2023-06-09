@@ -1,0 +1,33 @@
+<vocabulary>
+    <name>Mediator</name> <!-- (does not correlate to CWIS field) -->
+    <description>Words or phrases that describe an intermediary that mediates between the ultimate beneficiary of the resource and resource itself--usually some form of teacher or trainer that uses the resource as a tool.</description>
+    <version>Sep 23 1999</version>
+    <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-mediator</url>
+    <owner>
+        <name>GEM</name>
+        <url>http://www.thegateway.org/</url>
+    </owner>
+    <qualifier>>
+        <name>GEM Mediator Vocabulary</name>
+        <namespace>http://purl.org/gem/instance/GEM-MED/</namespace>
+        <url>http://www.thegateway.org/about/documentation/gem-controlled-vocabularies/vocabulary-mediator</url>
+    </qualifier>
+    <term>Administrators</term>
+    <term>College/ University Instructors</term>
+    <term>Curriculum Supervisors</term>
+    <term>Elementary School Teachers</term>
+    <term>General Public</term>
+    <term>Librarians</term>
+    <term>Middle School Teachers</term>
+    <term>Other Educational Professionals</term>
+    <term>Parents</term>
+    <term>Policy-Makers</term>
+    <term>Secondary School Teachers</term>
+    <term>Student Teachers</term>
+    <term>Students</term>
+    <term>Supervisors</term>
+    <term>Teacher Educators</term>
+    <term>Teachers</term>
+    <term>Teaching Professionals</term>
+    <term>Technology Coordinators</term>
+</vocabulary>

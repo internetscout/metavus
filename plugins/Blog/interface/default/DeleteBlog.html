@@ -1,0 +1,27 @@
+<?PHP
+#
+#   FILE:  DeleteBlog.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+?>
+<h1>Confirm Blog Deletion</h1>
+
+<p>The blog <i><?= $H_BlogName; ?></i> currently contains <?=
+$H_BlogEntryCount; ?> entries.  If you delete it, they will all be
+permanently removed.  Proceed with deletion?</p>
+
+<form method="post"
+      action="index.php?P=P_Blog_DeleteBlogComplete">
+  <input type="hidden" name="F_BlogId" value="<?= $H_BlogId; ?>">
+  <button type="submit" name="Submit" title="Delete" value="Delete"
+    class="btn btn-danger mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+    class="mv-button-icon" /> Delete</button>
+  <button type="submit" name="Submit" title="Cancel" value="Cancel"
+    class="btn btn-primary mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+    class="mv-button-icon" /> Cancel</button>
+</form>

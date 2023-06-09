@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+	<MetadataField>
+		<Name>UserId</Name>
+		<Label>User Account</Label>
+		<Type>MDFTYPE_USER</Type>
+		<Description>The user account associated with the resource.</Description>
+		<Editable>0</Editable>
+		<Optional>0</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>RealName</Name>
+		<Label>Name</Label>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The given name of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>WebSite</Name>
+		<Label>Web Site</Label>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The personal web site of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>AddressLineOne</Name>
+		<Label>Address Line One</Label>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The first address line for the mailing address of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>AddressLineTwo</Name>
+		<Label>Address Line Two</Label>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The second address line for the mailing address of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>City</Name>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The name of the city for the mailing address of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>State</Name>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The name of the state for the mailing address of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>ZipCode</Name>
+		<Label>Postal Code</Label>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The postal code for the mailing address of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+	<MetadataField>
+		<Name>Country</Name>
+		<Type>MDFTYPE_TEXT</Type>
+		<Description>The name of the country for the mailing address of the user.</Description>
+		<Editable>1</Editable>
+		<Optional>1</Optional>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+        <MetadataField>
+                <Name>CreationDate</Name>
+                <Label>Creation Date</Label>
+                <Type>MDFTYPE_TIMESTAMP</Type>
+                <Description>Date the user was created.</Description>
+                <UpdateMethod>OnRecordCreate</UpdateMethod>
+                <Editable>0</Editable>
+                <Optional>0</Optional>
+                <EditingPrivileges>
+                  <AddPrivilege>PRIV_USERADMIN</AddPrivilege>
+                  <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+                </EditingPrivileges>
+                <Owner>MetavusCore</Owner>
+        </MetadataField>
+	<MetadataField>
+		<Name>Has No Password</Name>
+		<Type>MDFTYPE_FLAG</Type>
+		<Description>User has not provided a password.</Description>
+		<Editable>0</Editable>
+		<Optional>0</Optional>
+                <EditingPrivileges>
+                  <AddPrivilege>PRIV_USERADMIN</AddPrivilege>
+                  <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+                </EditingPrivileges>
+		<DefaultValue>0</DefaultValue>
+		<Owner>MetavusCore</Owner>
+	</MetadataField>
+      	<SchemaPrivileges>
+	  <ViewingPrivileges>
+	    <AddCondition>
+	      <Field>UserId</Field>
+	    </AddCondition>
+            <AddPrivilege>PRIV_USERADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+	  </ViewingPrivileges>
+          <EditingPrivileges>
+	    <AddCondition>
+	      <Field>UserId</Field>
+	    </AddCondition>
+            <AddPrivilege>PRIV_USERADMIN</AddPrivilege>
+            <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+          </EditingPrivileges>
+          <AuthoringPrivileges>
+            <AddPrivilege>PRIV_SYSADMIN</AddPrivilege>
+          </AuthoringPrivileges>
+        </SchemaPrivileges>
+</MetadataSchema>

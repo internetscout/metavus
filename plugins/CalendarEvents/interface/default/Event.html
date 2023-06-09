@@ -1,0 +1,24 @@
+<?PHP
+#
+#   FILE:  Event.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+$PageTitle = $H_State == "OK" ? strip_tags($H_Event->Get("Title")) : "Event Not Found";
+PageTitle($PageTitle);
+
+?>
+
+<?PHP if ($H_State == "OK") { ?>
+    <?PHP $H_Plugin->PrintEvent($H_Event); ?>
+<?PHP } else { ?>
+  <h1>Event Not Found</h1>
+  <p>The event could not be found.Please
+    <a href="index.php?P=LeaveFeedback">contact the administrator</a> if you
+    believe this is an error.</p>
+<?PHP } ?>

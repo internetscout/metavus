@@ -1,0 +1,246 @@
+<?PHP
+#
+#   FILE:  UserList.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\PrivilegeFactory;
+use Metavus\User;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
+
+# ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+?>
+
+<?PHP  PageTitle("User List");  ?>
+
+<div class="container-fluid">
+    <div class="row">
+      <div class="col">
+        <h1>User List</h1>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <form name="UserList" action="index.php?P=UserList&amp;&amp;SI=<?PHP
+              print $H_StartingIndex;  ?>">
+        <input type="hidden" name="P" value="UserList">
+        <input type="hidden" name="SF" value="<?= $G_SortField ?>">
+        <input type="hidden" name="SA" value="<?= $G_SortAscending ?>">
+        <input type="hidden" name="F_UserIdChecksum" value="<?= $G_UserIdChecksum;  ?>">
+        <b>Privilege:</b>
+        <?PHP
+        $PFactory = new PrivilegeFactory();
+        $PrivList = $PFactory->GetPrivileges(true, false);
+        foreach ($PrivList as $Id => $PrivName) {
+            $PrivList[$Id] = preg_replace("/ Administrator/", " Admin", $PrivList[$Id]);
+            $PrivList[$Id] = preg_replace(
+                "/Can Post Resource Comments/",
+                "Can Post Comments",
+                $PrivList[$Id]
+            );
+        }
+        $PrivList = [-1 => "--"] + $PrivList;
+        $OptList = new HtmlOptionList(
+            "F_Privilege",
+            $PrivList,
+            StdLib::getFormValue("F_Privilege")
+        );
+        $OptList->SubmitOnChange(true);
+        $OptList->PrintHtml();
+        ?>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <b>Search:</b>
+        <?PHP
+        $FieldList = [
+            "ALL" => "(any field)",
+            "UserName" => "User",
+            "EMail" => "Email",
+            "RealName" => "Real Name",
+            "Address" => "Address",
+            "State" => "State",
+            "ZipCode" => "Zip Code",
+            "Country" => "Country",
+            "LastLoginDate" => "Last Login Date",
+            "CreationDate" => "Signup Date",
+        ];
+        $OptList = new HtmlOptionList("F_Field", $FieldList, StdLib::getFormValue("F_Field"));
+        $OptList->PrintHtml();
+        print "\n";
+        $ConditionList = [
+            "contains" => "contains",
+            "equals" => "equals",
+            "is before" => "is before",
+            "is after" => "is after",
+        ];
+        $OptList = new HtmlOptionList(
+            "F_Condition",
+            $ConditionList,
+            StdLib::getFormValue("F_Condition")
+        );
+        $OptList->PrintHtml();
+        ?>
+        <input type="text" name="F_SearchText" id="SearchText" size="15" value="<?PHP
+              print StdLib::getFormValue("F_SearchText");  ?>"/>
+        <button type="submit" class="btn btn-primary btn-sm mv-button-iconed">
+            <img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
+                class="mv-button-icon"/> Search</button>
+        </form>
+      </div>
+    </div>
+</div>
+
+<form method="post" action="index.php?P=SelectEditUserListComplete">
+
+<?PHP
+$HeaderLink = "index.php?P=UserList&amp;F_UserIdChecksum=".$G_UserIdChecksum;
+$FieldsToAddToLink = [
+    "F_Privilege",
+    "F_Field",
+    "F_Condition",
+    "F_SearchText",
+];
+foreach ($FieldsToAddToLink as $Field) {
+    if (StdLib::getFormValue($Field)) {
+        $HeaderLink .= "&amp;".$Field."=".urlencode(StdLib::getFormValue($Field));
+    }
+}
+$UserHeaderLink = $HeaderLink."&amp;SF=UserName&amp;SA="
+        .(($G_SortField != "UserName") ? 1 : ($G_SortAscending ? 0 : 1));
+$UserHeaderChar = ($G_SortField != "UserName") ? ""
+        : ($G_SortAscending ? "&uarr;" : "&darr;");
+$EmailHeaderLink = $HeaderLink."&amp;SF=EMail&amp;SA="
+        .(($G_SortField != "EMail") ? 1 : ($G_SortAscending ? 0 : 1));
+$EmailHeaderChar = ($G_SortField != "EMail") ? ""
+        : ($G_SortAscending ? "&uarr;" : "&darr;");
+$SignupHeaderLink = $HeaderLink."&amp;SF=CreationDate&amp;SA="
+        .(($G_SortField != "CreationDate") ? 0 : ($G_SortAscending ? 0 : 1));
+$SignupHeaderChar = ($G_SortField != "CreationDate") ? ""
+        : ($G_SortAscending ? "&uarr;" : "&darr;");
+$LoginHeaderLink = $HeaderLink."&amp;SF=LastLoginDate&amp;SA="
+        .(($G_SortField != "LastLoginDate") ? 0 : ($G_SortAscending ? 0 : 1));
+$LoginHeaderChar = ($G_SortField != "LastLoginDate") ? ""
+        : ($G_SortAscending ? "&uarr;" : "&darr;");
+?>
+
+<table class="table table-striped mv-content-user_list">
+  <thead>
+    <tr>
+      <th>
+        <span id="select-all" class="mv-form-nonessential">Select</span>
+        <?PHP if (count($G_Users)) { ?>
+          <script type="text/javascript">
+            (function($){
+              var $checkbox = $("<img>");
+              $checkbox.prop({
+                "src": "<?PHP $GLOBALS["AF"]->PUIFile("checkbox.png"); ?>",
+                "title": "Select all of the user accounts on this page."});
+              $checkbox.css({"cursor": "pointer"});
+              $checkbox.insertAfter("#select-all");
+              $checkbox.click(function(){
+                var $table = $(this).parentsUntil("table").parent(),
+                    $checkboxes = $("input[type='checkbox']", $table),
+                    numCheckboxes = $checkboxes.length,
+                    numCheckedBoxes = $checkboxes.filter(":checked").length;
+
+                // select all the checkboxes unless they are all checked, in
+                // which case they should be deselected
+                if (numCheckboxes != numCheckedBoxes) {
+                  $checkboxes.prop("checked", true);
+                } else {
+                  $checkboxes.prop("checked", false);
+                }
+              });
+            }(jQuery));
+          </script>
+        <?PHP } ?>
+      </th>
+      <th><a href="<?= $UserHeaderLink; ?>">User</a> <?PHP
+            print $UserHeaderChar;  ?></th>
+      <th><a href="<?= $EmailHeaderLink; ?>">Email</a> <?PHP
+            print $EmailHeaderChar;  ?></th>
+      <th><a href="<?= $SignupHeaderLink; ?>">Signup Date</a> <?PHP
+            print $SignupHeaderChar;  ?></th>
+      <th><a href="<?= $LoginHeaderLink; ?>">Last Login</a> <?PHP
+            print $LoginHeaderChar;  ?></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+<?PHP
+if (count($G_Users)) {
+    foreach ($G_Users as $Id => $UserObj) {
+        $SignupDate = StdLib::getPrettyTimestamp(
+            $UserObj->Get("CreationDate"),
+            true,
+            "(unknown)",
+            false
+        );
+        $LastLogin = StdLib::getPrettyTimestamp(
+            $UserObj->Get("LastLoginDate"),
+            true,
+            "(never logged in)",
+            false
+        );
+        $SafeUserId = defaulthtmlentities($UserObj->Id());
+        ?>
+        <tr>
+          <td>
+            <input
+               type="checkbox"
+               id="userid_<?= $SafeUserId; ?>"
+               name="userid_<?= $SafeUserId; ?>"
+               value="<?= $SafeUserId; ?>"
+               <?PHP if ($Id == User::getCurrentUser()->Id()) {
+                    print 'disabled="disabled"';
+               } ?> />
+          </td>
+          <td><label for="userid_<?= $SafeUserId; ?>"><?PHP
+              print $UserObj->Get("UserName");  ?></label></td>
+          <td><?= $UserObj->Get("EMail"); ?></td>
+          <td><?= $SignupDate; ?></td>
+          <td><?= $LastLogin; ?></td>
+          <td align="right"><a type="button" class="btn btn-primary btn-sm mv-button-iconed"
+                href="index.php?P=EditUser&amp;ID=<?=$UserObj->Id(); ?>">
+                <img src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
+                    class="mv-button-icon"/> Edit</a></td>
+        </tr>
+        <?PHP
+    }
+} else {
+    ?><tr><td colspan="6" align="center">
+            <i>(no users were found that met the specified criteria)</i></td></tr><?PHP
+}
+?>
+  </tbody>
+</table>
+
+<?PHP
+$BaseLinkWithSearchParams = "index.php?P=UserList".$H_ExtraParams;
+$H_TransportUI->baseLink($BaseLinkWithSearchParams);
+$H_TransportUI->message("Users <b>"
+    .number_format(min(
+        ($H_TransportUI->StartingIndex() + 1),
+        $G_TotalItems
+    ))
+    ."</b> - <b>"
+    .number_format(min(
+        ($H_TransportUI->StartingIndex() + $H_ItemsPerPage),
+        $G_TotalItems
+    ))
+    ."</b> of <b>".number_format($G_TotalItems)."</b>");
+$H_TransportUI->display();
+?>
+
+<button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+    value="Remove Selected Users"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
+    alt="" class="mv-button-icon" /> Remove Selected Users</button>
+
+</form>

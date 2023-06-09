@@ -1,0 +1,73 @@
+<?PHP
+#
+#   FILE:  ListRules.html (Rules plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+
+PageTitle("Rule List");
+
+function GetRuleAttribute($Item, $FieldId)
+{
+    switch ($FieldId) {
+        case "Criteria":
+            return "<p>"
+                .$Item->SearchParameters()->TextDescription()."<br/><br/>"
+                ."<a href=\"index.php?P=SearchResults&"
+                .$Item->SearchParameters()->UrlParameterString()."\">View Search Results</a>"
+                ."</p>";
+
+        case "Enabled":
+            return $Item->Enabled() ? "Yes" : "No";
+
+        case "Frequency":
+            $Frequencies = [
+                60 => "Hourly",
+                240 => "Every 4 Hours",
+                480 => "Every 8 Hours",
+                1440 => "Daily",
+                10080 => "Weekly",
+                0 => "Continuously",
+            ];
+            if (isset($Frequencies[$Item->CheckFrequency()])) {
+                return $Frequencies[$Item->CheckFrequency()];
+            } else {
+                return $Item->CheckFrequency()." minutes";
+            }
+    }
+}
+
+# set up links
+$BaseLink = "index.php?P=P_Rules_ListRules&amp;CK=".$H_ListChecksum;
+$AddRuleLink = "index.php?P=P_Rules_EditRule&amp;ID=NEW";
+$RuleDisplayLink = "index.php?P=P_Rules_DisplayRule&amp;ID=\$ID";
+$RuleEditLink = "index.php?P=P_Rules_EditRule&amp;ID=\$ID";
+$RuleDeleteLink = "index.php?P=P_Rules_DeleteRule&amp;ID=\$ID";
+
+# set up fields to display
+$Fields = [
+    "Name" => [
+        "MaxLength" => 40,
+        "DefaultSortField" => true,
+    ],
+    "Criteria" => [
+        "ValueFunction" => "GetRuleAttribute",
+        "AllowHTML" => true,
+    ],
+    "Frequency" => ["ValueFunction" => "GetRuleAttribute"],
+    "Enabled" => ["ValueFunction" => "GetRuleAttribute"],
+];
+
+# create and display list UI
+$ListUI = new ItemListUI($Fields);
+$ListUI->Heading("Rule List");
+$ListUI->ItemsPerPage($H_ItemsPerPage);
+$ListUI->BaseLink($BaseLink);
+$ListUI->AddTopButton("Add New Rule", $AddRuleLink, "Plus.svg");
+$ListUI->AddActionButton("Edit", $RuleEditLink, "Pencil.svg");
+$ListUI->AddActionButton("Delete", $RuleDeleteLink, "Delete.svg");
+$ListUI->Display($H_Items, $H_ItemCount, $H_StartingIndex);

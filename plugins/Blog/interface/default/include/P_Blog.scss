@@ -1,0 +1,239 @@
+/* @group Blog Entries
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+header.blog-header .container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.blog-entry:not(:first-child) {
+  margin-top: 1em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+}
+
+.blog-entry .mv-content-complexheader {
+  margin-bottom: 0;
+}
+
+.blog-entry .blog-header p {
+  margin-top: 0;
+}
+
+.blog-entry .blog-header h1.blog-title {
+  margin-bottom: 0;
+}
+
+.blog-entry .blog-body:after,
+.blog-entry .blog-teaser:after {
+  content: ".";
+  display: block;
+  clear: both;
+  visibility: hidden;
+  line-height: 0;
+  height: 0;
+}
+
+.blog-body ul li {
+  margin-bottom: 0.5rem;
+}
+
+.blog-full .blog-header .blog-pubinfo {
+  font-style: italic;
+}
+
+.blog-entry .blog-image-wrapper {
+    float: right;
+}
+
+.blog-entry .blog-image-wrapper,
+.blog-entry .mv-form-image-right,
+.blog-entry .mv-form-image-left {
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #CCC;
+  clear: both;
+  margin-bottom: 16px;
+  margin-left: 16px;
+  max-width: calc(min(100%, 304px));
+  padding: 2px;
+  text-align: center;
+}
+
+.blog-entry .blog-image-wrapper .mv-image-preview {
+    max-width: unset;
+}
+
+.blog-entry .blog-caption {
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  font-style: italic;
+}
+
+.social-media-share {
+  display: block !important;
+}
+
+.social-media-share .list-inline-item {
+  margin-right: 0;
+}
+
+.blog-entry.blog-short .social-media-share {
+  position: relative;
+  bottom: 2px;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.blog-entry.blog-short .blog-categories + .share {
+  position: relative;
+  top: 14px;
+}
+
+.blog-entry .blog-more {}
+
+.blog-entry .blog-bullet {}
+
+.blog-list_entry .blog-actions .blog-delete {
+  display: inline;
+}
+
+.blog-list_entry .blog-actions li {
+  list-style: none;
+}
+
+.mv-blog-prepublication {
+  background-color: #E8E8E8;
+}
+
+section.share {
+  text-align: right;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Blog Metrics
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.blog-metrics-header {
+  margin-top: 1.4em;
+  font-size: 1.5em;
+}
+
+.blog-metrics-table {}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Blog Comments
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.blog-comment-header {
+  margin-top: 1.4em;
+  font-size: 1.5em;
+}
+
+.blog-comment {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding: 1em;
+
+  border: 1px solid #CCC;
+  background-color: white;
+}
+
+/** make sure any floats in the body are cleared **/
+.blog-comment:after {
+    content: ".";
+    clear: both;
+    display: block;
+    visibility: hidden;
+    height: 0;
+}
+*:first-child+html .blog-comment {
+    min-height: 1px;
+}
+
+.blog-comment footer {
+  float: left;
+  width: 156px;
+}
+
+.blog-comment .blog-date {
+  display: block;
+}
+
+.blog-comment .blog-author {
+  display: block;
+}
+
+.blog-comment .blog-author .blog-name {
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.blog-comment .blog-actions {
+  display: block !important;
+}
+
+.blog-comment .blog-actions .blog-delete {
+  display: inline;
+}
+
+.blog-comment .blog-body {
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-left: 156px;
+}
+
+.blog-comment.blog-selected {
+  border-style: outset;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Blog Comment Form
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.blog-comment-form {}
+
+.blog-comment-form .blog-label {
+  display: block;
+  margin-top: 1.6em;
+  margin-bottom: 0.8em;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.blog-comment-form .blog-body {
+  display: block;
+  width: 99%;
+  height: 52px;
+}
+
+.blog-comment-form .blog-actions {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+
+.blog-comment-form .blog-actions .blog-first_submit {
+  margin-left: 0;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.table.blog-metrics-table {
+    width: inherit;
+    line-height: 2em;
+
+    th {
+        padding-right: 15px;
+    }
+
+    td {
+        padding-right: 5px;
+    }
+}

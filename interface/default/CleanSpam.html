@@ -1,0 +1,56 @@
+<?PHP
+#
+#   FILE:  CleanSpam.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\MessageFactory;
+use Metavus\MessageUI;
+use Metavus\Record;
+
+PageTitle("Moderate Spam");
+
+?>
+
+<?PHP if (isset($H_ErrorMessages)) { ?>
+<h1>Error</h1>
+<ul class="mv-form-error">
+    <?PHP foreach ($H_ErrorMessages as $ErrorMessage) {  ?>
+        <li><?= $ErrorMessage; ?></li>
+    <?PHP } ?>
+</ul>
+    <?PHP return; ?>
+<?PHP } ?>
+
+<h1>Moderate Spam</h1>
+
+<p class="alert alert-danger"><strong>Important:</strong> If you &quot;Clean Spam&quot;, it will
+delete all of <i><?= $H_TgtUser->Name(); ?></i>'s comments, remove
+their posting privilege, and disable their account.  </p>
+
+<p><i><?= $H_TgtUser->Name(); ?></i> had made the following comments:</p>
+
+<?PHP
+$Resource = new Record($H_ResourceId);
+$Comments = (new MessageFactory())->GetMessagesPostedByUser($H_TgtUser->Id());
+foreach ($Comments as $Comment) {
+    MessageUI::printForumMessage($Comment, $Resource);
+}
+?>
+
+<form name="updatemessage" method="post" action="index.php?P=CleanSpamComplete" />
+    <input type="hidden" name="F_PosterId" value="<?= $H_TgtUser->Id(); ?>" />
+    <input type="hidden" name="F_ResourceId" value="<?= $H_ResourceId; ?>" />
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
+        value="Remove Post Privilege"><img src="<?= $AF->GUIFile('Ban.svg'); ?>" alt=""
+        class="mv-button-icon" /> Remove Post Privilege</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
+        value="Clean Spam"><img src="<?= $AF->GUIFile('Broom.svg'); ?>" alt=""
+        class="mv-button-icon" /> Clean Spam</button>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>

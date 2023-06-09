@@ -1,0 +1,89 @@
+<?PHP
+#   FILE:  ListSavedSearches.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\Plugins\SavedSearchMailings;
+use Metavus\TransportControlsUI;
+use Metavus\User;
+use ScoutLib\HtmlOptionList;
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+/**
+ * Get HTML dropdown for email frequency of current search in list.
+ * @param object $Item current saved search in list.
+ * @return string Dropdown HTML dropdown for email frequency of current saved search.
+ */
+function GetEmailFrequency($Item)
+{
+    $OptList = new HtmlOptionList(
+        "F_Frequency_".$Item->id(),
+        SavedSearchMailings::GetFrequencyOptions(User::getCurrentUser()),
+        $Item->frequency()
+    );
+    $OptList->submitOnChange(true);
+    return $OptList->getHtml();
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+PageTitle("Manage Saved Searches");
+
+$MailingsEnabled = $GLOBALS["G_PluginManager"]->pluginEnabled(
+    "SavedSearchMailings"
+);
+
+$BaseLink = "index.php?P=ListSavedSearches";
+$EditLink = "index.php?P=AdvancedSearch&amp;ID=\$ID";
+$DeleteLink = "index.php?P=ListSavedSearches&amp;AC=Delete&amp;ID=\$ID&amp;"
+    .TransportControlsUI::PNAME_STARTINGINDEX."=".$H_StartingIndex;
+
+$Fields = [
+    "SearchName" => [
+        "Heading" => "Search Name",
+        "MaxLength" => 80,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($Item) {
+            return "<a href='index.php?P=SearchResults&amp;"
+                .$Item->searchParameters()->urlParameterString()."'>"
+                .htmlspecialchars($Item->searchName())."</a>";
+        },
+    ],
+    "Search Criteria" => [
+        "AllowHTML" => true,
+        "ValueFunction" => function ($Item) {
+            return $Item->searchParameters()->textDescription();
+        },
+    ],
+];
+
+if ($MailingsEnabled) {
+    $Fields["Email"] = [
+        "AllowHTML" => true,
+        "ValueFunction" => "GetEmailFrequency",
+    ];
+}
+
+$ListUI = new ItemListUI($Fields);
+$ListUI->noItemsMessage("There are no searches currently saved.
+    You can enter and save a search via the
+    <a href='index.php?P=AdvancedSearch'>Advanced Search</a> page.");
+$ListUI->heading("Saved Searches");
+$ListUI->baseLink($BaseLink);
+$ListUI->addActionButton("Edit", $EditLink);
+$ListUI->addActionButton("Delete", $DeleteLink);
+$ListUI->itemsPerPage($H_ItemsPerPage);
+$ListUI->fieldsSortableByDefault(false);
+
+?>
+<form name="savedsearch" method="post" action="index.php?P=ListSavedSearches">
+    <input type="hidden" name="AC" value="ChangeFrequency" />
+    <input type="hidden" name="<?= TransportControlsUI::PNAME_STARTINGINDEX; ?>"
+        value="<?= $H_StartingIndex; ?>" />
+    <?PHP $ListUI->display($H_SavedSearches, $H_SearchCount, $H_StartingIndex); ?>
+</form>

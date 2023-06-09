@@ -1,0 +1,176 @@
+<?PHP
+#
+#   FILE:  StdPageEnd.html
+#
+#   Part of the Collection Workflow Integration System (CWIS)
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   http://scout.wisc.edu/cwis/
+#
+#   (local functions at bottom of file)
+#
+
+use Metavus\InterfaceConfiguration;
+use Metavus\SecureLoginHelper;
+use Metavus\SystemConfiguration;
+use Metavus\User;
+
+# ----- MAIN -----------------------------------------------------------------
+
+# set up secure login for non-HTTPS connections
+$UseSecureLogin = isset($_SERVER["HTTPS"]) ? false : true;
+if ($UseSecureLogin) {
+    # get the public key parameters for the most recently generated keypair
+    $PubKeyParams = SecureLoginHelper::getCryptKey();
+
+    # if we have a valid pubkey
+    if (strlen($PubKeyParams["Modulus"]) &&
+        strlen($PubKeyParams["Exponent"])) {
+        # include the 'jsbn' javascript encryption library
+        # (included inline rather than with RequireUIFile() so that
+        #  the RSAKey js object will be defined before the js above
+        #  the login form tries to use it)
+        foreach (["prng4.js", "rng.js", "jsbn.js", "rsa.js", "base64.js"] as $FileName) {
+            $GLOBALS["AF"]->IncludeUIFile($FileName);
+        }
+        # the HTML below will define a CryptPw javascript function
+        # to encrypt the user-supplied password, pad it with 2 random bytes,
+        # then base64 the result for transmission
+        # (pages/UserLogin.php contains the companion decryption code)
+    } else {
+        # if we don't have a valid key to use, fall back to standard
+        # login
+        $UseSecureLogin = false;
+    }
+}
+
+?>
+    <!-- begin StdPageEnd -->
+
+    </div> <!-- end cw-segment-body -->
+
+    <div class="cw-table-fauxcell" id="cw-segment-toolbox">
+        <div>
+        <?PHP if (User::getCurrentUser()->IsLoggedIn()) { ?>
+            {{P-SECONDARYNAVIGATION-DISPLAYMENU}}
+        <?PHP } else { ?>
+            <!-- BEGIN LOGIN AREA -->
+            <div class="text cw-login-form-container">
+              <?PHP  if ($UseSecureLogin) {  ?>
+                <script type="text/javascript">
+                  var RSA = new RSAKey();
+                  RSA.setPublic("<?= $PubKeyParams["Modulus"] ?>",
+                                "<?= $PubKeyParams["Exponent"] ?>");
+                  function CryptPw(){
+                      var resp = hex2b64(RSA.encrypt(
+                          $("input#Password").val()+
+                          "\t"+rng_get_byte()+rng_get_byte() ));
+                      $("input#CryptPassword").val(resp);
+                      $("input#Password").val("");
+                  }
+                </script>
+              <?PHP } ?>
+              <form method="POST" action="index.php?P=UserLogin"
+                 <?PHP if ($UseSecureLogin) { ?>
+                    onsubmit="CryptPw();"
+                 <?PHP } ?> >
+                <p><strong>Log In</strong>:</p>
+                <label for="UserName">User name:</label><br />
+                <input type="text" size="17" maxlength="240" name="F_UserName"
+                       id="UserName"><br />
+                <label for="Password">Password:</label><br />
+                <input type="password" size="17" name="F_Password"
+                       id="Password">
+                <input type="image" src="<?PHP  $AF->PUIFile("go.gif");  ?>"
+                       id="go" alt="Log In"><br />
+                <?PHP  if ($UseSecureLogin) {  ?>
+                <input type="hidden" id="UseSecure" name="UseSecure">
+                <input type="hidden" id="CryptPassword" name="F_CryptPassword"
+                    value="">
+                <?PHP } ?>
+              </form>
+
+              <?PHP
+                PrintMenuEntry(
+                    "Create a Login",
+                    "index.php?P=RequestAccount",
+                    "10px 10px 0px 10px",
+                    "To use features like folders, forums, ratings, and recommendations,
+                     if enabled, you must log in."
+                );
+                PrintMenuEntry(
+                    "Forgot your password?",
+                    "index.php?P=ForgottenPassword",
+                    "5px 10px 20px 10px"
+                );
+                ?>
+              </div>
+            <!-- END LOGIN AREA -->
+
+        <?PHP  }  ?>
+        </div>
+
+        <!-- BEGIN METADATA TOOL NAV -->
+        <div class="text cw-metadata-tool-nav">
+        <?PHP
+            DisplayNavItems(
+                $MDTNavItems,
+                $MDTNavExclusions,
+                null,
+                "PrintMDTMenuEntry"
+            );
+            ?>
+        </div>
+        <!-- END METADATA TOOL NAV -->
+        {{P-FOLDERS-CURRENTFOLDERBOX}}
+        {{P-MYSEARCHES-SAVEDSEARCHBOX}}
+        {{P-MYSEARCHES-RECENTSEARCHBOX}}
+        {{P-MYRESOURCEVIEWS-RECENTLYVIEWEDBOX}}
+    </div>
+
+    </div></div> <!-- end content row -->
+
+    <div id="cw-segment-footer">
+        <p id="cw-content-legalnotice">
+            <?= InterfaceConfiguration::getInstance()->getString("LegalNotice") ?> |
+            <a href="index.php?P=LeaveFeedback">Leave Feedback</a>
+        </p>
+
+        <ul id="cw-content-sourcelogos" class="cw-list cw-list-horizontal">
+            <li>
+                <a href="http://scout.wisc.edu/cwis">
+                    <img src="<?PHP $AF->PUIFile("cwis_logo.gif"); ?>" alt="CWIS" />
+                </a>
+            </li>
+        </ul>
+        {{P-DEVELOPER-PAGELOADINFO}}
+        {{P-DEVELOPER-VARIABLEMONITOR}}
+        {{P-DEVELOPER-WATERMARK}}
+        {{P-DEVELOPER-DBINFO}}
+        {{P-DEVELOPER-EXECUTIONINFO}}
+        {{P-DEVELOPER-MEMORYINFO}}
+    </div>
+
+    <script type="text/javascript">
+        // this should be placed just before the closing "body" tag
+        (function(){
+            $("a").attr("ontouchstart", function(){});
+
+            var g_spmbt = document.getElementsByName("F_JscptSpmbt");
+
+            for (var i in g_spmbt) {
+                g_spmbt[i].value = "8304RPC";
+            }
+        }());
+    </script>
+</body>
+</html>
+
+<?PHP
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function PrintMDTMenuEntry($Link, $Label)
+{
+    ?>
+    <div><a href="<?= $Link; ?>"><?= $Label; ?></a></div>
+    <?PHP
+}

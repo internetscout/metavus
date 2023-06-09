@@ -1,0 +1,447 @@
+<?PHP
+#
+#   FILE:  CollectionReports.html (MetricsReporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Graph;
+use Metavus\Record;
+use Metavus\SearchParameterSet;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function PrintRecordTable($CountData, $Caption)
+{
+    ?>
+    <table class="table table-striped">
+      <tr style="background-color: #CFCFDD;"><th align="left">Resource</th>
+        <th align="right">Count</th>
+      </tr>
+        <?PHP
+        $Shown = 0;
+        if (count($CountData["Counts"]) > 0) {
+            foreach ($CountData["Counts"] as $Id => $Count) {
+                if (Record::ItemExists($Id)) {
+                    $Resource = new Record($Id);
+                    $Shown += $Count;
+                    ?><tr valign="top">
+                           <td><a href="index.php?P=FullRecord&AMP;ID=<?= $Id;
+                            ?>"><?= $Resource->GetMapped("Title");  ?></a></td>
+                            <td align="right"><?= number_format($Count);  ?></td>
+                      </tr><?PHP
+                }
+            }
+        } else {
+            ?><tr><td colspan="2">(no <?= $Caption; ?> for this period)</td></tr><?PHP
+        }
+
+        $Total = $CountData["Total"][0];
+        if ($Shown < $Total) {
+            print "<tr><td><i>Other</i></td><td align=\"right\">".number_format($Total - $Shown)
+              ."</td></tr>";
+        }
+
+        print "<tr><td><i>Total</i></td><td align=\"right\">".number_format($Total)."</td></tr>";
+
+        print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
+                .date("M j Y", strtotime($CountData["StartDate"]))." - "
+                .date("M j Y", strtotime($CountData["EndDate"]))
+                ."</i></td></tr>";
+        ?></table><?PHP
+}
+
+function PrintSearchTable($Data, $StartDate, $EndDate)
+{
+    $Other = $Data["Other"];
+    $Total = $Data["Total"];
+
+    unset($Data["Other"]);
+    unset($Data["Total"]);
+
+    print '<table class="table table-striped">'
+        .' <tr style="background-color: #CFCFDD;"><th align="left">Search Terms</th>'
+        .'<th align="right">Searches</th></tr>';
+
+    if ($Total > 0) {
+        foreach ($Data as $Terms => $Count) {
+            ?><tr valign="top"><td><?= SearchDesc($Terms); ?></td>
+            <td align="right"><?= number_format($Count); ?></td></tr><?PHP
+        }
+
+        if ($Other > 0) {
+            print "<tr><td><i>Other</i></td><td align=\"right\">".number_format($Other)
+              ."</td></tr>";
+        }
+
+        print "<tr><td><i>Total</i></td><td align=\"right\">".number_format($Total)
+          ."</td></tr>";
+    } else {
+        ?><tr><td colspan="2">(no search data for this period)</td></tr><?PHP
+    }
+
+    print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
+        .date("M j Y", $StartDate)." - ".date("M j Y", $EndDate)
+        ."</i></td></tr>"
+        ."</table>";
+}
+
+function PrintShareTable($CountData, $StartDate, $Caption)
+{
+    $Other = $CountData["Other"];
+    $Total = $CountData["Total"];
+
+    unset($CountData["Other"]);
+    unset($CountData["Total"]);
+
+    print '<table class="table table-striped">'
+        .'<tr style="background-color: #CFCFDD;"><th align="left">Resource</th>'
+        .'<th align="right">Shares</th></tr>';
+
+    foreach ($CountData as $Id => $Count) {
+        if (!Record::ItemExists($Id)) {
+            continue;
+        }
+
+        $Resource = new Record($Id);
+        ?><tr valign="top"><td><a href="<?= $Resource->GetMapped("Url"); ?>"
+            ><?= $Resource->GetMapped("Title");  ?></a></td>
+            <td align="right"><?= $Count;  ?></td>
+            </tr><?PHP
+    }
+
+    if ($Other > 0) {
+        print "<tr><td><i>Other</i></td><td align=\"right\">".$Other."</td></tr>";
+    }
+
+    print "<tr><td><i>Total</i><td align=\"right\">".$Total."</td></tr>";
+
+    print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
+        .date("M j Y", $StartDate)." - " .date("M j Y")
+        ."</i></td></tr>"
+        ."</table>";
+}
+
+function SearchDesc($Params)
+{
+    $SearchParams = new SearchParameterSet();
+    $SearchParams->UrlParameters($Params);
+
+    return "<a href=\"index.php?P=AdvancedSearch&amp;Q=Y&amp;".$Params."\" target=\"_blank\">".
+        $SearchParams->TextDescription(true, false)."</a>";
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+# convert data we want to graph into graph-friendly formats
+$GraphItems = [
+    "H_TotalResourceCountData",
+    "H_NewResourceCountData",
+    "H_UrlClickData",
+    "H_OaiDataByDay",
+];
+foreach ($GraphItems as $GraphItem) {
+    $Data = $$GraphItem;
+    foreach ($Data as $Key => $Val) {
+        $Data[$Key] = [$Val];
+    }
+    $$GraphItem = $Data;
+}
+
+$ResourceCountGraph = new Graph(Graph::TYPE_DATE, $H_TotalResourceCountData);
+$ResourceCountGraph->XLabel("Date");
+$ResourceCountGraph->YLabel("Total Resources");
+
+$NewResourceGraph = new Graph(Graph::TYPE_DATE_BAR, $H_NewResourceCountData);
+$NewResourceGraph->XLabel("Date");
+$NewResourceGraph->YLabel("New Resources");
+
+$UrlClickGraph = new Graph(Graph::TYPE_DATE_BAR, $H_UrlClickData);
+$UrlClickGraph->XLabel("Date");
+$UrlClickGraph->YLabel("Resource URL Clicks");
+
+$SearchGraph = new Graph(Graph::TYPE_DATE_BAR, $H_SearchDataByDay);
+$SearchGraph->XLabel("Date");
+$SearchGraph->YLabel("Searches");
+$SearchGraph->Legend(["Unprivileged","Privileged"]);
+
+$OaiRequestGraph = new Graph(Graph::TYPE_DATE_BAR, $H_OaiDataByDay);
+$OaiRequestGraph->XLabel("Date");
+$OaiRequestGraph->YLabel("OAI Requests");
+$OaiRequestGraph->Scale(Graph::WEEKLY);
+
+# only use share data if the we have it
+if (isset($H_SharesByDay)) {
+    $SharesGraph = new Graph(Graph::TYPE_DATE_BAR, $H_SharesByDay);
+    $SharesGraph->XLabel("Date");
+    $SharesGraph->YLabel("Resource Shares");
+    $SharesGraph->Legend(["Email", "Facebook", "Twitter", "LinkedIn"]);
+    $SharesGraph->Scale(Graph::WEEKLY);
+}
+
+?>
+<style type="text/css">
+.mv-stat-header {
+  display: inline-block;
+  margin: 0;
+  padding-left: 4px;
+  padding-top: 5px;
+}
+</style>
+
+<div>
+  <div style="float: right">
+    <a class="btn btn-primary btn-sm mv-button-iconed"
+        href="index.php?P=P_MetricsReporter_CollectionReports&amp;US=1"
+    ><img src="<?= $AF->GUIFile('RefreshArrow.svg'); ?>" alt=""
+        class="mv-button-icon" /> Update Now</a>
+  </div>
+<h1>Collection Usage Metrics</h1>
+</div>
+
+<div style="min-width: 600px;">
+<table class="mv-table mv-table-fullsize" style="margin-bottom: 20px;">
+  <tr valign="top">
+    <td width="50%">
+      <div class="mv-stat-container">
+        <h2 class="mv-stat-header">Full Record Views</h2>
+        <span class="mv-button-group mv-content-mfetabs" style="float: right;">
+          <span class="mv-range-button" style="font-weight: bold;"><a class="mv-button-weekly
+                mv-button-fullrecord">Week</a></span> | 
+          <span class="mv-range-button">
+            <a class="mv-button-monthly mv-button-fullrecord">Month</a>
+          </span> | 
+          <span class="mv-range-button">
+            <a class="mv-button-yearly mv-button-fullrecord">Year</a>
+          </span>
+        </span>
+      </div>
+
+      <div class="mv-stat-fullrecord mv-stat-weekly">
+        <?PHP  PrintRecordTable($H_WeeklyViewCountData, "full record views");  ?>
+      </div>
+      <div class="mv-stat-fullrecord mv-stat-monthly">
+        <?PHP PrintRecordTable($H_MonthlyViewCountData, "full record views"); ?>
+      </div>
+      <div class="mv-stat-fullrecord mv-stat-yearly">
+        <?PHP PrintRecordTable($H_YearlyViewCountData, "full record views"); ?>
+      </div>
+
+    </td>
+    <td></td>
+    <td width="50%">
+      <?PHP
+        if (isset($H_UrlField)) {
+            ?>
+      <div class="mv-stat-container">
+        <h2 class="mv-stat-header">Resource URL Clicks</h2>
+        <span class="mv-button-group mv-content-mfetabs" style="float: right;">
+          <span class="mv-range-button" style="font-weight: bold;">
+            <a class="mv-button-weekly mv-button-click">Week</a>
+          </span> | 
+          <span class="mv-range-button">
+            <a class="mv-button-monthly mv-button-click">Month</a>
+          </span> | 
+          <span class="mv-range-button">
+            <a class="mv-button-yearly mv-button-click">Year</a>
+          </span>
+        </span>
+      </div>
+
+      <div class="mv-stat-click mv-stat-weekly">
+            <?PHP  PrintRecordTable($H_WeeklyClickCountData, "resource URL clicks");  ?>
+      </div>
+      <div class="mv-stat-click mv-stat-monthly">
+            <?PHP PrintRecordTable($H_MonthlyClickCountData, "resource URL clicks"); ?>
+      </div>
+      <div class="mv-stat-click mv-stat-yearly">
+            <?PHP PrintRecordTable($H_YearlyClickCountData, "resource URL clicks"); ?>
+      </div>
+            <?PHP
+        } else {
+            print("To obtain link click counts, please set a "
+                 ."Resource URL in the System Configuration");
+        }
+        ?>
+    </td>
+  </tr>
+</table>
+
+<table class="mv-table mv-table-fullsize" style="margin-bttom: 20px;">
+<tr valign="top">
+ <td width="50%">
+    <div class="mv-stat-container">
+      <h2 class="mv-stat-header">Searches: Unprivileged Users</h2>
+      <span class="mv-button-group mv-content-mfetabs" style="float: right;">
+        <span class="mv-range-button" style="font-weight: bold;">
+          <a class="mv-button-daily mv-button-searchunpriv">Day</a>
+        </span> | 
+        <span class="mv-range-button">
+          <a class="mv-button-weekly mv-button-searchunpriv">Week</a>
+        </span> | 
+        <span class="mv-range-button">
+          <a class="mv-button-monthly mv-button-searchunpriv">Month</a>
+        </span>
+      </span>
+    </div>
+    <div class="mv-stat-searchunpriv mv-stat-daily">
+    <?PHP  PrintSearchTable($H_SearchDataDayUnpriv, $Past["Day"], $Now);  ?>
+    </div>
+    <div class="mv-stat-searchunpriv mv-stat-weekly">
+    <?PHP PrintSearchTable($H_SearchDataWeekUnpriv, $Past["Week"], $Now); ?>
+    </div>
+    <div class="mv-stat-searchunpriv mv-stat-monthly">
+    <?PHP PrintSearchTable($H_SearchDataMonthUnpriv, $Past["Month"], $Now); ?>
+    </div>
+  </td>
+  <td></td>
+  <td width="50%">
+    <div class="mv-stat-container">
+      <h2 class="mv-stat-header">Searches: Privileged Users</h2>
+      <uspan class="mv-button-group mv-content-mfetabs" style="float: right;">
+        <span class="mv-range-button" style="font-weight: bold;">
+          <a class="mv-button-daily mv-button-searchpriv">Day</a>
+        </span> | 
+        <span class="mv-range-button">
+          <a class="mv-button-weekly mv-button-searchpriv">Week</a>
+        </span> | 
+        <span class="mv-range-button">
+          <a class="mv-button-monthly mv-button-searchpriv">Month</a>
+        </span>
+        </span>
+    </div>
+    <div class="mv-stat-searchpriv mv-stat-daily">
+    <?PHP  PrintSearchTable($H_SearchDataDayPriv, $Past["Day"], $Now);  ?>
+    </div>
+    <div class="mv-stat-searchpriv mv-stat-weekly">
+    <?PHP PrintSearchTable($H_SearchDataWeekPriv, $Past["Week"], $Now); ?>
+    </div>
+    <div class="mv-stat-searchpriv mv-stat-monthly">
+    <?PHP PrintSearchTable($H_SearchDataMonthPriv, $Past["Month"], $Now); ?>
+    </div>
+  </td>
+</tr>
+</table>
+
+<?PHP if (isset($H_TopShares)) { ?>
+<div style="min-width: 600px;">
+<table class="mv-table mv-table-fullsize" style="margin-bottom: 20px;">
+  <tr valign="top">
+    <td width="50%">
+      <div class="mv-stat-container">
+        <h2 class="mv-stat-header">Resource Shares</h2>
+        <span class="mv-button-group mv-content-mfetabs" style="float: right;">
+          <span class="mv-range-button" style="font-weight: bold;">
+            <a class="mv-button-weekly mv-button-shares">Week</a>
+          </span> | 
+          <span class="mv-range-button">
+            <a class="mv-button-monthly mv-button-shares">Month</a>
+          </span> | 
+          <span class="mv-range-button">
+            <a class="mv-button-yearly mv-button-shares">Year</a>
+          </span>
+          </span>
+      </div>
+
+     <div class="mv-stat-shares mv-stat-weekly">
+      <?PHP PrintShareTable($H_TopShares["Week"], $Past["Week"], "resource shares"); ?>
+      </div>
+
+      <div class="mv-stat-shares mv-stat-monthly">
+      <?PHP PrintShareTable($H_TopShares["Month"], $Past["Month"], "resource shares"); ?>
+      </div>
+
+      <div class="mv-stat-shares mv-stat-yearly">
+      <?PHP PrintShareTable($H_TopShares["Year"], $Past["Year"], "resource shares"); ?>
+      </div>
+    </td>
+    <td></td>
+    <td width="50%"></td>
+  </tr>
+</table>
+</div>
+<?PHP } ?>
+
+<script type="text/javascript">
+function toggle_stats(th, period){
+  var stat_type = '';
+  if      ($(th).hasClass('mv-button-fullrecord'))   { stat_type = 'fullrecord'; }
+  else if ($(th).hasClass('mv-button-click'))        { stat_type = 'click'; }
+  else if ($(th).hasClass('mv-button-searchpriv'))   { stat_type = 'searchpriv'; }
+  else if ($(th).hasClass('mv-button-searchunpriv')) { stat_type = 'searchunpriv'; }
+  else if ($(th).hasClass('mv-button-shares'))       { stat_type = 'shares'; }
+  else { return; }
+
+  $('.mv-stat-'+stat_type).hide();
+  $('.mv-button-'+stat_type).removeClass('mv-button-active');
+  $('.mv-stat-'+stat_type+'.mv-stat-'+period).show();
+  $('.mv-button-'+stat_type+'.mv-button-'+period).addClass('mv-button-active');
+}
+
+$('.mv-stat-weekly.mv-stat-searchpriv').hide();
+$('.mv-stat-weekly.mv-stat-searchunpriv').hide();
+$('.mv-stat-monthly').hide();
+$('.mv-stat-yearly').hide();
+
+$(".mv-button-daily").click( function(){ toggle_stats(this, 'daily'); });
+$(".mv-button-weekly").click( function(){ toggle_stats(this, 'weekly'); });
+$(".mv-button-monthly").click( function(){ toggle_stats(this, 'monthly'); });
+$(".mv-button-yearly").click( function(){ toggle_stats(this, 'yearly'); });
+
+$(".mv-range-button").click( function() {
+    $(this).siblings().css('font-weight', 'normal');
+    $(this).css('font-weight', 'bold');
+});
+</script>
+
+<?PHP
+  $ResourceCountGraph->Title("<h2>Total Number of Resources (updated daily)</h2>");
+  $ResourceCountGraph->Display();
+?>
+
+<?PHP
+  $NewResourceGraph->Title("<h2>New Resources Added (updated daily)</h2>");
+  $NewResourceGraph->Display();
+?>
+
+<?PHP
+  $UrlClickGraph->Title("<h2>Resource URL Clicks</h2>");
+  $UrlClickGraph->Display();
+?>
+
+<?PHP
+  $SearchGraph->Title("<h2>Searches</h2>");
+  $SearchGraph->Display();
+?>
+
+<?PHP
+  $OaiRequestGraph->Title("<h2>OAI Requests</h2>");
+  $OaiRequestGraph->Display();
+?>
+
+<?PHP
+if (isset($SharesGraph)) {
+    $SharesGraph->Title("<h2>Resource Shares</h2>");
+    $SharesGraph->Display();
+}
+?>
+
+<style type="text/css">
+#chart6 .graph_color0 { fill: #C5C53B; }
+#chart6 .graph_color1 { fill: #2E4588; }
+#chart6 .graph_color2 { fill: #2EC1FD; }
+#chart6 .graph_color3 { fill: #007000; }
+#chart6 .graph_color4 { fill: #A01E1A; }
+/** styling for stat header areas */
+.mv-stat-container {
+    padding-bottom: 5px;
+    height: 2.5 em;
+}
+
+.mv-range-button:hover {
+    cursor: pointer;
+}
+</style>
+</div>

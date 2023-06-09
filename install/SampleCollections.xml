@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ResourceCollection>
+    <Resource>
+        <Name>The Best of the Scout Report</Name>
+        <Monogram>S</Monogram>
+        <Description><![CDATA[
+            <p>The Scout Report is the flagship publication of the Internet Scout Research Group (Scout) at the University of Wisconsin-Madison. Published every Friday both online and by email subscription, the Scout Report provides a convenient way to discover new and noteworthy resources on the Internet.</p> <p>Each week, the Scout Report's editors select and annotate ten websites or online resources--five general interest resources that span a variety of topics from science and technology to arts and the humanities; and five carefully curated resources that explore a selected theme in more depth. In addition, every other issue highlights two useful technology tools or features an In the News topic that has captured the interest of the Scout editor.</p> <p>Each May, Scout staff collaborate to compile an annual "Best of" issue, in order to share some of their favorite resources from the past academic year. Ten websites are selected based on a variety of criteria, including design, content, and creativity as well as popularity amongst Scout's readership.</p> <p> The Best of the Scout Report collection features a selection of 44 resources highlighted in Scout’s annual "Best of" issue from 2016 through 2020. [--SAMPLE COLLECTION--]</p>
+        ]]></Description>
+        <RecordStatus>Published</RecordStatus>
+        <SelectionCriteria>
+            <Parameter>
+                <Field>Source</Field>
+                <Value>Scout Report</Value>
+            </Parameter>
+        </SelectionCriteria>
+    </Resource>
+    <Resource>
+        <Name>Let's Read!</Name>
+        <Monogram>R</Monogram>
+        <Description><![CDATA[
+            <p>“The more that you read, the more things you will know. The more that you learn, the more places you’ll go.” With these famous words, Dr. Seuss--an author, illustrator, political cartoonist and more--introduces the wonderful world of books to young readers. While Dr. Suess is one of the first authors encountered by so many early readers, he is certainly not the last. It is in the spirit of Dr. Suess’s words and profound belief in the value of reading that we have compiled the  Let’s Read! collection.</p> <p>The Let’s Read! collection consists of two types of resources--websites that provide free, online access to digital books and other written materials; and websites that provide readers with helpful summaries, reviews, and recommendations on what to read. Explore the collection and be transported from Medieval France to the present day, gaining access to illuminated manuscripts, classic novels, diverse young adult reading, higher education textbooks, and so much more. [--SAMPLE COLLECTION--]</p>
+        ]]></Description>
+        <RecordStatus>Published</RecordStatus>
+        <SelectionCriteria>
+            <Parameter>
+                <Field>Resource Type</Field>
+                <Value>Collection</Value>
+            </Parameter>
+            <Parameter>
+                <Field>Classification</Field>
+                <Value>book</Value>
+            </Parameter>
+            <Logic>AND</Logic>
+        </SelectionCriteria>
+    </Resource>
+    <Resource>
+        <Name>Maps and More</Name>
+        <Monogram>M</Monogram>
+        <Description><![CDATA[
+            <p>Dating back to Babylonian times, cartography is the practice of drawing maps. By relying on science, technique, and aesthetics, cartographers communicate complex spatial information in a way that is both visually pleasing and easier to comprehend. Maps may, for example, depict physical, political, topographic, climatic, or economic relationships. Beyond this, maps also serve as a record of our shared history. Maps may visualize any idea and its relationship to a physical place, illustrate changes to the world over time, provide a glimpse into how society once understood the world, and so much more.</p>  <p>In recognition of the importance and versatility of the map, the Maps and More collection offers a diverse range of interactive resources. These maps provide a fascinating look into histories, personal stories, data, and research from across the world. Among the variety of maps offered, users can explore people and places of early modern London, the history of popular music genres, relationships between biodiversity and geography, open data, poverty in America, and the world’s refugee crisis. [--SAMPLE COLLECTION--]</p>
+        ]]></Description>
+        <RecordStatus>Published</RecordStatus>
+        <SelectionCriteria>
+            <Parameter>
+                <Field>Title</Field>
+                <Value>map</Value>
+            </Parameter>
+            <Parameter>
+                <Field>Description</Field>
+                <Value>map</Value>
+            </Parameter>
+            <Logic>OR</Logic>
+        </SelectionCriteria>
+    </Resource>
+</ResourceCollection>

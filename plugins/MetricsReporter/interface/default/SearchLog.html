@@ -1,0 +1,115 @@
+<?PHP
+#
+#   FILE:  SearchLog.html (MetricsReporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\TransportControlsUI;
+use ScoutLib\HtmlOptionList;
+
+# construct the ListUI
+$ListUI = new ItemListUI($H_ListFields, $H_TransportUI);
+$ListUI->itemsPerPage($H_ResultsPerPage);
+$ListUI->baseLink($H_BaseLink);
+
+$ListUI->AddActionButton(
+    "Spam",
+    $H_BaseLink
+    ."&amp;".TransportControlsUI::PNAME_STARTINGINDEX."=".$H_TransportUI->startingIndex()
+    ."&amp;Spam=\$ID"
+);
+
+$StartOptionList = new HtmlOptionList(
+    "ST",
+    [
+        ST_FOREVER => "All time",
+        ST_24_MONTH => "Last 24 months",
+        ST_12_MONTH => "Last 12 months",
+        ST_6_MONTH => "Last 6 months",
+        ST_3_MONTH => "Last 3 months",
+        ST_1_MONTH => "Last month",
+        ST_1_WEEK => "Last week",
+        ST_1_DAY => "Last day"
+    ],
+    $H_StartTime
+);
+$StartOptionList->SubmitOnChange(true);
+
+$UserTypeOptionList = new HtmlOptionList(
+    "UT",
+    [
+        UT_ALL => "All Users",
+        UT_ANON => "Anonymous",
+        UT_PRIV => "Privileged",
+        UT_UNPRIV => "Unprivileged"
+    ],
+    $UserType
+);
+$UserTypeOptionList->SubmitOnChange(true);
+
+$SearchTypeOptionList = new HtmlOptionList(
+    "STY",
+    [
+        STY_ALL => "All",
+        STY_SUCCESSFUL => "Successful",
+        STY_FAILED => "Failed"
+    ],
+    $H_SearchType
+);
+$SearchTypeOptionList->SubmitOnChange(true);
+
+$RPOtionList = new HtmlOptionList(
+    "RP",
+    [
+        50  =>  50,
+        100 => 100,
+        250 => 250,
+        500 => 500,
+        750 => 750
+    ],
+    $H_ResultsPerPage
+);
+$RPOtionList->SubmitOnChange(true);
+?>
+<style type="text/css">
+.search-params { word-break: break-all; }
+</style>
+
+<span style="float: right; margin-top: 1em;">
+<form name="SearchLogForm" action="index.php" method="GET">
+  <input type="hidden" name="P" value="P_MetricsReporter_SearchLog">
+  <input type="hidden" name="V" value="<?= $H_View ?>">
+  <?PHP if ($H_View == "Frequency") { ?>
+    Period: <?= $StartOptionList->GetHtml(); ?>
+  <?PHP } ?>
+    Users: <?= $UserTypeOptionList->GetHtml(); ?>
+    Search Type: <?= $SearchTypeOptionList->GetHtml(); ?>
+    Results: <?= $RPOtionList->GetHtml(); ?>
+</form>
+</span>
+<?PHP
+if ($H_View == "Frequency") {
+    PageTitle("Search Frequency");
+    print "<h1>Search Frequency</h1>";
+} else {
+    PageTitle("Search Log");
+    print "<h1>Search Log</h1>";
+}
+
+$H_TransportUI->message("Results <b>"
+    .number_format(min(($H_TransportUI->StartingIndex() + 1), $H_TotalResults))
+    ."</b> - <b>"
+    .number_format(min(
+        ($H_TransportUI->StartingIndex() + $H_ResultsPerPage),
+        $H_TotalResults
+    ))
+    ."</b> of <b>".number_format($H_TotalResults)."</b>");
+$H_TransportUI->display();
+
+$ListUI->Display($H_ListData);
+
+$H_TransportUI->display();

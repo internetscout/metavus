@@ -1,0 +1,50 @@
+<?PHP
+#
+#   FILE:  ConfirmDeleteQualifier.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Qualifier;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+* Print out the name of all the qualifiers.
+* @param array $QualifierIds An array of qualifier IDs
+*       for the qualifiers whose name will be printed.
+*/
+function PrintQualifierNames($QualifierIds)
+{
+    foreach ($QualifierIds as $QualifierId) {
+        $Qualifier = new Qualifier($QualifierId);
+        $QualifierName = $Qualifier->Name();
+        print $QualifierName."<br>";
+    }
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Confirm Delete Qualifier(s)</h1>
+
+<p>Qualifiers To Be Deleted:</p>
+<p><?PHP PrintQualifierNames($H_QualifierIds); ?></p>
+
+<p class="alert alert-danger"><strong>Caution:</strong> Removing a
+qualifier removes it from all resources, controlled names, and
+classifications that use it and cannot be undone.</p>
+
+<form name="confirmdeletequalifier" method="post" action="index.php?P=ConfirmDeleteQualifier">
+    <input type="hidden" name="OkayToDelete" value="1" />
+    <input type="hidden" name="QI" value="<?= $H_QIString; ?>" />
+    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+        value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete</button>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>

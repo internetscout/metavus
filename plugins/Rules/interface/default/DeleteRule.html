@@ -1,0 +1,70 @@
+<?PHP
+#
+#   FILE:  DeleteRule.html (Rules plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2016-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# if no rule ID available
+if ($H_DisplayMode == "NoRuleSpecified") {
+    # display error message indicating no ID
+    ?><h1>Error</h1>
+    No rule ID was supplied.<?PHP
+    PageTitle("No Rule Specified");
+} elseif ($H_DisplayMode == "RuleDoesNotExist") { # else if no rule found with specified ID
+    # display error message indicating rule not found
+    ?><h1>Error</h1>
+    No rule found with specified ID.<?PHP
+    PageTitle("Rule Not Found");
+} else {
+    # display appropriate heading
+    if ($H_DisplayMode == "RuleDeleted") {
+        PageTitle("Rule Deleted");
+        ?><h2>Rule Deleted</h2><?PHP
+    } else {
+        PageTitle("Confirm Rule Deletion");
+        ?><h2>Confirm Rule Deletion</h2><?PHP
+    }
+
+    # display rule content
+    ?>
+    <table class="table table-striped">
+        <tr>
+            <th>Name</th>
+            <td><?= $H_Rule->Name() ?></td>
+        </tr>
+        <tr>
+            <th>Condition</th>
+            <td><?= $H_Rule->SearchParameters()->TextDescription() ?></td>
+        </tr>
+    </table>
+    <?PHP
+
+    # if rule has been deleted
+    if ($H_DisplayMode == "RuleDeleted") {
+        # display button to return to list of rules
+        ?><p><a href="index.php?P=P_Rules_ListRules"
+                class="btn btn-primary mv-button-iconed"
+                ><img src="<?= $AF->GUIFile('BackArrow.svg'); ?>"
+                    alt="" class="mv-button-icon" /> Return to Rule List</a></p><?PHP
+    } else {
+        # display delete confirmation buttons
+        ?>
+        <form method="POST" action="index.php?P=P_Rules_DeleteRule&amp;ID=<?PHP
+                print $H_Rule->Id();  ?>&amp;AC=Confirmation">
+            <p>
+                <button type="submit" name="Submit" value="Delete"
+                    class="btn btn-danger mv-button-iconed"><img
+                    src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                    class="mv-button-icon" /> Delete</button>
+                <button type="submit" name="Submit" value="Cancel"
+                    class="btn btn-primary mv-button-iconed"><img
+                    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+                    class="mv-button-icon" /> Cancel</button>
+            </p>
+        </form>
+        <?PHP
+    }
+}

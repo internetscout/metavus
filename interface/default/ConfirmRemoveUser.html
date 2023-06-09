@@ -1,0 +1,57 @@
+<?PHP
+#
+#   FILE:  ConfirmRemoveUser.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\User;
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Confirm Remove User</h1>
+
+<?PHP if ($H_TriedRemovingOwnAccount) { ?>
+<p class="alert alert-danger"><strong>Note:</strong> You may not delete your own account.</p>
+<?PHP } ?>
+
+<?PHP if (count($H_UserInUseBy)) { ?>
+<p>Could not remove following users</p>
+<p><?PHP foreach ($H_UserInUseBy as $UserId => $Reasons) { ?>
+    <?= (new User(intval($UserId)))->Get("UserName"); ?>
+    <br/>
+    <?= implode("<br/>", $Reasons); ?>
+    <br/>
+   <?PHP } ?></p>
+<?PHP } ?>
+
+<?PHP if (count($H_UsersToRemove)) { ?>
+    Confirm removing the following users:
+    <p><?PHP foreach ($H_UsersToRemove as $UserId) { ?>
+            <?= (new User(intval($UserId)))->Get("UserName"); ?>
+            <br />
+       <?PHP } ?></p>
+
+        <p class="alert alert-primary">
+            <strong>Caution:</strong>
+             Removing a user deletes all information associated with that user and cannot be undone.
+        </p>
+
+        <form name="confirmremoveuser" method="post"
+            action="index.php?P=SelectEditUserListComplete">
+            <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+                value="Remove User(s)"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                class="mv-button-icon" /> Remove User(s)</button>
+            <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+                value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+                class="mv-button-icon" /> Cancel</button>
+        </form>
+
+<?PHP } else { ?>
+    <p>No users selected for removal. Please return to the
+    <a href="index.php?P=UserList">user editing screen</a>.</p>
+<?PHP } ?>

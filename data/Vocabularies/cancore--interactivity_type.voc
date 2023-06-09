@@ -1,0 +1,18 @@
+<vocabulary>
+    <name>Interactivity Type</name>  <!-- (correlates to CWIS Interactivity Type) -->
+    <description>Predominant mode of learning supported by this learning object; indicate whether the resource requires action on the part of the user (e.g., the resource presents imperative statements, requires input), simply provides information, or presents a mix of these two approaches.</description>
+    <version>2.0 (Nov 21 2003)</version>
+    <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    <owner>
+        <name>CanCore</name>
+        <url>http://cancore.athabascau.ca</url>
+    </owner>
+    <qualifier>
+        <name>CanCore Interactivity Type Vocabulary</name>
+        <namespace></namespace>
+        <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    </qualifier>
+    <term>Active</term>
+    <term>Expositive</term>
+    <term>Mixed</term>
+</vocabulary>

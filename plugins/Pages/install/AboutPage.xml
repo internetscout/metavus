@@ -1,0 +1,12 @@
+<ResourceCollection>
+    <Resource>
+        <Title>About</Title>
+        <Content><![CDATA[<h1>About Our Site</h1><p>(fill in about your site here)</p>]]></Content>
+        <CleanURL>about</CleanURL>
+    </Resource>
+    <Resource>
+        <Title>Privacy</Title>
+        <Content><![CDATA[<h1>Our Privacy Policy</h1><p>(fill in your privacy policy information here)</p>]]></Content>
+        <CleanURL>privacy</CleanURL>
+    </Resource>
+</ResourceCollection>

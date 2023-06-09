@@ -1,0 +1,2727 @@
+<?PHP
+#
+#   FILE:  DBEditor.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+# include some ui files for dialogs/tooltips
+$AF = ApplicationFramework::getInstance();
+$AF->RequireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
+$AF->RequireUIFile('jquery-ui.js', ApplicationFramework::ORDER_FIRST);
+
+# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+/**
+ * Print a text metadata field row.
+ * @param MetadataField $Field text metadata field
+ */
+function PrintTextFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <?PHP $P->DefaultValue(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <?PHP $P->TextFieldSize(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-maxlength">
+      <?PHP $P->MaxLength(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <?PHP $P->AllowHTML(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <?PHP $P->IncludeInSortOptions(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print an URL metadata field row.
+ * @param MetadataField $Field URL metadata field
+ */
+function PrintUrlFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <?PHP $P->TextFieldSize(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-maxlength">
+      <?PHP $P->MaxLength(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <?PHP $P->IncludeInSortOptions(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print an Email metadata field row.
+ * @param MetadataField $Field Email metadata field
+ */
+function PrintEmailFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-email mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-display mfe-field-textfieldsize">
+      <?PHP $P->TextFieldSize(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-display mfe-field-maxlength">
+      <?PHP $P->MaxLength(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-flagofflabel">
+      i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-email mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-includeinsortoptions">
+      <?PHP $P->IncludeInSortOptions(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-email mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a paragraph metadata field row.
+ * @param MetadataField $Field paragraph metadata field
+ */
+function PrintParagraphFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <?PHP $P->DefaultValue(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <?PHP $P->AllowHTML(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <?PHP $P->ParagraphRows(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <?PHP $P->ParagraphCols(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <?PHP $P->UseWysiwygEditor(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a number metadata field row.
+ * @param MetadataField $Field number metadata field
+ */
+function PrintNumberFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <?PHP $P->DefaultValue(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <?PHP $P->TextFieldSize(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-minvalue">
+      <?PHP $P->MinValue(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <?PHP $P->MaxValue(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <?PHP $P->IncludeInSortOptions(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a date metadata field row.
+ * @param MetadataField $Field date metadata field
+ */
+function PrintDateFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <?PHP $P->TextFieldSize(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <?PHP $P->IncludeInSortOptions(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a timestamp metadata field row.
+ * @param MetadataField $Field timestamp metadata field
+ */
+function PrintTimestampFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <?PHP $P->UpdateMethod(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <?PHP $P->IncludeInSortOptions(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+     <?PHP
+}
+
+/**
+ * Print a flag metadata field row.
+ * @param MetadataField $Field flag metadata field
+ */
+function PrintFlagFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <?PHP $P->DefaultValue(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <?PHP $P->FlagOnLabel(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <?PHP $P->FlagOffLabel(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-searchweight">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a tree metadata field row.
+ * @param MetadataField $Field tree metadata field
+ */
+function PrintTreeFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <?PHP $P->UseForOaiSets(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <?PHP $P->NumAjaxResults(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <?PHP $P->IncludeInFacetedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a controlled name metadata field row.
+ * @param MetadataField $Field controlled name metadata field
+ */
+function PrintControlledNameFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <?PHP $P->UseForOaiSets(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows"
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <?PHP $P->NumAjaxResults(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <?PHP $P->IncludeInFacetedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print an option metadata field row.
+ * @param MetadataField $Field option metadata field
+ */
+function PrintOptionFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <?PHP $P->AllowMultiple(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <?PHP $P->UseForOaiSets(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <?PHP $P->IncludeInFacetedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print an user metadata field row.
+ * @param MetadataField $Field user metadata field
+ */
+function PrintUserFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <?PHP $P->UserPrivilegeRestrictions(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a file metadata field row.
+ * @param MetadataField $Field file metadata field
+ */
+function PrintFileFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print an image metadata field row.
+ * @param MetadataField $Field image metadata field
+ */
+function PrintImageFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    ata-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <?PHP $P->AllowMultiple(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <?PHP $P->IncludeInKeywordSearch(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a point metadata field row.
+ * @param MetadataField $Field point metadata field
+ */
+function PrintPointFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <?PHP $P->DefaultValue(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <?PHP $P->UsesQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <?PHP $P->HasItemLevelQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <?PHP $P->DefaultQualifier(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <?PHP $P->AssociatedQualifierList(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <?PHP $P->ShowQualifiers(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets"
+    ><i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <?PHP $P->TextFieldSize(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <?PHP $P->PointPrecision(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <?PHP $P->PointDecimalDigits(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a reference metadata field row.
+ * @param MetadataField $Field reference metadata field
+ */
+function PrintReferenceFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <?PHP $P->NumAjaxResults(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <?PHP $P->IncludeInAdvancedSearch(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+/**
+ * Print a SearchParameterSet metadata field row.
+ * @param MetadataField $Field SearchParameterSet metadata field
+ */
+function PrintSearchParameterSetFieldRow(MetadataField $Field)
+{
+    $P = new MfeFieldValuePrinter($Field);
+    ?>
+  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
+    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
+      <?PHP $P->Enabled(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
+      <?PHP PrintFieldNameText($Field); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
+      <?PHP $P->Editable(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
+      <?PHP $P->Optional(); ?>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxvalue">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      <i>N/A</i>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
+      <?PHP $P->SearchWeight(); ?>
+    </td>
+    <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
+      <?PHP PrintEditText($Field); ?>
+    </td>
+  </tr>
+    <?PHP
+}
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Class used to make printing field values more convenient.
+ */
+class MfeFieldValuePrinter
+{
+
+    /**
+     * Setup the field value printer.
+     * @param MetadataField $MetadataField metadata field
+     */
+    public function __construct(MetadataField $MetadataField)
+    {
+        $this->MetadataField = $MetadataField;
+        $this->HumanField = new HumanMetadataField($MetadataField);
+        $this->HumanField->SetNotSetText("&mdash;");
+    }
+
+    /**
+     * Escape for HTML and print the value returned from
+     * $this->HumanField->$Method($Arguments).
+     * @param string $Method method name
+     * @param array $Arguments method arguments
+     */
+    public function __call($Method, $Arguments)
+    {
+        $Callback = [$this->HumanField, $Method];
+        $Value = call_user_func_array($Callback, $Arguments);
+
+        print defaulthtmlentities($Value);
+    }
+
+    /**
+     * Print a 1 if the metadata field can be toggled (enabled/disabled) or a 0
+     * if it can't be.
+     */
+    public function fieldIsTogglable()
+    {
+        if (!isset(self::$ActivePlugins)) {
+            global $G_PluginManager;
+            self::$ActivePlugins = $G_PluginManager->GetActivePluginList();
+        }
+
+        $Id = $this->MetadataField->Id();
+        $Owner = $this->MetadataField->Owner();
+        $OwnerIsActive = in_array($Owner, self::$ActivePlugins);
+
+        if (InterfaceConfiguration::getInstance()->getBool("ResourceRatingsEnabled") &&
+            $this->MetadataField->Name() == "Cumulative Rating") {
+            $IsTogglable = false;
+        } else {
+            $Schema = new MetadataSchema($this->MetadataField->SchemaId());
+            $IsTogglable = !$Schema->FieldToStdNameMapping($Id)
+                    && !MetadataSchema::FieldUsedInPrivileges($Id);
+            $IsTogglable = $IsTogglable && (!$Owner || $OwnerIsActive);
+        }
+
+        print defaulthtmlentities($IsTogglable ? "1" : "0");
+    }
+
+    /**
+     * @var array $ActivePlugins static array of active (enabled) plugins
+     */
+    protected static $ActivePlugins;
+
+    /**
+     * @var MetadataField $MetadataField metadata field
+     */
+    protected $MetadataField;
+
+    /**
+     * @var HumanMetadataField $HumanField $this->MetadataField wrapped in a
+     *   HumanMetadataField object
+     */
+    protected $HumanField;
+}
+
+/**
+ * Get the display text for the field, which includes the display name and the
+ * name in parentheses if a label is set. The text will be properly escaped
+ * HTML.
+ * @param MetadataField $Field metadata field
+ * @return the display text for the field as escaped HTML
+ */
+function getFieldInfoDisplayText(MetadataField $Field)
+{
+    $DisplayName = defaulthtmlentities($Field->GetDisplayName());
+    $Name = defaulthtmlentities($Field->Name());
+
+    return $DisplayName . (strlen($Field->Label()) ? " (".$Name.")" : "");
+}
+
+/**
+ * Print "enabled" or "disabled" if the field is enabled or disabled,
+ * respectively.
+ * @param MetadataField $Field metadata field
+ */
+function printEnabledText(MetadataField $Field)
+{
+    print $Field->Enabled() ? "enabled" : "disabled";
+}
+
+/**
+ * Print the escaped metadata field ID.
+ * @param MetadataField $Field metadata field
+ */
+function printFieldIdText(MetadataField $Field)
+{
+    print defaulthtmlentities($Field->Id());
+}
+
+/**
+ * Print the metadata field name text, which includes a link to the field
+ * editing page, the name of the field, the label of the field, and a help
+ * tooltip containing the field description.
+ * @param MetadataField $Field metadata field
+ */
+function printFieldNameText(MetadataField $Field)
+{
+    global $AF;
+
+    $SafeFieldId = defaulthtmlentities($Field->Id());
+    $SafeFieldName = defaulthtmlentities(GetFieldInfoDisplayText($Field));
+    $TooltipId = "mv-dialog-".$SafeFieldId;
+
+    $HelpImage = $Field->Enabled() ? "help.png" : "help_disabled.png";
+    ?>
+    <?PHP if (ApplicationFramework::getInstance()->getInterfaceSetting("TooltipsUseDialogs")) { ?>
+  <a href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>"
+    ><?= $SafeFieldName; ?></a>
+  <img class="mv-form-instructions" data-fieldid="<?= $SafeFieldId ?>"
+      src="<?PHP $AF->PUIFile($HelpImage); ?>" alt="?" />
+<div id="<?= $TooltipId ?>" class="tooltip-dialog" style="display: none;"
+  title="<?= $SafeFieldName ?>">
+  <p><?= defaulthtmlentities($Field->Description()) ?></p>
+</div>
+    <?PHP } else { ?>
+  <a href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>"
+  ><?= $SafeFieldName; ?></a>
+  <img class="mv-form-instructions" src="<?PHP $AF->PUIFile($HelpImage); ?>" alt="?"
+       title="<?= defaulthtmlentities(strip_tags($Field->Description())) ?>" />
+    <?PHP } ?>
+    <?PHP
+}
+
+/**
+ * Print the metadata field edit text, which includes a link to the field
+ * editing page.
+ * @param MetadataField $Field metadata field
+ */
+function printEditText(MetadataField $Field)
+{
+    $AF = ApplicationFramework::getInstance();
+    $SafeFieldId = defaulthtmlentities($Field->Id());
+    ?>
+  <a class="btn btn-primary btn-sm mv-button-iconed"
+      href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>">
+      <img class="mv-button-icon"
+        src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
+    <?PHP
+}
+
+/**
+ * Print the active button class if the given display is chosen.
+ * @param string $Display field setting group display, e.g., Metadata or Search
+ */
+function printActive($Display)
+{
+    if ($Display == StdLib::getArrayValue($_GET, "View", "Metadata")) {
+        print "btn-primary";
+    } else {
+        print "btn-primary";
+    }
+}
+
+/**
+* Print an option list containing metadata schemas.
+* @param MetadataSchema $SchemaInUse Metadata schema in use.
+*/
+function printSchemaOptionList(MetadataSchema $SchemaInUse)
+{
+    $Options = [];
+
+    # get the metadata schema options
+    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+        $Options[$Schema->Id()] = $Schema->ResourceName() . " Schema";
+    }
+
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
+    $OptList->SubmitOnChange(true);
+    $OptList->PrintHtml();
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+
+$ChosenView = StdLib::getArrayValue($_GET, "View", "Metadata");
+$Views = [
+    "Metadata" => ".mfe-group-metadata",
+    "Display" => ".mfe-group-display",
+    "Search" => ".mfe-group-search"
+];
+
+# remove the chosen view
+unset($Views[$ChosenView]);
+
+# settings that should not be displayed or otherwise used
+$DisabledSettings = [
+    ".mfe-field-userprivilegerestrictions",
+    ".mfe-field-updatemethod",
+    ".mfe-field-showqualifiers",
+    ".mfe-field-associatedqualifierlist",
+    ".mfe-field-useforoaisets",
+    ".mfe-field-paragraphrows",
+    ".mfe-field-paragraphcols",
+    ".mfe-field-usewysiwygeditor",
+    ".mfe-field-minvalue",
+    ".mfe-field-maxvalue",
+    ".mfe-field-flagonlabel",
+    ".mfe-field-flagofflabel",
+    ".mfe-field-pointprecision",
+    ".mfe-field-pointdecimaldigits"
+];
+
+?>
+<?PHP if (!ApplicationFramework::getInstance()->getInterfaceSetting("TooltipsUseDialogs")) { ?>
+<script>
+$(document).ready(function(){
+$(document).tooltip();
+});
+</script>
+<?PHP } else {
+    $AF->requireUIFile("CW-Tooltips.js");
+} ?>
+
+<style type="text/css">
+  /* hide views that aren't chosen */
+  <?= join(", ", $Views); ?> {
+    display: none;
+  }
+
+  /* hide settings that are disabled */
+  <?= join(", ", $DisabledSettings); ?> {
+    display: none;
+  }
+</style>
+<script type="text/javascript" src="<?PHP $AF->PUIFile("jquery.cookie.js"); ?>"></script>
+<div class="container">
+  <?PHP if ($H_PromptDBRebuild) { ?>
+  <div class="alert alert-warning" role="alert">
+    <p>In order for the <em>Search</em> settings updates to take place, please
+      <u><a href="index.php?P=ConfirmRebuildSearchDB">rebuild the search database</a></u>.</p>
+  </div>
+  <?PHP } ?>
+  <div class="row">
+    <div class="col">
+      <h1>Metadata Field Editor</h1>
+    </div>
+    <div class="col text-right">
+      <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=EditMetadataField&amp;SC=<?= $SafeSchemaId; ?>">
+        <img class="mv-button-icon"
+            src="<?= $AF->GUIFile('Plus.svg') ?>"/>Add New Field</a>
+      <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=EditMetadataSchema&amp;SC=<?= $SafeSchemaId; ?>">
+        <img class="mv-button-icon"
+            src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
+    </div>
+  </div>
+</div>
+
+<ul class="float-left list-inline mv-button-group mv-content-mfetabs">
+  <li class="list-inline-item"><button class="btn <?PHP PrintActive("Metadata"); ?>"
+      id="displayMetadataOnly">Metadata</button></li>
+  <li class="list-inline-item"><button class="btn <?PHP PrintActive("Display"); ?>"
+      id="displayDisplayOnly">Display</button></li>
+  <!--<li><button class="<?PHP PrintActive("Access"); ?>" id="displayAccessOnly"
+      onclick="UpdateView('Access);">Access</button></li>-->
+  <li class="list-inline-item"><button class="btn <?PHP PrintActive("Search"); ?>"
+      id="displaySearchOnly">Search</button></li>
+</ul>
+
+<div class="float-right mv-content-mfetableoptions">
+  <span class="mv-content-mfetoggledisabled">
+    <input type="checkbox" id="toggleDisabled" checked />
+    <label for="toggleDisabled">Hide Disabled Fields</label>
+  </span>
+  <form class="d-inline-block" method="get" action="index.php">
+    <input type="hidden" name="P" value="DBEditor" />
+    <?PHP PrintSchemaOptionList($H_Schema); ?>
+  </form>
+</div>
+
+<table class="table table-striped mv-content-mfe">
+  <thead>
+    <tr class="thead-dark">
+      <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-enabled">
+      Enabled
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-fieldname">
+      Field Name
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-editable">
+      Editable
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-optional">
+      Optional
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      Default Value
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      Allow Multiple
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata
+          mfe-field-userprivilegerestrictions">
+      Restrict to
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      Update Method
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      Uses Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <span>Item-Level</span> Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      Default Qualifier
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      Allowed Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      Show Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      Use for OAI Sets
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      Field Size
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-maxlength">
+      Max Length
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-allowhtml">
+      Allow HTML
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      Rows
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      Columns
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      WYSIWYG
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-minvalue">
+      Min Value
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-maxvalue">
+      Max Value
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      Flag On Label
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      Flag Off Label
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      Max Number of Search Results
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-pointprecision">
+      Precision
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      Decimal Digits
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      Include in <span>Keyword Search</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      Include in <span>Advanced Search</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      Include in <span>Faceted Search</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      Include in <span>Sort Options</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-searchweight">
+      Search Weight
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-edit">
+      Edit
+      </th>
+    </tr>
+  </thead>
+  <tfoot>
+    <tr class="thead-dark">
+      <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-enabled">
+      Enabled
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-fieldname">
+      Field Name
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-editable">
+      Editable
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-optional">
+      Optional
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
+      Default Value
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
+      Allow Multiple
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata
+          mfe-field-userprivilegerestrictions">
+      Restrict to
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-updatemethod">
+      Update Method</th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
+      Uses Qualifiers</th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
+      <span>Item-Level</span> Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
+      Default Qualifier
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
+      Allowed Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
+      Show Qualifiers
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
+      Use for OAI Sets
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-textfieldsize">
+      Field Size
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-maxlength">
+      Max Length
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-allowhtml">
+      Allow HTML
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-paragraphrows">
+      Rows
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-paragraphcols">
+      Columns
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
+      WYSIWYG
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-minvalue">
+      Min Value
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-maxvalue">
+      Max Value
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-flagonlabel">
+      Flag On Label
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-flagofflabel">
+      Flag Off Label
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-numajaxresults">
+      Max Number of Search Results
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-pointprecision">
+      Precision
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
+      Decimal Digits
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
+      Include in <span>Keyword Search</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
+      Include in <span>Advanced Search</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
+      Include in <span>Faceted Search</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
+      Include in <span>Sort Options</span>
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-search mfe-field-searchweight">
+      Search Weight
+      </th>
+      <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-edit">
+      Edit
+      </th>
+    </tr>
+  </tfoot>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TEXT, null, true))) {  ?>
+  <tbody id="text">
+    <tr class="thead-dark"><th colspan="44">Text Fields</th></tr>
+        <?PHP PrintTextFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_URL, null, true))) {  ?>
+  <tbody id="url">
+    <tr class="thead-dark"><th colspan="44">Url Fields</th></tr>
+        <?PHP PrintUrlFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_EMAIL, null, true))) {  ?>
+  <tbody id="email">
+          <tr class="thead-dark"><th colspan="44">Email Fields</th></tr>
+        <?PHP PrintEmailFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_PARAGRAPH, null, true))) {  ?>
+  <tbody id="paragraph">
+    <tr class="thead-dark"><th colspan="44">Paragraph Fields</th></tr>
+        <?PHP PrintParagraphFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_NUMBER, null, true))) {  ?>
+  <tbody id="number">
+    <tr class="thead-dark"><th colspan="44">Number Fields</th></tr>
+        <?PHP PrintNumberFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_DATE, null, true))) {  ?>
+  <tbody id="date">
+    <tr class="thead-dark"><th colspan="44">Date Fields</th></tr>
+        <?PHP PrintDateFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TIMESTAMP, null, true))) {  ?>
+  <tbody id="timestamp">
+    <tr class="thead-dark"><th colspan="44">Timestamp Fields</th></tr>
+        <?PHP PrintTimestampFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_FLAG, null, true))) {  ?>
+  <tbody id="flag">
+    <tr class="thead-dark"><th colspan="44">Flag Fields</th></tr>
+        <?PHP PrintFlagFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TREE, null, true))) {  ?>
+  <tbody id="tree">
+    <tr class="thead-dark"><th colspan="44">Tree Fields</th></tr>
+        <?PHP PrintTreeFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME, null, true))) {  ?>
+  <tbody id="controlledname">
+    <tr class="thead-dark"><th colspan="44">Controlled Name Fields</th></tr>
+        <?PHP PrintControlledNameFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_OPTION, null, true))) {  ?>
+  <tbody id="option">
+    <tr class="thead-dark"><th colspan="44">Option Fields</th></tr>
+        <?PHP PrintOptionFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_USER, null, true))) {  ?>
+  <tbody id="user">
+    <tr class="thead-dark"><th colspan="44">User Fields</th></tr>
+        <?PHP PrintUserFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_FILE, null, true))) {  ?>
+  <tbody id="file">
+    <tr class="thead-dark"><th colspan="44">File Fields</th></tr>
+        <?PHP PrintFileFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_IMAGE, null, true))) {  ?>
+  <tbody id="image">
+    <tr class="thead-dark"><th colspan="44">Image Fields</th></tr>
+        <?PHP PrintImageFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_POINT, null, true))) {  ?>
+  <tbody id="point">
+    <tr class="thead-dark"><th colspan="44">Point Fields</th></tr>
+        <?PHP PrintPointFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_REFERENCE, null, true))) {  ?>
+  <tbody id="reference">
+    <tr class="thead-dark"><th colspan="44">Reference Fields</th></tr>
+        <?PHP PrintReferenceFieldAttributes($H_Schema); ?>
+  </tbody>
+  <?PHP  }  ?>
+  <?PHP  if (count($H_Schema->GetFields(
+      MetadataSchema::MDFTYPE_SEARCHPARAMETERSET,
+      null,
+      true
+  ))) {  ?>
+  <tbody id="searchparameterset">
+    <tr class="thead-dark"><th colspan="44">Search Parameter Set Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_SEARCHPARAMETERSET,
+            "Metavus\\PrintSearchParameterSetFieldRow"
+        ); ?>
+  </tbody>
+  <?PHP  }  ?>
+</table>
+
+<div class="container">
+  <div class="row">
+    <div class="col"></div>
+    <div class="col text-right">
+      <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=EditMetadataField">
+        <img class="mv-button-icon"
+            src="<?= $AF->GUIFile('Plus.svg') ?>"/>Add New Field</a>
+    </div>
+  </div>
+</div>
+
+<!-- this must come at the end of the page -->
+<script type="text/javascript">
+  (function(){
+    var helpImage = "<?PHP $AF->PUIFile("help.png"); ?>",
+        disabledHelpImage = "<?PHP $AF->PUIFile("help_disabled.png"); ?>";
+
+    function createToggleCheckboxes() {
+      $("td.mfe-field-enabled, th.mfe-field-enabled").css("display", "table-cell");
+      $(".mfe-label.mfe-field-enabled").html("").css("width", "20px");
+      $(".mfe-label.mfe-field-edit").css("width", "28px");
+
+      $(".mfe-value.mfe-field-enabled").each(function(){
+        var $this = $(this),
+            $input = $('<input type="checkbox" />');
+
+        $input.change(function(){
+          var $this = $(this),
+              $field = $this.parent().parent(),
+              fieldId = $this.parent().parent().data("fieldid"),
+              enabled = $this.is(":checked"),
+              submit = enabled ? "Enable" : "Disable";
+
+          if (enabled) {
+            $field.addClass("mfe-enabled");
+            $field.removeClass("mfe-disabled");
+            $field.find("img.mv-form-instructions").attr("src", helpImage);
+          } else {
+            $field.removeClass("mfe-enabled");
+            $field.addClass("mfe-disabled");
+            $field.find("img.mv-form-instructions").attr("src", disabledHelpImage);
+
+            if ($("#toggleDisabled").is(":checked")) {
+              $field.fadeOut(500, function(){
+                fixStripes();
+              });
+            }
+          }
+
+          $.post("index.php?P=EditMetadataField&Id="+fieldId, {
+            "Submit": submit
+          });
+        });
+
+        if ($this.is(".mfe-value:contains('Yes')")) {
+          $input.attr("checked", "checked");
+        }
+
+        if (!$this.parent().data("istogglable")) {
+          $input.attr("disabled", "disabled");
+        }
+
+        $this.html("").append($input);
+      });
+    }
+
+    function showDisableToggle() {
+      var cookie = $.cookie("mfe-toggledisabled");
+
+      // uncheck the toggle if it was unchecked last time
+      if (cookie === false || cookie === "false") {
+        $("#toggleDisabled").removeAttr("checked");
+      }
+
+      $(".mv-content-mfetoggledisabled").css("display", "inline");
+    }
+
+    function removeHiddenSettings() {
+      $("<?= join(", ", $DisabledSettings); ?>").remove();
+    }
+
+    function toggleDisabled(hide) {
+      if (hide) {
+        fixStripes();
+        $(".mfe-disabled").hide();
+      } else {
+        removeStripesFix();
+        $(".mfe-disabled").show();
+      }
+    }
+
+    function fixStripes() {
+      var current = 0,
+          classes = ["mv-table-striped-even", "mv-table-striped-odd"];
+
+      removeStripesFix();
+
+      $(".mfe-enabled").each(function(){
+        $(this).addClass(classes[current++ % 2] + " mv-table-striped-force");
+      });
+    }
+
+    function removeStripesFix() {
+      var classes = "mv-table-striped-odd mv-table-striped-even";
+      $(".mfe-enabled, .mfe-disabled").removeClass(classes);
+    }
+
+    function highlight(id) {
+      $(".mv-content-mfetabs li a").removeClass("btn-primary").addClass("btn-primary");
+      $("#"+id).removeClass("btn-primary").addClass("btn-primary");
+    }
+
+    var displayMetadataOnly = function() {
+      highlight("displayMetadataOnly");
+      $(".mfe-group-metadata").show();
+      $(".mfe-group-display, .mfe-group-search").hide();
+      return false;
+    };
+
+    var displayDisplayOnly = function() {
+      highlight("displayDisplayOnly");
+      $(".mfe-group-display").show();
+      $(".mfe-group-metadata, .mfe-group-search").hide();
+      return false;
+    };
+
+    var displaySearchOnly = function() {
+      highlight("displaySearchOnly");
+      $(".mfe-group-search").show();
+      $(".mfe-group-metadata, .mfe-group-display").hide();
+      return false;
+    };
+
+    // MAIN
+
+    $("#displayMetadataOnly").click(displayMetadataOnly);
+    $("#displayDisplayOnly").click(displayDisplayOnly);
+    $("#displaySearchOnly").click(displaySearchOnly);
+    $("#toggleDisabled").change(function(){
+      var isChecked = $(this).is(":checked");
+
+      toggleDisabled(isChecked);
+      $.cookie("mfe-toggledisabled", isChecked);
+    });
+
+    removeHiddenSettings();
+    createToggleCheckboxes();
+    showDisableToggle();
+    $("#toggleDisabled").change();
+
+  }());
+</script>

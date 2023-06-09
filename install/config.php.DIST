@@ -1,0 +1,30 @@
+<?php
+
+# parameters for accessing SQL database server
+$GLOBALS["G_Config"]["Database"] = array(
+        "UserName" => "X-DBUSER-X",
+        "Password" => "X-DBPASSWORD-X",
+        "Host" => "X-DBHOST-X",
+        "DatabaseName" => "X-DBNAME-X",
+        );
+
+# default/fallback user interface
+$GLOBALS["G_Config"]["UserInterface"] = array(
+        "DefaultUI" => "default",
+        );
+
+# namespace prefix for classes in local tree
+$GLOBALS["G_Config"]["LocalNamespacePrefix"] = "";
+
+/** (convenience cut&paste for invoking MySQL command line)
+mysql --user=X-DBUSER-X --password=X-DBPASSWORD-X X-DBNAME-X
+*/
+
+# enable database query profiling
+# require_once("lib/ScoutLib/Database.php");
+# ScoutLib\Database::queryTimeRecordingIsEnabled(true);
+
+# enable execution and memory profiling
+# if (function_exists("xhprof_enable")) {
+#     xhprof_enable(XHPROF_FLAGS_MEMORY);
+# }

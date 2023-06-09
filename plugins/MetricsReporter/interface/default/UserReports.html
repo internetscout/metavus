@@ -1,0 +1,57 @@
+<?PHP
+#
+#   FILE:  UserReports.html (MetricsReporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Graph;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+# ----- MAIN -----------------------------------------------------------------
+
+$GraphItems = [
+    "H_RegUserCount",
+    "H_PrivUserCount",
+    "H_NewUsersPerDay",
+    "H_LoginsPerDay"
+];
+foreach ($GraphItems as $GraphItem) {
+    foreach ($$GraphItem as $Key => $Val) {
+        $$GraphItem[$Key] = [$Val];
+    }
+}
+
+$UserCountGraph = new Graph(Graph::TYPE_DATE, $H_RegUserCount);
+$UserCountGraph->XLabel("Date");
+$UserCountGraph->YLabel("Number of Registered Users");
+$UserCountGraph->Title("<h2>Registered Users</h2>");
+
+$PrivUserCountGraph = new Graph(Graph::TYPE_DATE, $H_PrivUserCount);
+$PrivUserCountGraph->XLabel("Date");
+$PrivUserCountGraph->YLabel("Number of Privileged Users");
+$PrivUserCountGraph->Title("<h2>Registered Privileged Users</h2>");
+
+$NewUsersDay = new Graph(Graph::TYPE_DATE_BAR, $H_NewUsersPerDay);
+$NewUsersDay->XLabel("Date");
+$NewUsersDay->YLabel("New User Registrations");
+$NewUsersDay->Title("<h2>New Users Registrations</h2>");
+$NewUsersDay->Scale(Graph::WEEKLY);
+
+$LoginsDay = new Graph(Graph::TYPE_DATE_BAR, $H_LoginsPerDay);
+$LoginsDay->XLabel("Date");
+$LoginsDay->YLabel("User Logins");
+$LoginsDay->Title("<h2>User Logins</h2>");
+$LoginsDay->Scale(Graph::WEEKLY);
+?>
+<h1>User Metrics</h1>
+<?PHP $UserCountGraph->Display(); ?>
+
+<?PHP $PrivUserCountGraph->Display(); ?>
+
+<?PHP $NewUsersDay->Display(); ?>
+
+<?PHP $LoginsDay->Display(); ?>

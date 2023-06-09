@@ -1,0 +1,397 @@
+<?PHP
+#
+#   FILE:  EditFormat.html (OAI-PMH Server plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\File;
+use Metavus\MetadataSchema;
+use Metavus\QualifierFactory;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Print a readonly value, if one, identified by the given key.
+ * @param array $Data array of data
+ * @param mixed $Key key of the value to use
+ * @return void
+ */
+function OAIPMHServer_PrintReadonlyValue(array $Data, $Key)
+{
+    $Value = StdLib::getArrayValue($Data, $Key);
+    $SafeName = defaulthtmlentities("F_".$Key);
+    $SafeValue = defaulthtmlentities($Value);
+
+    print is_null($Value) ? '<i>none</i>' : $Value;
+    ?>
+  <input type="hidden" name="<?= $SafeName; ?>" value="<?= $SafeValue; ?>" />
+    <?PHP
+}
+
+function pv($Value)
+{
+    print defaulthtmlentities($Value);
+}
+function pc($Value)
+{
+    print($Value ? " checked" : "");
+}
+function pe($ValOne, $ValTwo)
+{
+    print(($ValOne == $ValTwo) ? " checked" : "");
+}
+function pd($ValOne, $ValTwo = true)
+{
+    print(($ValOne == $ValTwo) ? " disabled" : "");
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+PageTitle("OAI-PMH Server - Edit Format");
+?>
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <h1>
+        <abbr title="Open Archives Initiative">OAI</abbr>-<abbr
+            title="Protocol for Metadata Harvesting">PMH</abbr> Server - Edit Format
+      </h1>
+    </div>
+    <div class="col">
+      <a href="index.php?P=P_OAIPMHServer_HelpOai" rel="help">(Need Help?)</a>
+    </div>
+  </div>
+</div>
+
+<?PHP if (isset($H_ErrorMessages)) { ?>
+  <ul class="alert alert-danger">
+    <?PHP foreach ($H_ErrorMessages as $Msg) { ?>
+      <li><?= $Msg; ?></li>
+    <?PHP } ?>
+  </ul>
+<?PHP } ?>
+
+<?PHP if ($H_StdFormat) { ?>
+  <p><b>Note:</b> As this is a standard format, some values are not modifiable.</p>
+<?PHP } ?>
+
+<form method="post" enctype="multipart/form-data" action="index.php?P=P_OAIPMHServer_EditFormat">
+  <input type="hidden" name="H_FormatName" value="<?PHP  pv($H_FormatName);  ?>" />
+  <input type="hidden" name="H_NamespaceCount"
+      value="<?PHP pv(count($H_Format["Namespaces"]));  ?>" />
+  <input type="hidden" name="H_ElementCount"
+      value="<?PHP pv(count($H_Format["Elements"]));  ?>" />
+  <input type="hidden" name="H_QualifierCount"
+      value="<?PHP pv(count($H_Format["Qualifiers"]));  ?>" />
+  <input type="hidden" name="H_DefaultCount"
+      value="<?PHP pv(count($H_Format["Defaults"])); ?>" />
+
+  <table class="table table-striped">
+    <colgroup>
+      <col width="*" />
+      <col width="*" />
+      <col width="50" />
+    </colgroup>
+    <tbody>
+      <tr><th colspan="4" scope="rowgroup">Format Description</th></tr>
+      <tr>
+        <th><label for="F_FormatName">Format Name</label></th>
+        <td colspan="3">
+          <?PHP if ($H_StdFormat) { ?>
+                <?PHP OAIPMHServer_PrintReadonlyValue($H_Format, "FormatName"); ?>
+          <?PHP } else { ?>
+            <input type="text" id="F_FormatName" name="F_FormatName"
+                   value="<?PHP pv($H_Format["FormatName"]);  ?>" size="24"
+                   maxlength="80" />
+          <?PHP } ?>
+        </td>
+      </tr>
+      <tr>
+        <th><label for="F_TagName">Tag Name</label></th>
+        <td colspan="3">
+          <?PHP if ($H_StdFormat) { ?>
+                <?PHP OAIPMHServer_PrintReadonlyValue($H_Format, "TagName"); ?>
+          <?PHP } else { ?>
+            <input type="text" id="F_TagName" name="F_TagName"
+                   value="<?PHP pv($H_Format["TagName"]);  ?>" size="64"
+                   maxlength="80" />
+          <?PHP } ?>
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <label for="F_SchemaNamespace">Schema Namespace <abbr
+              title="Uniform Resource Identifier">URI</abbr></label>
+        </th>
+        <td colspan="3">
+          <?PHP if ($H_StdFormat) { ?>
+                <?PHP OAIPMHServer_PrintReadonlyValue($H_Format, "SchemaNamespace"); ?>
+          <?PHP } else { ?>
+            <input type="text" id="F_SchemaNamespace" name="F_SchemaNamespace"
+                   value="<?PHP @pv($H_Format["SchemaNamespace"]);  ?>"
+                   size="64" maxlength="80" />
+          <?PHP } ?>
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <label for="F_SchemaDefinition">
+            Schema Definition <abbr title="Uniform Resource Locator">URL</abbr>
+          </label>
+        </th>
+        <td colspan="3">
+          <?PHP if ($H_StdFormat) { ?>
+                <?PHP OAIPMHServer_PrintReadonlyValue($H_Format, "SchemaDefinition"); ?>
+          <?PHP } else { ?>
+            <input type="text" id="F_SchemaDefinition" name="F_SchemaDefinition"
+                   value="<?PHP @pv($H_Format["SchemaDefinition"]);  ?>"
+                   size="64" maxlength="80" />
+          <?PHP } ?>
+          <img class="cw-form-instructions" style="vertical-align: sub;"
+            src="<?= $AF->gUIFile("help.png"); ?>" alt="?"
+            title="Metavus can auto-generate an XSD schema based on your OAI export settings. See the Help on OAI for details and caveats."/>
+        </td>
+      </tr>
+      <tr>
+        <th><label for="F_SchemaVersion">Schema Version</label></th>
+        <td colspan="3">
+          <?PHP if ($H_StdFormat) { ?>
+                <?PHP OAIPMHServer_PrintReadonlyValue($H_Format, "SchemaVersion"); ?>
+          <?PHP } else { ?>
+            <input type="text" id="F_SchemaVersion" name="F_SchemaVersion"
+                   value="<?PHP @pv($H_Format["SchemaVersion"]);  ?>" size="24"
+                   maxlength="80" />
+          <?PHP } ?>
+        </td>
+      </tr>
+      <tr>
+        <th>
+          <label for="F_XsltFile">
+            <abbr title="Extensible Stylesheet Language Transformations">XSLT</abbr> File
+          </label>
+        </th>
+         <td colspan="3">
+           <?PHP if (isset($H_Format["XsltFileId"])) {
+                $ThisFile = new File(intval($H_Format["XsltFileId"]));
+                @pv($ThisFile->Name()); ?>
+             <input type="hidden" name="H_XsltFileId"
+                 value="<?PHP pv($H_Format["XsltFileId"]); ?>" />
+             <button type="submit" name="DeleteXsltFile" value="Delete"
+                class="btn btn-danger mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                class="mv-button-icon" /> Delete</button>
+           <?PHP } else { ?>
+             <input type="file" id="F_XsltFile" name="F_XsltFile" />
+             <button type="submit" name="Submit" value="Upload File"
+                class="btn btn-primary mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Upload.svg'); ?>" alt=""
+                class="mv-button-icon" /> Upload File</button>
+           <?PHP } ?>
+         </td>
+       </tr>
+     </tbody>
+     <tbody>
+       <tr><th colspan="4" scope="rowgroup">Namespaces</th></tr>
+       <?PHP  if (!isset($H_Format["Namespaces"]) || !count($H_Format["Namespaces"])) {  ?>
+         <tr>
+           <td colspan="3">
+             <i>(no namespaces have been defined for this format)</i>
+           </td>
+         </tr>
+       <?PHP } else { ?>
+           <?PHP
+            $Index = 0;
+            foreach ($H_Format["Namespaces"] as $Name => $Url) { ?>
+       <tr>
+         <th>
+                <?PHP if ($H_StdFormat) { ?>
+             <label for="F_NamespaceUrl<?PHP  pv($Index); ?>"><?PHP pv($Name); ?></label>
+             <input type="hidden" name="F_NamespaceName<?PHP pv($Index);  ?>"
+                    value="<?PHP  pv($Name);  ?>" />
+                <?PHP } else { ?>
+             <input type="text" name="F_NamespaceName<?PHP  pv($Index); ?>"
+                    value="<?PHP  pv($Name);  ?>" size="16" maxlength="80" />
+                <?PHP } ?>
+          <input type="hidden" name="H_NamespaceIndex<?PHP pv($Index);  ?>"
+                 value="<?PHP  pv($Name);  ?>" />
+         </th>
+         <td colspan="2">
+           <input type="text" id="F_NamespaceUrl<?PHP  pv($Index); ?>"
+                  name="F_NamespaceUrl<?PHP  pv($Index); ?>"
+                  value="<?PHP  pv($Url);  ?>" size="64" maxlength="80" />
+         </td>
+         <td>
+           <button type="submit" name="DeleteNamespace<?PHP pv($Index);  ?>" value="Delete"
+                class="btn btn-danger mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                class="mv-button-icon" /> Delete</button>
+         </td>
+       </tr>
+                <?PHP $Index++;
+            } ?>
+       <?PHP } ?>
+     </tbody>
+     <tbody>
+       <tr><th colspan="4" scope="rowgroup">Elements</th></tr>
+       <tr><th>Local field</th>
+         <th>OAI field</th>
+         <th>Default value <img class="cw-form-instructions" style="vertical-align: sub;"
+              src="<?= $AF->gUIFile("help.png"); ?>"
+              alt="?" title="Value to use when the local field is unset."/></th>
+         <th></th>
+       </tr>
+       <?PHP  if (!isset($H_Format["Elements"]) || !count($H_Format["Elements"])) {  ?>
+         <tr>
+           <td colspan="4">
+             <i>(no elements have been defined for this format)</i>
+           </td>
+         </tr>
+       <?PHP } else { ?>
+           <?PHP
+            $Index = 0;
+            $Schema = new MetadataSchema();
+            foreach ($H_Format["Elements"] as $Name => $Mapping) {
+                $OptList = $Schema->GetFieldsAsOptionList(
+                    "F_ElementMapping".$Index,
+                    null,
+                    $Mapping,
+                    true,
+                    [
+                        -2 => "(full record page URL)",
+                        -3 => "(preferred link value URL)",
+                        -4 => "(fixed value)"
+                    ]
+                );
+
+                $DefaultValue = (isset($H_Format["Defaults"][$Name])) ?
+                            $H_Format["Defaults"][$Name] : "" ;
+                ?>
+         <tr>
+           <th>
+                <?= $OptList; ?>
+             <input type="hidden" name="H_ElementIndex<?PHP pv($Index);  ?>"
+                    value="<?PHP  pv($Name);  ?>" />
+           </th>
+           <td>
+                <?PHP if ($H_StdFormat) { ?>
+                    <?PHP pv($Name); ?>
+               <input type="hidden" name="F_ElementName<?PHP  pv($Index); ?>"
+                      value="<?PHP  pv($Name);  ?>" />
+                <?PHP } else { ?>
+               <input type="text" name="F_ElementName<?PHP  pv($Index); ?>"
+                      value="<?PHP  pv($Name);  ?>" size="32" maxlength="80" />
+                <?PHP } ?>
+           </td>
+           <td>
+             <input type="text" name="F_DefaultMapping<?PHP pv($Index); ?>"
+                    value="<?PHP pv($DefaultValue); ?>" />
+           </td>
+           <td>
+             <button type="submit" name="DeleteElement<?PHP pv($Index);  ?>" value="Delete"
+                class="btn btn-danger mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                class="mv-button-icon" /> Delete</button>
+           </td>
+        </tr>
+                <?PHP $Index++;
+            } ?>
+       <?PHP } ?>
+     </tbody>
+     <tbody>
+       <tr><th colspan="4" scope="rowgroup">Qualifiers</th></tr>
+       <?PHP  if (!isset($H_Format["Qualifiers"]) || !count($H_Format["Qualifiers"])) {  ?>
+         <tr>
+           <td colspan="4">
+             <i>(no qualifiers have been defined for this format)</i>
+           </td>
+         </tr>
+       <?PHP } else { ?>
+           <?PHP
+            $Index = 0;
+            $QFactory = new QualifierFactory();
+            foreach ($H_Format["Qualifiers"] as $Name => $Mapping) {
+                $OptList = new HtmlOptionList(
+                    "F_QualifierMapping".$Index,
+                    $QFactory->GetItemNames(),
+                    $Mapping
+                );
+                ?>
+         <tr>
+           <td>
+                <?=  $OptList->GetHtml()  ?>
+             <input type="hidden" name="H_QualifierIndex<?PHP pv($Index);  ?>"
+                    value="<?PHP  pv($Name);  ?>" />
+           </td>
+           <td colspan="2">
+                <?PHP if ($H_StdFormat) { ?>
+                    <?PHP pv($Name); ?>
+               <input type="hidden" name="F_QualifierName<?PHP  pv($Index); ?>"
+                      value="<?PHP  pv($Name);  ?>" />
+                <?PHP } else { ?>
+               <input type="text" name="F_QualifierName<?PHP  pv($Index); ?>"
+                      value="<?PHP  pv($Name);  ?>" size="24" maxlength="80" />
+                <?PHP } ?>
+           </td>
+            <td>
+              <button type="submit" name="DeleteQualifier<?= $Index; ?>" value="Delete"
+                class="btn btn-danger mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Delete.svg'); ?>"
+                alt="" class="mv-button-icon" /> Delete</button>
+            </td>
+         </tr>
+                <?PHP $Index++;
+            } ?>
+       <?PHP } ?>
+     </tbody>
+  </table>
+
+  <button type="submit" name="Submit" value="Save Changes"
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+        class="mv-button-icon" /> Save Changes</button>
+  <button type="submit" name="Submit" value="Add Namespace" <?PHP  pd($H_StdFormat);  ?>
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add Namespace</button>
+  <button type="submit" name="Submit" value="Add Element" <?PHP  pd($H_StdFormat);  ?>
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add Element</button>
+  <button type="submit" name="Submit" value="Add Qualifier" <?PHP  pd($H_StdFormat);  ?>
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
+        class="mv-button-icon" /> Add Qualifier</button>
+  <button type="submit" name="Submit" value="Delete Format" <?PHP  pd($H_StdFormat);  ?>
+        class="btn btn-danger mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete Format</button>
+  <button type="submit" name="Submit" value="Cancel"
+        class="btn btn-danger mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+
+<script type="text/javascript">
+  // trigger file selection if the upload buttons are clicked before a file
+  // has been selected
+  (function(){
+    $("input[value='Upload File'], input[value='Upload Image']").click(function(){
+      var $file = $(this).siblings("input[type=file]");
+
+      // if no file has been selected, prompt to select one and don't
+      // submit the form
+      if ($file.val().length == 0) {
+        $file.click();
+        return false;
+      }
+    });
+  }());
+</script>

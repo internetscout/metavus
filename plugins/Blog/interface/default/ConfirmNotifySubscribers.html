@@ -1,0 +1,32 @@
+<?PHP
+#
+#   FILE:  ConfirmNotifySubscribers.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeEntryId = defaulthtmlentities($H_Entry->Id());
+$SafeEntryUrl = defaulthtmlentities($H_Entry->EntryUrl());
+$SafeEntryTitle = defaulthtmlentities($H_Entry->Title());
+
+?>
+
+<h1>Notify Blog Subscribers Confirmation</h1>
+
+<p>
+  Are you sure you'd like to send e-mail notifications to subscribers about
+  <i><?= $SafeEntryTitle; ?></i>?
+</p>
+
+<a class="btn btn-primary mv-button-iconed"
+    href="index.php?P=P_Blog_NotifySubscribers&amp;ID=<?= $SafeEntryId; ?>"><img
+        src="<?= $AF->GUIFile('Check.svg'); ?>"
+        alt="" class="mv-button-icon" /> Notify</a>
+
+<a class="btn btn-danger mv-button-iconed" href="<?= $SafeEntryUrl; ?>"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>"
+        alt="" class="mv-button-icon" /> Cancel</a>

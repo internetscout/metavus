@@ -1,0 +1,984 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+    <StandardFieldMapping>
+        <StandardName>Title</StandardName>
+        <Name>Title</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+        <StandardName>Description</StandardName>
+        <Name>Description</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+        <StandardName>Url</StandardName>
+        <Name>Url</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+        <StandardName>Screenshot</StandardName>
+        <Name>Screenshot</Name>
+    </StandardFieldMapping>
+    <MetadataField>
+        <Name>Title</Name>
+        <Type>TEXT</Type>
+        <Description>Name by which the resource is formally known. Title is used and displayed as a headline in the SPT. This field is a required field. Required fields may not be customized as to the field type or disabled. Required fields must be completed in each resource record. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>0</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>60</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>5</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Description</Name>
+        <Type>PARAGRAPH</Type>
+        <Description>Text describing the scope, subject matter, and usefulness of the resource. Sometimes this field is also referred to as account of the content of the resource or an annotation. Description may include but is not limited to: an abstract, table of contents, reference to a graphical representation of content or a free-text account of the content. This is a required field. Required fields may not be customized as to the field type or disabled. Required fields must be completed in each resource record. Limited HTML tags are allowed to increase visual appeal. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>0</Optional>
+        <AllowHTML>1</AllowHTML>
+        <UseWYSIWYGEditor>1</UseWYSIWYGEditor>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <ParagraphRows>12</ParagraphRows>
+        <ParagraphCols>76</ParagraphCols>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Url</Name>
+        <Type>URL</Type>
+        <Description>The complete, current location or unique identifier of the resource. Because of the functionality of the domain limit, remember to always add the trailing slash after the domain. Portal administrators may make this a required field. Required fields must be completed in each resource record. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>0</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>60</TextFieldSize>
+        <MaxLength>255</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Creator</Name>
+        <Type>CONTROLLEDNAME</Type>
+        <Description>The personal, corporate, meeting/conference, etc. name(s) of the party(s) responsible for creation of resource content. Any work can have single, multiple, corporate, or personal creators. Personal creators are people. Some typical examples of corporate creators are associations, institutions, business firms, non-profit enterprises, governments, government agencies, projects, programs, religious bodies, church groups, and conferences. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>3</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Publisher</Name>
+        <Type>CONTROLLEDNAME</Type>
+        <Description>An entity responsible for making the resource available. Examples of a publisher include a person, an organization, or a service. Publishers are not necessarily the creators of the intellectual content of the resource, but they do claim some responsibility for the content. As with the Creator field (above), SPT Metadata Tool allows for a Controlled Name and a Variant Name. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>3</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Classification</Name>
+        <Type>TREE</Type>
+        <Description>The Metadata Tool allows the use an existing standard classification schema or your organization's homegrown taxonomy. Classification in the portal provides users with a way of browsing through the resources in hierarchical tiers. This approach guides users unfamiliar with terminology to appropriate resources descending in specificity from broadly defined to more precise.  Privilege to to build or edit the vocabulary or taxonomy of assifications requires authorization from the portal administrator.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <FacetsShowOnlyTermsUsedInResults>1</FacetsShowOnlyTermsUsedInResults>
+        <SearchWeight>3</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>1</UsesQualifiers>
+        <HasItemLevelQualifiers>1</HasItemLevelQualifiers>
+        <DefaultQualifier>1</DefaultQualifier>
+        <AddQualifier>LCSH</AddQualifier>
+        <Instructions>Broadest tier - More specific - Most specific (ex. Science - Physics - Atomic structure). New classifications can be added or existing ones can be edited on the Add/Edit Classifications page of the Metadata Tool.</Instructions>
+    </MetadataField>
+    <MetadataField>
+        <Name>Subject</Name>
+        <Type>CONTROLLEDNAME</Type>
+        <Description>Terms or a nonhierarchical string of terms relating the resource's content. Recommended best practice is to select from a controlled vocabulary, Library of Congress Subject Headings, etc. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>3</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Issued</Name>
+        <Type>DATE</Type>
+        <Description>The year the resource being described was created, published, or otherwise made available. Records a date in a standard format. Users do not need to enter the date in this format. The software will translate a provided date into the standard format (YYYY-MM-DD). It is also possible to enter a partial date or an open ended (continuing) date or qualify the date in the case of uncertainty. For further examples see extended definitions. DCMI recommended element refinement for Date. </Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>10</TextFieldSize>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <Instructions>YYYY: Four digit year of publication.
+                YYYY-MM: Four digit year with a two digit month.
+                YYYY-MM-DD: Four digit year with two digit month and two digit day.
+                [YYYY]: Year of publication, but date inferred from outside the resource being described.
+                YYYY- Publication is continuous as with an e-journal, magazine, or serial.
+                [YYYY]- : Source for the assigned date not directly from the resources itself. Publication is continuous as with an e-journal, magazine, or serial.
+                YYYY-YYYY: Published between a set of years.
+                cYYYY: The copyright date.
+                YYYY,YYYY: Publication originally published in the first date and then subsequently republished in another format at the second date.</Instructions>
+    </MetadataField>
+    <MetadataField>
+        <Name>Resource Type</Name>
+        <Type>OPTION</Type>
+        <Description>The nature or genre of the content of the resource. Type includes terms describing general categories, functions, genres, or aggregation levels for content. When entering a resource record, the software allows for multiple values to be selected from this field. This field is used in the Advanced Search as a Limiter. The portal software allows for modifications and edits to these default values through the Edit Option Lists feature on the Metadata Tool navigation bar. This feature will not be visible to anyone without adequate permission. NOTE: The default values come from the working draft list of Dublin Core Types. Further, to describe the physical or digital manifestation of the resource, use the FORMAT element per Dublin Core definitions. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>1</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+                <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>1</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <DefaultQualifier>6</DefaultQualifier>
+        <AddQualifier>DCMI Type Vocabulary</AddQualifier>
+    </MetadataField>
+    <MetadataField>
+        <Name>Format</Name>
+        <Type>OPTION</Type>
+        <Description>The physical or digital manifestation of the resource. Typically, Format may include the media-type or dimensions of the resource. Format may be used to determine the software, hardware or other equipment needed to display or operate the resource. Examples of dimensions include size and duration. The default values are selections from the list of Internet Media Types (MIME) defining computer media formats.  When entering a resource record, the software allows for multiple values to be selected from this field. This field is used by the Advanced Search Engine as a Limiter. The portal software allows for modifications and edits to these default values through the Edit Option Lists feature on the Metadata Tool navigation bar. This feature will not be visible to anyone without adequate permission. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>1</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Language</Name>
+        <Type>OPTION</Type>
+        <Description>A language of the intellectual content of the resource. The default values are selected from several commonly used major languages. The software allows for multiple values to be selected from this field. This field is used by the Advanced Search Engine as a Limiter. The portal software allows for modifications and edits to these default values through the Edit Option Lists feature on the Metadata Tool navigation bar. This feature will not be visible to anyone without adequate permission. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>1</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+        <MetadataField>
+                <Name>Audience</Name>
+                <Type>OPTION</Type>
+                <Description>A category of user for whom the resource is intended. Frequently, creators and publishers of resources in education explicitly state the category of user for whom the resource is intended. In like fashion, end-users in the education/training domain frequently search using audience characteristics as search terms. The default values are drawn from the broadest educational category levels. The software allows for multiple values to be selected from this field. This field is used by the Advanced Search Engine as a Limiter. The portal software allows for modifications and edits to these default values through the Edit Option Lists feature on the Metadata Tool navigation bar. This feature will not be visible to anyone without adequate permission.</Description>
+                <Enabled>0</Enabled>
+                <Optional>1</Optional>
+                <AllowMultiple>1</AllowMultiple>
+                <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+                <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+                <IncludeInRecommender>0</IncludeInRecommender>
+                <SearchWeight>1</SearchWeight>
+                <RecommenderWeight>0</RecommenderWeight>
+                <UsesQualifiers>0</UsesQualifiers>
+                <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        </MetadataField>
+    <MetadataField>
+        <Name>Coverage</Name>
+        <Type>TEXT</Type>
+        <Description>The extent or scope of the content of the resource. Coverage will typically include spatial location (a place name or geographic coordinates), temporal period (a period label, date, or date range) or jurisdiction (such as a named administrative entity). Dublin Core Metadata Initiative recommended best practice is to select a value from a controlled vocabulary (for example, the Getty Thesaurus of Geographic Names) and that, where appropriate, named places or time periods be used in preference to numeric identifiers such as sets of coordinates or date ranges. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>30</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Contributor</Name>
+        <Type>CONTROLLEDNAME</Type>
+        <Description>An entity responsible for making contributions to the content of the resource. Examples of a Contributor include a person, an organization, or a service. This field also employs Controlled Names as described above in the definition for Creator. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>3</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Source</Name>
+        <Type>TEXT</Type>
+        <Description>A reference to a resource from which the present resource is derived. The present resource may be derived from the Source resource in whole or in part. Dublin Core Metadata Initiative recommended best practice is to reference the resource by means of a string or number conforming to a formal identification system. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>30</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Rights</Name>
+        <Type>TEXT</Type>
+        <Description>Information about rights held in and over the resource. Typically, a Rights element will contain a rights management statement for the resource, or reference a service providing such information. Rights information often encompasses Intellectual Property Rights, Copyright, and various Property Rights. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>30</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Relation</Name>
+        <Type>TEXT</Type>
+        <Description>A reference to a related resource. Dublin Core Metadata Initiative recommended best practice is to reference the resource by means of a string or number conforming to a formal identification system. DCMI element.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>30</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Screenshot</Name>
+        <Type>IMAGE</Type>
+        <Description>Still, digital image or snapshot to be attached to a resource metadata record for illustration or other purposes. Acceptable file formats are .jpg, .bmp, and gif (depending on what is supported by the PHP version installed on your web server). The Description element provides text that is used by screen readers and search engine spiders, and can be searched via Keyword and Advanced Search.</Description>
+        <Enabled>1</Enabled>
+        <Optional>1</Optional>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <SearchWeight>3</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+    </MetadataField>
+    <MetadataField>
+        <Name>Interactivity Type</Name>
+        <Type>OPTION</Type>
+        <Description>The flow of interaction between this resource and the intended user. DC-Education Working Group recommended data element in the IEEE LOM/IMS Namespace</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Interactivity Level</Name>
+        <Type>OPTION</Type>
+        <Description>The degree of interactivity between the end user and this resource. DC-Education Working Group recommended data element from the IEEE LOM/IMS Namespace.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Typical Learning Time</Name>
+        <Type>TEXT</Type>
+        <Description>Approximate or typical time it takes to work with this resource. DC-Education Working Group recommended data elements from the IEEE LOM/IMS Namespace.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Table of Contents</Name>
+        <Type>PARAGRAPH</Type>
+        <Description>A list of subunits of the content of the resource. DCMI recommended element refinement for    Description.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <MaxLength>100</MaxLength>
+        <ParagraphRows>4</ParagraphRows>
+        <ParagraphCols>50</ParagraphCols>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Abstract</Name>
+        <Type>PARAGRAPH</Type>
+        <Description>A summary of the content of the resource. DCMI recommended element refinement for Description.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <MaxLength>100</MaxLength>
+        <ParagraphRows>4</ParagraphRows>
+        <ParagraphCols>50</ParagraphCols>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Valid Date</Name>
+        <Type>DATE</Type>
+        <Description>Date (often a range) of validity of a resource. DCMI recommended element refinement for Date.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Creation Date</Name>
+        <Type>DATE</Type>
+        <Description>Date of creation of the resource. DCMI recommended element refinement for Date. </Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Available Date</Name>
+        <Type>DATE</Type>
+        <Description>Date (often a range) that the resource will become or did become available. DCMI recommended element refinement for Date.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Modified Date</Name>
+        <Type>DATE</Type>
+        <Description>Date on which the resource was changed. DCMI recommended element refinement for Date.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Extent</Name>
+        <Type>OPTION</Type>
+        <Description>The size or duration of the resource. DCMI recommended element refinement for Format.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Medium</Name>
+        <Type>OPTION</Type>
+        <Description>The material or physical carrier of the resource. DCMI recommended element refinement of Format.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Is Version Of</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is a version, edition, or adaptation of the referenced resource. Changes in version imply substantive changes in content rather than differences in format. DCMI recommended element refinement of Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Has Version</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is a version, edition, or adaptation of the referenced resource. Changes in version imply substantive changes in content rather than differences in format. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Is Replaced By</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is supplanted, displaced, or superseded by the referenced resource. DCMI recommend element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Replaces</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource supplants, displaces, or supersedes the referenced resource. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Is Required By</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is required by the referenced resource, either physically or logically. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Requires</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource requires the referenced resource to support its function, delivery, or coherence of content. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Is Part Of</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is a physical or logical part of the referenced resource. DCMI recommended element refinment for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Has Part</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource includes the referenced resource either physically or logically. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Is Referenced By</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is referenced, cited, or otherwise pointed to by the referenced resource. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>References</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource references, cites, or otherwise points to the referenced resource.  DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Is Format Of</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource is the same intellectual content of the referenced resource, but presented in another format. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Has Format</Name>
+        <Type>TEXT</Type>
+        <Description>The described resource pre-existed the referenced resource, which is essentially the same intellectual content presented in another format. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Conforms To</Name>
+        <Type>TEXT</Type>
+        <Description>A reference to an established standard to which the resource conforms. DCMI recommended element refinement for Relation.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Spatial</Name>
+        <Type>TEXT</Type>
+        <Description>Spatial characteristics of the intellectual content of the resource. DCMI recommended element refinement for Coverage.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Temporal</Name>
+        <Type>TEXT</Type>
+        <Description>Temporal characteristics of the intellectual content of the resource. DCMI recommended element refinement for Coverage.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Mediator</Name>
+        <Type>OPTION</Type>
+        <Description>A class of entity that mediates access to the resource and for whom the resource is intended or useful. The audiences for a resource are of two basic classes: (1) an ultimate beneficiary of the resource, and (2) frequently, an entity that mediates access to the resource. The mediator element refinement represents the second of these two classes. DCMI recommended element refinement for Audience.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Accepted</Name>
+        <Type>DATE</Type>
+        <Description>Date of acceptance of the resource (e.g. of thesis by university department, of article by journal, etc.). DCMI recommended element refinement form Date.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Copyrighted</Name>
+        <Type>DATE</Type>
+        <Description>Date of a statement of copyright. DCMI recommended element refinement for Date. </Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Submitted</Name>
+        <Type>DATE</Type>
+        <Description>Date of submission of the resource (e.g. thesis, articles, etc.). DCMI recommended relement refinement for Date. </Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Education Level</Name>
+        <Type>OPTION</Type>
+        <Description>A general statement describing the education or training context. Alternatively, a more specific statement of the location of the audience in terms of its progression through an education or training context. DCMI recommended element refinement for Audience.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Access Rights</Name>
+        <Type>TEXT</Type>
+        <Description>Information about who can access the resource or an indication of its security status.
+Access Rights may include information regarding access or restrictions based on privacy, security or other regulations. DCMI recommended element refinement for Rights.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Bibliographic Citation</Name>
+        <Type>TEXT</Type>
+        <Description>A bibliographic reference for the resource.
+Recommended practice is to include sufficient bibliographic detail to identify the resource as unambiguously as possible, whether or not the citation is in a standard form. DCMI recommended refinement element for Identifier.</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <RecommenderWeight>0</RecommenderWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+    </MetadataField>
+    <MetadataField>
+        <Name>Colors Avoided</Name>
+        <Type>OPTION</Type>
+        <Description>Colors or color combinations that are NOT used by the resource for text or other informational  elements, to allow users to avoid color combinations they find difficult to read.  (Used for ACCESSIBILITY MATCHING.)</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>1</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+        <UseForOaiSets>0</UseForOaiSets>
+    </MetadataField>
+    <MetadataField>
+        <Name>Text Captioning</Name>
+        <Type>OPTION</Type>
+        <Description>Indicates whether text alternatives to audio content are provided, and to what degree they parallel the audio content.  (Used for ACCESSIBILITY MATCHING.)</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>1</SearchWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+        <UseForOaiSets>0</UseForOaiSets>
+    </MetadataField>
+    <MetadataField>
+        <Name>Audio Descriptions</Name>
+        <Type>OPTION</Type>
+        <Description>Indicates whether audio alternatives to visual content are provided, and their extent. (Used for ACCESSIBILITY MATCHING.)</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>5</SearchWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+        <UseForOaiSets>0</UseForOaiSets>
+    </MetadataField>
+    <MetadataField>
+        <Name>Content Type</Name>
+        <Type>OPTION</Type>
+        <Description>Indicates whether the content is more text intensive or image intensive.  (Used for ACCESSIBILITY MATCHING.)</Description>
+        <Enabled>0</Enabled>
+        <Optional>1</Optional>
+        <AllowMultiple>0</AllowMultiple>
+        <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
+        <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+        <IncludeInRecommender>0</IncludeInRecommender>
+        <TextFieldSize>50</TextFieldSize>
+        <MaxLength>100</MaxLength>
+        <SearchWeight>5</SearchWeight>
+        <UsesQualifiers>0</UsesQualifiers>
+        <HasItemLevelQualifiers>0</HasItemLevelQualifiers>
+        <LastModifiedById>1</LastModifiedById>
+        <UseForOaiSets>0</UseForOaiSets>
+    </MetadataField>
+</MetadataSchema>

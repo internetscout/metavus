@@ -1,0 +1,11 @@
+User-agent: *
+Crawl-delay: 5
+Disallow: /sh/
+
+User-agent: googlebot
+Disallow: /index.php?P=AdvancedSearch
+Disallow: /index.php?P=SearchResults
+Disallow: /index.php?P=Login
+Disallow: /index.php?P=RequestAccount
+Disallow: /index.php?P=ForgottenPassword
+Disallow: /index.php?P=LeaveFeedback

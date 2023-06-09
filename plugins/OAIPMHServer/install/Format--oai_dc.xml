@@ -1,0 +1,88 @@
+<?xml version="1.0" ?>
+<oaiPmhFormat>
+
+    <formatName>oai_dc</formatName>
+    <tagName>oai_dc:dc</tagName>
+    <schema>
+        <namespace>http://www.openarchives.org/OAI/2.0/oai_dc/</namespace>
+        <definition>http://www.openarchives.org/OAI/2.0/oai_dc.xsd</definition>
+        <version></version>
+    </schema>
+
+    <!--==== NAMESPACES =============================================-->
+    <namespace>
+        <name>oai_dc</name>
+        <uri>http://www.openarchives.org/OAI/2.0/oai_dc/</uri>
+    </namespace>
+    <namespace>
+        <name>dc</name>
+        <uri>http://purl.org/dc/elements/1.1/</uri>
+    </namespace>
+
+    <!--==== ELEMENTS ===============================================-->
+    <element>
+        <name>dc:title</name>
+        <recommendedMapping>Title</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:creator</name>
+        <recommendedMapping>Creator</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:subject</name>
+        <recommendedMapping>Subject</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:description</name>
+        <recommendedMapping>Description</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:publisher</name>
+        <recommendedMapping>Publisher</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:contributor</name>
+        <recommendedMapping>Contributor</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:date</name>
+        <recommendedMapping>Date Issued</recommendedMapping>
+        <alternateMapping>Creation Date</alternateMapping>
+        <alternateMapping>Date Submitted</alternateMapping>
+        <alternateMapping>Date Accepted</alternateMapping>
+    </element>
+    <element>
+        <name>dc:type</name>
+        <recommendedMapping>Type</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:format</name>
+        <recommendedMapping>Format</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:identifier</name>
+    </element>
+    <element>
+        <name>dc:source</name>
+        <recommendedMapping>Source</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:language</name>
+        <recommendedMapping>Language</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:relation</name>
+        <recommendedMapping>Relation</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:coverage</name>
+        <recommendedMapping>Coverage</recommendedMapping>
+    </element>
+    <element>
+        <name>dc:rights</name>
+        <recommendedMapping>Rights</recommendedMapping>
+    </element>
+
+    <!--==== QUALIFIERS =============================================-->
+
+</oaiPmhFormat>

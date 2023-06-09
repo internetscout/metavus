@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetadataSchema>
+    <StandardFieldMapping>
+		<StandardName>Title</StandardName>
+		<Name>Title</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+		<StandardName>Description</StandardName>
+		<Name>Description</Name>
+    </StandardFieldMapping>
+    <StandardFieldMapping>
+		<StandardName>Url</StandardName>
+		<Name>Url</Name>
+    </StandardFieldMapping>
+    <MetadataField>
+        <Name>All Day</Name>
+        <Type>MDFTYPE_FLAG</Type>
+        <Description>Flag to determine whether the event takes place throughout the day instead of during specific time intervals.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Optional>0</Optional>
+        <FlagOnLabel>Yes</FlagOnLabel>
+        <FlagOffLabel>No</FlagOffLabel>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Attachments</Name>
+        <Type>MDFTYPE_FILE</Type>
+        <Description>The files associated with the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Added By Id</Name>
+        <Type>MDFTYPE_USER</Type>
+        <Description>The user that authored the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Categories</Name>
+        <Type>MDFTYPE_OPTION</Type>
+        <Description>The terms or a nonhierarchical string of terms relating to the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <AllowMultiple>1</AllowMultiple>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Contact Email</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The contact e-mail address of the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Contact URL</Name>
+        <Type>MDFTYPE_URL</Type>
+        <Description>A remote URL to more contact information for the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Coordinates</Name>
+        <Type>MDFTYPE_POINT</Type>
+        <Description>The latitude and longitude of the location in which the event takes place. The value of this field is set automatically and make take awhile to show up.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Editable>0</Editable>
+        <PointPrecision>8</PointPrecision>
+        <PointDecimalDigits>5</PointDecimalDigits>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Country</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The country in which the event takes place.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Of Record Creation</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date the event was created.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Last Modified</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date the event was last edited.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordChange</UpdateMethod>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Date Of Record Release</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date the event was released.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Description</Name>
+        <Type>MDFTYPE_PARAGRAPH</Type>
+        <Description>The description of the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Optional>0</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AllowHTML>1</AllowHTML>
+        <UseWysiwygEditor>1</UseWysiwygEditor>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>End Date</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date and time that the event ends.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Optional>0</Optional>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Last Modified By Id</Name>
+        <Type>MDFTYPE_USER</Type>
+        <Description>The user that last modified the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Editable>0</Editable>
+        <Optional>0</Optional>
+        <UpdateMethod>OnRecordChange</UpdateMethod>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Locality</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The locality, e.g., the city, in which the event takes place.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Postal Code</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The postal code of the location in which the event takes place.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Region</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The region, e.g., the state or province, in which the event takes place.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Release Flag</Name>
+        <Type>MDFTYPE_FLAG</Type>
+        <Description>Flag to determine whether the event can be viewed by the general public.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Optional>0</Optional>
+        <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
+        <FlagOnLabel>OK for Viewing</FlagOnLabel>
+        <FlagOffLabel>Not OK for Viewing</FlagOffLabel>
+        <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Start Date</Name>
+        <Type>MDFTYPE_TIMESTAMP</Type>
+        <Description>The date and time that the event starts.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Optional>0</Optional>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Street Address</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The street address of the venue in which the event takes place.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Title</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The title of the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <Optional>0</Optional>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Url</Name>
+        <Label>URL</Label>
+        <Type>MDFTYPE_URL</Type>
+        <Description>A remote URL to the official page or information for the event.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Venue</Name>
+        <Type>MDFTYPE_TEXT</Type>
+        <Description>The name of the venue in which the event takes place.</Description>
+        <Owner>CalendarEvents</Owner>
+        <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
+    </MetadataField>
+    <MetadataField>
+        <Name>Owner</Name>
+        <Type>MDFTYPE_USER</Type>
+        <Description>The user who owns this event</Description>
+        <Owner>CalendarEvents</Owner>
+        <AllowMultiple>0</AllowMultiple>
+        <Editable>0</Editable>
+    </MetadataField>
+</MetadataSchema>

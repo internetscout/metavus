@@ -1,0 +1,33 @@
+<?PHP
+#
+#   FILE:  ListBlogs.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+
+# ----- MAIN -----------------------------------------------------------------
+
+$PageTitle = "Add/Edit Blogs";
+PageTitle($PageTitle);
+
+# blog list item button links
+$BaseLink = "index.php?P=P_Blog_ListBlogs&amp;CK=" . $H_Checksum;
+$EditLink = "index.php?P=P_Blog_EditBlog&amp;BI=\$ID";
+$DeleteLink = "index.php?P=P_Blog_DeleteBlog&amp;BI=\$ID";
+$AddNewBlogLink = "index.php?P=P_Blog_EditBlog&amp;BI=NEW";
+
+# initiate and print the blog list
+$ListUI = new ItemListUI($H_BlogFields);
+$ListUI->BaseLink($BaseLink);
+$ListUI->AddActionButton("Edit", $EditLink, "Pencil.svg");
+$ListUI->AddActionButton("Delete", $DeleteLink, "Delete.svg");
+$ListUI->AddTopButton("Add New Blog", $AddNewBlogLink, "Plus.svg");
+$ListUI->Heading($PageTitle);
+$ListUI->NoItemsMessage("There are currently no blogs.");
+$ListUI->ItemsPerPage($H_PageSize);
+$ListUI->fieldsSortableByDefault(false);
+$ListUI->Display($H_Blogs, $H_BlogsListSize, $H_PageOffset);

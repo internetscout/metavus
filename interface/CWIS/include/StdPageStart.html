@@ -1,0 +1,341 @@
+<?PHP
+#
+#   FILE:  StdPageStart.html
+#
+#   Part of the Collection Workflow Integration System (CWIS)
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   http://scout.wisc.edu/cwis/
+#
+#   (local functions at bottom of file)
+#
+
+use Metavus\MetadataSchema;
+use Metavus\InterfaceConfiguration;
+use ScoutLib\ApplicationFramework;
+use Metavus\User;
+
+# ----- CONFIGURATION --------------------------------------------------------
+
+# (NOTE: The primary navigation menu can be modified here,
+#   but it may be preferable to modify or extend it by instead using the
+#   Navigation Editor plugin, which is distributed with stock CWIS.)
+
+# primary navigation menu items (in display order)
+$PrimaryNavItems = [
+    # Nav Item Label => Nav Item Link
+    "Home" => "Home",
+    "Browse Resources" => "BrowseResources",
+    "Get Recommendations" => "RecommendResources",
+    "About" => "About",
+    "Help" => "help/collections"
+];
+# whether to display specific items in the primary navigation
+# (if right side is TRUE, item will be displayed)
+$IntConfig = InterfaceConfiguration::getInstance();
+$PrimaryNavExclusions = [
+    # Nav Item Link => Whether to Display (boolean)
+    "BrowseResources" => BrowseableTreeFieldExists(),
+    "RecommendResources" => $IntConfig->getBool("ResourceRatingsEnabled"),
+];
+
+# tooltips to be displayed on primary navigation items
+$PrimaryNavTooltips = [
+    # Nav Item Label => Nav Item Tooltip
+    "Get Recommendations" => "What is a recommendation?
+      A recommendation is the suggestion of a resource or resources that you may
+      find interesting and useful.These suggestions are based on the ratings
+      you have given to other resources.If you have not rated any resources,
+      the system will not be able to provide any recommendations.You must be
+      logged in in order to receive recommendations.
+
+Why don't I get any recommendations?
+      In order for the portal to provide recommendations, you need to rate some
+      resources first (roughly three to five, depending on the number of ratings
+      that the resource record has from other users).Once you rate these
+      resources, the portal will provide you with recommendations.
+
+How can I make the recommendations feature work better for me?
+      To maximize the usefulness of these recommendations, you should rate all
+      the resources you use in a thoughtful manner.Random ratings will skew
+      recommendations and diminish usefulness.The more resources you rate, the
+      more tailored to your needs the recommendations will become.
+
+Why can't I see any recommendations?
+      In order to see your preferences and recommendations, you need to
+      log in to the portal using your username
+      and password and have rated some resources."
+];
+
+# Metadata Tool menu items (in display order)
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
+
+$Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
+$MDTNavItems = [
+    # Nav Item Label => Nav Item Link
+    "Add New Resource" => str_replace('$ID', "NEW", $Schema->editPage()),
+    "Add New Controlled Name" => "index.php?P=AddControlledName",
+    "Edit Controlled Names" => "index.php?P=EditControlledName&amp;FieldId=0",
+    "Edit Option Lists" => "index.php?P=EditOptionList",
+    "Add/Edit Classifications" => "index.php?P=EditClassifications",
+    "Metadata Field Editor" => "index.php?P=DBEditor"
+];
+# whether to display specific items in the MetadataTool navigation
+# (if right side is TRUE, item will be displayed)
+$MDTNavExclusions = [
+    # Nav Item Link => Whether to Display (boolean)
+    str_replace('$ID', "NEW", $Schema->editPage())
+            => $Schema->AuthoringPrivileges()->MeetsRequirements($User),
+    "index.php?P=AddControlledName" => $User->HasPriv(PRIV_NAMEADMIN),
+    "index.php?P=EditControlledName&amp;FieldId=0" => $User->HasPriv(PRIV_NAMEADMIN),
+    "index.php?P=EditOptionList" => $User->HasPriv(PRIV_NAMEADMIN),
+    "index.php?P=EditClassifications" => $User->HasPriv(PRIV_CLASSADMIN),
+    "index.php?P=DBEditor" => $User->HasPriv(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)
+];
+
+# pages that should not be indexed by search engines
+$NoIndexPages = [
+    "AdvancedSearch",
+    "ForgottenPassword",
+    "LeaveFeedback",
+    "Login",
+    "RequestAccount",
+    "SearchResults",
+];
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+# (NOTE: there must not be any whitespace in HTML output before the DOCTYPE)
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="<?= $IntConfig->getString("DefaultCharacterSet") ?>" />
+    <?= in_array($AF->GetPageName(), $NoIndexPages) ?
+    '<meta name="robots" content="noindex" />' : '' ?>
+    <title><?= PageTitle(); ?></title>
+
+    <!-- (jQuery must be loaded before CWIS JavaScript) -->
+    <?PHP  $AF->IncludeUIFile(["jQuery.js", "jquery-migrate.js"]); ?>
+
+    <!-- core CWIS styling/scripting -->
+    <?PHP
+    if ($IntConfig->getBool("IncrementalKeywordSearchEnabled")) {
+        $AF->IncludeUIFile("jquery-ui.css");
+    }
+            # NOTES:
+            # * this will also pull in -Override versions of any of the
+            #       listed files (e.g.CW-Theme-Override.css) if available
+            # * normally -Override files should be used for modifications in
+            #       custom interfaces
+            # * for.css files, a.scss file will also be searched for, and
+            #       compiled and loaded instead of the.css if available
+            $CoreUIFiles = [
+                "CWIS.css",
+                "CW-Theme.css",
+                "CW-Theme.js",
+                "CW-Generic.css",
+                "CW-Generic.js",
+                "CW-Legacy.css",
+                "CW-Legacy.js",
+                "CW-Confirm.js",
+            ];
+            foreach ($CoreUIFiles as $CoreUIFile) {
+                if ($AF->gUIFile($CoreUIFile)) {
+                    $AF->includeUIFile($CoreUIFile);
+                }
+            }
+            ?>
+
+    <!-- additional supporting JavaScript -->
+    <script type="text/javascript">
+        var CWIS_BASE_URL = "<?= ApplicationFramework::BaseUrl(); ?>";
+    </script>
+
+    <?PHP
+    $AF->IncludeUIFile(["CW-Base.js"]);
+
+    if ($IntConfig->getBool("AddAWStatsScript")) {
+        $AF->IncludeUIFile("awstats_misc_tracker.js");
+    }
+
+    $AF->SignalEvent("EVENT_IN_HTML_HEADER");
+    ?>
+
+</head>
+<body id="page-<?= strtolower($AF->GetPageName());  ?>">
+    <a id="cw-content-skipnavigation" href="#skipnavigation">Skip Navigation</a>
+    <a id="top"></a>
+
+    <div id="cw-segment-header">
+        <h1 id="cw-content-portalname">
+            <a href="index.php?P=Home"><?= $IntConfig->getString("PortalName") ?></a>
+        </h1>
+        <form id="cw-content-quicksearch"
+              method="post" action="index.php?P=SearchResults">
+          <input type="hidden" name="F_Spmbt" value="" />
+          <input type="hidden" name="F_JscptSpmbt" value="" />
+          <label for="F_SearchString">Keyword Search:</label>
+          <?PHP if ($IntConfig->getBool("IncrementalKeywordSearchEnabled")) {
+                $AF->RequireUIFile("jquery-ui.js");
+                $AF->RequireUIFile("CW-QuickSearch.js");  ?>
+              <div class="cw-quicksearch cw-quicksearch-keyword"
+                   data-fieldid="KeywordSearch">
+              <input class="cw-quicksearch-display F_SearchString"
+                     name="F_SearchString" id="F_SearchString" value="" />
+              <input class="cw-quicksearch-value" type="hidden" value=""
+                  title="QuickSearch Value" />
+              <div style="display: none;" class="cw-quicksearch-menu">
+                <div class="cw-quicksearch-message ui-front"></div>
+              </div>
+              </div>
+          <?PHP } else { ?>
+          <input type="text" id="F_SearchString" name="F_SearchString"
+                 class="cw-quicksearch-keywordsearch cw-content-keywordsearch" accesskey="s" />
+          <?PHP } ?>
+          <input type="image" src="<?PHP $AF->PUIFile("go.gif"); ?>" alt="Go" />
+        </form>
+
+        <div id="cw-content-mainnav">
+            <?PHP DisplayNavItems(
+                $PrimaryNavItems,
+                $PrimaryNavExclusions,
+                "EVENT_MODIFY_PRIMARY_NAV",
+                "DisplayPrimaryNavItem",
+                $PrimaryNavTooltips
+            ); ?>
+            <a id="cw-content-advancedsearch" href="index.php?P=AdvancedSearch">Advanced Search</a>
+        </div>
+    </div>
+
+    <div class="container"><div class="row">
+
+    <div class="col" id="cw-segment-body">
+        <a id="skipnavigation"></a>
+    <!-- end StdPageStart -->
+
+<?PHP
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Display the passed navigation menu items.
+ *
+ * This method filters out the excluded nav items and signals an event to give the
+ * plugins a chance to modify the navigation menu. Then it will call another function
+ * passing it the necessary arguments to approprietly display each nav item.
+ *
+ * @param array $Items Navigation menu items.
+ * @param array $PossibleExclusions Set of nav menu items that could be shown or hidden
+ *    depending on system configuration.
+ * @param string $Event The name of the event to signal when this function is called.
+ * @param string $DisplayFunc A callback function name that will be used to display each
+ *    navigation menu item.
+ * @param array $Tooltips The navigation menu items tooltips.
+ */
+function DisplayNavItems($Items, $PossibleExclusions, $Event, $DisplayFunc, $Tooltips = null)
+{
+    # filter out nav items based on system configuration
+    foreach ($Items as $Label => $Link) {
+        if (isset($PossibleExclusions[$Link]) && !$PossibleExclusions[$Link]) {
+            unset($Items[$Label]);
+        }
+    }
+
+    # signal event to give plugins etc a chance to modify nav item list
+    if ($Event !== null) {
+        $SignalResult = $GLOBALS["AF"]->SignalEvent($Event, ["NavItems" => $Items]);
+        $Items = $SignalResult["NavItems"];
+    }
+
+    # display nav items
+    foreach ($Items as $Label => $Link) {
+        if (preg_match("/^[a-zA-Z0-9_]+$/", $Link)) {
+                $Link = "index.php?P=".$Link;
+        }
+        if (isset($Tooltips[$Label])) {
+            $DisplayFunc($Link, $Label, $Tooltips[$Label]);
+        } else {
+            $DisplayFunc($Link, $Label);
+        }
+    }
+}
+
+/**
+ * Display the passed navigation menu item.
+ *
+ * This method uses the passed nav item's information to construct an anchor
+ * element that will then be displayed as a navigation menu item.
+ *
+ * @param array $Link The destination to go to when the navigation item is clicked.
+ * @param string $Label The navigation item's label. (i.e. Display text)
+ * @param array $Tooltip The navigation item's tooltip. (OPTIONAL)
+ */
+function DisplayPrimaryNavItem($Link, $Label, $Tooltip = null)
+{
+    ?>
+    <a href="<?= $Link; ?>" title="<?= $Tooltip; ?>"><?= $Label; ?></a>
+    <?PHP
+}
+
+/**
+ * Display additional menu entry items.
+ *
+ * This method uses the passed in information to construct a link within a container
+ * that will then be added to the (login) menu entry.
+ * E.g. "Create a Login" and "Forgot your password?" links.
+ *
+ * @param mixed $Label The generated link's label. (i.e. Display text).
+ * @param mixed $Link The destination to go to when the link is clicked. (i.e. The href).
+ * @param mixed $PositionString The styling margins for the link's container. (OPTIONAL)
+ * @param mixed $Title The tooltip for the link's container. (OPTIONAL)
+ */
+function PrintMenuEntry($Label, $Link, $PositionString = null, $Title = null)
+{
+    $PositionString = $PositionString ? $PositionString : "5px 10px 0px 0px";
+    ?>
+    <div class="text mv-menu-entry-container" title="<?= strip_tags($Title); ?>"
+        style="margin: <?= $PositionString; ?>;">
+        <a href="<?= $Link; ?>">
+            <img src="<?PHP  $GLOBALS['AF']->PUIFile("go_small.gif");  ?>"
+                 class="cw-go-link" alt="" height="12" width="12"> <?= $Label; ?>
+        </a>
+    </div>
+    <?PHP
+}
+
+/**
+ * Checks if there is at least one tree field that can be displayed
+ * and if the user has the neccessary viewing privileges for that field.
+ *
+ * @return true if browesable tree field exists. Otherwise, returns false.
+ */
+function BrowseableTreeFieldExists()
+{
+    $Schema = new MetadataSchema();
+
+    # retrieve user currently logged in
+    $User = User::getCurrentUser();
+
+    # try to get a field that can be displayed for the user
+    foreach ($Schema->GetFields(MetadataSchema::MDFTYPE_TREE) as $Field) {
+        # do not display fields with a bad status
+        if ($Field->Status() != MetadataSchema::MDFSTAT_OK) {
+            continue;
+        }
+
+        # do not display disabled fields
+        if (!$Field->Enabled()) {
+            continue;
+        }
+
+        # field that the user shouldn't view
+        if (!$Field->ViewingPrivileges()->MeetsRequirements($User)) {
+            continue;
+        }
+
+        return true;
+    }
+
+    return false;
+}

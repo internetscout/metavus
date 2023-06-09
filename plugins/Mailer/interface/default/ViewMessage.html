@@ -1,0 +1,76 @@
+<?PHP
+#
+#   FILE:  ViewMessage.html (Mailer plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+PageTitle("View Queued Message");
+
+if (count($H_Errors)) {
+    print "<ul class='mv-form-error'>";
+    foreach ($H_Errors as $Error) {
+        print "<li>".$Error."</li>";
+    }
+    print "</ul>";
+    return;
+}
+
+$Params = "";
+foreach (["SS", "TID"] as $Param) {
+    if (isset($_GET[$Param])) {
+        $Params .= "&amp;".$Param."=".urlencode($_GET[$Param]);
+    }
+}
+
+$Email = $H_StoredEmail->GetEmail();
+?>
+<div style="float: right">
+  <a class="btn btn-primary mv-button-iconed"
+     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Send<?=
+        $Params; ?>"><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
+        class="mv-button-icon" /> Send</a>
+  <a class="btn btn-primary mv-button-iconed"
+     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Delete<?=
+        $Params; ?>"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete</a>
+  <a class="btn btn-primary mv-button-iconed"
+     href="index.php?P=P_Mailer_ListQueuedEmail<?= $Params ?>"><img
+    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> Cancel</a>
+</div>
+<table style="table-layout: fixed; width: 100%">
+  <tr>
+    <td><b>From</b></td><td><?= htmlspecialchars($Email->From()) ?></td>
+  </tr><tr>
+    <td><b>To</b></td><td><?= htmlspecialchars(implode(", ", $Email->To())) ?></td>
+  </tr><tr>
+    <td><b>Subject</b></td><td><?= htmlspecialchars($Email->Subject()) ?></td>
+  </tr><tr>
+    <td colspan=2>&nbsp;</td>
+  </tr><tr>
+    <td colspan=2><b>Rich text body</b><div style="background-color: #f0f0f0; padding: 5px;"><?=
+          $Email->Body() ?></div></td>
+  </tr><tr>
+    <td colspan=2>&nbsp;</td>
+  </tr><tr>
+    <td colspan=2><b>Plain text body</b><div style="background-color: #f0f0f0; padding: 5px;">
+      <pre style="white-space: pre-wrap;"><?= $Email->AlternateBody() ?></pre>
+    </div></td>
+  </tr>
+</table>
+
+<div style="float: right">
+  <a class="btn btn-primary mv-button-iconed"
+     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Send<?=
+        $Params; ?>"><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
+        class="mv-button-icon" /> Send</a>
+  <a class="btn btn-primary mv-button-iconed"
+     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Delete<?=
+        $Params; ?>"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete</a>
+<a class="btn btn-primary mv-button-iconed"
+     href="index.php?P=P_Mailer_ListQueuedEmail<?= $Params ?>"><img
+    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> Cancel</a>
+</div>

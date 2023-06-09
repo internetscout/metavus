@@ -1,0 +1,20 @@
+<vocabulary>
+    <name>Difficulty</name>
+    <description>How hard it is to work with or through this learning object for the typical intended target audience; indicate the level of ease associated with the use of the learning resource.</description>
+    <version>2.0 (Nov 21 2003)</version>
+    <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    <owner>
+        <name>CanCore</name>
+        <url>http://cancore.athabascau.ca</url>
+    </owner>
+    <qualifier>
+        <name>CanCore Difficulty Vocabulary</name>
+        <namespace></namespace>
+        <url>http://cancore.athabascau.ca/guidelines/CanCore_Guidelines_Educational_2.0.pdf</url>
+    </qualifier>
+    <term>Very easy</term>
+    <term>Easy</term>
+    <term>Medium</term>
+    <term>Difficult</term>
+    <term>Very difficult</term>
+</vocabulary>

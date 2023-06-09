@@ -1,0 +1,61 @@
+<?PHP
+#
+#   FILE:  ImportUsersExecute.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+$Header = ($ImportComplete) ? "Import Completed" : "Importing Users";
+
+?>
+
+<h1><?= $Header ?></h1>
+
+<p><b><?= $H_UserCount ?> users added successfully</b>.</p>
+
+<?PHP if (count($H_ErrorMessages)) { ?>
+    <h3>These users were not imported because an error(s) has occurred:</h3>
+    <?PHP foreach ($H_ErrorMessages as $UserName => $Info) { ?>
+        <p><em><?= $UserName." (Line ".$Info["LineNumber"].")" ?></em></p>
+        <ul>
+
+        <?PHP foreach ($Info["Messages"] as $Message) { ?>
+            <li><?= $Message ?></li>
+        <?PHP } ?>
+
+        </ul>
+
+    <?PHP } ?>
+<?PHP } ?>
+
+<?PHP if (count($H_DuplicateEntries)) { ?>
+    <h3>Duplicate lines (same username) detected in this file.
+        Only the first occurrence was processed. These lines were not processed:</h3>
+    <ul>
+        <?PHP foreach ($H_DuplicateEntries as $LineNumber => $Entry) { ?>
+            <li><?= "Line ".$LineNumber." | ".$Entry ?></li>
+        <?PHP } ?>
+    </ul>
+<?PHP } ?>
+
+<?PHP if (count($H_PrivNotFound)) { ?>
+    <h3>These privilege lines were not used because the privilege was not found:</h3>
+    <ul>
+        <?PHP foreach ($H_PrivNotFound as $LineNumber => $Entry) { ?>
+            <li><?= "Line ".$LineNumber." | ".$Entry ?></li>
+        <?PHP } ?>
+    </ul>
+<?PHP } ?>
+
+<?PHP if (!$ImportComplete) { ?>
+<form name="importusers" method="post" action="index.php?P=ImportUsersExecute">
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+</form>
+
+<?PHP } ?>

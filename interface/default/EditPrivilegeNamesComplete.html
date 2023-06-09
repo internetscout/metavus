@@ -1,0 +1,82 @@
+<?PHP
+#
+#   FILE:  EditPrivilegeNamesComplete.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function getStatusText($Status)
+{
+    $Map = [
+        0 => "No Update",
+        1 => "Deleted",
+        2 => "Updated",
+        3 => "Added"
+    ];
+
+    $Text = (array_key_exists($Status, $Map)) ? $Map[$Status] : "Unknown";
+
+    return $Text;
+}
+
+function DisplayField($Name, $Status)
+{
+    $StatusText = GetStatusText($Status);
+    ?>
+
+<tr>
+    <td><?= $Name; ?></td>
+    <td><?= $StatusText; ?></td>
+</tr>
+
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<div class="container">
+<div class="row">
+    <div class="col">
+        <h1>Per-Field User Permission Names</h1>
+    </div>
+    <div class="col text-right">
+        <a class="btn btn-primary mv-button-iconed"
+            href="index.php?P=EditPrivilegeNames">
+            <img class="mv-button-icon" src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
+    </div>
+</div>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <th>Permission Name</th>
+        <th>Status</th>
+    </thead>
+    <tbody>
+    <?PHP
+    # take action based on which submit button was pressed
+    switch (isset($_POST["Submit"]) ? $_POST["Submit"] : null) {
+        case "Save":
+        default:
+            # save changes
+            UpdatePrivileges();
+            break;
+
+        case "Cancel":
+            # Display privilegs
+            DisplayPrivileges();
+            break;
+    }
+    ?>
+    </tbody>
+</table>

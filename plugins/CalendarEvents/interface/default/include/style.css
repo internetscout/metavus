@@ -1,0 +1,260 @@
+/* @group Events in the Administrative List
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-list_entry {}
+
+.calendar_events-list_entry .calendar_events-actions .calendar_events-delete_form {
+  display: inline;
+}
+
+.calendar_events-list_entry .calendar_events-actions li {
+  list-style: none;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group All Events
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-event .mv-content-complexheader {
+  margin-bottom: 0;
+}
+
+.calendar_events-header {
+  margin-top: 15px;
+}
+
+.calendar_events-event .calendar_events-header .calendar_events-title a,
+.calendar_events-event .calendar_events-header .calendar_events-title a:link {
+  color: inherit;
+}
+
+.calendar_events-event .calendar_events-end_date:not(:empty):before {
+  content: "\2013";
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Event Summaries
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-today {
+  visibility: hidden;
+  height: 0;
+  width: 0;
+}
+
+.calendar_events-event.calendar_events-summary {
+  margin-top: 1em;
+}
+
+.calendar_events-event + .calendar_events-event.calendar_events-summary,
+#today + .calendar_events-event.calendar_events-summary {
+  border-top: 1px solid #CCC;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-header {}
+
+.calendar_events-event.calendar_events-summary .calendar_events-header p {
+  margin-top: 0;
+  font-size: 1.1em;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-title {
+  font-size: 1.2em;
+  margin-bottom: 0;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-start_date {}
+
+.calendar_events-event.calendar_events-summary .calendar_events-end_date {}
+
+.calendar_events-event.calendar_events-summary .calendar_events-description {}
+
+.calendar_events-event.calendar_events-summary .calendar_events-url {}
+
+.calendar_events-event.calendar_events-summary .calendar_events-actions {
+  position: relative;
+  bottom: 5px;
+  width: 100%;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-actions img {
+  position: relative;
+  top: 3px;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-extra {
+  padding-right: 8px;
+  border-right: 2px solid #CCC;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-share {
+  padding-left: 12px;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-more {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-bullet {}
+
+.calendar_events-event.calendar_events-summary .calendar_events-street_address:before,
+.calendar_events-event.calendar_events-summary .calendar_events-postal_code:before,
+.calendar_events-event.calendar_events-summary .calendar_events-country:before {
+  content: " ";
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-street_address,
+.calendar_events-event.calendar_events-summary .calendar_events-postal_code,
+.calendar_events-event.calendar_events-summary .calendar_events-country {
+  display: none;
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-venue:before,
+.calendar_events-event.calendar_events-summary .calendar_events-street_address:first-child:before {
+  content: " at ";
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-locality:before,
+.calendar_events-event.calendar_events-summary .calendar_events-region:first-child:before,
+.calendar_events-event.calendar_events-summary .calendar_events-postal_code:first-child:before,
+.calendar_events-event.calendar_events-summary .calendar_events-country:first-child:before {
+  content: " in ";
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-region:before {
+  content: ", ";
+}
+
+.calendar_events-event.calendar_events-summary .calendar_events-venue:after {
+  content: " ";
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Full Event
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-event.calendar_events-full .calendar_events-title {
+  margin-bottom: 0;
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-header p {
+  margin-top: 0;
+  font-size: 1.2em;
+}
+
+.calendar_events-event.calendar_events-full #share {
+  margin-top: 14px;
+}
+
+.calendar_events-event.calendar_events-full #categories header,
+.calendar_events-event.calendar_events-full #contact header,
+.calendar_events-event.calendar_events-full #attachments header,
+.calendar_events-event.calendar_events-full #import header {
+  display: inline;
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-venue,
+.calendar_events-event.calendar_events-full .calendar_events-street_address,
+.calendar_events-event.calendar_events-full .calendar_events-country {
+  display: block;
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-locality:after {
+  content: ", ";
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-region:after {
+  content: " ";
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-location-section {
+  position: relative;
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-location-wrapper {
+  position: absolute;
+  top: 45px;
+  left: 0px;
+  padding: 12px 20px;
+  border: 1px solid #ACA9A3;
+  border-left: none;
+  background-color: white;
+  text-shadow: #EFEFEF 0.1em 0.1em 0.1em;
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-location-wrapper a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.calendar_events-event.calendar_events-full .calendar_events-fancy_box {
+  padding: 5px 10px;
+  background-color: #F0F0F0;
+  border: 1px solid #CCCCCC;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Transport Controls
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-transport_controls {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+.calendar_events-back,
+.calendar_events-forward {
+  white-space: nowrap;
+}
+
+.calendar_events-selector {
+  width: 100%;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Event Metrics
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-metrics-header {
+  margin-top: 1.4em;
+  font-size: 1.5em;
+}
+
+.calendar_events-metrics-table {}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.calendar_events-header .container {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.calendar_events-header .container .row .col {
+  flex-grow: 4;
+}
+
+.calendar_events-header .container .row .col:last-of-type {
+  text-align: right;
+  flex-grow: 1;
+  max-width: fit-content;
+}
+
+.calendar_events-forward {
+  text-align: right;
+}

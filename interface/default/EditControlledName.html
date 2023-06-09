@@ -1,0 +1,420 @@
+<?PHP
+#
+#   FILE:  EditControlledName.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+use ScoutLib\HtmlOptionList;
+use ScoutLib\ApplicationFramework;
+
+/**
+* Display the list of ControlledName fields in this schema as a
+* series of HTML table rows.  Does not output the opening or closing
+* 'table' tags.
+* @param MetadataSchema $Schema Schema to display.
+*/
+function displayFieldList($Schema)
+{
+    $AF = ApplicationFramework::getInstance();
+    $RFactory = new RecordFactory($Schema->Id());
+    $ResourceCount = $RFactory->GetItemCount();
+
+    $Fields = $Schema->GetFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME);
+
+    # Compute the width of the submit buttons in characters based on
+    # the lengths of the field names plus "Search ".
+    $Width = 0;
+    foreach ($Fields as $Field) {
+        $Width = max($Width, strlen($Field->GetDisplayName()) + 10);
+    }
+
+    foreach ($Fields as $Field) {
+        $CNFactory = new ControlledNameFactory($Field->Id());
+
+        $DisplayName = $Field->Name()
+            .(strlen($Field->Label()) ? ": (".$Field->Label().")" : "");
+
+        $UsageCount = $CNFactory->GetUsageCount();
+        $UsagePercentage = ($ResourceCount > 0) ?
+            round((100 * $UsageCount) / $ResourceCount) : 0 ;
+        // @codingStandardsIgnoreStart
+        ?>
+          <tr valign="top">
+              <td><?= $DisplayName ?></td>
+              <td>(<?= number_format(
+                    $Field->GetCountOfPossibleValues()); ?>&nbsp;values)</td>
+              <td>
+                <button style="width: <?= $Width; ?>ex;"
+                        class="btn btn-primary btn-sm mv-button-iconed"
+                        type="submit" name="Submit"
+                        value="Search <?= $Field->Name(); ?>"
+                ><img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
+                    class="mv-button-icon" /> Search <?= $Field->GetDisplayName(); ?></button>
+                <a style="width: <?= $Width; ?>ex;" class="btn btn-primary btn-sm mv-button-iconed"
+                   href="index.php?P=DBExportField&amp;Id=<?= $Field->id(); ?>"
+                ><img src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt=""
+                    class="mv-button-icon"/> Export Vocabulary</a>
+              </td>
+              <td><?= $Field->Description(); ?></td>
+              <td>
+                  Assigned to <?= number_format($UsageCount); ?>&nbsp;resources
+                  (<?= $UsagePercentage; ?>%&nbsp;coverage)
+              </td>
+          </tr>
+        <?PHP
+        // @codingStandardsIgnoreEnd
+    }
+}
+
+/**
+* Display a list of search results.
+* @param array $SearchResults List of ControlledNames that matched the
+*     search string, where each element is an array suitable for
+*     DisplaySearchResult().
+* @param int $Start Starting result.
+* @param int $PerPage Number of results per page.
+*/
+function displaySearchResults($SearchResults, $Start, $PerPage)
+{
+    $Results = array_slice($SearchResults, $Start, $PerPage);
+
+    $Index = 0;
+    foreach ($Results as $Result) {
+        DisplaySearchResult($Result, $Index);
+        $Index++;
+    }
+}
+
+/**
+* Display a single result from a search for ControlledNames.
+* @param int $CNId ControlledNameId.
+* @param int $Index Index to use for form field names.
+*/
+function displaySearchResult($CNId, $Index)
+{
+    $CN = new ControlledName($CNId);
+    $Field = new MetadataField($CN->FieldId());
+
+    $InUseCount = $CN->getAssociatedResourceCount();
+
+    $SearchParams = new SearchParameterSet();
+    $SearchParams->addParameter("=".$CN->name(), $Field);
+    $Link = "index.php?P=SearchResults&".$SearchParams->urlParameterString();
+
+    # display number of resources that use this controlled name
+    if ($InUseCount == 1) {
+        $InUseMessage = "<a href=\"".$Link."\">(".$InUseCount." resource)</a>";
+    } elseif ($InUseCount > 0) {
+        $InUseMessage = "<a href=\"".$Link."\">(".$InUseCount." resources)</a>";
+    } else {
+        $InUseMessage = "(Not Used)";
+    }
+    // @codingStandardsIgnoreStart
+    ?>
+    <tr>
+      <td>
+        <input type="hidden" id="F_ControlledNameId_<?= $Index ?>"
+               name="F_ControlledNameId_<?= $Index ?>" value="<?= $CN->Id() ?>" />
+        <input type="text" id="F_ControlledName_<?= $Index ?>"
+               name="F_ControlledName_<?= $Index ?>" value="<?= $CN->Name() ?>" />
+      </td>
+      <td><?PHP PrintQualifier($Field, $Index); ?></td>
+      <td><?= $InUseMessage; ?></td>
+      <?PHP if ($InUseCount > 0){ ?>
+        <td>Remap to:</td>
+        <td><?PHP QuickSearchHelper::PrintQuickSearchField($Field->Id(), "", "", FALSE, "D_Remap_".$Index); ?></td>
+      <?PHP } else { ?>
+        <td colspan="2">&nbsp;</td>
+      <?PHP } ?>
+      <td><button class="btn btn-primary D_Variants_Button" type="button" value="Variants"
+                 style="display:none;" onclick="$('#D_Variants_<?= $Index ;?>').toggle();">Variants</button></td>
+      <td>
+        <input type="checkbox" id="F_Delete_<?= $Index ?>" name="F_Delete_<?= $Index ?>"/>
+        <label for="F_Delete_<?= $Index ?>">delete</label>
+      </td>
+    </tr>
+    <tr id="D_Variants_<?= $Index ?>" class="D_Variants">
+      <td>&nbsp;</td>
+      <td colspan="7">
+        <textarea id="F_VariantName_<?= $Index ?>" name="F_VariantName_<?= $Index ?>"
+                 cols="38" rows="4"><?= $CN->VariantName() ?></textarea>
+      </td>
+    </tr>
+<?PHP
+    // @codingStandardsIgnoreEnd
+}
+
+/**
+* Print HTML for a Qualifier.
+* @param MetadataField $Field Field to display.
+* @param int $Index Index to use for form field names.
+*/
+function printQualifier($Field, $Index)
+{
+    # only display qualifer field if field uses qualifiers
+    if ($Field->UsesQualifiers()) {
+        if ($Field->HasItemLevelQualifiers()) {
+            # first value is "--"
+            $Items = $Field->AssociatedQualifierList();
+            $Items["--"] = "--";
+            ksort($Items);
+
+            $OptList = new HtmlOptionList("F_QualifierName_".$Index, $Items, $QualifierId);
+            $OptList->PrintIfEmpty(false);
+            $OptList->PrintHtml();
+        } else {
+            $Qualifier = new Qualifier($Field->DefaultQualifier());
+            print $Qualifier->Name();
+        }
+    }
+}
+
+
+/**
+* Display pagination controls for ControlledName search.
+* @param int $NumResults Number of results per page.
+* @param MetadataField $Field Field searched.
+* @param string $ControlledName Name searched for.
+* @param int $StartRecord Numerical index of the first record on this
+*     page.
+* @param int $PerPage Number of records per page.
+*/
+function displayPagination($NumResults, $Field, $ControlledName, $StartRecord, $PerPage)
+{
+    // @codingStandardsIgnoreStart
+    if ($NumResults > $PerPage) { ?>
+<div class="mv-pagination-container" style="float:right">
+<form method="post" action="index.php?P=EditControlledName&amp;SC=<?= $Field->schemaId() ?>">
+<input type="hidden" name="F_ControlledName" value="<?= htmlspecialchars($ControlledName) ?>"/>
+<input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($Field->Name()) ?>"/>
+<input type="hidden" name="F_StartRec" value="<?= $StartRecord ?>" />
+<input type="hidden" name="F_RecordsPerPage" value="<?= $PerPage ?>" />
+<?PHP if ($StartRecord > 0) { ?> <button class="btn btn-primary btn-sm mv-button-iconed" type="submit" name="Submit" value="<">&lt;</button> <?PHP } ?>
+<?= 1 + $StartRecord / $PerPage;?>/<?= ceil($NumResults / $PerPage); ?>
+<?PHP if ($StartRecord + $PerPage < $NumResults) { ?> <button class="btn btn-primary btn-sm mv-button-iconed" type="submit" name="Submit" value=">">&gt;</button> <?PHP } ?>
+</form></div><?PHP
+      }
+    // @codingStandardsIgnoreEnd
+}
+
+/**
+* Print an option list containing metadata schemas.
+* @param MetadataSchema $SchemaInUse Metadata schema in use.
+*/
+function printSchemaOptionList(MetadataSchema $SchemaInUse)
+{
+    $Options = [];
+
+    # get the metadata schema options
+    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+        $Options[$Schema->Id()] = $Schema->Name() . " Schema";
+    }
+
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
+    $OptList->SubmitOnChange(true);
+    $OptList->PrintHtml();
+}
+
+
+
+
+
+# ----- COMPLETE FUNCTIONS ---------------------------------------------------
+# functions for when changes are submitted
+
+/**
+* Display list of modified controlled names.
+* @param array $CNArray Array giving modified controlled names, keyed
+*   by ControlledName with Variants for values.
+*/
+function displayControlledNameList($CNArray)
+{
+    if (count($CNArray) > 0) {
+        foreach ($CNArray as $CNName => $CNVariant) {
+            print $CNName;
+            if (!empty($CNVariant)) {
+                print ", Variant ($CNVariant)";
+            }
+            print "<br>";
+        }
+    } else {
+        print "<em>(none)</em>";
+    }
+}
+
+/**
+* Display list of modified resources.
+* @param array $LinkArray Array of links to modified resources.
+*/
+function displayModifiedResourceList($LinkArray)
+{
+    if (count($LinkArray) > 0) {
+        foreach ($LinkArray as $LinkString) {
+            print $LinkString;
+        }
+    } else {
+        print "<em>(none)</em>";
+    }
+}
+
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+
+// @codingStandardsIgnoreStart
+?>
+<?PHP if ($H_NumResults > 0) { ?>
+
+<div style="float:right; margin-top:2em;">
+<form  method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+  <input type="hidden" name="F_ControlledName" value="<?= htmlspecialchars($F_ControlledName) ?>"/>
+  <input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($H_Field->Name()) ?>"/>
+  <input type="hidden" name="F_UpdatePerPage" value="true" />
+    <label for="F_RecordsPerPage">Records per page: </label>
+    <?PHP $DisplayOptions = [
+        10 => 10,
+        25 => 25,
+        50 => 50,
+        100 => 100,
+        250 => 250
+    ];
+    $OptList = new HtmlOptionList("F_RecordsPerPage", $DisplayOptions, $H_RecordsPerPage);
+    $OptList->SubmitOnChange(true);
+    $OptList->OnChangeAction("submit('Submit')");
+    $OptList->PrintHtml(); ?>
+  </form>
+</div>
+
+<h1>Edit Controlled Names</h1>
+
+<div>
+  <?PHP DisplayPagination($H_NumResults, $H_Field, $F_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
+</div>
+
+<form name="addclass" method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+  <input type="hidden" name="F_ReturnToECN" value="Return to EditControlledName" />
+  <input type="hidden" name="F_RecordsPerPage" value="<?= $H_RecordsPerPage; ?>" />
+  <input type="hidden" name="F_StartRec" value="<?= $H_StartRec; ?>" />
+  <input type="hidden" name="F_FieldName" value="<?= $H_Field->Name(); ?>" />
+  <div class="container">
+    <div class="row">
+    <div class="col">
+         Number of matching records: <?= count($H_MatchingControlledNames) ?>
+      </div>
+      <div class="col text-right">
+        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+            class="mv-button-icon" /> Save Changes</button>
+        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+            value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+            class="mv-button-icon" /> Cancel</button>
+      </div>
+    </div>
+  </div>
+    <table class="table table-striped mv-content-cnametable">
+        <?PHP DisplaySearchResults($H_MatchingControlledNames, $H_StartRec, $H_RecordsPerPage); ?>
+    </table>
+   <div class="container">
+    <div class="row">
+      <div class="col text-right">
+        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+            value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+            class="mv-button-icon" /> Save Changes</button>
+        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
+            value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+            class="mv-button-icon" /> Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</form>
+<?PHP DisplayPagination($H_NumResults, $H_Field, $F_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
+    <script type="text/javascript">
+         $('.D_Variants_Button').show();
+         $('.D_Variants').hide();
+    </script>
+
+<?PHP } else { ?>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-8">
+      <h1>Search for Controlled Names to Edit</h1>
+    </div>
+    <div class="col-4 text-right">
+      <form method="get" action="index.php">
+        <input type="hidden" name="P" value="EditControlledName" />
+        <?PHP PrintSchemaOptionList($H_Schema); ?>
+      </form>
+    </div>
+  </div>
+</div>
+
+<form name="searchcontrolledname" method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+    <table class="table table-striped">
+        <tbody>
+          <?PHP if ($H_SearchEntered) { ?>
+            <tr>
+                <td colspan="2">
+                  <div class="alert alert-primary">
+                    <b>ERROR:</b><br>
+                    <ul>
+                      <li>No Controlled Names matched your query. Please search again.</li>
+                  </ul></div>
+                </td>
+            </tr>
+            <?PHP } ?>
+            <tr>
+                <th><label for="F_ControlledName">Search terms</label></th>
+                <td><input type="text" id="F_ControlledName" name="F_ControlledName" value="<?= $F_ControlledName; ?>" size="45" /></td>
+            </tr>
+            <tr>
+                <td colspan="2" class="mv-no-padding">
+                  <table class="table table-striped table-sm mv-content-optionlist">
+                  <?PHP DisplayFieldList($H_Schema); ?>
+                </table>
+              </td>
+            </tr>
+
+        </tbody>
+    </table>
+    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
+        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> Cancel</button>
+
+</form>
+
+<script type="text/javascript">
+$('#F_ControlledName').keydown(
+  function(e){
+    if (e.which == 13) {
+      return false;
+    }
+  }
+);
+</script>
+<?PHP } ?>
+
+<?PHP if ($H_SavedChanges) { ?>
+
+<h1>Controlled and Variant Names Updated</h1>
+
+<h2>Controlled names modified:</h2>
+
+<p><?PHP DisplayControlledNameList($H_ModifiedCNames); ?></p>
+
+<h2>Controlled names deleted:</h2>
+
+<p><?PHP DisplayControlledNameList($H_DeletedCNames); ?></p>
+
+<h2>Resource records affected by these changes:</h2>
+
+<p><?PHP DisplayModifiedResourceList($H_ModifiedResources); ?></p>
+
+<?PHP } ?>

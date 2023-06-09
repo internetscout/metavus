@@ -1,0 +1,20 @@
+<vocabulary>
+    <name>Access Rights</name> <!-- (does not correlate to CWIS field)  -->
+    <description>Information about who can access the resource or an indication of its security status; information describing conditions or requirements for viewing and/or downloading NSDL material</description>
+    <version>Oct 22 2007</version>
+    <url>https://wiki.ucar.edu/display/nsdldocs/Access+Rights</url>
+    <owner>
+        <name>NSDL</name>
+        <url>http://nsdl.org/</url>
+    </owner>
+    <qualifier>>
+        <name>NSDL Access Rights Vocabulary</name>
+        <namespace>http://ns.nsdl.org/access_type_v1.00/</namespace>
+        <url>https://wiki.ucar.edu/display/nsdldocs/Access+Rights</url>
+    </qualifier>
+    <term>Free access</term>
+    <term>Free access with registration</term>
+    <term>Available for purchase</term>
+    <term>Available by subscription</term>
+    <term>Limited free access</term>
+</vocabulary>

@@ -1,0 +1,38 @@
+<?PHP
+#
+#   FILE:  ChangeFolderDescription.html (Folders plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+# ----- MAIN -----------------------------------------------------------------
+
+$SafeId = defaulthtmlentities($Id);
+$SafeDescription = defaulthtmlentities($Description);
+
+?>
+
+<h1>Change Folder Description</h1>
+
+<form method="get" action="index.php">
+  <input type="hidden" name="P" value="P_Folders_UpdateFolderDescription" />
+  <input type="hidden" name="FolderId" value="<?= $SafeId; ?>" />
+  <?PHP if ($ReturnTo) { ?>
+    <input type="hidden" name="ReturnTo" value="<?= $ReturnTo; ?>" />
+  <?PHP } ?>
+
+  <p>
+    <textarea name="FolderDescription"><?= $SafeDescription; ?></textarea>
+  </p>
+
+  <button type="submit" value="Change Folder Description"
+    class="btn btn-primary mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+    class="mv-button-icon" /> Change Folder Description</button>
+  <button type="submit" name="Cancel" value="Cancel"
+    class="btn btn-danger mv-button-iconed"><img
+    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+    class="mv-button-icon" /> Cancel</button>
+</form>

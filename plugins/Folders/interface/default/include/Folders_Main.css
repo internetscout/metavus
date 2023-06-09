@@ -1,0 +1,407 @@
+/* @group Generic
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.mv-folders-dragnote {
+  font-style: italic;
+  text-align: right;
+}
+
+.mv-folders-item-note {
+  margin-top: 6px !important;
+}
+
+.mv-folders-item-notetext {
+  font-style: italic;
+}
+
+.mv-folders-selectedfoldericon {
+  height: 12px;
+  margin-left: 2px;
+  margin-right: 4px;
+}
+
+.mv-folders-noteinput {
+  height: 150px;
+  width: 500px;
+}
+
+.mv-folders-nojs .mv-folders-editnote,
+.mv-folders-nojs .mv-folders-removeresource {
+  display: none !important;
+}
+
+/* Style add/remove buttons differently when at the top of the Full Record
+ * and EditResource Complete pages */
+.mv-content-complexheader li {
+  list-style-type: none;
+}
+.mv-content-complexheader li a{
+  margin: 5px;
+  margin-right: 0;
+}
+
+#page-p_folders_managefolders .ui-dialog .ui-dialog-titlebar-close {
+  display: none;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Managing Folders
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.mv-folders-items-mini {
+  max-height: 800px;
+  overflow: auto;
+}
+
+.mv-section.mv-folders-folder {
+  margin-bottom: 24px;
+}
+
+.mv-section.mv-folders-folder:last-child {
+  margin-bottom: 0;
+}
+
+.mv-section.mv-folders-folder .mv-section-header {
+  padding: 4px;
+}
+
+.mv-section.mv-folders-folder .mv-section-header .mv-folders-folder-name {
+  margin-right: 8px;
+
+  font-size: 1.32em;
+  white-space: nowrap;
+}
+
+.mv-section.mv-folders-folder .mv-section-header .mv-folders-details {
+  display: inline-block;
+  position: relative;
+  bottom: 2px;
+  margin-left: 4px;
+}
+
+.mv-section.mv-folders-folder .mv-section-header .mv-table-fauxtable .mv-table-fauxcell {
+  vertical-align: middle;
+}
+
+.mv-section.mv-folders-folder .mv-section-header .mv-table-fauxtable .mv-table-fauxcell:first-child {
+  width: 100%;
+}
+
+.mv-folders-folder .cw-folder-actions {
+  white-space: nowrap;
+}
+
+.mv-folders-folder .cw-folder-actions form {
+  display: inline;
+}
+
+.mv-folders-folder .mv-button-active {
+  cursor: default;
+}
+
+.mv-folders-folder ul.mv-folders-items,
+.mv-folders-folder p.mv-folders-noitems {
+  margin: 6px;
+}
+
+.mv-folders-folder ul.mv-folders-items li {
+  margin-bottom: 3px;
+  padding-left: 8px;
+
+  text-indent: -8px;
+}
+
+.mv-folders-items .mv-folders-noitems {
+  cursor: default !important;
+}
+
+.mv-folders-items .mv-folders-noitems:before {
+  content: "" !important;
+}
+
+.mv-folders-resourceresponse {
+ color: green;
+ margin-bottom: 10px;
+}
+
+.mv-search-sort-controls-container .mv-folders-addallsearch {
+   margin-left: 15px;
+   float: left;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Viewing Folders
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.mv-folders-folder-shareurl {
+  display: none;
+}
+
+.mv-folders-isshared .mv-folders-folder-shareurl {
+  display: block;
+}
+
+p.mv-folders-folder-description {
+  position: relative;
+  bottom: 8px;
+  margin-top: 0;
+
+  font-style: italic;
+}
+
+.mv-folders-items > .mv-folders-resource {
+  margin-bottom: 8px;
+}
+
+.mv-folders-items > .mv-folders-resource:last-child > table {
+  border-bottom: none;
+}
+
+.mv-folders-items .mv-button-active {
+  cursor: default;
+}
+
+.mv-folders-pagination-left {
+  width: 40%;
+}
+
+.mv-folders-pagination-center {
+  width: 20%;
+
+  text-align: center;
+}
+
+.mv-folders-pagination-right {
+  width: 40%;
+
+  text-align: right;
+}
+
+#mv-folders-sort-order-button {
+  position: relative;
+  top: 0;
+  right: 0;
+  padding: 4px 10px;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Sidebar Content
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.mv-folders-sidebar .mv-folders-noitems {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.mv-folders-sidebar .mv-folders-seeall {
+  display: block;
+  margin-top: 8px;
+  margin-left: 8px;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Popups
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.mv-folders-folderedit-trigger,
+.mv-folders-itemedit-trigger {
+  visibility: hidden;
+}
+
+#mv-folders-edit-tooltip {
+  left: -1500px;
+}
+
+.mv-folders-popup-edit,
+.mv-folders-popup-itemedit {
+  left: -1500px;
+  width: 220px;
+}
+
+.mv-folders-popup-toppointer {
+  visibility: hidden;
+  position: absolute;
+  top: -19px;
+  right: 12px;
+  z-index: -1;
+}
+
+.mv-folders-popup-bottompointer {
+  visibility: hidden;
+  position: absolute;
+  bottom: -16px;
+  right: 12px;
+  z-index: -1;
+}
+
+label.mv-folders-edit-normallabel {
+  display: block;
+  margin-bottom: 2px;
+}
+
+label.mv-folders-edit-normallabel:after {
+  content: ":";
+}
+
+.mv-folders-popup-edit #mv-folders-edit-name,
+.mv-folders-popup-edit #mv-folders-edit-description,
+.mv-folders-popup-itemedit #mv-folders-itemedit-note {
+  width: 196px;
+}
+
+.mv-folders-popup-edit #mv-folders-edit-description,
+.mv-folders-popup-itemedit #mv-folders-itemedit-note {
+  height: 64px;
+}
+
+.mv-folders-popup-edit img.mv-folders-edit-help {
+  float: right;
+  position: relative;
+  top: 1px;
+}
+
+.mv-folders-edit-delete,
+.mv-folders-itemedit-remove {
+  width: 100%;
+}
+
+.cw-dialog-confirm {
+  display: none;
+}
+
+
+.mv-folders-dialog-namechange {
+  display: none;
+  border-style: solid;
+  padding: 1em;
+  border-width: 3px;
+  background-color: #F0F0F0;
+  border-color: #CCCCCC;
+}
+
+div.cw-dialog-overlay {
+    opacity: 0.85;
+    background-color: #F0F0F0;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+}
+
+/* Naming from jQuery-ui */
+.ui-button
+{
+  float: left;
+  margin-left: 5px;
+}
+
+.mv-folders-popup-success {
+  margin-top: 5px;
+  color: green;
+}
+
+.mv-folders-popup-error {
+  margin-top: 5px;
+  color: red;
+}
+
+/* @end
+ *
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Transfer Folder Popups
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+#cw-confirm-folder-transfer-error {
+  color: red;
+}
+
+#cw-confirm-folder-transfer-success {
+  color: green;
+}
+
+/**
+ * defined by jQueryUI for a autocomplete drop down
+ */
+.ui-autocomplete {
+  background: white;
+  width: 80%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  list-style: none;
+  margin: 0px;
+  padding: 0px;
+  z-index: 100;
+}
+
+/**
+ * defined by jQueryUI for each element in an autocomplete drop down
+ */
+.ui-autocomplete > .ui-menu-item {
+  width: 100%;
+  margin-left: 0px;
+  display: block;
+  padding: 7px 0px 7px 10px;
+  box-sizing: border-box;
+}
+
+.ui-autocomplete > .ui-menu-item:nth-child(odd) {
+  background-color: #dbdfe0;
+}
+
+/**
+ * defined by jQueryUI for the current focusing item in an autocomplete drop
+ * down
+ */
+.ui-autocomplete > .ui-state-focus {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+
+/* @group Add Item Folder Popups
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+.mv-folders-confirmation-popup {
+  width: 195px;
+  background: #DDD;
+  position: absolute;
+  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.2);
+  padding: 14px 10px 14px 10px;
+  box-sizing: border-box;
+}
+
+.mv-folders-confirmation-popup > p {
+  margin: 0px;
+}
+
+.mv-folders-confirmation-popup:after {
+  width: 10px;
+  height: 10px;
+  background-color: #DDD;
+  position: absolute;
+  right: -5px;
+  top: 16px;
+  display: block;
+  content: ' ';
+  box-shadow: 2px -1px 1px rgba(0, 0, 0, 0.2);
+  -webkit-transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  -o-transform: rotate(45deg);
+  -transform: rotate(45deg);
+}
+
+/* @end
+ *
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*

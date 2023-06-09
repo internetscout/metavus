@@ -1,0 +1,5460 @@
+.clearfix:after {
+    visibility: hidden;
+    display: block;
+    font-size: 0;
+    content: " ";
+    clear: both;
+    height: 0;
+}
+
+.clearfix {
+    display: block;
+}
+
+/* @group Links
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/* link */
+.cw-link {}
+
+/* links to external documents */
+.cw-link-external {}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Text
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Buttons
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/* button */
+.cw-button {}
+
+/* constrained buttons */
+.cw-button-constrained {}
+
+/* button groups */
+.cw-button-group {}
+
+/* buttons with icons */
+.cw-button-iconed {}
+
+/** button groups implemented using unordered lists **/
+ul.cw-button-group,
+ul.mv-button-group {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    white-space: nowrap;
+}
+
+ul.cw-button-group > li,
+ul.mv-button-group > li {
+    display: inline;
+    float: left;
+    margin: 0px;
+}
+
+/* elegant buttons */
+.cw-button.cw-button-elegant,
+a.cw-button.cw-button-elegant:link,
+a.cw-button.cw-button-elegant:visited,
+a.cw-button.cw-button-elegant:hover,
+ul.cw-button-group.cw-button-elegant > li > *,
+ul.cw-button-group.cw-button-elegant > li > a:link,
+ul.cw-button-group.cw-button-elegant > li > a:hover,
+ul.cw-button-group.cw-button-elegant > li > a:visited,
+.btn,
+a.btn:link,
+a.btn:visited,
+a.btn:hover,
+ul.mv-button-group > li > *,
+ul.mv-button-group > li > a:link,
+ul.mv-button-group > li > a:hover,
+ul.mv-button-group > li > a:visited {
+    display: inline-block;
+    padding: 4px 8px;
+    border-width: 1px;
+    border-style: solid;
+    border-top-color: #CCCCCC;
+    border-right-color: #999999;
+    border-bottom-color: #999999;
+    border-left-color: #CCCCCC;
+    background-color: #F0F0F0;
+    background-image: url("../images/CW-Gradient-Short.png");
+    background-repeat: repeat-x;
+    text-align: center;
+    text-decoration: none;
+    color: #383838;
+    font-size: 1em;
+    font-family: inherit;
+    cursor: pointer;
+
+    /* reset appearance for elements that get special user-agent treatment */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    /* stretch the background to fit the entire button */
+    -webkit-background-size: 100% 100%;
+    -moz-background-size: 100% 100%;
+    -o-background-size: 100% 100%;
+    background-size: 100% 100%;
+
+    /* make the borders rounded */
+    -moz-border-radius-bottomleft: 3px;
+    -webkit-border-bottom-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+    -moz-border-radius-topleft: 3px;
+    -webkit-border-top-left-radius: 3px;
+    border-top-left-radius: 3px;
+    -moz-border-radius-bottomright: 3px;
+    -webkit-border-bottom-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    -moz-border-radius-topright: 3px;
+    -webkit-border-top-right-radius: 3px;
+    border-top-right-radius: 3px;
+}
+
+/** elegant buttons with icons **/
+.cw-button.cw-button-iconed.cw-button-elegant,
+a.cw-button.cw-button-iconed.cw-button-elegant:link,
+a.cw-button.cw-button-iconed.cw-button-elegant:visited,
+a.cw-button.cw-button-iconed.cw-button-elegant:hover,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > *,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > a:link,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > a:hover,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > a:visited,
+.btn.mv-button-iconed,
+a.btn.mv-button-iconed:link,
+a.btn.mv-button-iconed:visited,
+a.btn.mv-button-iconed:hover,
+ul.mv-button-group.mv-button-iconed > li > *,
+ul.mv-button-group.mv-button-iconed > li > a:link,
+ul.mv-button-group.mv-button-iconed > li > a:hover,
+ul.mv-button-group.mv-button-iconed > li > a:visited {
+    position: relative;
+    padding-left: 24px;
+}
+
+.cw-button.cw-button-iconed.cw-button-elegant img.cw-button-icon,
+a.cw-button.cw-button-iconed.cw-button-elegant:link img.cw-button-icon,
+a.cw-button.cw-button-iconed.cw-button-elegant:visited img.cw-button-icon,
+a.cw-button.cw-button-iconed.cw-button-elegant:hover img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > * img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > a:link img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > a:hover img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-elegant > li > a:visited img.cw-button-icon,
+.btn.mv-button-iconed img.mv-button-icon,
+a.btn.mv-button-iconed:link img.mv-button-icon,
+a.btn.mv-button-iconed:visited img.mv-button-icon,
+a.btn.mv-button-iconed:hover img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed > li > * img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed > li > a:link img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed > li > a:hover img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed > li > a:visited img.mv-button-icon {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    height: 16px;
+}
+
+/** elegant button group buttons (unordered list) **/
+ul.cw-button-group.cw-button-elegant > li > *,
+ul.cw-button-group.cw-button-elegant > li > a:link,
+ul.cw-button-group.cw-button-elegant > li > a:hover,
+ul.cw-button-group.cw-button-elegant > li > a:visited,
+ul.mv-button-group > li > *,
+ul.mv-button-group > li > a:link,
+ul.mv-button-group > li > a:hover,
+ul.mv-button-group > li > a:visited {
+    margin: 0;
+    border-left: none;
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+}
+
+/** first elegant button group button (unordered list) **/
+ul.cw-button-group.cw-button-elegant > li:first-child > *,
+ul.cw-button-group.cw-button-elegant > li:first-child > a:link,
+ul.cw-button-group.cw-button-elegant > li:first-child > a:hover,
+ul.cw-button-group.cw-button-elegant > li:first-child > a:visited,
+ul.mv-button-group > li:first-child > *,
+ul.mv-button-group > li:first-child > a:link,
+ul.mv-button-group > li:first-child > a:hover,
+ul.mv-button-group > li:first-child > a:visited {
+    border-left: 1px solid #CCCCCC;
+    -moz-border-radius-bottomleft: 3px;
+    -webkit-border-bottom-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+    -moz-border-radius-topleft: 3px;
+    -webkit-border-top-left-radius: 3px;
+    border-top-left-radius: 3px;
+}
+
+/** last elegant button group button (unordered list) **/
+ul.cw-button-group.cw-button-elegant > li:last-child > *,
+ul.cw-button-group.cw-button-elegant > li:last-child > a:link,
+ul.cw-button-group.cw-button-elegant > li:last-child > a:hover,
+ul.cw-button-group.cw-button-elegant > li:last-child > a:visited,
+ul.mv-button-group > li:last-child > *,
+ul.mv-button-group > li:last-child > a:link,
+ul.mv-button-group > li:last-child > a:hover,
+ul.mv-button-group > li:last-child > a:visited {
+    -moz-border-radius-bottomright: 3px;
+    -webkit-border-bottom-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    -moz-border-radius-topright: 3px;
+    -webkit-border-top-right-radius: 3px;
+    border-top-right-radius: 3px;
+}
+
+/** active elegant buttons **/
+.cw-button.cw-button-elegant:active,
+a.cw-button.cw-button-elegant:active,
+ul.cw-button-group.cw-button-elegant > li > *:active,
+ul.cw-button-group.cw-button-elegant > li > a:active,
+.cw-button-active.cw-button-elegant,
+a.cw-button-active.cw-button-elegant:link,
+a.cw-button-active.cw-button-elegant:hover,
+a.cw-button-active.cw-button-elegant:visited,
+ul.cw-button-group.cw-button-elegant > li > .cw-button-active,
+ul.cw-button-group.cw-button-elegant > li > a.cw-button-active,
+.btn:active,
+a.btn:active,
+ul.mv-button-group > li > *:active,
+ul.mv-button-group > li > a:active,
+.mv-button-active,
+a.mv-button-active:link,
+a.mv-button-active:hover,
+a.mv-button-active:visited,
+ul.mv-button-group > li > .mv-button-active,
+ul.mv-button-group > li > a.mv-button-active {
+    background-image: none;
+    background-color: #DDDDDD;
+}
+
+/** disabled elegant buttons **/
+.cw-button-disabled.cw-button-elegant,
+a.cw-button-disabled.cw-button-elegant:link,
+a.cw-button-disabled.cw-button-elegant:hover,
+a.cw-button-disabled.cw-button-elegant:visited,
+ul.cw-button-group.cw-button-elegant > li > .cw-button-disabled,
+ul.cw-button-group.cw-button-elegant > li > a.cw-button-disabled,
+.mv-button-disabled,
+a.mv-button-disabled:link,
+a.mv-button-disabled:hover,
+a.mv-button-disabled:visited,
+ul.mv-button-group > li > .mv-button-disabled,
+ul.mv-button-group > li > a.mv-button-disabled {
+    background-image: none;
+    background-color: #DDDDDD;
+    color: #AAAAAA;
+    cursor: not-allowed;
+}
+
+/** disabled elegant buttons with icons **/
+.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant,
+a.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant:link,
+a.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant:visited,
+a.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant:hover,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > *,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > a:link,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > a:hover,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > a:visited,
+.btn.mv-button-iconed.mv-button-disabled,
+a.btn.mv-button-iconed.mv-button-disabled:link,
+a.btn.mv-button-iconed.mv-button-disabled:visited,
+a.btn.mv-button-iconed.mv-button-disabled:hover,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > *,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > a:link,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > a:hover,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > a:visited {
+    padding-left: 8px;
+}
+
+.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant img.cw-button-icon,
+a.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant:link img.cw-button-icon,
+a.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant:visited img.cw-button-icon,
+a.cw-button.cw-button-iconed.cw-button-disabled.cw-button-elegant:hover img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > * img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > a:link img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > a:hover img.cw-button-icon,
+ul.cw-button-group.cw-button-iconed.cw-button-disabled.cw-button-elegant > li > a:visited img.cw-button-icon,
+.btn.mv-button-iconed.mv-button-disabled img.mv-button-icon,
+a.btn.mv-button-iconed.mv-button-disabled:link img.mv-button-icon,
+a.btn.mv-button-iconed.mv-button-disabled:visited img.mv-button-icon,
+a.btn.mv-button-iconed.mv-button-disabled:hover img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > * img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > a:link img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > a:hover img.mv-button-icon,
+ul.mv-button-group.mv-button-iconed.mv-button-disabled > li > a:visited img.mv-button-icon {
+    display: none;
+}
+
+/** constrained elegant buttons **/
+.cw-button.cw-button-constrained,
+a.cw-button.cw-button-constrained:link,
+a.cw-button.cw-button-constrained:visited,
+a.cw-button.cw-button-constrained:hover,
+ul.cw-button.cw-button-constrained > li > *,
+ul.cw-button.cw-button-constrained > li > a:link,
+ul.cw-button.cw-button-constrained > li > a:hover,
+ul.cw-button.cw-button-constrained > li > a:visited,
+.btn.btn-sm,
+a.btn.btn-sm:link,
+a.btn.btn-sm:visited,
+a.btn.btn-sm:hover,
+ul.btn.btn-sm > li > *,
+ul.btn.btn-sm > li > a:link,
+ul.btn.btn-sm > li > a:hover,
+ul.btn.btn-sm > li > a:visited {
+    padding: 2px 4px;
+    font-size: 9px;
+}
+
+.cw-button.cw-button-constrained.cw-button-iconed,
+a.cw-button.cw-button-constrained.cw-button-iconed:link,
+a.cw-button.cw-button-constrained.cw-button-iconed:visited,
+a.cw-button.cw-button-constrained.cw-button-iconed:hover,
+ul.cw-button.cw-button-constrained.cw-button-iconed > li > *,
+ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:link,
+ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:hover,
+ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:visited,
+.btn.btn-sm.mv-button-iconed,
+a.btn.btn-sm.mv-button-iconed:link,
+a.btn.btn-sm.mv-button-iconed:visited,
+a.btn.btn-sm.mv-button-iconed:hover,
+ul.btn.btn-sm.mv-button-iconed > li > *,
+ul.btn.btn-sm.mv-button-iconed > li > a:link,
+ul.btn.btn-sm.mv-button-iconed > li > a:hover,
+ul.btn.btn-sm.mv-button-iconed > li > a:visited {
+    padding-left: 16px;
+}
+
+.cw-button.cw-button-constrained.cw-button-iconed.cw-button-elegant img.cw-button-icon,
+a.cw-button.cw-button-constrained.cw-button-iconed.cw-button-elegant:link img.cw-button-icon,
+a.cw-button.cw-button-constrained.cw-button-iconed.cw-button-elegant:visited img.cw-button-icon,
+a.cw-button.cw-button-constrained.cw-button-iconed.cw-button-elegant:hover img.cw-button-icon,
+ul.cw-button-group.cw-button-constrained.cw-button-iconed.cw-button-elegant > li > * img.cw-button-icon,
+ul.cw-button-group.cw-button-constrained.cw-button-iconed.cw-button-elegant > li > a:link img.cw-button-icon,
+ul.cw-button-group.cw-button-constrained.cw-button-iconed.cw-button-elegant > li > a:hover img.cw-button-icon,
+ul.cw-button-group.cw-button-constrained.cw-button-iconed.cw-button-elegant > li > a:visited img.cw-button-icon,
+.btn.btn-sm.mv-button-iconed img.mv-button-icon,
+a.btn.btn-sm.mv-button-iconed:link img.mv-button-icon,
+a.btn.btn-sm.mv-button-iconed:visited img.mv-button-icon,
+a.btn.btn-sm.mv-button-iconed:hover img.mv-button-icon,
+ul.mv-button-group.btn-sm.mv-button-iconed > li > * img.mv-button-icon,
+ul.mv-button-group.btn-sm.mv-button-iconed > li > a:link img.mv-button-icon,
+ul.mv-button-group.btn-sm.mv-button-iconed > li > a:hover img.mv-button-icon,
+ul.mv-button-group.btn-sm.mv-button-iconed > li > a:visited img.mv-button-icon,
+.mv-button-iconed.btn.btn-sm img.mv-button-icon {
+    top: 2px;
+    left: 2px;
+    height: 12px;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+/* @group Images
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* image */
+.cw-image {}
+
+/* thumbnail-size image */
+.cw-image-thumbnail,
+.mv-image-thumbnail {
+    max-width: 50px;
+    max-height: 50px;
+}
+
+/* preview-size image */
+.cw-image-preview,
+.mv-image-preview {
+    max-width: 100px;
+    max-height: 100px;
+}
+
+/* large-size image */
+.cw-image-large,
+.mv-image-large {
+    max-width: 500px;
+    max-height: 500px;
+}
+
+/* full-size image */
+.cw-image-full {}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+/* @group Sections
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/* section */
+.cw-section, .mv-section {
+    display: block;
+}
+
+/* section headers */
+.cw-section-header, .mv-section-header {
+    display: block;
+}
+
+/* section bodies */
+.cw-section-body, .mv-section-body {
+    display: block;
+}
+
+/* section footers */
+.cw-section-footer, .mv-section-footer {
+    display: block;
+}
+
+/* shadowed sections (drop shadow) */
+.cw-section-shadowed {}
+
+/* pop-up/modal sections (the exact position must be declared separately) */
+.cw-section-popup, .mv-section-popup {
+    position: absolute;
+    z-index: 100;
+}
+
+/* rounded sections */
+.cw-section.cw-section-rounded,
+.cw-section.cw-section-rounded > .cw-section-body,
+.mv-section.mv-section-rounded,
+.mv-section.mv-section-rounded > .mv-section-body {
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
+}
+
+/** shadowed popups **/
+.cw-section-popup.cw-section-shadowed, .mv-section-popup.mv-section-shadowed {
+    -moz-box-shadow: 0 0 10px rgba(136, 136, 136, 0.75);
+    -webkit-box-shadow: 0 0 10px rgba(136, 136, 136, 0.75);
+    box-shadow: 0 0 10px rgba(136, 136, 136, 0.75);
+}
+
+/* tooltip sections (the exact position must be declared separately) */
+/* ui-tooltip name from jQuery ui*/
+.cw-section-popup.cw-section-tooltip,
+.mv-section-popup.mv-section-tooltip,
+.ui-tooltip {
+    max-width: 250px;
+    padding: 3px;
+    border: 1px solid #D8D8CB;
+    background-color: #FBFBC6;
+    color: black;
+}
+
+/** shadowed tooltips **/
+.cw-section-popup.cw-section-tooltip.cw-section-shadowed,
+.mv-section-popup.mv-section-tooltip.mv-section-shadowed {
+    -moz-box-shadow: 0 0 1em rgba(24, 24, 19, 0.1);
+    -webkit-box-shadow: 0 0 1em rgba(24, 24, 19, 0.1);
+    box-shadow: 0 0 1em rgba(24, 24, 19, 0.1);
+}
+
+/* elegant sections */
+.cw-section-elegant, .mv-section-elegant {
+    border: 1px solid #CCCCCC;
+    background-color: #FFFFFF;
+}
+
+.cw-section-elegant > .cw-section-header,
+.mv-section-elegant > .mv-section-header {
+    padding: 3px;
+    background-color: #D7D7D7;
+    background-image: url("../images/CW-Gradient-Short.png");
+    background-repeat: repeat-x;
+    -webkit-background-size: 100% 100%;
+    -moz-background-size: 100% 100%;
+    -o-background-size: 100% 100%;
+    background-size: 100% 100%;
+}
+
+.cw-section-elegant > .cw-section-body,
+.mv-section-elegant > .mv-section-body {
+    padding: 3px;
+    background-color: #FFFFFF;
+}
+
+.cw-section-elegant > .cw-section-footer,
+.mv-section-elegant > .mv-section-footer {
+    padding: 3px;
+}
+
+/* elegant popups */
+.cw-section-elegant.cw-section-popup,
+.mv-section-elegant.mv-section-popup {
+    border-color: #B8B8B8;
+    background-color: #F0F0F0;
+}
+
+.cw-section-elegant.cw-section-popup > .cw-section-body,
+.mv-section-elegant.mv-section-popup > .mv-section-body  {
+    margin: 4px;
+    padding: 4px;
+    border: 1px solid #B8B8B8;
+    background-color: #FFFFFF;
+}
+
+/* simple decorations */
+.cw-section-simple,
+.mv-section-simple {
+    border: 1px solid #DDDDDD;
+}
+
+.cw-section-simple > .cw-section-header,
+.mv-section-simple > .mv-section-header {
+    padding: 3px;
+    background-color: #DDDDDD;
+}
+
+.cw-section-simple > .cw-section-body,
+.mv-section-simple > .mv-section-body {
+    padding: 3px;
+}
+
+.cw-section-simple > .cw-section-footer,
+.mv-section-simple > .mv-section-footer {
+    padding: 3px;
+}
+
+/* generic pull quote block within content area */
+.cw-section-pullquote,
+.mv-section-pullquote {
+    margin-top: 25px;
+    position: static;
+    padding: 25px;
+    min-height: 100%;
+    overflow-y: hidden;
+    background-color: #DDDDDD;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+/* @group Tables
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* table */
+.cw-table {}
+
+/* tables that are padded */
+.cw-table-padded {}
+
+/* tables with emphasized cells */
+.cw-table-emphasizedcells {}
+
+/* tables with headers on the left side */
+.cw-table-sideheaders {}
+
+/* tables with sections, i.e., scope=rowspan for each tbody */
+.cw-table-sectioned {}
+
+/* tables that are full size */
+.cw-table-fullsize,
+.mv-table-fullsize {
+    width: 100%;
+}
+
+/* tables with pagination buttons for the data in the footer */
+table.cw-table-pagination > tfoot > tr > th:first-child,
+table.cw-table-pagination > tfoot > tr > td:first-child,
+table.mv-table-pagination > tfoot > tr > th:first-child,
+table.mv-table-pagination > tfoot > tr > td:first-child {
+    padding-left: 0;
+    text-align: left;
+}
+
+table.cw-table-pagination > tfoot > tr > th:last-child,
+table.cw-table-pagination > tfoot > tr > td:last-child,
+table.mv-table-pagination > tfoot > tr > th:last-child,
+table.mv-table-pagination > tfoot > tr > td:last-child {
+    padding-right: 0;
+    text-align: right;
+}
+
+/* faux tables using the display property */
+.cw-table-fauxtable,
+.mv-table-fauxtable {
+    display: table;
+}
+
+.cw-table-fauxrow,
+.mv-table-fauxrow {
+    display: table-row;
+}
+
+.cw-table-fauxcell,
+.mv-table-fauxcell {
+    display: table-cell;
+}
+
+.cw-table-fauxtable.cw-table-padded > .cw-table-fauxrow > .cw-table-fauxcell,
+.mv-table-fauxtable.mv-table-padded > .mv-table-fauxrow > .mv-table-fauxcell {
+    padding: 5px;
+}
+
+/* striped tables */
+table.cw-table-striped,
+table.mv-table-striped {
+    border-collapse: collapse;
+}
+
+table.cw-table-striped.cw-table-padded > thead > tr > th,
+table.cw-table-striped.cw-table-padded > thead > tr > td,
+table.cw-table-striped.cw-table-padded > tbody > tr > th,
+table.cw-table-striped.cw-table-padded > tbody > tr > td,
+table.cw-table-striped.cw-table-padded > tfoot > tr > th,
+table.cw-table-striped.cw-table-padded > tfoot > tr > td,
+table.mv-table-striped.mv-table-padded > thead > tr > th,
+table.mv-table-striped.mv-table-padded > thead > tr > td,
+table.mv-table-striped.mv-table-padded > tbody > tr > th,
+table.mv-table-striped.mv-table-padded > tbody > tr > td,
+table.mv-table-striped.mv-table-padded > tfoot > tr > th,
+table.mv-table-striped.mv-table-padded > tfoot > tr > td {
+    padding: 5px;
+}
+
+table.cw-table-striped.cw-table-padded.cw-table-pagination > tfoot > tr > th,
+table.cw-table-striped.cw-table-padded.cw-table-pagination > tfoot > tr > td,
+table.mv-table-striped.mv-table-padded.mv-table-pagination > tfoot > tr > th,
+table.mv-table-striped.mv-table-padded.mv-table-pagination > tfoot > tr > td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+table.cw-table-striped.cw-table-emphasizedcells > thead > tr > th,
+table.cw-table-striped.cw-table-emphasizedcells > thead > tr > td,
+table.cw-table-striped.cw-table-emphasizedcells > tbody > tr > th,
+table.cw-table-striped.cw-table-emphasizedcells > tbody > tr > td,
+table.mv-table-striped.mv-table-emphasizedcells > thead > tr > th,
+table.mv-table-striped.mv-table-emphasizedcells > thead > tr > td,
+table.mv-table-striped.mv-table-emphasizedcells > tbody > tr > th,
+table.mv-table-striped.mv-table-emphasizedcells > tbody > tr > td {
+    border: 1px solid #FFFFFF;
+}
+
+table.cw-table-striped.cw-table-sideheaders > tbody > tr > th:first-child,
+table.mv-table-striped.mv-table-sideheaders > tbody > tr > th:first-child {
+    font-weight: bold;
+    text-align: left;
+    padding-right: 15px;
+    white-space: nowrap;
+}
+
+table.cw-table-striped.cw-table-sideheaders.cw-table-dense > tbody > tr > th:first-child,
+table.mv-table-striped.mv-table-sideheaders.mv-table-dense > tbody > tr > th:first-child {
+    text-align: right;
+    padding-right: 5px;
+}
+
+table.cw-table-striped.cw-table-sectioned > tbody:not(.mv-form-group) > tr:first-child > th,
+table.table-striped.mv-table-sectioned > tbody:not(.mv-form-group) > tr:first-child > th {
+    background-color: #BABACF;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+table.cw-table-striped > caption,
+table.mv-table-striped > caption {
+    background-color: #CFCFDD;
+}
+
+table.cw-table-striped > tfoot,
+table.mv-table-striped > tfoot {
+    background-color: #FFFFFF;
+}
+
+table.cw-table-striped > thead > tr > th,
+table.mv-table-striped > thead > tr > th {
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+table.cw-table-striped > thead > tr:nth-child(odd),
+table.cw-table-striped > thead > tr.cw-table-striped-odd,
+table.cw-table-striped > thead > tr.cw-table-striped-odd.cw-table-striped-force,
+table.mv-table-striped > thead > tr:nth-child(odd),
+table.mv-table-striped > thead > tr.mv-table-striped-odd,
+table.mv-table-striped > thead > tr.mv-table-striped-odd.mv-table-striped-force {
+    background-color: #BABACF;
+}
+
+table.cw-table-striped > thead > tr:nth-child(even),
+table.cw-table-striped > thead > tr.cw-table-striped-even,
+table.cw-table-striped > thead > tr.cw-table-striped-even.cw-table-striped-force,
+table.mv-table-striped > thead > tr:nth-child(even),
+table.mv-table-striped > thead > tr.mv-table-striped-even,
+table.mv-table-striped > thead > tr.mv-table-striped-even.mv-table-striped-force {
+    background-color: #CFCFDD;
+}
+
+table.cw-table-striped > tbody > tr:nth-child(odd),
+table.cw-table-striped > tbody > tr.cw-table-striped-odd,
+table.cw-table-striped > tbody > tr.cw-table-striped-odd.cw-table-striped-force,
+table.mv-table-striped > tbody > tr:nth-child(odd),
+table.mv-table-striped > tbody > tr.mv-table-striped-odd,
+table.mv-table-striped > tbody > tr.mv-table-striped-odd.mv-table-striped-force {
+    background-color: #EAF1F3;
+}
+
+table.cw-table-striped > tbody > tr:nth-child(even),
+table.cw-table-striped > tbody > tr.cw-table-striped-even,
+table.cw-table-striped > tbody > tr.cw-table-striped-even.cw-table-striped-force,
+table.mv-table-striped > tbody > tr:nth-child(even),
+table.mv-table-striped > tbody > tr.mv-table-striped-even,
+table.mv-table-striped > tbody > tr.mv-table-striped-even.mv-table-striped-force {
+    background-color: #F4F9FA;
+}
+
+/* simple table */
+table.cw-table-simple, table.mv-table-simple {
+    border-collapse: collapse;
+}
+
+table.cw-table-simple.cw-table-padded > thead > tr > th,
+table.cw-table-simple.cw-table-padded > thead > tr > td,
+table.mv-table-simple.mv-table-padded > thead > tr > th,
+table.mv-table-simple.mv-table-padded > thead > tr > td {
+    padding: 10px;
+}
+
+table.cw-table-simple.cw-table-padded > tbody > tr > th,
+table.cw-table-simple.cw-table-padded > tbody > tr > td,
+table.cw-table-simple.cw-table-padded > tfoot > tr > th,
+table.cw-table-simple.cw-table-padded > tfoot > tr > td,
+table.mv-table-simple.mv-table-padded > tbody > tr > th,
+table.mv-table-simple.mv-table-padded > tbody > tr > td,
+table.mv-table-simple.mv-table-padded > tfoot > tr > th,
+table.mv-table-simple.mv-table-padded > tfoot > tr > td {
+    padding: 5px;
+}
+
+table.cw-table-simple.cw-table-padded.cw-table-pagination > tfoot > tr > th,
+table.cw-table-simple.cw-table-padded.cw-table-pagination > tfoot > tr > td,
+table.mv-table-simple.mv-table-padded.mv-table-pagination > tfoot > tr > th,
+table.mv-table-simple.mv-table-padded.mv-table-pagination > tfoot > tr > td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+table.cw-table-simple.cw-table-sideheaders > tbody > tr > th:first-child,
+table.mv-table-simple.mv-table-sideheaders > tbody > tr > th:first-child {
+    padding-right: 5px;
+    font-weight: normal;
+    text-align: right;
+    white-space: nowrap;
+}
+
+table.cw-table-simple.cw-table-sectioned > tbody > tr:first-child > th,
+table.mv-table-simple.mv-table-sectioned > tbody > tr:first-child > th {
+    font-weight: bold;
+    border: 1px solid #DDDDDD;
+    background-color: #EAF1F3;
+    text-align: left;
+}
+
+table.cw-table-simple > thead > tr > th,
+table.mv-table-simple > thead > tr > th {
+    text-align: left;
+    white-space: nowrap;
+}
+
+/* map table (key -> value) */
+table.cw-table-map,
+table.mv-table-map {
+    border-collapse: collapse;
+}
+
+table.cw-table-map > tbody > tr > th:first-child,
+table.mv-table-map > tbody > tr > th:first-child {
+    padding-right: 20px;
+    text-align: left;
+    font-weight: normal;
+}
+
+table.cw-table-map.cw-table-padded > thead > tr > th,
+table.cw-table-map.cw-table-padded > thead > tr > td,
+table.mv-table-map.mv-table-padded > thead > tr > th,
+table.mv-table-map.mv-table-padded > thead > tr > td {
+    padding: 10px;
+}
+
+table.cw-table-map.cw-table-padded > tbody > tr > th,
+table.cw-table-map.cw-table-padded > tbody > tr > td,
+table.cw-table-map.cw-table-padded > tfoot > tr > th,
+table.cw-table-map.cw-table-padded > tfoot > tr > td,
+table.mv-table-map.mv-table-padded > tbody > tr > th,
+table.mv-table-map.mv-table-padded > tbody > tr > td,
+table.mv-table-map.mv-table-padded > tfoot > tr > th,
+table.mv-table-map.mv-table-padded > tfoot > tr > td {
+    padding: 5px;
+}
+
+table.cw-table-map.cw-table-padded.cw-table-pagination > tfoot > tr > th,
+table.cw-table-map.cw-table-padded.cw-table-pagination > tfoot > tr > td,
+table.mv-table-map.mv-table-padded.mv-table-pagination > tfoot > tr > th,
+table.mv-table-map.mv-table-padded.mv-table-pagination > tfoot > tr > td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+table.cw-table-map.cw-table-sectioned > tbody:nth-child(n+2) > tr:first-child > th,
+table.cw-table-map.cw-table-sectioned > tbody:nth-child(n+2) > tr:first-child > td,
+table.mv-table-map.mv-table-sectioned > tbody:nth-child(n+2) > tr:first-child > th,
+table.mv-table-map.mv-table-sectioned > tbody:nth-child(n+2) > tr:first-child > td {
+    padding-top: 12px;
+}
+
+table.cw-table-map.cw-table-sectioned.cw-table-padded > tbody:nth-child(n+2) > tr:first-child > th,
+table.cw-table-map.cw-table-sectioned.cw-table-padded > tbody:nth-child(n+2) > tr:first-child > td,
+table.mv-table-map.mv-table-sectioned.mv-table-padded > tbody:nth-child(n+2) > tr:first-child > th,
+table.mv-table-map.mv-table-sectioned.mv-table-padded > tbody:nth-child(n+2) > tr:first-child > td {
+    padding-top: 20px;
+}
+
+/* boxed table */
+table.cw-table-boxed, table.mv-table-boxed {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+table.cw-table-boxed,
+table.mv-table-boxed {
+    border-width: 1px;
+    border-style: solid;
+    border-color: #CCCCCC;
+}
+
+/** rows of the table **/
+table.cw-table-boxed > thead > tr > th,
+table.cw-table-boxed > thead > tr > td,
+table.cw-table-boxed > tbody > tr > th,
+table.cw-table-boxed > tbody > tr > td,
+table.cw-table-boxed > tfoot > tr > th,
+table.cw-table-boxed > tfoot > tr > td,
+table.mv-table-boxed > thead > tr > th,
+table.mv-table-boxed > thead > tr > td,
+table.mv-table-boxed > tbody > tr > th,
+table.mv-table-boxed > tbody > tr > td,
+table.mv-table-boxed > tfoot > tr > th,
+table.mv-table-boxed > tfoot > tr > td {
+    border-right: 1px solid #CCCCCC;
+    border-bottom: 1px solid #CCCCCC;
+}
+
+/** last row of the table **/
+table.cw-table-boxed > thead > tr:last-child > th,
+table.cw-table-boxed > thead > tr:last-child > td,
+table.cw-table-boxed > tbody > tr:last-child > th,
+table.cw-table-boxed > tbody > tr:last-child > td,
+table.cw-table-boxed > tfoot > tr:last-child > th,
+table.cw-table-boxed > tfoot > tr:last-child > td,
+table.mv-table-boxed > thead > tr:last-child > th,
+table.mv-table-boxed > thead > tr:last-child > td,
+table.mv-table-boxed > tbody > tr:last-child > th,
+table.mv-table-boxed > tbody > tr:last-child > td,
+table.mv-table-boxed > tfoot > tr:last-child > th,
+table.mv-table-boxed > tfoot > tr:last-child > td {
+    border-bottom-width: 0;
+}
+
+/** last cell of a row **/
+table.cw-table-boxed > thead > tr > th:last-child,
+table.cw-table-boxed > thead > tr > td:last-child,
+table.cw-table-boxed > tbody > tr > th:last-child,
+table.cw-table-boxed > tbody > tr > td:last-child,
+table.cw-table-boxed > tfoot > tr > th:last-child,
+table.cw-table-boxed > tfoot > tr > td:last-child,
+table.mv-table-boxed > thead > tr > th:last-child,
+table.mv-table-boxed > thead > tr > td:last-child,
+table.mv-table-boxed > tbody > tr > th:last-child,
+table.mv-table-boxed > tbody > tr > td:last-child,
+table.mv-table-boxed > tfoot > tr > th:last-child,
+table.mv-table-boxed > tfoot > tr > td:last-child {
+    border-right-width: 0;
+}
+
+table.cw-table-boxed.cw-table-padded > thead > tr > th,
+table.cw-table-boxed.cw-table-padded > thead > tr > td,
+table.cw-table-boxed.cw-table-padded > tbody > tr > th,
+table.cw-table-boxed.cw-table-padded > tbody > tr > td,
+table.cw-table-boxed.cw-table-padded > tfoot > tr > th,
+table.cw-table-boxed.cw-table-padded > tfoot > tr > td,
+table.mv-table-boxed.mv-table-padded > thead > tr > th,
+table.mv-table-boxed.mv-table-padded > thead > tr > td,
+table.mv-table-boxed.mv-table-padded > tbody > tr > th,
+table.mv-table-boxed.mv-table-padded > tbody > tr > td,
+table.mv-table-boxed.mv-table-padded > tfoot > tr > th,
+table.mv-table-boxed.mv-table-padded > tfoot > tr > td {
+    padding: 5px;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+/* @group Forms
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/* form */
+.cw-form {}
+
+/* an element that appears to be a label, but isn't one */
+.cw-form-pseudolabel {}
+
+/* form element that isn't strictly necessary, but is helpful for text-based
+   browsers or screen readers */
+.cw-form-nonessential, .mv-form-nonessential {
+    display: none;
+}
+
+/* form requirements */
+.cw-form-requiredfield, .mv-form-requiredfield {
+    background-color: #FFEE77;
+}
+
+span.cw-form-requiredfield,
+label.cw-form-requiredfield,
+span.mv-form-requiredfield,
+label.mv-form-requiredfield {
+    padding-left: 2px;
+    padding-right: 2px;
+    background-color: transparent;
+    border-color: #FFEE77;
+    border-width: 2px;
+    border-style: solid;
+    -moz-border-radius: 5px;
+    -khtml-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+}
+
+/* form messages */
+.cw-form-error,
+.mv-form-error {
+    background-color: #FFEEEE;
+}
+
+.cw-form-modified,
+.mv-form-modified {
+    background-color: #FCE9A9;
+}
+
+.cw-form-success, .mv-form-success {
+    background-color: #CDF5CD;
+}
+
+span.cw-form-error,
+label.cw-form-error,
+span.cw-form-modified,
+label.cw-form-modified,
+span.cw-form-success,
+label.cw-form-success,
+span.mv-form-error,
+label.mv-form-error,
+span.mv-form-modified,
+label.mv-form-modified,
+span.mv-form-success,
+label.mv-form-success {
+    padding-left: 2px;
+    padding-right: 2px;
+    background-color: transparent;
+    border-width: 2px;
+    border-style: solid;
+    -moz-border-radius: 5px;
+    -khtml-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+}
+
+span.cw-form-success,
+label.cw-form-success,
+span.mv-form-success,
+label.mv-form-success {
+    border-color: #C5F5C5;
+}
+
+span.cw-form-error,
+label.cw-form-error,
+span.mv-form-error,
+label.mv-form-error {
+    border-color: #FF7777;
+}
+
+span.cw-form-modified,
+label.cw-form-modified,
+span.mv-form-modified,
+label.mv-form-modified {
+    border-color: #FCE9A9;
+}
+
+ul.cw-form-error,
+p.cw-form-error,
+div.cw-form-error,
+ul.cw-form-modified,
+p.cw-form-modified,
+div.cw-form-modified,
+ul.cw-form-success,
+p.cw-form-success,
+div.cw-form-success,
+ul.mv-form-error,
+p.mv-form-error,
+div.mv-form-error,
+ul.mv-form-modified,
+p.mv-form-modified,
+div.mv-form-modified,
+ul.mv-form-success,
+p.mv-form-success,
+div.mv-form-success {
+    padding: 5px;
+}
+
+ul.cw-form-success,
+p.cw-form-success,
+div.cw-form-success,
+ul.mv-form-success,
+p.mv-form-success,
+div.mv-form-success {
+    padding-left: 22px;
+    background-image: url("../images/accept.png");
+    background-repeat: no-repeat;
+    background-position: 2px 50%;
+}
+
+ul.cw-form-error,
+ul.cw-form-modified,
+ul.cw-form-success,
+ul.mv-form-error,
+ul.mv-form-modified,
+ul.mv-form-success {
+    padding-left: 23px;
+}
+
+ul.cw-form-error > li,
+ul.cw-form-modified > li,
+ul.cw-form-success > li,
+ul.mv-form-error > li,
+ul.mv-form-modified > li,
+ul.mv-form-success > li {
+    padding-bottom: 2px;
+    list-style-type: square;
+}
+
+ul.cw-form-error > li:last-child,
+ul.cw-form-modified > li:last-child,
+ul.cw-form-success > li:last-child,
+ul.mv-form-error > li:last-child,
+ul.mv-form-modified > li:last-child,
+ul.mv-form-success > li:last-child {
+    padding-bottom: 0;
+}
+
+ul.cw-form-error > li:only-child,
+ul.cw-form-modified > li:only-child,
+ul.cw-form-success > li:only-child,
+ul.mv-form-error > li:only-child,
+ul.mv-form-modified > li:only-child,
+ul.mv-form-success > li:only-child {
+    list-style-type: none;
+}
+
+label:empty {
+    display: none;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+/* @group Lists
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/* list */
+.cw-list {}
+
+/* unmarked, i.e., no bullets or indent, lists */
+ol.cw-list-unmarked,
+ul.cw-list-unmarked,
+ol.mv-list-unmarked,
+ul.mv-list-unmarked {
+    padding-left: 0;
+    list-style-type: none;
+}
+
+/* un-bulleted lists */
+ol.cw-list-nobullets,
+ul.cw-list-nobullets,
+ol.mv-list-nobullets,
+ul.mv-list-nobullets {
+    list-style-type: none;
+}
+
+/* remove the "matte" (margin) from the top and bottom of a list */
+ol.cw-list-dematte,
+ul.cw-list-dematte,
+ol.mv-list-dematte,
+ul.mv-list-dematte {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* un-indented lists */
+ol.cw-list-noindent,
+ul.cw-list-noindent,
+ol.mv-list-noindent,
+ul.mv-list-noindent {
+    padding-left: 20px;
+}
+
+ol.cw-list-noindent.cw-list-nobullets,
+ul.cw-list-noindent.cw-list-nobullets,
+ol.mv-list-noindent.mv-list-nobullets,
+ul.mv-list-noindent.mv-list-nobullets {
+    padding-left: 0;
+}
+
+/* &middot; lists */
+ul.cw-list-dotlist, ul.mv-list-dotlist {
+    list-style-type: none;
+    padding-left: 20px;
+}
+
+ul.cw-list-dotlist > li:before,
+ul.mv-list-dotlist > li:before {
+    content: "\00B7 \0020";
+}
+
+ul.cw-list-dotlist.cw-list-noindent,
+ul.mv-list-dotlist.mv-list-noindent {
+    padding-left: 0;
+}
+
+/* horizontal lists */
+ol.cw-list-horizontal,
+ul.cw-list-horizontal,
+dl.cw-list-horizontal,
+ol.cw-list-horizontal > li,
+ul.cw-list-horizontal > li,
+dl.cw-list-horizontal > dt,
+dl.cw-list-horizontal > dd,
+ol.mv-list-horizontal,
+ul.mv-list-horizontal,
+dl.mv-list-horizontal,
+ol.mv-list-horizontal > li,
+ul.mv-list-horizontal > li,
+dl.mv-list-horizontal > dt,
+dl.mv-list-horizontal > dd {
+    display: inline;
+    list-style-type: none;
+}
+
+dl.cw-list-horizontal > dt,
+dl.mv-list-horizontal > dt {
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+dl.cw-list-horizontal > dt:first-child,
+dl.mv-list-horizontal > dt:first-child {
+    margin-left: 0;
+}
+
+dl.cw-list-horizontal > dt:after,
+dl.mv-list-horizontal > dt:after {
+    content: ":";
+}
+
+dl.cw-list-horizontal > dd,
+dl.mv-list-horizontal > dd  {
+    margin-left: 2px;
+}
+
+/* horizontal lists with separators */
+ol.cw-list-horizontal.cw-list-separated > li:after,
+ul.cw-list-horizontal.cw-list-separated > li:after,
+ol.mv-list-horizontal.mv-list-separated > li:after,
+ul.mv-list-horizontal.mv-list-separated > li:after {
+    content: ", ";
+}
+
+/**
+ * add an "and" before the last list item.
+ * this block is usually overridden by the one flowing. It only appears when
+ * there are *exactly* two items.
+ */
+ol.cw-list-horizontal.cw-list-separated > li:nth-last-child(2):after,
+ul.cw-list-horizontal.cw-list-separated > li:nth-last-child(2):after,
+ol.cw-list-horizontal.cw-list-separated.cw-list-and > li:nth-last-child(2):after,
+ul.cw-list-horizontal.cw-list-separated.cw-list-and > li:nth-last-child(2):after,
+ol.mv-list-horizontal.mv-list-separated > li:nth-last-child(2):after,
+ul.mv-list-horizontal.mv-list-separated > li:nth-last-child(2):after,
+ol.mv-list-horizontal.mv-list-separated.mv-list-and > li:nth-last-child(2):after,
+ul.mv-list-horizontal.mv-list-separated.mv-list-and > li:nth-last-child(2):after {
+  content: " and ";
+}
+
+/**
+ * when there are more than 2 items in the list, this block overrides the
+ * previous one. It adds an Oxford Comma as well as the "and".
+ */
+ol.cw-list-horizontal.cw-list-separated > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ul.cw-list-horizontal.cw-list-separated > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ol.cw-list-horizontal.cw-list-separated.cw-list-and > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ul.cw-list-horizontal.cw-list-separated.cw-list-and > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ol.mv-list-horizontal.mv-list-separated > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ul.mv-list-horizontal.mv-list-separated > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ol.mv-list-horizontal.mv-list-separated.mv-list-and > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ul.mv-list-horizontal.mv-list-separated.mv-list-and > li:nth-last-child(3) ~ li:nth-last-child(2):after {
+  content: ", and ";
+}
+
+/**
+ * add an "or" before the last list item.
+ * similar as the "and" case, this block is only used if there is exactly two
+ * items in the list.
+ */
+ol.cw-list-horizontal.cw-list-separated.cw-list-or > li:nth-last-child(2):after,
+ul.cw-list-horizontal.cw-list-separated.cw-list-or > li:nth-last-child(2):after,
+ol.mv-list-horizontal.mv-list-separated.mv-list-or > li:nth-last-child(2):after,
+ul.mv-list-horizontal.mv-list-separated.mv-list-or > li:nth-last-child(2):after {
+  content: " or ";
+}
+
+/**
+ * add an Oxford Comma as well as the "or" if there are more than two items in
+ * the list.
+ */
+ol.cw-list-horizontal.cw-list-separated.cw-list-or > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ul.cw-list-horizontal.cw-list-separated.cw-list-or > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ol.mv-list-horizontal.mv-list-separated.mv-list-or > li:nth-last-child(3) ~ li:nth-last-child(2):after,
+ul.mv-list-horizontal.mv-list-separated.mv-list-or > li:nth-last-child(3) ~ li:nth-last-child(2):after {
+  content: ", or ";
+}
+
+ol.cw-list-horizontal.cw-list-separated.cw-list-no_terminator > li:last-child:after,
+ul.cw-list-horizontal.cw-list-separated.cw-list-no_terminator > li:last-child:after,
+ol.mv-list-horizontal.mv-list-separated.mv-list-no_terminator > li:last-child:after,
+ul.mv-list-horizontal.mv-list-separated.mv-list-no_terminator > li:last-child:after {
+    content: "";
+}
+
+ol.cw-list-horizontal.cw-list-separated > li:last-child:after,
+ul.cw-list-horizontal.cw-list-separated > li:last-child:after,
+ol.mv-list-horizontal.mv-list-separated > li:last-child:after,
+ul.mv-list-horizontal.mv-list-separated > li:last-child:after {
+    content: ".";
+}
+
+ol.cw-list-horizontal.cw-list-separated > li:last-child:only-child:after,
+ul.cw-list-horizontal.cw-list-separated > li:last-child:only-child:after,
+ol.mv-list-horizontal.mv-list-separated > li:last-child:only-child:after,
+ul.mv-list-horizontal.mv-list-separated > li:last-child:only-child:after {
+    content: "";
+}
+
+/* dictionary lists */
+dl.cw-list-dictionary,
+dl.mv-list-dictionary {
+    overflow: auto;
+}
+
+dl.cw-list-dictionary > dt,
+dl.mv-list-dictionary > dt  {
+    clear: left;
+    float: left;
+    margin-right: 5px;
+    /* simulate whitespace, even if there isn't any */
+    font-weight: bold;
+}
+
+dl.cw-list-dictionary > dd,
+dl.mv-list-dictionary > dd {
+    margin-left: 0;
+}
+
+/* NestedSortable styling */
+.ui-sortable li:hover {
+    cursor: pointer;
+}
+
+/* ----- CONFIRMATION DIALOG ----------------------------------------------------
+Uses: For links that should be confirmed before proceeding. Styles a dialog div
+      and the link itself.
+Tags: div, a
+*/
+
+/* Naming comes from JQuery UI*/
+.ui-dialog {
+    border-radius: 4px;
+    border: 1px solid #aaaaaa;
+    z-index: 101;
+    overflow: hidden;
+    background-color: white;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-titlebar {
+    padding: .4em 1em;
+    position: relative;
+
+    border-bottom: 1px solid #aaaaaa;
+    background: #cccccc;
+    color: #222222;
+    font-weight: bold;
+
+    @extend .clearfix;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-title {
+    float: left;
+    margin: .3em 0;
+    white-space: nowrap;
+    width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-titlebar-close {
+    position: absolute;
+    right: .3em;
+    top: 50%;
+    width: 20px;
+    margin: -10px 0 0 0;
+    padding: 1px;
+    height: 20px;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-content {
+    position: relative;
+    border: 0;
+    padding: .5em 1em;
+    background: none;
+    overflow: auto;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-buttonpane {
+    text-align: left;
+    background-image: none;
+    padding: .3em .9em .5em .4em;
+
+    @extend .clearfix;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset {
+    float: right;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-buttonpane button {
+    margin: .5em .4em .5em 0;
+    cursor: pointer;
+    outline: 0;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-dialog-buttonpane button:last-of-type {
+    margin-right: 0px;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-dialog .ui-resizable-se {
+    width: 12px;
+    height: 12px;
+    right: -5px;
+    bottom: -5px;
+    background-position: 16px 16px;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-widget-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #aaaaaa;
+    opacity: .3;
+    filter: Alpha(Opacity=30); /* support: IE8 */
+}
+
+/* Naming comes from JQuery UI*/
+.ui-widget-content {
+    background: white;
+    color: #222222;
+}
+
+/* Naming comes from JQuery UI*/
+.ui-state-active,
+.ui-widget-content .ui-state-active,
+.ui-widget-header .ui-state-active,
+a.ui-button:active,
+.ui-button:active,
+.ui-button.ui-state-active:hover {
+	background: #007F9F;
+}
+
+/* ----- Close a search ----------------------------------------------------
+Uses: Small closing 'X'
+Tags: a
+*/
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+.small-close {
+    display: inline;
+    font-size: 8px;
+    line-height: 8px;
+}
+
+.classification-pagination-nav {
+    padding-right: 4px;
+    margin: 0;
+    color: #B3B3B3;
+    font-style: italic;
+}
+
+.classification-pagination-nav-container > a {
+    font-weight: bold;
+}
+
+/* ----- Utility Classes ----------------------------------------------------
+*/
+
+.cw-no-padding,
+.mv-no-padding {
+    padding: 0;
+}
+
+/* Add a bit of extra space*/
+.cw-extra-space,
+.mv-extra-space {
+    margin: 0;
+    clear: both;
+    line-height: 1px;
+}
+
+/* A small upward-facing arrow image */
+.cw-small-up-arrow,
+.mv-small-up-arrow {
+    margin-top: -7px;
+    height: 6;
+    width: 10;
+    border: 0;
+}
+
+/* Help paragraphs shouldn't wrap text*/
+.cw-help-paragraph,
+.mv-help-paragraph {
+    white-space: nowrap;
+}
+
+/* The indented text in a help paragraph*/
+.cw-help-paragraph.cw-indented-help,
+.mv-help-paragraph.mv-indented-help {
+    padding-left: 2em;
+}
+
+/* Generic indented text */
+.cw-indented-text,
+.mv-indented-text {
+    margin-left: 2em;
+}
+
+/* Classes already called FloatRight should be floated right. (already named)*/
+.FloatRight,
+.cw-container-right,
+.mv-container-right {
+    float: right;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+.cw-itemlistui-topbuttons,
+.mv-itemlistui-topbuttons {
+    float: right;
+    margin-top: 2em;
+    margin-bottom: 10px;
+}
+
+.cw-itemlistui-subheading,
+.mv-itemlistui-subheading {
+    font-style: italic;
+    margin-top: -1.5ex;
+}
+
+/* @group Setup
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* make sure the body element matches the html element's width and height */
+html, body {
+    width: 100%;
+    height: 100%;
+}
+
+/* pull in fontawesome; the version shipped with CWIS is v4.6.1,
+   characters added in later versions won't be available for custom
+   interfaces. */
+@font-face {
+    font-family: 'fontawesome';
+    src: url('fontawesome-webfont.eot');
+    src: url('fontawesome-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Elements
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+body {
+    display: table;
+    min-width: 700px;
+    margin: 0;
+    padding: 0;
+
+    color: #222222;
+    font-size: 70%;
+    font-family: Verdana, Arial, Geneva, Helvetica, sans-serif;
+    word-wrap: break-word;
+
+    /* don't let jquery-ui override our font selections */
+    .ui-widget {
+       font-family: Verdana, Arial, Geneva, Helvetica, sans-serif;
+       font-size: 1.0em;
+    }
+
+    /* don't let jquery-ui add padding to dropdown elements */
+    .ui-autocomplete {
+        .ui-menu-item-wrapper {
+            padding: 0;
+        }
+        .ui-menu-divider {
+            padding: 0;
+        }
+    }
+}
+
+.clearfix:after {
+    visibility: hidden;
+    display: block;
+    font-size: 0;
+    content: " ";
+    clear: both;
+    height: 0;
+}
+
+.clearfix {
+    display: block;
+}
+
+.cw-float-left,
+.mv-float-left {
+  float: left;
+  margin: 3px;
+}
+
+.cw-float-right,
+.mv-float-right {
+  float: right;
+  margin: 3px;
+}
+
+.cw-content-disabled,
+.mv-content-disabled {
+    color: #999999;
+}
+
+a, a:link, a:visited {
+    color: #6666CC;
+    text-decoration: none;
+}
+
+option:disabled {
+    color: #767676;
+}
+
+a:hover {
+    color: #333399;
+    text-decoration: underline;
+}
+
+code, pre, kbd {
+    font-size: 1.25em;
+}
+
+dd {
+    margin-left: 20px;
+    -webkit-margin-start: 20px;
+}
+
+/* mimic the cw-button-elegant class for all user-agent buttons */
+input[type=submit],
+input[type=reset],
+input[type=button],
+button {
+    display: inline-block;
+    padding: 4px 8px;
+
+    border-width: 1px;
+    border-style: solid;
+    border-top-color: #CCCCCC;
+    border-right-color: #999999;
+    border-bottom-color: #999999;
+    border-left-color: #CCCCCC;
+    background-color: #F0F0F0;
+    background-image: url("../images/CW-Gradient-Short.png");
+    background-repeat: repeat-x;
+    text-align: center;
+    text-decoration: none;
+    color: #383838;
+    font-size: 1em;
+    font-family: inherit;
+    cursor: pointer;
+    /* reset appearance for elements that get special user-agent treatment */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    /* stretch the background to fit the entire button */
+    -webkit-background-size: 100% 100%;
+    -moz-background-size: 100% 100%;
+    -o-background-size: 100% 100%;
+    background-size: 100% 100%;
+    /* make the borders rounded */
+    -moz-border-radius-bottomleft: 3px;
+    -webkit-border-bottom-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+    -moz-border-radius-topleft: 3px;
+    -webkit-border-top-left-radius: 3px;
+    border-top-left-radius: 3px;
+    -moz-border-radius-bottomright: 3px;
+    -webkit-border-bottom-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    -moz-border-radius-topright: 3px;
+    -webkit-border-top-right-radius: 3px;
+    border-top-right-radius: 3px;
+}
+
+/** active buttons **/
+input[type=submit]:active,
+input[type=reset]:active,
+input[type=button]:active,
+button:active {
+    background-image: none;
+    background-color: #DDDDDD;
+}
+
+/** disabled buttons **/
+input:disabled {
+  cursor: not-allowed;
+  background: #DDDDDD;
+}
+
+/* move checkbox/radio labels closer to their inputs and further from adjacent
+   siblings */
+input[type=checkbox] + label,
+input[type=radio] + label {
+    margin-left: -3px;
+    margin-right: 7px;
+}
+
+/* remove border from images in links */
+a > img {
+    border: 0;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Segments / Page Layout
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* header segment */
+#cw-segment-header,
+#mv-segment-header {
+    position: relative;
+
+    border-top: 4px solid #7B7B7B;
+}
+
+/** site name **/
+#cw-segment-header #cw-content-portalname,
+#mv-segment-header #mv-content-portalname {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 47px 250px 15px 18px;
+
+    background-image: url("../images/CW-Gradient-Tall.png");
+    background-repeat: repeat-x;
+    /* stretch the background to fit the header */
+    -webkit-background-size: 100% 100%;
+    -moz-background-size: 100% 100%;
+    -o-background-size: 100% 100%;
+    background-size: 100% 100%;
+}
+
+/** site name link **/
+#cw-segment-header #cw-content-portalname > a,
+#mv-segment-header #mv-content-portalname > a {
+    font-size: 0.62em;
+    color: #FFFFFF;
+    text-decoration: none;
+}
+
+/** quick search form **/
+/** name from jquery-ui **/
+span.ui-helper-hidden-accessible
+{
+  display: none;
+}
+
+/** name from jquery-ui **/
+ul.ui-autocomplete
+{
+}
+
+/** name from jquery-ui **/
+.ui-widget
+{
+}
+
+#cw-segment-header #cw-content-quicksearch,
+#mv-segment-header #mv-content-quicksearch {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+}
+
+/** input box label **/
+#cw-segment-header form#cw-content-quicksearch > label,
+#mv-segment-header form#mv-content-quicksearch > label {
+    display: block;
+    position: relative;
+    top: 5px;
+    left: 2px;
+
+    font-weight: bold;
+}
+
+/** quick search submit button **/
+#cw-segment-header form#cw-content-quicksearch > input[type=image],
+#mv-segment-header form#mv-content-quicksearch > input[type=image] {
+    position: relative;
+    top: 6px;
+}
+
+/** navigation **/
+#cw-segment-header #cw-content-mainnav,
+#mv-segment-header #mv-content-mainnav {
+    position: relative;
+    display: block;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 13px 145px 13px 18px;
+    vertical-align: top;
+
+    border-color: #2A4F5E;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    background-color: #6A6A7F;
+}
+
+/** navigation links **/
+#cw-segment-header #cw-content-mainnav > a,
+#mv-segment-header #mv-content-mainnav > a {
+    color: #FFFFFF;
+    font-weight: bold;
+
+    margin-right: 15px;
+}
+
+#page-p_secondarynavigation_editnav {
+    li .btn {
+        margin-top: 0.5em;
+    }
+    label:nth-of-type(2) {
+        margin-left: 10px;
+    }
+    .ui-sortable,
+    form .row {
+        display: table;
+        width: 100%;
+    }
+}
+
+#cw-secondary-navigation-menu, #mv-secondary-navigation-menu {
+    > .col-12 > .row:first-child {
+        font-weight: bold;
+    }
+
+    > .col-12 > .row:nth-child(2) {
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    .cw-secondary-navigation-menu-item,
+    .mv-secondary-navigation-menu-item {
+        margin-top: 0.65em;
+    }
+
+    .cw-secondary-navigation-menu-item::before,
+    .mv-secondary-navigation-menu-item::before {
+        content: "";
+        background-image: url("../../default/images/go_small.gif");
+        width: 12px;
+        height: 12px;
+        display: inline-block;
+    }
+}
+
+/** advanced search link **/
+#cw-segment-header #cw-content-mainnav > #cw-content-advancedsearch,
+#mv-segment-header #mv-content-mainnav > #mv-content-advancedsearch {
+    position: absolute;
+    top: 13px;
+    right: 5px;
+}
+
+/* toolbox */
+#cw-segment-toolbox {
+    width: 200px;
+    min-width: 200px;
+    padding-bottom: 5px;
+
+    border-top: 10px solid #FFFFFF;
+    background-color: #F0F0F0;
+    vertical-align: top;
+}
+
+/** main toolbox section **/
+#cw-segment-toolbox > div:first-child {
+    padding: 10px;
+    background-color: #DDDDDD;
+}
+
+#cw-segment-toolbox,
+.cw-content-authbox,
+.mv-content-authbox {
+    a, a:link, a:visited {
+        color: #5555BB;
+    }
+}
+
+/** toolbox sections **/
+#cw-segment-toolbox > .cw-section, #cw-segment-toolbox > .mv-section {
+    position: relative;
+    margin: 10px 5px 5px 5px;
+}
+
+#cw-segment-toolbox > .cw-section > .cw-section-header,
+#cw-segment-toolbox > .mv-section > .mv-section-header {
+    padding: 5px;
+}
+
+#cw-segment-toolbox > .cw-section > .cw-section-header > .cw-button,
+#cw-segment-toolbox > .mv-section > .mv-section-header > .btn {
+    position: absolute;
+    top: 12px;
+    right: 5px;
+}
+
+#cw-segment-toolbox > .cw-section > .cw-section-body > ul,
+#cw-segment-toolbox > .mv-section > .mv-section-body > ul {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* body */
+#cw-segment-body, #mv-segment-body {
+    width: 100%;
+    min-height: 550px;
+    padding: 20px 20px 20px 20px;
+}
+
+/** page content header **/
+#cw-segment-body > h1:first-child {}
+
+/** make sure any floats in the body are cleared **/
+#cw-segment-body:after,
+#mv-segment-body:after {
+    content: ".";
+    clear: both;
+    display: block;
+    visibility: hidden;
+    height: 0;
+}
+
+*:first-child+html #cw-segment-body,
+*:first-child+html #mv-segment-body {
+    min-height: 1px;
+}
+
+/* footer */
+#cw-segment-footer,
+#mv-segment-footer {
+    position: relative;
+    margin-top: 10px;
+}
+
+/** legal notice **/
+#cw-segment-footer p#cw-content-legalnotice,
+#mv-segment-footer p#mv-content-legalnotice {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 15px 175px 15px 18px;
+
+    background-color: #F0F0F0;
+    color: #111111;
+}
+
+#cw-segment-footer p#cw-content-legalnotice,
+#mv-segment-footer p#mv-content-legalnotice {
+    a, a:link, a:visited {
+        color: #5555BB;
+    }
+}
+
+
+/** logo list **/
+#cw-segment-footer ul#cw-content-sourcelogos,
+#mv-segment-footer ul#mv-content-sourcelogos {
+    position: absolute;
+    top: 0px;
+    right: 18px;
+}
+
+/** logos **/
+#cw-segment-footer ul#cw-content-sourcelogos > li > a > img,
+#mv-segment-footer ul#mv-content-sourcelogos > li > a > img {
+    border: none;
+}
+
+/** page statistics **/
+#cw-segment-footer dl#cw-content-pagestats,
+#mv-segment-footer dl#mv-content-pagestats {
+    display: block;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 15px 18px;
+
+    text-align: center;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Search-Related
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-search-results {}
+
+.cw-search-title, .mv-search-title {
+  display: block;
+  margin-top: 2em;
+}
+
+.cw-search-infobar, .mv-search-infobar {
+  position: relative;
+  padding: 1em;
+
+  border: 1px solid #DDD;
+  background-color: #EAF1F3;
+}
+
+.cw-search-result, .mv-search-result {
+  width: 100%;
+  min-width: 100%;
+  margin-top: 1em;
+  margin-bottom: 1em;
+
+  border-bottom: 1px solid #DDD;
+}
+
+.cw-search-results .cw-search-result:last-child,
+.mv-search-results .mv-search-result:last-child {
+  border-bottom: none;
+}
+
+table.cw-search-results,
+table.mv-search-results {
+  border-spacing: 0;
+}
+
+table.cw-search-results tr.cw-search-result > td,
+table.mv-search-results tr.mv-search-result > td {
+  padding-top: 1em;
+  padding-bottom: 1em;
+
+  border-bottom: 1px solid #DDD;
+}
+
+#cw-search-result-tabs, #mv-search-result-tabs {
+    .cw-tab-nav, .mv-tab-nav {
+        width: 100%;
+        border-bottom: 1px solid rgb(200, 200, 200);
+        list-style: none;
+        box-sizing: border-box;
+        padding-left: 20px;
+        background: -webkit-linear-gradient(white, rgb(250, 250, 250), rgb(240, 240, 240));
+        background: -moz-linear-gradient(white, rgb(250, 250, 250), rgb(240, 240, 240));
+        background: -o-linear-gradient(white, rgb(250, 250, 250), rgb(240, 240, 240));
+        background: -linear-gradient(white, rgb(250, 250, 250), rgb(240, 240, 240));
+
+        .cw-tab-link, .mv-tab-link {
+            float: left;
+            display: block;
+            margin: 0px;
+            padding: 10px 20px 10px 20px;
+            outline: none;
+            position: relative;
+            top: 2px;
+
+            a {
+                font-size: 16px;
+                text-decoration: none;
+                color: gray;
+            }
+        }
+
+        .ui-state-active {
+            border-bottom: 3px solid white;
+            border-left: 1px solid rgb(200, 200, 200);
+            border-right: 1px solid rgb(200, 200, 200);
+            border-top: 1px solid rgb(200, 200, 200);
+            border-top-left-radius: 7px;
+            border-top-right-radius: 7px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+            background-color: white;
+            top: 1px;
+
+            a {
+                color: black;
+                outline: none;
+            }
+        }
+    }
+}
+
+table.cw-search-results tr.cw-search-result:last-child > td,
+table.mv-search-results tr.mv-search-result:last-child > td {
+  border-bottom: none;
+}
+
+.cw-table.cw-table-fauxtable.cw-search-results,
+.mv-table.mv-table-fauxtable.mv-search-results {
+  border-spacing: 0;
+}
+
+.cw-table.cw-table-fauxtable.cw-search-results .cw-table-fauxrow.cw-search-result > .cw-table-fauxcell,
+.mv-table.mv-table-fauxtable.mv-search-results .mv-table-fauxrow.mv-search-result > .mv-table-fauxcell {
+  padding-top: 1em;
+  padding-bottom: 1em;
+
+  border-bottom: 1px solid #DDD;
+}
+
+.cw-table.cw-table-fauxtable.cw-search-results .cw-table-fauxrow.cw-search-result:last-child > .cw-table-fauxcell,
+.mv-table.mv-table-fauxtable.mv-search-results .mv-table-fauxrow.mv-search-result:last-child > .mv-table-fauxcell {
+  border-bottom: none;
+}
+
+ul.cw-search-results, ul.mv-search-results {
+  margin-left: 0;
+  padding-left: 0;
+
+  list-style-type: none;
+}
+
+ul.cw-search-results.cw-search-bulletsinside,
+ul.mv-search-results.mv-search-bulletsinside {
+  list-style-type: disc;
+  list-style-position: inside;
+}
+
+ol.cw-search-results, ol.mv-search-results {
+  margin-left: 1em;
+  padding-left: 1em;
+}
+
+ol.cw-search-results.cw-search-bulletsinside,
+ol.mv-search-results.mv-search-bulletsinside {
+  margin-left: 0;
+  padding-left: 0;
+
+  list-style-position: inside;
+}
+
+.cw-search-noresults,
+.mv-search-noresults  {
+  display: block;
+  margin-top: 2.4em;
+  margin-bottom: 2.4em;
+}
+
+div.cw-search-facets, div.mv-search-facets {
+  cursor: pointer;
+  margin-top: 1em;
+  background-color: #CCC;
+  padding: 2px;
+}
+
+ul.cw-search-facets, ul.mv-search-facets {
+    .mv-facet-checkbox {
+        font-size: 1.5rem;
+        position: relative;
+        top: 4px;
+    }
+
+    a:hover {
+        text-decoration: none;
+    }
+}
+
+ul.cw-search-facets, ul.cw-search-facets ul,
+ul.mv-search-facets, ul.mv-search-facets ul {
+  list-style-type: none;
+  background-color: #CCC;
+  padding-left: 1em;
+  padding-right: 1em;
+  margin-top: 0px;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
+ul.cw-search-facets li, ul.cw-sw-search-facets ul li,
+ul.mv-search-facets li, ul.mv-sw-search-facets ul li {
+  padding-left: 1.6rem;
+  text-indent: -1.6rem;
+}
+
+
+div.cw-search-facets span,
+div.mv-search-facets span {
+  display: inline-block;
+  width: 15px;
+  text-align: center;
+}
+
+span.cw-classification-pagination-selected,
+span.mv-classification-pagination-selected {
+    font-weight: bold;
+    border-top: 2px solid black;
+    border-bottom: 2px solid black;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+.cw-classification-pagination-table tbody tr td,
+.mv-classification-pagination-table tbody tr td {
+    vertical-align: top;
+}
+
+.cw-search-sort-controls-container,
+.mv-search-sort-controls-container {
+  display: block;
+  padding: 10px 0px 10px 0px;
+  margin-top: -0.5ex;
+}
+
+.cw-transport-controls,
+.mv-transport-controls {
+  display: block;
+  padding-top: 10px;
+  padding-bottom: 5px;
+  min-height: 30px;
+  text-align: center;
+  position: relative;
+}
+
+.cw-transport-controls-left,
+.mv-transport-controls-left {
+  position: absolute;
+  top: 50%;
+  margin-top: -10px;
+  float: left;
+  left: 0px;
+}
+
+.cw-transport-controls-right,
+.mv-transport-controls-right {
+  position: absolute;
+  top: 50%;
+  margin-top: -10px;
+  float: right;
+  right: 0px;
+}
+
+.cw-transport-controls-msg-left-only,
+.cw-transport-controls-msg-right-only,
+.cw-transport-controls-msg,
+.mv-transport-controls-msg-left-only,
+.mv-transport-controls-msg-right-only,
+.mv-transport-controls-msg {
+  display: inline-block;
+  padding-top: 0.5ex;
+}
+
+.cw-transport-controls > .cw-transport-controls-msg-left-only,
+.mv-transport-controls > .mv-transport-controls-msg-left-only {
+  float: right;
+}
+
+.cw-transport-controls > .cw-transport-controls-msg-right-only,
+.mv-transport-controls > .mv-transport-controls-msg-right-only {
+  float: left;
+}
+
+.cw-transport-controls > .cw-transport-controls-msg,
+.mv-transport-controls > .mv-transport-controls-msg {
+  margin-left: 50px;
+}
+
+.cw-search-sort-form,
+.cw-search-order-form,
+.mv-search-sort-form,
+.mv-search-order-form {
+  display: block;
+  float:left;
+}
+
+.cw-search-order-form, .mv-search-order-form {
+  margin-top: -5px;
+}
+
+.cw-search-order-label,
+.mv-search-order-label {
+  position: relative;
+  padding: 1px 1px 1px 8px;
+  line-height: 12px;
+  top: -8px;
+}
+.cw-search-order-button, .mv-search-order-button {
+  position: relative;
+  width: 25px;
+  height: 22px;
+  top: 2px;
+}
+
+.cw-search-order-button-text,
+.mv-search-order-button-text {
+  position: absolute;
+  top: 2px;
+  left: 15px;
+}
+
+span.cw-search-arrow,
+span.mv-search-arrow {
+  position: absolute;
+  top: 0px;
+  left: 3px;
+  font-size: 1.8em;
+}
+
+.cw-link-label-global-search-other,
+.mv-link-label-global-search-other {
+  margin-top: 3px;
+  float: right;
+}
+
+.cw-search-settings,
+.mv-search-settings {
+  text-align: right;
+}
+
+.cw-global-search-result,
+.mv-global-search-result {
+  width:100%;
+  border:0;
+  cellpadding:0;
+  cellspacing:0;
+  border-bottom: 1px solid #DDDDDD;
+}
+
+.cw-global-search-result > .cw-rating-and-link,
+.mv-global-search-result > .mv-rating-and-link {
+ margin-top: 5px;
+ margin-left:15px;
+}
+
+.cw-global-search-result > .cw-result-url,
+.mv-global-search-result > .mv-result-url {
+  padding: 0 0 5px 5px;
+}
+
+.cw-global-search-result > .cw-result-url > a,
+.mv-global-search-result > .mv-result-url > a {
+  display: block;
+  margin-right: 150px;
+  line-height: 27px;
+}
+
+.cw-global-search-result > .cw-full-record-link,
+.mv-global-search-result > .mv-full-record-link {
+  padding: 0 0 5px 0;
+}
+
+.cw-global-search-result > .cw-result-details,
+.mv-global-search-result > .mv-result-details {
+  margin-right: 20px;
+}
+
+.cw-global-search-result > .cw-view-resource-link,
+.mv-global-search-result > .mv-view-resource-link {
+  width: 40px;
+  margin-top: 5px;
+}
+
+.cw-advanced-search-box-footer, .cw-adv-search-box-footer,
+.mv-advanced-search-box-footer, .mv-adv-search-box-footer {
+  min-width: 418px;
+  margin-bottom: 10px;
+  padding: 5px;
+}
+
+.cw-advanced-search-box > table, .cw-advanced-search-container > table,
+.mv-advanced-search-box > table, .mv-advanced-search-container > table{
+  border:0;
+  cellspacing: 0;
+  width:100%;
+}
+.cw-advanced-search-box > table > td, .cw-advanced-search-container > table > td,
+.mv-advanced-search-box > table > td, .mv-advanced-search-container > table > td {
+  width: 50%;
+}
+
+/* The advanced search box in the search fields limit section (already named) */
+.cw-limits > .cw-advanced-search-box, .cw-search-limits > .cw-advanced-search,
+.cw-search-limits > .cw-advanced-search-container > .cw-advanced-search,
+.mv-limits > .mv-advanced-search-box, .mv-search-limits > .mv-advanced-search,
+.mv-search-limits > .mv-advanced-search-container > .mv-advanced-search {
+    display: block;
+    position: static;
+    margin-top: 10px;
+}
+
+.cw-advanced-search-container,
+.mv-advanced-search-container {
+    min-width: 418px;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+.cw-advanced-search-box,
+.mv-advanced-search-box {
+    background: #F0F8FA;
+    position: relative;
+    padding: 10px;
+    border: 1px solid #DDDDDD;
+    margin: 0px;
+}
+
+.cw-search-limit-field,
+.mv-search-limit-field {
+    display: inline-block;
+    padding: 5px;
+}
+
+.cw-advanced-terms-column > input[type=text],
+.mv-advanced-terms-column > input[type=text] {
+    width: 45ex;
+}
+
+.cw-limits-header,
+.mv-limits-header {
+  display: inline-block;
+  margin: 5px;
+}
+
+.cw-limits-toggle-button,
+.mv-limits-toggle-button {
+  position: relative;
+  right: 0px;
+  float: right;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Content
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* skip navigation link */
+a#cw-content-skipnavigation,
+a#mv-content-skipnavigation {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: -500px;
+    padding: 18px;
+
+    background-color: #FFFFFF;
+    color: #2020F0;
+    text-decoration: underline;
+    font-size: 1.45em;
+    font-family: auto;
+    z-index: 1000;
+}
+
+a#cw-content-skipnavigation:active,
+a#mv-content-skipnavigation:active {
+    color: #FF2020;
+}
+
+a#cw-content-skipnavigation:focus,
+a#mv-content-skipnavigation:focus {
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+/* return to buttons/links */
+.cw-content-returnto,
+.mv-content-returnto {
+  white-space: nowrap;
+}
+
+/* authorization/login box */
+.cw-content-authbox,
+.mv-content-authbox {
+    width: 325px;
+    margin: auto;
+    padding: 50px 10px;
+
+    background-color: #F5F5F5;
+    text-align: center;
+}
+
+/* the Go submit button for the login box*/
+#go {
+  margin: 0px 0px -5px 4px;
+}
+
+/* container for the navigation bar for the Metadata Tool*/
+.cw-metadata-tool-nav,
+.mv-metadata-tool-nav {
+  margin: 10px 10px 10px 10px;
+}
+
+.cw-content-authbox > h1,
+.mv-content-authbox > h1 {
+    margin-top: 0;
+}
+
+.cw-content-authbox > form > table,
+.mv-content-authbox > form > table {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cw-content-authbox > ul,
+.mv-content-authbox > ul {
+    margin-bottom: 0;
+}
+
+.cw-content-authbox th,
+.mv-content-authbox th {
+    text-align: right;
+}
+
+.cw-content-authbox td,
+.mv-content-authbox td {
+    text-align: left;
+}
+
+/* The image of a go button that corresponds to a submission/action link */
+img.cw-go-link,
+img.mv-go-link {
+  margin-bottom: -2px;
+}
+
+/* generic bounding box */
+.cw-content-boundingbox,
+.mv-content-boundingbox {
+    padding: 10px;
+
+    border: 1px solid #DDDDDD;
+    background-color: #F0F8FA;
+}
+
+/* whitespace between sectioned pages */
+.cw-content-sectioned > * + h1,
+.cw-content-sectioned > * + h2,
+.mv-content-sectioned > * + h1,
+.mv-content-sectioned > * + h2 {
+    margin-top: 30px;
+}
+
+/* padding between a form table and its siblings */
+form > .cw-table,
+form > .mv-table {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/** no top margin if the table is the first child **/
+form > .cw-table:first-child,
+form > .mv-table:first-child {
+    margin-top: 0;
+}
+
+/** no bottom margin if the table is the last child **/
+form > .cw-table:last-child,
+form > .mv-table:last-child {
+    margin-bottom: 0;
+}
+
+form > table.cw-table-sideheaders > tbody > tr > th:first-child > .cw-form-pseudolabel:after,
+form > table.cw-table-sideheaders > tbody > tr > th:first-child > label:after,
+form > table.mv-table-sideheaders > tbody > tr > th:first-child > .mv-form-pseudolabel:after,
+form > table.mv-table-sideheaders > tbody > tr > th:first-child > label:after {
+    content: ":";
+}
+
+form > table.cw-table-sideheaders > tbody > tr > th:first-child > .cw-form-pseudolabel:empty:after,
+form > table.mv-table-sideheaders > tbody > tr > th:first-child > .mv-form-pseudolabel:empty:after {
+    content: "";
+}
+
+.cw-advanced-field-column,
+.mv-advanced-field-column
+{
+  width: 110px;
+  min-width: 110px;
+}
+
+.cw-advanced-terms-column,
+.mv-advanced-terms-column
+{
+  width: 110px;
+  min-width: 110px;
+}
+
+tr.cw-content-addfield,
+tr.mv-content-addfield
+{
+  width: 200px;
+}
+
+td.cw-advanced-operations-column,
+td.mv-advanced-operations-column
+{
+  width: 150px;
+  float: left;
+  padding-left: 6px;
+}
+
+tr.cw-content-addfield > td > a,
+tr.mv-content-addfield > td > a
+{
+  margin-left: 0px;
+  position: relative;
+  top: -28px;
+
+}
+
+table.cw-content-searchfields,
+table.mv-content-searchfields
+{
+  padding-bottom: 0px;
+  margin-bottom: -18px;
+}
+
+table.cw-content-searchfields > thead > tr > th:after,
+table.mv-content-searchfields > thead > tr > th:after {
+    content: ":";
+}
+
+/* make sure they're about the same width */
+#F_AllowedQualifiers,
+#F_AvailableQualifiers {
+    min-width: 145px;
+}
+
+/* controlled name table */
+table.cw-content-cnametable > tbody > tr > th:nth-child(2),
+table.mv-content-cnametable > tbody > tr > th:nth-child(2) {
+    text-align: left;
+}
+
+/* system configuration table */
+table.cw-content-sysconfigtable > tbody > tr > td:nth-child(3),
+table.mv-content-sysconfigtable > tbody > tr > td:nth-child(3) {
+    font-size: 0.8em;
+}
+
+/* plugins table */
+table.cw-content-plugintable > tbody > tr.cw-content-disabled,
+table.mv-content-plugintable > tbody > tr.mv-content-disabled {
+    color: #999999;
+}
+
+table.cw-content-plugintable > tbody > tr.cw-content-disabled > td > a
+table.mv-content-plugintable > tbody > tr.mv-content-disabled > td > a {
+    color: #9999CC;
+}
+
+table.cw-content-plugintable > tbody > tr > td:nth-child(5),
+table.mv-content-plugintable > tbody > tr > td:nth-child(5) {
+    white-space: nowrap;
+}
+
+table.cw-content-plugintable > tbody > tr > td:nth-child(5) > ul,
+table.mv-content-plugintable > tbody > tr > td:nth-child(5) > ul {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+table.cw-content-plugintable > tbody > tr > td:first-child,
+table.cw-content-plugintable > tbody > tr > td:last-child,
+table.mv-content-plugintable > tbody > tr > td:first-child,
+table.mv-content-plugintable > tbody > tr > td:last-child {
+    text-align: center;
+}
+
+/* The form element for about text editing */
+#F_AboutText {
+  width: 540px;
+  height: 250px;
+}
+
+/* sysadmin rows/boxes */
+.cw-content-sysadminrow.cw-table-fauxtable .cw-table-fauxrow .cw-table-fauxcell:first-child,
+.cw-content-sysadminrow.cw-table-fauxtable .cw-table-fauxrow .cw-table-fauxcell:last-child,
+.mv-content-sysadminrow.mv-table-fauxtable .mv-table-fauxrow .mv-table-fauxcell:first-child,
+.mv-content-sysadminrow.mv-table-fauxtable .mv-table-fauxrow .mv-table-fauxcell:last-child {
+    width: 49%;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* SysAdmin log messages table */
+.cw-content-sysadmin-logmsgs-row,
+.mv-content-sysadmin-logmsgs-row {
+    vertical-align: top;
+}
+.cw-content-sysadmin-logmsgs-row-warn,
+.cw-content-sysadmin-logmsgs-row-error,
+.mv-content-sysadmin-logmsgs-row-warn,
+.mv-content-sysadmin-logmsgs-row-error {
+    font-weight: bold;
+}
+.cw-content-sysadmin-logmsgs-row-fatal,
+.mv-content-sysadmin-logmsgs-row-fatal {
+    font-weight: bold;
+    color: #993333;
+}
+
+/* separation between groups */
+ul.cw-content-sysadminnav > li.cw-content-newgroup,
+ol.cw-content-sysadminnav > li.cw-content-newgroup,
+ul.mv-content-sysadminnav > li.mv-content-newgroup,
+ol.mv-content-sysadminnav > li.mv-content-newgroup {
+    margin-top: 5px;
+    padding-top: 5px;
+
+    border-top: 2px solid #CCCCCC;
+}
+
+/* request account table */
+table.cw-content-reqaccttable > tbody > tr:first-child > th,
+table.mv-content-reqaccttable > tbody > tr:first-child > th {
+    padding: 10px;
+}
+
+table.cw-content-reqaccttable > tbody > tr:nth-child(2) > th,
+table.cw-content-reqaccttable > tbody > tr:nth-child(2) > td,
+table.mv-content-reqaccttable > tbody > tr:nth-child(2) > th,
+table.mv-content-reqaccttable > tbody > tr:nth-child(2) > td {
+    padding-top: 25px;
+}
+
+table.cw-content-reqaccttable > tbody > tr:last-child > th,
+table.cw-content-reqaccttable > tbody > tr:last-child > td,
+table.mv-content-reqaccttable > tbody > tr:last-child > th,
+table.mv-content-reqaccttable > tbody > tr:last-child > td {
+    padding-bottom: 25px;
+}
+
+table.cw-content-reqaccttable > tbody > tr:nth-child(n+2) > th,
+table.mv-content-reqaccttable > tbody > tr:nth-child(n+2) > th {
+    width: 150px;
+}
+
+table.cw-content-reqaccttable > tbody > tr.cw-content-newgroup > td,
+table.cw-content-reqaccttable > tbody > tr.cw-content-newgroup > th,
+table.mv-content-reqaccttable > tbody > tr.mv-content-newgroup > td,
+table.mv-content-reqaccttable > tbody > tr.mv-content-newgroup > th {
+    padding-top: 15px;
+}
+
+/*Task Queue*/
+
+table.cw-task-queue,
+table.mv-task-queue {
+  margin-bottom: 30px;
+}
+
+/* Link to requeue tasks*/
+.cw-requeue-link,
+.mv-requeue-link {
+  float: right;
+}
+
+/* Container for help content */
+.cw-content-help-cell,
+.mv-content-help-cell {
+   width: 50%;
+   vertical-align: top;
+   padding-top: 9px;
+   padding-bottom: 9px;
+}
+
+table.cw-table-sideheaders > tbody > tr.cw-content-tallrow > th > label.cw-form-requiredfield,
+table.cw-table-sideheaders > tbody > tr.cw-content-tallrow > th > label.cw-form-error,
+table.cw-table-sideheaders > tbody > tr.cw-content-tallrow > th > label.cw-form-modified,
+table.mv-table-sideheaders > tbody > tr.mv-content-tallrow > th > label.mv-form-requiredfield,
+table.mv-table-sideheaders > tbody > tr.mv-content-tallrow > th > label.mv-form-error,
+table.mv-table-sideheaders > tbody > tr.mv-content-tallrow > th > label.mv-form-modified {
+    position: relative;
+    top: 3px;
+}
+
+/* The container for a field display */
+.cw-field-container,
+.mv-field-container {
+  float: left;
+  margin: 0px 4px;
+}
+
+/* The label in a filed container */
+.cw-field-container > label,
+.mv-field-container > label {
+  padding-left: 1px;
+}
+/* keyword search fields for advanced searches */
+table.cw-content-searchfields > thead > tr > th,
+table.mv-content-searchfields > thead > tr > th {
+    text-align: left;
+}
+
+/* The column width of the first column in the searchfields content*/
+.cw-content-searchfields > .cw-first-column,
+.mv-content-searchfields > .mv-first-column {
+  width: 125px;
+}
+/* The column width of the second column in the searchfields content*/
+.cw-content-searchfields > .cw-second-column,
+.mv-content-searchfields > .mv-second-column {
+  width: auto;
+}
+
+/* The search fields limit section (already named) */
+.cw-limits, .cw-search-limits,
+.mv-limits, .mv-search-limits {
+    margin-top: 15px;
+}
+
+/* The header in the  search fields limit section (already named) */
+.cw-limits > .cw-header, .cw-search-limits > .cw-search-header,
+.mv-limits > .mv-header, .mv-search-limits > .mv-search-header {
+    margin-left: 10px;
+}
+.cw-limits > .row > .cw-header, .cw-search-limits > .row > .cw-search-header,
+.mv-limits > .row > .mv-header, .mv-search-limits > .row > .mv-search-header {
+    padding-left: 10px;
+}
+
+/* Used on the full record and other pages to indicate a section that should
+ * be highlighted */
+.lightBody > td {
+    text-align: left;
+}
+
+.cw-light-body > td,
+.mv-light-body > td {
+    text-align: left;
+}
+
+/* Styles for the form buttons containing div on the Advanced page (already named) */
+#cw-form-buttons,
+#mv-form-buttons {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/* Styles for the "search for" form section on the Advanced page (already named) */
+#cw-search-for,
+#mv-search-for {
+  width: 165px;
+  margin-right: 24px;
+}
+
+.cw-saved-search-name,
+.mv-saved-search-name {
+  width: 15em;
+}
+
+/* Container for the saved search box */
+.cw-saved-search-contain,
+.mv-saved-search-contain {
+  margin-top: 25px;
+  position: static;
+  clear:both;
+}
+
+/* Styles for links in the saved search section */
+.cw-saved-search-contain > a,
+.mv-saved-search-contain > a {
+  float: right;
+}
+
+ul.cw-saved-search-list,
+ul.mv-saved-search-list
+{
+  padding-bottom: 5% !important;
+}
+
+ul.cw-saved-search-list > li,
+ul.mv-saved-search-list > li {
+  margin-left: 15px;
+}
+
+/* Container for the load-saved-search link */
+.cw-load-saved-search,
+.mv-load-saved-search {
+  margin-top: 7px;
+  height: 20px;
+}
+
+/* Container for tips in the advanced search page*/
+.cw-adv-search-tips,
+.mv-adv-search-tips {
+  margin-top: 25px;
+  position: static;
+  padding: 25px;
+  min-height: 100%;
+  overflow-y: hidden;
+}
+
+/* The first column in the advanced search tips */
+.cw-adv-search-tips > .cw-column-one,
+.mv-adv-search-tips > .mv-column-one {
+  float:left;
+  margin:0;
+  width:48%;
+}
+
+/* Padding between the two columns in advanced search tips*/
+.cw-adv-search-tips > .cw-column-padding,
+.mv-adv-search-tips > .mv-column-padding {
+  float:left;
+  margin:0;
+  width:4%;
+}
+
+/* The second column in advanced search tips */
+.cw-adv-search-tips > .cw-column-two,
+.mv-adv-search-tips > .mv-column-two {
+  float:left;
+  margin:0;
+  width:48%;
+}
+
+/* complex, table-model headers */
+.cw-content-complexheader,
+.mv-content-complexheader {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+/** all parts of the header **/
+.cw-content-complexheader.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell,
+.mv-content-complexheader.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell {
+    vertical-align: middle;
+}
+
+/** the last cell of the header, which should only include buttons **/
+.cw-content-complexheader.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell:last-child:not(:only-child),
+.mv-content-complexheader.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell:last-child:not(:only-child) {
+    padding-left: 12px;
+
+    vertical-align: top;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/** container for buttons above the EditResourceComplete forms **/
+.cw-erc-buttons-top,
+.mv-erc-buttons-top {
+    display: inline-block;
+    vertical-align: middle;
+    margin-top: 6px !important;
+}
+
+/** the last cell, forms **/
+.cw-content-complexheader.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell:last-child form,
+.mv-content-complexheader.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell:last-child form {
+    display: inline;
+}
+
+/** remove top and bottom margins from immediate descendants of cells **/
+.cw-content-complexheader.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell > *,
+.mv-content-complexheader.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell > * {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.cw-content-addfield,
+.mv-content-addfield {
+    margin-left: 10px;
+    padding: 0 8px !important;
+    line-height: 20px;
+}
+
+.cw-content-addfield > img:first-child,
+.mv-content-addfield > img:first-child {
+    position: relative;
+    top: 4px;
+}
+
+/* forgotten password form */
+.cw-content-forgotpassform {}
+
+.cw-content-forgotpassform > *,
+.mv-content-forgotpassform > * {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.cw-content-forgotpassform > label,
+.mv-content-forgotpassform > label {
+    font-weight: bold;
+}
+
+.cw-content-forgotpassform > script, .cw-content-forgotpassform > style,
+.mv-content-forgotpassform > script, .mv-content-forgotpassform > style {
+    display: none;
+}
+
+/* Recommend Resources */
+.cw-recommendation-contain,
+.mv-recommendation-contain {
+  background: #F0F0F0;
+  text-align: right;
+  border-top: 2px solid #F7F6F6;
+}
+
+/* forum tables */
+.cw-table-striped > .cw-extra-header-item,
+.mv-table-striped > .mv-extra-header-item {
+  width: 90px;
+}
+
+/* Container for a link in the forums */
+.cw-forum-link-contain,
+.mv-forum-link-contain {
+  padding-right: 10px;
+}
+
+/* undecorated text */
+.cw-content-undecorated,
+.mv-content-undecorated {
+    font-weight: normal;
+    font-size: 1em;
+}
+
+/* browser resources table */
+table.cw-content-browsetable > thead > tr > th,
+table.mv-content-browsetable > thead > tr > th {
+    text-align: left;
+    white-space: nowrap;
+}
+
+table.cw-content-browsetable tr,
+table.mv-content-browsetable tr {
+  vertical-align: top;
+}
+
+table.cw-content-browsetable > tbody > tr > td > p,
+table.mv-content-browsetable > tbody > tr > td > p {
+  margin: 1px 0;
+}
+
+/* collection development stats */
+table.cw-content-colstats > tbody > tr > td:nth-child(2),
+table.mv-content-colstats > tbody > tr > td:nth-child(2) {
+    text-align: right;
+}
+
+/* special e-mail strings */
+dl.cw-content-specialstrings,
+dl.mv-content-specialstrings {
+    padding-left: 35px;
+}
+
+dl.cw-content-specialstrings > dt,
+dl.mv-content-specialstrings > dt {
+    width: 200px;
+
+    font-weight: normal !important;
+    font-style: italic;
+}
+
+/* edit option list table */
+table.cw-content-optionlist > tbody > tr > td:first-child,
+table.mv-content-optionlist > tbody > tr > td:first-child {
+    white-space: nowrap;
+}
+
+/* option list that occupies a whole line */
+.cw-content-optionlist-block,
+.mv-content-optionlist-block {
+    display: block;
+}
+
+/* Container for the option field */
+.cw-content-optionoptions > .cw-option-field-container,
+.mv-content-optionoptions > .mv-option-field-container {
+  width: 100px;
+}
+
+/* options for an option list */
+table.cw-content-optionoptions > tbody > tr:last-child,
+table.mv-content-optionoptions > tbody > tr:last-child {
+    background-color: #FFFFFF !important;
+}
+
+table.cw-content-optionoptions > tbody > tr:last-child > td:last-child,
+table.mv-content-optionoptions > tbody > tr:last-child > td:last-child {
+    text-align: right;
+}
+
+/* forum messages */
+.cw-content-forummessage.cw-section,
+.mv-content-forummessage.mv-section {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.cw-content-forummessage.cw-section > .cw-section-header,
+.mv-content-forummessage.mv-section > .mv-section-header {
+    padding: 0;
+}
+
+.cw-content-forummessage.cw-section > .cw-section-header > .cw-table-fauxtable
+  > .cw-table-fauxrow > .cw-table-fauxcell,
+.mv-content-forummessage.mv-section > .mv-section-header > .mv-table-fauxtable
+  > .mv-table-fauxrow > .mv-table-fauxcell {
+    padding: 5px 10px;
+    vertical-align: middle;
+}
+
+.cw-content-forummessage.cw-section > .cw-section-header > .cw-table-fauxtable
+  > .cw-table-fauxrow > .cw-table-fauxcell:nth-child(2)
+.mv-content-forummessage.mv-section > .mv-section-header > .mv-table-fauxtable
+  > .mv-table-fauxrow > .mv-table-fauxcell:nth-child(2) {
+    width: 120px;
+
+    border-left: 1px solid #CCC;
+    border-right: 1px solid #CCC;
+    text-align: center;
+}
+
+.cw-content-forummessage.cw-section > .cw-section-header > .cw-table-fauxtable
+  > .cw-table-fauxrow > .cw-table-fauxcell:last-child,
+.mv-content-forummessage.mv-section > .mv-section-header > .mv-table-fauxtable
+  > .mv-table-fauxrow > .mv-table-fauxcell:last-child {
+    width: 220px;
+
+    text-align: center;
+}
+
+.cw-content-forummessage.cw-section > .cw-section-body,
+.mv-content-forummessage.mv-section > .mv-section-body {
+    padding: 10px;
+}
+
+.cw-content-forummessage.cw-section > .cw-section-footer,
+.mv-content-forummessage.mv-section > .mv-section-footer {
+    padding: 6px;
+
+    background-color: #F7F6F6;
+}
+
+.cw-content-editedby {
+    font-size: 0.75em;
+    margin-top: 1.8em;
+    margin-bottom: 0;
+}
+
+/* resource full record */
+.cw-content-fullrecord {}
+
+/* Container for the rating graphic*/
+.cw-rating-graphic,
+.mv-rating-graphic {
+  height: 12px;
+  width: 64px;
+}
+/* Container for the whole rating td */
+td.cw-rating-container,
+td.mv-rating-container {
+  line-height: 27px;
+}
+
+/* Container for a resource*/
+.cw-resource-container,
+.mv-resource-container {
+ border-bottom: 1px solid #DDDDDD;
+}
+
+/* Container for the resource's URL*/
+.cw-resource-url-container,
+.mv-resource-url-container {
+  width: 40px;
+  margin-top: 5px;
+}
+
+/* Link for okay to export checkbox */
+.cw-okay-for-export,
+.mv-okay-for-export {
+  margin-top: 7px;
+}
+
+/* Container for the resource title and description */
+td.cw-resource-title-and-descript-container,
+td.mv-resource-title-and-descript-container {
+  padding: 5px;
+  height: 0px;
+}
+
+/* A div containing the resource title and description */
+div.cw-resource-title-and-descript-container,
+div.mv-resource-title-and-descript-container {
+  margin-right: 20px;
+}
+
+/* Container for a resource's rating section */
+.cw-resource-rating-container,
+.mv-resource-rating-container {
+  margin: 5px 0px 0px 15px;
+}
+
+/* The rating image */
+.cw-rating-image,
+.mv-rating-image {
+  height: 12px;
+  width: 64px;
+}
+
+/* Container for the export functionality */
+.cw-export-contain,
+.mv-export-contain {
+  padding: 5px 0 5px 5px;
+}
+
+/* The resource's url*/
+.cw-resource-url,
+.mv-resource-url {
+  line-height: 27px;
+}
+
+/* A resource's edit link */
+.cw-resource-description-edit,
+.mv-resource-description-edit {
+  white-space: nowrap;
+}
+
+/* Editing a resource's image */
+.cw-resource-image-edit,
+.mv-resource-image-edit {
+ width: 320px;
+}
+
+/* The uploaded image associated with a resource. */
+.cw-uploaded-image,
+.mv-uploaded-image {
+  vertical-align: middle;
+}
+
+/** resource bounding box **/
+.cw-content-fullrecord > .cw-content-resourcebox,
+.mv-content-fullrecord > .mv-content-resourcebox {
+    padding: 5px 10px;
+
+    background-color: #F0F0F0;
+    border: 1px solid #CCCCCC;
+}
+.cw-content-fullrecord > .cw-content-resourcebox a,
+.cw-content-fullrecord > .cw-content-resourcebox a:link,
+.cw-content-fullrecord > .cw-content-resourcebox a:visited,
+.mv-content-fullrecord > .mv-content-resourcebox a,
+.mv-content-fullrecord > .mv-content-resourcebox a:link,
+.mv-content-fullrecord > .mv-content-resourcebox a:visited {
+    color: #5555BB;
+}
+
+
+.cw-content-fullrecord > table.cw-content-values.cw-table-padded.cw-content-resourcebox .cw-content-resourceboxvalue,
+.mv-content-fullrecord > table.mv-content-values.mv-table-padded.mv-content-resourcebox .mv-content-resourceboxvalue {
+  width: 100%;
+  padding-left: 15%;
+}
+
+/** screenshot **/
+.cw-content-fullrecord > .cw-content-screenshot,
+.mv-content-fullrecord > .mv-content-screenshot {
+    float: left;
+    margin-right: 10px;
+    margin-bottom: 10px;
+
+    border: 1px solid #AAAAAA;
+}
+
+/** paragraph from WYSIWYG editor **/
+.cw-content-wysiwygtext *:first-child,
+.mv-content-wysiwygtext *:first-child {
+    margin-top: 0;
+}
+
+.cw-content-wysiwygtext *:last-child,
+.mv-content-wysiwygtext *:last-child {
+    margin-bottom: 0;
+}
+
+/** description (clear the screenshot float after the description) **/
+.cw-content-description,
+.mv-content-description {
+    margin-bottom: 15px;
+}
+
+.cw-content-fullrecord > .cw-content-description:after,
+.mv-content-fullrecord > .mv-content-description:after {
+    content: " ";
+    display: block;
+    height: 0;
+    clear: left;
+    visibility: hidden;
+}
+
+/** rating **/
+.cw-content-fullrecord > .cw-content-rating,
+.mv-content-fullrecord > .mv-content-rating {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.cw-content-fullrecord > .cw-table-fauxtable.cw-content-rating > .cw-table-fauxrow > .cw-table-fauxcell,
+.mv-content-fullrecord > .mv-table-fauxtable.mv-content-rating > .mv-table-fauxrow > .mv-table-fauxcell {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.cw-content-fullrecord > .cw-table-fauxtable.cw-content-rating > .cw-table-fauxrow > .cw-table-fauxcell img,
+.mv-content-fullrecord > .mv-table-fauxtable.mv-content-rating > .mv-table-fauxrow > .mv-table-fauxcell img {
+    position: relative;
+    top: 3px;
+
+    height: 14px;
+}
+
+.cw-content-fullrecord > .cw-table-fauxtable.cw-content-rating > .cw-table-fauxrow > .cw-table-fauxcell:last-child,
+.mv-content-fullrecord > .mv-table-fauxtable.mv-content-rating > .mv-table-fauxrow > .mv-table-fauxcell:last-child  {
+    padding-left: 12px;
+
+    text-align: right;
+    font-size: 0.85em;
+    vertical-align: middle;
+}
+
+.cw-content-fullrecord > .cw-table-fauxtable.cw-content-rating > .cw-table-fauxrow > .cw-table-fauxcell:last-child img,
+.mv-content-fullrecord > .mv-table-fauxtable.mv-content-rating > .mv-table-fauxrow > .mv-table-fauxcell:last-child img {
+    margin-right: 10px;
+}
+
+.cw-content-fullrecord > .cw-table-fauxtable.cw-content-rating > .cw-table-fauxrow > .cw-table-fauxcell:last-child input[type=radio],
+.mv-content-fullrecord > .mv-table-fauxtable.mv-content-rating > .mv-table-fauxrow > .mv-table-fauxcell:last-child input[type=radio] {
+    margin-left: 1px;
+    margin-right: 1px;
+}
+
+.cw-content-fullrecord > .cw-table-fauxtable.cw-content-rating > .cw-table-fauxrow > .cw-table-fauxcell:last-child input[type=submit],
+.mv-content-fullrecord > .mv-table-fauxtable.mv-content-rating > .mv-table-fauxrow > .mv-table-fauxcell:last-child input[type=submit] {
+    margin-left: 5px;
+}
+
+/** field values **/
+.cw-content-fullrecord > .cw-content-values + .cw-content-values,
+.mv-content-fullrecord > .mv-content-values + .mv-content-values {
+    margin-top: 10px;
+}
+
+/* A label for the current field name */
+.cw-form-modified > .cw-current-field-name-label,
+.mv-form-modified > .mv-current-field-name-label {
+  position: relative;
+  right: 15px;
+  list-style-type: none;
+}
+.cw-content-fullrecord > table.cw-content-values.cw-table-sideheaders > tbody > tr > th:first-child,
+.mv-content-fullrecord > table.mv-content-values.mv-table-sideheaders > tbody > tr > th:first-child {
+    min-width: 155px;
+
+    font-weight: bold;
+    text-align: left;
+    padding-right: 15px;
+}
+
+.cw-content-fullrecord > table.cw-content-values.cw-table-sideheaders > tbody > tr > th:first-child:after,
+.mv-content-fullrecord > table.mv-content-values.mv-table-sideheaders > tbody > tr > th:first-child:after {
+    content: ":";
+}
+
+.cw-content-fullrecord > table.cw-content-values.cw-table-padded > tbody > tr > th,
+.cw-content-fullrecord > table.cw-content-values.cw-table-padded > tbody > tr > td,
+.mv-content-fullrecord > table.mv-content-values.mv-table-padded > tbody > tr > th,
+.mv-content-fullrecord > table.mv-content-values.mv-table-padded > tbody > tr > td {
+    padding: 4px;
+}
+
+/** final details of a resource **/
+.cw-content-fullrecord > .cw-content-finaldetails,
+.mv-content-fullrecord > .mv-content-finaldetails {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.cw-content-fullrecord .cw-table-fauxtable.cw-content-finaldetails > .cw-table-fauxrow > .cw-table-fauxcell:last-child,
+.mv-content-fullrecord .mv-table-fauxtable.mv-content-finaldetails > .mv-table-fauxrow > .mv-table-fauxcell:last-child {
+    text-align: right;
+}
+
+/** resource comment area bars **/
+.cw-content-fullrecord .cw-table-fauxtable.cw-content-commentbar > .cw-table-fauxrow > .cw-table-fauxcell > h2,
+.mv-content-fullrecord .mv-table-fauxtable.mv-content-commentbar > .mv-table-fauxrow > .mv-table-fauxcell > h2 {
+    margin-top: 0;
+    margin-bottom: 0;
+
+    font-size: 1.25em;
+}
+
+.cw-content-fullrecord .cw-table-fauxtable.cw-content-commentbar > .cw-table-fauxrow > .cw-table-fauxcell > h2:after,
+.mv-content-fullrecord .mv-table-fauxtable.mv-content-commentbar > .mv-table-fauxrow > .mv-table-fauxcell > h2:after {
+    content: ":";
+}
+
+.cw-content-fullrecord .cw-table-fauxtable.cw-content-commentbar > .cw-table-fauxrow > * + .cw-table-fauxcell:last-child,
+.mv-content-fullrecord .mv-table-fauxtable.mv-content-commentbar > .mv-table-fauxrow > * + .mv-table-fauxcell:last-child {
+    text-align: right;
+}
+
+/* resource summaries */
+.cw-content-resourcesummary,
+.mv-content-resourcesummary {
+    min-width: 100%;
+
+    border-bottom: 1px solid #DDDDDD;
+    background-color: white;
+}
+
+/** last resource summary in list **/
+.cw-content-resourcesummary:last-child:not(.table-sm),
+.mv-content-resourcesummary:last-child:not(.table-sm) {
+    border-bottom: none;
+}
+
+/** add margin if the summary comes after another one **/
+.cw-content-resourcesummary ~ .cw-content-resourcesummary,
+.mv-content-resourcesummary ~ .mv-content-resourcesummary {
+    margin-top: 10px;
+}
+
+table.cw-content-resourcesummary,
+table.mv-content-resourcesummary {
+    td {
+        vertical-align: top;
+    }
+
+    td.cw-content-resourcesummary-screenshot, td.mv-content-resourcesummary-screenshot{
+        text-align: center;
+
+        img.cw-content-resourcesummary-gobutton, img.mv-content-resourcesummary-gobutton {
+            height: 22px;
+            width: 22px;
+
+            border: none;
+        }
+    }
+
+    /** title and description cell **/
+    td.cw-content-resourcesummary-data, td.mv-content-resourcesummary-data {
+        width: 100%;
+        padding-right: 15px;
+        padding-left: 15px;
+
+        /** title **/
+        a {
+            color: #333;
+        }
+
+        /** description **/
+        p {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+    }
+
+    /** actions cell **/
+    td.cw-content-resourcesummary-actions, td.mv-content-resourcesummary-actions {
+        padding-left: 15px;
+
+        text-align: right;
+        white-space: nowrap;
+
+        ul li {
+            margin-bottom: 2px;
+        }
+    }
+
+    /** fast rating cell **/
+    td.cw-rating-container, td.mv-rating-container {
+        padding-left: 15px;
+        white-space: nowrap;
+    }
+}
+
+div.mv-resourcesummary.container-fluid {
+    table-layout: auto;
+
+    .col {
+        vertical-align: top;
+    }
+
+    .col-auto + .col {
+        padding-left: 15px;
+    }
+}
+
+div.mv-content-resourcesummary-data.container-fluid {
+    table-layout: auto;
+}
+
+.cw-content-resourcesummary map + .cw-content-fullurl,
+.mv-content-resourcesummary map + .mv-content-fullurl {
+  display: block;
+  padding-right: 150px;
+}
+
+/** resource type tag **/
+.cw-resourcesummary-resourcetype-tag,
+.mv-resourcesummary-resourcetype-tag {
+  display: inline-block;
+  border-style: solid;
+  border-width: 1px;
+  padding: 0px 4px 0px 4px;
+  font-size: 10px;
+  float: right;
+  text-indent: 0px;
+  text-align: center;
+}
+
+.cw-sidebar-resource-tag,
+.mv-sidebar-resource-tag {
+  display: inline-block;
+  border-style: solid;
+  border-width: 1px;
+  margin: 0px 0px 3px 0px;
+  font-size: 8px;
+  float: right;
+  width: 12px;
+  box-sizing: border-box;
+  text-indent: 0px;
+  text-align: center;
+}
+
+.cw-resourcesummary-resourcetype-tag-events,
+.cw-sidebar-resource-tag-events,
+.mv-resourcesummary-resourcetype-tag-events,
+.mv-sidebar-resource-tag-events {
+  color: #996600;
+  border-color: #996600;
+}
+
+.cw-resourcesummary-resourcetype-tag-pages,
+.cw-sidebar-resource-tag-pages,
+.mv-resourcesummary-resourcetype-tag-pages,
+.mv-sidebar-resource-tag-pages {
+  color: #006699;
+  border-color: #006699;
+}
+
+.cw-resourcesummary-resourcetype-tag-blog,
+.cw-sidebar-resource-tag-blog,
+.mv-resourcesummary-resourcetype-tag-blog,
+.mv-sidebar-resource-tag-blog {
+  color: #990000;
+  border-color: #990000;
+}
+
+.cw-resourcesummary-resourcetype-tag-resources,
+.cw-sidebar-resource-tag-resources,
+.mv-resourcesummary-resourcetype-tag-resources,
+.mv-sidebar-resource-tag-resources {
+  color: black;
+  border-color: black;
+}
+
+.cw-resourcesummary-resourcetype-tag-projectscenters,
+.cw-sidebar-resource-tag-projectscenters,
+.mv-resourcesummary-resourcetype-tag-projectscenters,
+.mv-sidebar-resource-tag-projectscenters {
+  color: #0C7A01;
+  border-color: #0C7A01;
+}
+
+/* The content container (already named)*/
+.contentbox, .cw-content-box,
+.contentbox, .mv-content-box {
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+/* Container for the featured images */
+.cw-featured-image-container, .mv-featured-image-container {
+  width: 174px;
+  float: left;
+  padding-top: 10px;
+}
+
+/* new resources section */
+.cw-section.cw-content-newresources, .mv-section.mv-content-newresources {
+    border-width: 5px;
+    border-color: #DDDDDD;
+}
+
+/** header **/
+.cw-section.cw-content-newresources > .row > .cw-section-header,
+.cw-section.cw-content-newresources > .cw-section-header,
+.mv-section.mv-content-newresources > .row > .mv-section-header,
+.mv-section.mv-content-newresources > .mv-section-header {
+    position: relative;
+    padding: 5px 10px;
+
+    font-size: 1.1em;
+}
+
+/** header button **/
+.cw-section.cw-content-newresources > .row > .cw-section-header > .cw-button,
+.cw-section.cw-content-newresources > .cw-section-header > .cw-button,
+.mv-section.mv-content-newresources > .row > .mv-section-header > .btn,
+.mv-section.mv-content-newresources > .mv-section-header > .btn {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+}
+.cw-section.cw-content-newresources > .row > .cw-section-header > .cw-content-resource_count,
+.cw-section.cw-content-newresources > .cw-section-header > .cw-content-resource_count,
+.mv-section.mv-content-newresources > .row > .mv-section-header > .mv-content-resource_count,
+.mv-section.mv-content-newresources > .mv-section-header > .mv-content-resource_count {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  font-size: 0.92em;
+}
+
+/** whitespace around the edges **/
+.cw-section.cw-content-newresources > .row > .cw-section-body,
+.cw-section.cw-content-newresources > .row > .cw-section-footer,
+.cw-section.cw-content-newresources > .cw-section-body,
+.cw-section.cw-content-newresources > .cw-section-footer,
+.mv-section.mv-content-newresources > .row > .mv-section-body,
+.mv-section.mv-content-newresources > .row > .mv-section-footer,
+.mv-section.mv-content-newresources > .mv-section-body,
+.mv-section.mv-content-newresources > .mv-section-footer {
+    margin: 10px;
+}
+
+/** make the body butt up against the footer **/
+.cw-section.cw-content-newresources > .cw-section-body,
+.mv-section.mv-content-newresources > .mv-section-body {
+    margin-bottom: 0;
+    padding: 0;
+}
+
+/** so there isn't a double border **/
+.cw-section.cw-content-newresources > .cw-section-body > table:last-child,
+.mv-section.mv-content-newresources > .mv-section-body > table:last-child {
+    border-bottom: none;
+}
+
+/** footer **/
+.cw-section.cw-content-newresources > .row > .cw-section-footer,
+.cw-section.cw-content-newresources > .cw-section-footer,
+.mv-section.mv-content-newresources > .row > .mv-section-footer,
+.mv-section.mv-content-newresources > .mv-section-footer {
+    margin-top: 0;
+    padding: 7px;
+
+    border: 1px solid #DDD;
+    background-color: #F0F8FA;
+}
+
+/* Container for the pagination */
+.cw-pagination-container,
+.mv-pagination-container {
+  text-align: right;
+  margin-bottom: 3px;
+}
+
+/** each cell of the pagination links **/
+.cw-section.cw-content-newresources > .row > .cw-section-footer
+  > .cw-table.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell,
+.cw-section.cw-content-newresources > .cw-section-footer
+  > .cw-table.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell,
+.mv-section.mv-content-newresources > .row > .mv-section-footer
+  > .mv-table.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell,
+.mv-section.mv-content-newresources > .mv-section-footer
+  > .mv-table.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell {
+    width: 30%;
+}
+
+/** the middle cell of the pagination links **/
+.cw-section.cw-content-newresources > .row > .cw-section-footer
+  > .cw-table.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell:nth-child(2),
+.cw-section.cw-content-newresources > .cw-section-footer
+  > .cw-table.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell:nth-child(2),
+.mv-section.mv-content-newresources > .row > .mv-section-footer
+  > .mv-table.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell:nth-child(2),
+.mv-section.mv-content-newresources > .mv-section-footer
+  > .mv-table.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell:nth-child(2) {
+    width: 40%;
+
+    text-align: center;
+}
+
+/** the last cell of the pagination links **/
+.cw-section.cw-content-newresources > .row > .cw-section-footer
+  > .cw-table.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell:last-child,
+.cw-section.cw-content-newresources > .cw-section-footer
+  > .cw-table.cw-table-fauxtable > .cw-table-fauxrow > .cw-table-fauxcell:last-child,
+.mv-section.mv-content-newresources > .row > .mv-section-footer
+  > .mv-table.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell:last-child,
+.mv-section.mv-content-newresources > .mv-section-footer
+  > .mv-table.mv-table-fauxtable > .mv-table-fauxrow > .mv-table-fauxcell:last-child {
+    text-align: right;
+}
+
+/* hidden elements */
+.cw-content-hide,
+.mv-content-hide {
+    display: none;
+}
+
+/* spans in the sort options table on the advanced search page */
+table.cw-content-searchsorttable > tbody > tr > td span,
+table.mv-content-searchsorttable > tbody > tr > td span {
+  white-space: nowrap;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Feedback
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-content-feedbacktable input,
+.cw-content-feedbacktable textarea,
+.mv-content-feedbacktable input,
+.mv-content-feedbacktable textarea {
+  width: 400px;
+}
+
+.cw-content-feedbacktable textarea,
+.mv-content-feedbacktable textarea {
+  height: 250px;
+}
+
+.cw-content-feedbacktable .cw-content-feedbacktable-email_field,
+.mv-content-feedbacktable .mv-content-feedbacktable-email_field {
+  width: 225px;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Metadata Field Editor
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/** don't wrap field names **/
+.cw-content-mfe .mfe-value.mfe-field-fieldname,
+.mv-content-mfe .mfe-value.mfe-field-fieldname {
+  white-space: nowrap;
+}
+
+/** don't display the N/A text of fields that a setting doesn't apply to **/
+.cw-content-mfe .mfe-na *,
+.mv-content-mfe .mfe-na * {
+  visibility: hidden;
+}
+
+/** span tags in labels should not wrap **/
+.cw-content-mfe .mfe-label > span,
+.mv-content-mfe .mfe-label > span {
+  white-space: nowrap;
+}
+
+/** gray out disabled fields **/
+.cw-content-mfe .mfe-disabled,
+.cw-content-mfe .mfe-disabled a,
+.cw-content-mfe .mfe-disabled a:link,
+.cw-content-mfe .mfe-disabled a:visited,
+.cw-content-mfe .mfe-disabled a:hover,
+.mv-content-mfe .mfe-disabled,
+.mv-content-mfe .mfe-disabled a,
+.mv-content-mfe .mfe-disabled a:link,
+.mv-content-mfe .mfe-disabled a:visited,
+.mv-content-mfe .mfe-disabled a:hover {
+  color: #AAA;
+}
+
+/** don't display the enabled field (displayed by javascript instead) **/
+.cw-content-mfe .mfe-field-enabled,
+.mv-content-mfe .mfe-field-enabled {
+  display: none;
+}
+
+/* MFE table */
+.cw-content-mfe,
+.mv-content-mfe {
+  margin-bottom: 22px;
+}
+
+.cw-content-mfe .cw-content-instructions,
+.cw-content-mfe .cw-form-instructions,
+.mv-content-mfe .mv-content-instructions,
+.mv-content-mfe .mv-form-instructions {
+  position: relative;
+  bottom: 2px;
+  left: 6px;
+
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+table.cw-content-mfe > thead > tr > th,
+table.mv-content-mfe > thead > tr > th {
+  vertical-align: bottom;
+}
+
+table.cw-content-mfe > tfoot > tr > th,
+table.mv-content-mfe > tfoot > tr > th {
+  vertical-align: top;
+}
+
+table.cw-table-striped.cw-content-mfe > thead > tr > th,
+table.mv-table-striped.mv-content-mfe > thead > tr > th {
+  text-transform: none;
+}
+
+table.cw-table-striped.cw-table-sectioned.cw-content-mfe > tbody > tr:first-child > th,
+table.mv-table-striped.mv-table-sectioned.mv-content-mfe > tbody > tr:first-child > th {
+  padding: 8px;
+  font-size: 1.1em;
+  text-transform: none;
+}
+
+table.cw-table-striped.cw-content-mfe > thead > tr:nth-child(odd),
+table.cw-table-striped.cw-content-mfe > thead > tr:nth-child(even),
+table.cw-table-striped.cw-content-mfe > thead > tr,
+table.mv-table-striped.mv-content-mfe > thead > tr:nth-child(odd),
+table.mv-table-striped.mv-content-mfe > thead > tr:nth-child(even),
+table.mv-table-striped.mv-content-mfe > thead > tr {
+  background-color: #9A9AAF;
+}
+
+/** duplicate above so that <= IE8 will use the styles **/
+table.cw-table-striped.cw-content-mfe > thead > tr,
+table.mv-table-striped.mv-content-mfe > thead > tr {
+  background-color: #9A9AAF;
+}
+
+table.cw-table-striped.cw-content-mfe > tfoot > tr > th,
+table.mv-table-striped.mv-content-mfe > tfoot > tr > th {
+  text-align: left;
+}
+
+table.cw-table-striped.cw-content-mfe > tfoot > tr,
+table.mv-table-striped.mv-content-mfe > tfoot > tr {
+    background-color: #9A9AAF;
+}
+
+table.cw-table-striped.cw-content-mfe > thead > tr > th:nth-child(n+3),
+table.cw-table-striped.cw-content-mfe > tbody > tr > td:nth-child(n+3),
+table.cw-table-striped.cw-content-mfe > tfoot > tr > th:nth-child(n+3),
+table.mv-table-striped.mv-content-mfe > thead > tr > th:nth-child(n+3),
+table.mv-table-striped.mv-content-mfe > tbody > tr > td:nth-child(n+3),
+table.mv-table-striped.mv-content-mfe > tfoot > tr > th:nth-child(n+3) {
+  text-align: center;
+}
+
+table.cw-table-striped.cw-content-mfe > thead > tr > th,
+table.mv-table-striped.mv-content-mfe > thead > tr > th {
+  white-space: normal;
+}
+
+/* MFE tab group */
+ul.cw-button-group.cw-content-mfetabs,
+ul.mv-button-group.mv-content-mfetabs {
+  display: block;
+}
+
+/** tabs **/
+ul.cw-button-group.cw-content-mfetabs > li > *,
+ul.cw-button-group.cw-content-mfetabs > li > a:link,
+ul.cw-button-group.cw-content-mfetabs > li > a:hover,
+ul.cw-button-group.cw-content-mfetabs > li > a:visited,
+ul.mv-button-group.mv-content-mfetabs > li > *,
+ul.mv-button-group.mv-content-mfetabs > li > a:link,
+ul.mv-button-group.mv-content-mfetabs > li > a:hover,
+ul.mv-button-group.mv-content-mfetabs > li > a:visited {
+  display: inline-block;
+  padding: 4px 8px;
+
+  background-color: #BABACF;
+  border-left: 1px solid #9A9AAF;
+  text-align: center;
+  text-decoration: none;
+  color: #333;
+  font-size: 1.5em;
+}
+
+/** first tab **/
+ul.cw-button-group.cw-content-mfetabs > li:first-child > *,
+ul.cw-button-group.cw-content-mfetabs > li:first-child > a:link,
+ul.cw-button-group.cw-content-mfetabs > li:first-child > a:hover,
+ul.cw-button-group.cw-content-mfetabs > li:first-child > a:visited,
+ul.mv-button-group.mv-content-mfetabs > li:first-child > *,
+ul.mv-button-group.mv-content-mfetabs > li:first-child > a:link,
+ul.mv-button-group.mv-content-mfetabs > li:first-child > a:hover,
+ul.mv-button-group.mv-content-mfetabs > li:first-child > a:visited {
+  border-top-left-radius: 3px;
+}
+
+/** last tab **/
+ul.cw-button-group.cw-content-mfetabs > li:last-child > *,
+ul.cw-button-group.cw-content-mfetabs > li:last-child > a:link,
+ul.cw-button-group.cw-content-mfetabs > li:last-child > a:hover,
+ul.cw-button-group.cw-content-mfetabs > li:last-child > a:visited,
+ul.mv-button-group.mv-content-mfetabs > li:last-child > *,
+ul.mv-button-group.mv-content-mfetabs > li:last-child > a:link,
+ul.mv-button-group.mv-content-mfetabs > li:last-child > a:hover,
+ul.mv-button-group.mv-content-mfetabs > li:last-child > a:visited {
+  border-top-right-radius: 3px;
+  border-right: 1px solid #9A9AAF;
+}
+
+/** active tab **/
+ul.cw-button-group.cw-content-mfetabs > li > *:active,
+ul.cw-button-group.cw-content-mfetabs > li > a:active,
+ul.cw-button-group.cw-content-mfetabs > li > .cw-button-active,
+ul.cw-button-group.cw-content-mfetabs > li > a.cw-button-active,
+ul.mv-button-group.mv-content-mfetabs > li > *:active,
+ul.mv-button-group.mv-content-mfetabs > li > a:active,
+ul.mv-button-group.mv-content-mfetabs > li > .mv-button-active,
+ul.mv-button-group.mv-content-mfetabs > li > a.mv-button-active {
+  background-color: #9A9AAF;
+}
+
+/* mfe table options */
+.cw-content-mfetableoptions, .mv-content-mfetableoptions {
+  float: right;
+  position: relative;
+  left: 2px;
+  top: 2px;
+}
+
+.cw-content-mfetableoptions form,
+.mv-content-mfetableoptions form {
+  display: inline-block;
+  position: relative;
+  bottom: 1px;
+  margin-left: 16px;
+}
+
+/* toggle for enabling/disabling fields */
+.cw-content-mfetoggledisabled,
+.mv-content-mfetoggledisabled {
+  display: none; /* it gets displayed via javascript */
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Field Ordering
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-fieldordering-listcell,
+.mv-fieldordering-listcell {
+  width: 50%;
+  padding-left: 12px;
+}
+
+.cw-fieldordering-listcell:first-child,
+.mv-fieldordering-listcell:first-child {
+  padding-left: 0;
+}
+
+.cw-fieldordering-list li,
+.mv-fieldordering-list li {
+  margin-top: 1px;
+  margin-bottom: 1px;
+}
+
+.cw-fieldordering-group > ul > li,
+.mv-fieldordering-group > ul > li {
+  padding-left: 25px;
+}
+
+.cw-fieldordering-group form > .cw-table.cw-table-fauxtable,
+.mv-fieldordering-group form > .mv-table.mv-table-fauxtable {
+  margin-top: 0;
+  height: 18px;
+}
+
+.cw-fieldordering-group form > .cw-table.cw-table-fauxtable .cw-table-fauxcell,
+.mv-fieldordering-group form > .mv-table.mv-table-fauxtable .mv-table-fauxcell {
+  vertical-align: middle;
+}
+
+.cw-fieldordering-group form button,
+.mv-fieldordering-group form button {
+  position: relative;
+  bottom: 1px;
+}
+
+.cw-fieldordering-group .cw-fieldordering-secondcell,
+.mv-fieldordering-group .mv-fieldordering-secondcell {
+  text-align: right;
+}
+
+ul.cw-list-dotlist > li.cw-fieldordering-noitems::before,
+ul.mv-list-dotlist > li.mv-fieldordering-noitems::before {
+  content: "";
+}
+
+.cw-fieldordering-renameform,
+.mv-fieldordering-renameform {
+  margin-top: 24px;
+}
+
+.cw-fieldordering-secondcell a.cw-button.cw-button-constrained.cw-button-iconed:link,
+.cw-fieldordering-secondcell a.cw-button.cw-button-constrained.cw-button-iconed:visited,
+.cw-fieldordering-secondcell a.cw-button.cw-button-constrained.cw-button-iconed:hover,
+.cw-fieldordering-secondcell ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:link,
+.cw-fieldordering-secondcell ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:hover,
+.cw-fieldordering-secondcell ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:visited,
+.mv-fieldordering-secondcell a.btn.btn-sm.mv-button-iconed:link,
+.mv-fieldordering-secondcell a.btn.btn-sm.mv-button-iconed:visited,
+.mv-fieldordering-secondcell a.btn.btn-sm.mv-button-iconed:hover,
+.mv-fieldordering-secondcell ul.btn.btn-sm.mv-button-iconed > li > a:link,
+.mv-fieldordering-secondcell ul.btn.btn-sm.mv-button-iconed > li > a:hover,
+.mv-fieldordering-secondcell ul.btn.btn-sm.mv-button-iconed > li > a:visited {
+  bottom: 1px;
+}
+
+.cw-fieldordering-placeholder {}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Field Table
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* make sure the labels line up */
+table.cw-fieldtable > tbody > tr > th:first-child > .cw-form-requiredfield,
+table.cw-fieldtable > tbody > tr > th:first-child > .cw-form-error,
+table.mv-fieldtable > tbody > tr > th:first-child > .mv-form-requiredfield,
+table.mv-fieldtable > tbody > tr > th:first-child > .mv-form-error {
+    position: relative;
+    left: 3px;
+}
+
+table.cw-fieldtable > tbody > tr > td > ul,
+table.mv-fieldtable > tbody > tr > td > ul {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+table.cw-fieldtable > tbody > tr > td:last-child,
+table.mv-fieldtable > tbody > tr > td:last-child {
+    text-align: right;
+}
+
+.cw-fieldtable .cw-content-instructions,
+.cw-fieldtable .cw-form-instructions,
+.mv-fieldtable .mv-content-instructions,
+.mv-fieldtable .mv-form-instructions {
+    float: left;
+    margin-right: 4px;
+
+    cursor: pointer;
+}
+
+.cw-fieldtable-group,
+.mv-fieldtable-group {
+  border-top: 12px solid white;
+  border-bottom: 12px solid white;
+}
+
+.cw-fieldtable-groupseparator,
+table.cw-table-striped.cw-table-padded > tbody > tr.cw-fieldtable-groupseparator > td,
+.mv-fieldtable-groupseparator,
+table.mv-table-striped.mv-table-padded > tbody > tr.mv-fieldtable-groupseparator > td {
+  height: 1px;
+  line-height: 1px;
+  padding: 0;
+  background-color: #BABACF;
+}
+
+table.cw-fieldtable > tbody.cw-fieldtable-group > tr:first-child > th,
+table.cw-table-striped.cw-table-sideheaders.cw-table-dense > tbody.cw-fieldtable-group > tr:first-child > th,
+table.mv-fieldtable > tbody.mv-fieldtable-group > tr:first-child > th,
+table.mv-table-striped.mv-table-sideheaders.mv-table-dense > tbody.mv-fieldtable-group > tr:first-child > th {
+  background-color: #BABACF;
+  text-align: left !important;
+  font-size: 1.1em;
+}
+
+.cw-fieldtable-toggle,
+.mv-fieldtable-toggle {
+  margin-right: 8px;
+
+  cursor: pointer;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Field Editing
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+
+/* Button for adding a field */
+.cw-feui-add {
+}
+
+/* Metadata field rows */
+.cw-feui-form tr.field_row>td:first-child,
+.mv-feui-form tr.field_row>td:first-child {
+  padding-left: 2em;
+}
+
+/* Add field button */
+.cw-feui-form tr.button_row>td:first-child,
+.mv-feui-form tr.button_row>td:first-child {
+  padding-left: 2em;
+}
+
+/* No fields selected message */
+.cw-feui-form tr.cw-feui-empty>td:first-child,
+.mv-feui-form tr.mv-feui-empty>td:first-child {
+  padding-left: 2em;
+}
+
+.cw-feui-form input[type="text"],
+.mv-feui-form input[type="text"] {
+  width: 30em;
+}
+
+.cw-feui-form .template_row,
+.mv-feui-form .template_row {
+    display: none;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group User Editing
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-content-user_list thead tr:first-child th:first-child,
+.mv-content-user_list thead tr:first-child th:first-child {
+  width: 16px;
+}
+
+.cw-content-secondary_buttons,
+.mv-content-secondary_buttons {
+  position: relative;
+  top: 3px;
+  float: right;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Search Parameter Set Editing
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.btn.btn-sm.cw-speui-delete,
+.btn.btn-sm.cw-speui-add,
+.btn.btn-sm.cw-speui-add-subgroup,
+.btn.btn-sm.mv-speui-delete,
+.btn.btn-sm.mv-speui-add,
+.btn.btn-sm.mv-speui-add-subgroup {
+    padding-top: 0px;
+    padding-bottom: 5px;
+    margin-left: 3px;
+    max-height: 15px;
+    line-height: 20px;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group Privilege Set Editing
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-peui-fieldset, .mv-peui-fieldset {
+  white-space: nowrap;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group CWIS Help
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-help-navigation, .mv-help-navigation {
+  /* do not show whitespace. workaround for the lack of support for
+     white-space-collapse */
+  font-size: 0;
+
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.cw-help-navigation a, .mv-help-navigation a {
+  /* so that whitespace gets shown for each link */
+  font-size: 11px;
+
+  /* overcome some of the spacing issues that arise when adding padding to an
+     inline element */
+  display: inline-block;
+  width: 200px;
+  margin-right: 2px;
+  margin-bottom: 2px;
+  padding: 5px;
+  padding-bottom: 6px;
+
+  background-color: #EAF1F3;
+  color: #666;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.cw-help-navigation a:hover,
+.mv-help-navigation a:hover {
+  background-color: #E0F0F4;
+  text-decoration: none;
+}
+
+/* need to increase the width since some of the links are very long */
+.cw-help-collection_administration a,
+.mv-help-collection_administration a {
+  width: 215px;
+}
+
+/* need to increase the width since some of the links are very long */
+.cw-help-user_administration a,
+.mv-help-user_administration a {
+  width: 215px;
+}
+
+/* need to increase the width since some of the links are very long */
+.cw-help-system_administration a,
+.mv-help-system_administration a {
+  width: 210px;
+}
+
+/*Link for the system configuration */
+.cw-system-configuration-link, .cw-adv-syst-config-link,
+.mv-system-configuration-link, .mv-adv-syst-config-link {
+ float: right;
+ margin-top: 17px;
+}
+
+/* The image cog in the plugin settings */
+.cw-plugin-settings-cog, .mv-plugin-settings-cog {
+  height: 14px;
+  border: 0;
+}
+
+/* Styles for the reply messages on the forum */
+.cw-reply-message, .mv-reply-message {
+  margin-top: 2.4em;
+}
+
+/* @end
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+/* @group CKEditor Tweaks
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+a.cke_button:link,
+a.cke_combo_button:link,
+a.cke_combo_button .cke_combo_text,
+a.cke_combo_button .cke_combo_open {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Quick search drop down
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+/** name from jquery-ui **/
+ul.ui-autocomplete > li
+{
+    padding: 10px;
+    padding-bottom: 2px;
+}
+
+/** name from jquery-ui **/
+ul.ui-autocomplete > li > span > div > a
+{
+  font-size: 1.2em;
+}
+
+/** name from jquery-ui **/
+ul.ui-autocomplete > li > span > div > p
+{
+  padding-top: 2px;
+}
+
+
+/** name from jquery-ui **/
+ul.ui-autocomplete > li:nth-child(even)
+{
+  background-color: #E0E0E0;
+}
+
+/** name from jquery-ui **/
+ul.ui-autocomplete > li:nth-child(odd)
+{
+  background-color: #f4f9fa;
+}
+
+.cw-quicksearch-menu, .mv-quicksearch-menu {
+  z-index: 100;
+  position: fixed;
+  border: 1px solid #C3C3C3;
+  background-color: white;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
+  -webkit-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+  -moz-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+  box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+}
+
+.cw-quicksearch-moreresults, .mv-quicksearch-moreresults {
+  background-color: white;
+  border: 1px solid black;
+  padding: 5px;
+}
+
+.cw-quicksearch-message, .mv-quicksearch-message {
+    padding: 5px;
+    border: 1px solid black;
+    background-color: white;
+    position: absolute;
+}
+
+.cw-autoresize, .mv-autoresize {
+    width: 99% !important;
+    overflow: auto !important;
+}
+
+/** name from jquery-ui **/
+.ui-autocomplete-loading {
+    background-image: url('../images/loading.gif');
+    background-position: right center;
+    background-repeat: no-repeat;
+}
+
+/** name from jquery-ui **/
+ul.ui-autocomplete
+{
+  width: 390px;
+  list-style-type: none;
+  padding-left: 0;
+  border-left: 1px solid #C3C3C3;
+  border-right: 1px solid #C3C3C3;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 4px;
+  -webkit-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+  -moz-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+  box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+}
+
+/** name from jquery-ui **/
+li.ui-menu-item:hover,
+li.ui-menu-item.ui-state-focus {
+  background-color: #C8C8C8 !important;
+}
+
+div.ui-menu-item-wrapper {
+    /* Override jquery-ui's desire to have white text in selected quickesarch items */
+    .cw-content-resourcesummary, .mv-content-resourcesummary {
+        color: black !important;
+
+        a {
+            color: black !important;
+        }
+    }
+
+    div.container {
+        display: block;
+        table.cw-content-resourcesummary, table.mv-content-resourcesummary {
+            td {
+                text-align: left;
+                white-space: normal;
+            }
+        }
+    }
+}
+
+/* Header for a metadata field */
+.cw-metadata-field-header, .mv-metadata-field-header {
+    width: 325px;
+}
+.cw-resourceeditor-metadatafield, .mv-resourceeditor-metadatafield {
+  display: block;
+  width: 98%;
+  height: 13px;
+  margin-bottom: 2px;
+  padding: 2px;
+  overflow: hidden;
+
+  /* setting the border avoids a flickering problem in Firefox */
+  border: 1px solid #999999;
+  border-top-color: #737373;
+
+  /* to to explicitly set these for Firefox */
+  font-family: Verdana,Arial,Geneva,Helvetica,sans-serif;
+  font-size: 11px;
+}
+
+#cw-content-quicksearch, #mv-content-quicksearch {
+    .cw-quicksearch-keywordsearch, .mv-quicksearch-keywordsearch {
+        width: 275px;
+        height: 17px;
+        font-size: 1.1em;
+        margin-top: 8px;
+    }
+
+    .cw-quicksearch, .mv-quicksearch {
+        display: inline-block;
+
+        .cw-quicksearch-display, .mv-quicksearch-display {
+            height: 17px;
+            font-size: 1.1em;
+            width: 390px;
+            margin: 0;
+            padding: 0;
+        }
+
+        ul.ui-autocomplete { width: 200px; }
+   }
+}
+
+#cw-vocabsearchpopup, #mv-vocabsearchpopup {
+    h3 {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    .TermsAssigned + span + h3 {
+        margin-top: 2rem;
+    }
+
+    .TermsAssigned + span {
+        margin-top: 2rem;
+    }
+
+    .TermsAvailable, .TermsAssigned {
+        margin-left: 1rem;
+        line-height: 1.5;
+
+        label {
+            display: inline;
+        }
+    }
+
+    .cw-num-results-per-page, .mv-num-results-per-page {
+        float: right;
+
+        input {
+            width: 3em;
+        }
+    }
+
+    .cw-search-pagination, .mv-search-pagination {
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+
+        .bth {
+            font-size: 0.5rem;
+        }
+
+        .cw-pagination-left, .mv-pagination-left {
+            float: left;
+        }
+
+        .cw-pagination-right, .mv-pagination-right {
+            float: right;
+        }
+
+        .cw-pagination-center, .mv-pagination-center {
+            display: inline-block;
+            padding-top: 4px;
+        }
+    }
+}
+
+.cw-inline-edit-controls, .mv-inline-edit-controls {
+    float: right;
+}
+
+.cw-inline-edit-edit, .mv-inline-edit-edit {
+    div[contenteditable] {
+        outline-style: none;
+    }
+}
+
+#cw-inline-edit-dialog-confirm + .ui-dialog-buttonpane, #mv-inline-edit-dialog-confirm + .ui-dialog-buttonpane {
+    .ui-button-icon-space {
+        display: inline-block;
+        width: 20px;
+    }
+
+    .ui-button-icon.ui-icon-close {
+        margin-top: 0;
+        width: 16px;
+        height: 16px;
+        display: block;
+        position: absolute;
+        background-image: url("../../default/images/cross.png");
+        background-position: center;
+    }
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Privileges Editing
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.priv-js-clone_target,
+button.priv-js-add {
+  display: none;
+}
+
+.priv-js-add {
+  display: block;
+  margin-top: 1em;
+}
+
+.priv-fieldset {
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.priv-fieldset.priv-logic {
+  float: right;
+}
+
+.priv-field.priv-input.priv-field-value {
+  position: relative;
+  top: 1px;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Resource Field Values
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+ul.cw-field-list,
+ol.cw-field-list,
+ul.mv-field-list,
+ol.mv-field-list {
+  margin-left: 0;
+  padding-left: 0;
+  list-style-type: none;
+}
+
+ul.cw-field-list li + li,
+ol.cw-field-list li + li,
+ul.mv-field-list li + li,
+ol.mv-field-list li + li {
+  margin-top: 8px;
+}
+
+.cw-field-list.cw-field-empty, .mv-field-list.mv-field-empty {
+  display: none;
+}
+
+.cw-field-anchor.cw-field-type-stillimage, .mv-field-anchor.mv-field-type-stillimage {
+  display: block;
+}
+
+/* Styles for the Time fields on the Metadata field home page */
+.cw-time-field, .mv-time-field {
+  white-space: nowrap;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group Installation
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* Label for the checkbox to enable debuggin in installation */
+.cw-debug-checkbox-label, .mv-debug-checkbox-label {
+    color: grey;
+    font-size: 12px;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/* @group UI-Highlight
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-classfication-tag-highlight, .mv-classfication-tag-highlight {
+  border-top: 2px solid inherit;
+  border-bottom: 2px solid inherit;
+  font-weight: bold;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+
+@import 'interface/CWIS/include/CW-Bootstrap.scss';
+
+.float-right {
+    float: right;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.container-fluid {
+    table-layout: fixed;
+    width: 100%;
+}
+
+table.table {
+    width: 100%;
+
+    th {
+        text-align: left;
+    }
+
+    td:last-of-type[align="right"] {
+        padding-right: 10px;
+    }
+}
+
+#cw-content-pagestats, #mv-content-pagestats {
+    padding: 15px 0;
+
+    .container {
+        margin-left: auto;
+        margin-right: auto;
+
+        .col {
+            padding: 0 10px;
+        }
+    }
+}
+
+.cw-itemlistui, .mv-itemlistui {
+    .btn {
+        line-height: 12px;
+    }
+
+    tr {
+        th:first-of-type, td:first-of-type {
+            padding-left: 10px;
+        }
+    }
+
+    td, th {
+        padding-top: 0.5em;
+        padding-bottom: 0.5em;
+
+        padding-left: 2.5px;
+        padding-right: 2.5px;
+    }
+
+    .text-muted {
+        color: #999999;
+    }
+}
+
+table.cw-content-sysconfigtable, table.mv-content-sysconfigtable {
+    line-height: 28px;
+    margin-bottom: 15px;
+
+    th {
+        padding-left: 5px;
+        text-align: left;
+
+        label {
+            white-space: nowrap;
+        }
+
+        label::after {
+            content: ":";
+        }
+    }
+
+    td.cw-content-help-cell, td.mv-content-help-cell {
+        line-height: 1em;
+    }
+
+    .thead-dark {
+        line-height: 20px;
+    }
+}
+
+.cw-transport-controls, .mv-transport-controls {
+    width: 100%;
+
+    .col-2, .col-8, .col-10, .col-12 {
+        vertical-align: middle;
+    }
+
+    .cw-search-sort-form, .mv-search-sort-form {
+        margin-top: 6px;
+    }
+
+    .cw-search-order-label, .mv-search-order-label {
+        top: -4px;
+    }
+
+    .cw-search-order-button, .mv-search-order-button {
+        top: 6px;
+    }
+
+    .cw-search-sort-controls-container, .mv-search-sort-controls-container {
+        display: inline-block;
+        padding-bottom: 0;
+    }
+}
+
+div#cw-tabs, div#mv-tabs {
+    font-size: 1.1em;
+}
+
+.cw-form-fieldtype-paragraph, .mv-form-fieldtype-paragraph {
+    textarea {
+        margin-top: 9px;
+    }
+
+    .cke {
+        margin-top: 9px;
+    }
+}
+
+.btn-sm {
+    padding: 0;
+    img {
+        height: 12px;
+    }
+
+    img[src$=".svg"] {
+        height: 10px !important;
+    }
+}
+
+.btn.cw-button-iconed, .btn.mv-button-iconed {
+    padding-left: 16px;
+}
+
+.list-group-item {
+    line-height: 1.33em;
+
+    .btn-sm {
+        line-height: 11px;
+    }
+}
+
+/** NOTE: #cw-segment-toolbox is maintained for backward compatibility with older interfaces */
+.cw-segment-toolbox, #cw-segment-toolbox {
+    .col-12 {
+        display: inline-block;
+    }
+
+
+    .col-9 {
+        width: 80%;
+    }
+
+    .col-3 {
+        width: 20%;
+
+        .float-right {
+            float: right;
+        }
+    }
+
+    .cw-folders-sidebar, .mv-folders-sidebar {
+        padding-bottom: 1.25rem;
+    }
+
+    .cw-mysearches-sidebar-saved, .mv-mysearches-sidebar-saved {
+        padding-bottom: 1.25rem;
+    }
+}
+
+.cw-section.cw-section-simple {
+    .cw-section-header {
+        font-size: 0.9rem;
+        line-height: 1.75rem;
+
+        img:not(.cw-button-icon) {
+            height: 1.75rem;
+            padding-right: 0.25rem;
+            margin-bottom: -8px;
+        }
+
+        .btn {
+            font-size: 9px;
+            line-height: 1.0em;
+        }
+    }
+
+    .cw-section-body {
+        .list-group-flush, .cw-bullet-list{
+            list-style-type: none;
+
+            li::before {
+                content: "\00B7";
+            }
+
+            li {
+                line-height: 1.33em;
+                padding-left: 10px;
+                text-indent: -1em;
+            }
+        }
+
+        .cw-bullet-list {
+            padding-left: 5px;
+        }
+
+        .cw-sidebar-resource-tag {
+            line-height: 9px;
+        }
+    }
+}
+
+.mv-section.mv-section-simple {
+    .mv-section-header {
+        font-size: 0.9rem;
+        line-height: 1.75rem;
+
+        img:not(.mv-button-icon) {
+            height: 1.75rem;
+            padding-right: 0.25rem;
+            margin-bottom: -8px;
+        }
+
+        .btn {
+            font-size: 9px;
+            line-height: 1.0em;
+        }
+    }
+
+    .mv-section-body {
+        .list-group-flush, .mv-bullet-list {
+            list-style-type: none;
+
+            li::before {
+                content: "\00B7";
+            }
+
+            li {
+                line-height: 1.33em;
+                padding-left: 10px;
+                text-indent: -1em;
+            }
+        }
+
+        .mv-bullet-list {
+            padding-left: 5px;
+        }
+
+        .mv-sidebar-resource-tag {
+            line-height: 9px;
+        }
+    }
+}
+
+.cw-form-group-hidden, .mv-form-group-hidden {
+    tr {
+        visibility: collapse;
+
+        /*
+          'visibility: collapse' *should* be sufficient to hide these
+          elements, but alas Safari pretends that it's a synonym for
+          'visibility: hidden'. Work around that by explicitly setting
+          heights and margins on child elements to collapse them.
+          See https://developer.mozilla.org/en-US/docs/Web/CSS/visibility#Notes
+       */
+
+        td, th {
+            height: 0;
+            line-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            border-top-width: 0;
+            border-bottom-width: 0;
+            border-top-style: none;
+            border-bottom-style: none;
+
+            * {
+                display: block;
+                height: 0;
+                padding-top: 0;
+                padding-bottom: 0;
+                margin-top: 0;
+                margin-bottom: 0;
+                border-top-width: 0;
+                border-bottom-width: 0;
+            }
+        }
+    }
+}
+
+tbody.cw-form-group, tbody.mv-form-group {
+    th {
+        text-align: right;
+        padding-right: 0;
+
+        img {
+            float: left;
+        }
+
+        label::after {
+            content: ":";
+        }
+    }
+
+    input[type="checkbox"] + label {
+        line-height: 1.2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .cw-mutable-widget, .mv-mutable-widget {
+        display: inline-block;
+        width: 80%;
+    }
+
+    .cw-form-optlist, .mv-form-optlist {
+        display: inline-block;
+        width: 80%;
+    }
+
+    .cw-form-additional-html, .mv-form-additional-html {
+        display: inline-block;
+        width: 20%;
+        vertical-align: top;
+        text-align: right;
+    }
+}
+
+
+.cw-checkboxset, .mv-checkboxset {
+    display: grid;
+    writing-mode: vertical-lr;
+    line-height: 1.2em;
+    width: 100%;
+
+    .cw-inputset-item, .mv-inputset-item {
+        writing-mode: horizontal-tb;
+        white-space: nowrap;
+        padding-right: 1em;
+
+        input {
+            display: inline-block;
+            vertical-align: top;
+            margin-top: 6px;
+        }
+
+        label {
+            white-space: normal;
+            display: inline-block;
+        }
+    }
+}
+
+.cw-radiobuttonset-item, .mv-radiobuttonset-item {
+    display: inline-block;
+}
+
+.cw-optionlistset, .mv-optionlistset {
+    select {
+        display: block;
+    }
+}
+
+body#page-fullrecord {
+    .cw-content-fullrecord > .container > .row,
+    .mv-content-fullrecord > .container > .row {
+        h1 {
+            margin-bottom: 0;
+        }
+
+        span.float-right {
+            margin-top: 15px;
+        }
+    }
+
+    .cw-content-fullrecord, .mv-content-fullrecord {
+        .cw-content-resourcebox, .mv-content-resourcebox {
+            padding: 5px 16px;
+
+            .cw-field-name, .mv-field-name {
+                font-weight: bold;
+                line-height: 25px;
+            }
+
+            .cw-field-name::after, .mv-field-name::after {
+                content: ":";
+            }
+        }
+
+        .cw-content-screenshot, .mv-content-screenshot {
+            float: left;
+            margin-top: 15px;
+            margin-right: 10px;
+        }
+
+        .cw-rating-container, .mv-rating-container {
+            width: 100%;
+            margin-top: 11px;
+            margin-bottom: 9px;
+
+            .cw-content-rating, .mv-content-rating {
+                img {
+                    position: relative;
+                    top: 3px;
+                    height: 14px;
+                }
+
+                input[type="radio"] {
+                    margin-left: 1px;
+                    margin-right: 1px;
+                }
+
+                .col.text-left {
+                    width: 50%;
+                }
+
+                .col.text-right {
+                    width: 50%;
+                    font-size: 0.85em;
+                }
+            }
+        }
+
+        .cw-content-resourcebox.container, .mv-content-resourcebox.container {
+            box-sizing: border-box;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .cw-content-description, .mv-content-description {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        .cw-content-finaldetails, .mv-content-finaldetails {
+            width: 100%;
+
+            .col {
+                text-align: right;
+            }
+        }
+
+        .cw-table-complexheader li a, .mv-table-complexheader li a {
+            margin: 5px;
+        }
+
+        .cw-content-resourceboxvalue, .mv-content-resourceboxvalue {
+            .cw-button, .btn {
+                float: right;
+            }
+        }
+
+        .cw-content-finaldetails + .cw-content-resourcebox,
+        .mv-content-finaldetails + .mv-content-resourcebox {
+            padding-left: 10px;
+        }
+
+        .cw-content-commentbar,
+        .mv-content-commentbar {
+            width: 100%;
+
+            h2 {
+                margin-top: 0;
+                margin-bottom: 0;
+                font-size: 1.25em;
+            }
+
+            h2::after {
+                content: ":";
+            }
+        }
+    }
+}
+
+body#page-editresource {
+    h1 {
+        margin-top: 0;
+    }
+
+    .cw-fieldtable, .mv-fieldtable {
+        width: 100%;
+
+        img.cw-content-instructions,
+        img.cw-form-instructions,
+        img.mv-content-instructions,
+        img.mv-form-instructions {
+            margin-top: 4px;
+            margin-left: 4px;
+        }
+
+        tr {
+            line-height: 26px;
+
+            th {
+                text-align: right;
+                padding-right: 10px;
+
+                span.cw-form-pseudolabel:after,
+                span.mv-form-pseudolabel:after,
+                label:after {
+                    content: ":";
+                }
+            }
+
+            td {
+                input[type="text"] {
+                    width: 90%;
+                }
+
+                div.container {
+                    line-height: 12px;
+                }
+
+                table {
+                    tr {
+                        line-height: 12px;
+                    }
+                }
+            }
+        }
+    }
+}
+
+body#page-editresourcesearchname {
+    #cw-segment-body,
+    #mv-segment-body {
+        .container {
+            width: 100%;
+        }
+
+        table.table {
+            margin-top: 10px;
+            margin-bottom: 10px;
+
+            line-height: 2.25em;
+            width: 100%;
+
+            .thead-dark {
+                background-color: #babacf;
+                text-transform: uppercase;
+                text-align: left;
+            }
+        }
+    }
+}
+
+body#page-editoptionlist {
+    table.table.cw-content-optionoptions,
+    table.table.mv-content-optionoptions {
+        line-height: 2.66em;
+    }
+}
+
+body#page-editcontrolledname {
+    form[name="searchcontrolledname"] {
+        table.table-striped {
+            th, td {
+                padding: 5px;
+            }
+        }
+    }
+}
+
+body#page-editclassifications {
+    .container-fluid {
+        form {
+            display: inline-block;
+        }
+    }
+}
+
+body#page-home {
+    .cw-content-newresources, .mv-content-newresources {
+        .cw-section-body, .mv-section-body {
+            margin-bottom: 0;
+            padding: 0;
+
+            .mv-resourcesummary {
+                .col-auto {
+                    display: table-cell;
+                }
+            }
+
+            .container.table-responsive {
+                margin: 10px;
+            }
+
+            .container ~ .container {
+                margin-top: 10px;
+            }
+
+            .container:last-child {
+                margin-bottom: 0px;
+
+                .cw-content-resourcesummary, .mv-content-resourcesummary {
+                    border-bottom: none;
+                }
+            }
+        }
+
+        .cw-section-header, .mv-section-header {
+            background-color: #d7d7d7;
+            background-image: url("../images/CW-Gradient-Short.png");
+        }
+
+        .cw-rating-container, .mv-rating-container {
+            .cw-content-rating, .mv-content-rating {
+                float: right;
+            }
+        }
+
+        .cw-section-footer, .mv-section-footer {
+            width: calc(100% - 20px);
+            box-sizing: border-box;
+            margin: 0 10px 10px 10px;
+            padding: 7px;
+            border: 1px solid #ddd;
+            background-color: #f0f8fa;
+
+            .row {
+                .col {
+                    display: inline-block;
+                }
+
+                .col.text-left {
+                    width: calc(25% - 4px);
+                }
+
+                .col.text-center {
+                    width: 50%;
+                }
+
+                .col.text-right {
+                    width: calc(25% - 4px);
+                }
+            }
+        }
+    }
+}
+
+body#page-advancedsearch {
+    #cw-segment-body, #mv-segment-body {
+        .container:first-of-type {
+            width: 100%;
+        }
+    }
+
+    form#advanced {
+        .cw-content-boundingbox, .mv-content-boundingbox {
+            .row:first-of-type {
+                .col, .col-4, .col-8 {
+                    font-weight: bold;
+                }
+            }
+
+            .col, .col-4, .col-8 {
+                display: inline-block;
+            }
+        }
+
+        .container {
+            .cw-advanced-field-column, .mv-advanced-field-column {
+                display: inline-block;
+                width: auto;
+            }
+
+            .cw-advanced-terms-column, .mv-advanced-terms-column {
+                display: inline-block;
+                width: auto;
+                margin-left: 10px;
+            }
+        }
+
+        .container.cw-adv-search-tips, .container.mv-adv-search-tips {
+            .cw-column-one, .cw-column-two, .mv-column-one, .mv-column-two {
+                vertical-align: top;
+                display: inline-block;
+                width: calc(50% - 6px);
+            }
+
+            .cw-column-padding, .mv-column-padding {
+                vertical-align: top;
+                display: inline-block;
+                width: 4px;
+            }
+        }
+
+        .container.cw-content-searchfields, .container.mv-content-searchfields {
+            .row {
+                padding: 2px;
+            }
+        }
+
+        .container.cw-search-limits, .container.mv-search-limits {
+            width: 100%;
+        }
+
+        .cw-limits-entries, .mv-limits-entries {
+            background-color: #f0f8fa;
+            border: 1px solid #ddd;
+        }
+
+        .cw-limits-section, .cw-limits-entries, .mv-limits-section, .mv-limits-entries {
+            padding-left: 2px;
+        }
+
+        #cw-form-buttons, #mv-form-buttons {
+            width: 100%;
+        }
+    }
+}
+
+body#page-searchresults {
+    #cw-segment-body, #mv-segment-body {
+        .container.cw-transport-controls,
+        .container.cw-advanced-search,
+        .container.mv-transport-controls,
+        .container.mv-advanced-search {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .cw-narrow-your-search, .mv-narrow-your-search {
+            vertical-align: top;
+        }
+
+        .cw-search-facets, .mv-search-facets {
+            margin-left: 5px;
+
+            .list-group-item {
+                margin-left: 5px;
+                width: calc(95% - 15px);
+            }
+        }
+
+        .cw-content-resourcesummary, .mv-content-resourcesummary {
+            margin-top: 10px;
+        }
+    }
+}
+
+body#page-sysadmin {
+    h1 {
+        margin-bottom: 0px;
+    }
+
+    table {
+        width: 100%;
+
+        th, td {
+            padding: 5px;
+        }
+    }
+
+    .container.cw-content-sysadminrow, .container.mv-content-sysadminrow {
+        margin-top: 15px;
+
+        border-collapse: separate;
+
+        ul.list-group {
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f0f8fa;
+
+        }
+
+        .col-6:first-of-type {
+            ul.list-group {
+                margin-right: 10px;
+            }
+        }
+
+        .col-6:last-of-type {
+            ul.list-group {
+                margin-left: 10px;
+            }
+        }
+    }
+}
+
+body#page-userlist {
+    h1 {
+        margin-bottom: 0px;
+    }
+
+    div#cw-segment-body, div#mv-segment-body {
+        form:not([name="UserList"]) {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        form {
+            table {
+                margin-bottom: 10px;
+            }
+        }
+    }
+
+    table.table {
+        line-height: 28px;
+
+        .cw-button, .btn {
+            line-height: 11px;
+        }
+    }
+}
+
+body#page-mdhome {
+    table.cw-content-colstats, table.cw-content-cdresources,
+    table.mv-content-colstats, table.mv-content-cdresources {
+        width: inherit;
+
+        th {
+            font-weight: normal;
+            padding-right: 25px;
+        }
+
+
+        tbody > tr:first-child {
+            th, td {
+                padding-top: 15px;
+            }
+        }
+    }
+
+    table.cw-itemlistui,
+    table.mv-itemlistui {
+        tr > td:first-child + td {
+            width: 66%;
+        }
+    }
+}
+
+body#page-preferences {
+    .mv-form-field-userid {
+        p {
+            display: inline-block;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+    }
+}
+
+#page-plugins {
+    table.cw-itemlistui tr td:last-child,
+    table.mv-itemlistui tr td:last-child {
+        white-space: nowrap;
+    }
+}
+
+/* @group Backward compatibility
+ (to be eliminated once .cw-form-required usage has been cleaned out of all our
+  custom interfaces that were based on the legacy CWIS interface.)
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+.cw-form-required, .mv-form-required {
+    @extend .cw-form-requiredfield;
+}
+
+span.cw-form-required, span.mv-form-required {
+    @extend span.cw-form-requiredfield;
+}
+
+label.cw-form-required, label.mv-form-required {
+    @extend label.cw-form-requiredfield;
+}
+
+table.cw-table-sideheaders > tbody > tr.cw-content-tallrow > th > label.cw-form-required,
+table.mv-table-sideheaders > tbody > tr.mv-content-tallrow > th > label.mv-form-required {
+    @extend label.cw-form-requiredfield;
+}
+
+table.cw-fieldtable > tbody > tr > th:first-child > .cw-form-required,
+table.mv-fieldtable > tbody > tr > th:first-child > .mv-form-required {
+    @extend .cw-form-requiredfield;
+}
+
+/* @end
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/

@@ -1,0 +1,80 @@
+<?PHP
+#
+#   FILE:  Comment.html (Blog plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+namespace Metavus;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+* Print the form for a blog entry comment.
+* @param Message $Comment Comment for which to print the form.
+*/
+function Blog_PrintCommentForm(Message $Comment): void
+{
+    $SafeEntryId = defaulthtmlentities($Comment->ParentId());
+    $SafeCommentId = defaulthtmlentities($Comment->MessageId());
+    $SafeCommentBody = defaulthtmlentities($Comment->Body());
+
+    ?>
+  <form method="post" action="index.php?P=P_Blog_Comment" class="blog-comment-form">
+    <input type="hidden" name="F_EntryId" value="<?= $SafeEntryId; ?>" />
+    <input type="hidden" name="F_CommentId" value="<?= $SafeCommentId; ?>" />
+
+    <textarea id="F_CommentBody" name="F_CommentBody"
+        class="blog-body"><?= $SafeCommentBody; ?></textarea>
+
+    <div class="blog-actions">
+      <button id="F_Action" name="F_Action" value="Edit" class="blog-first_submit">
+        Save Changes
+      </button>
+      <button id="F_Action" name="F_Action" value="Cancel">Cancel</button>
+    </div>
+  </form>
+  <script type="text/javascript">
+    // automatically adjust the textarea to its contents
+    (function(){
+      var body = jQuery(".blog-comment-form .blog-body");
+
+      body.autoheight({"minHeight": 52, "duration": 1});
+      body.doautoheight({"minHeight": 52, "duration": 1});
+    })();
+  </script>
+    <?PHP
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+?>
+
+<h1>Edit Comment</h1>
+
+<?PHP if ($H_State != "OK") { ?>
+  <p>
+    The comment was not
+    <?= $H_Action == "Post" ? "posted" : "edited"; ?> because
+    <?PHP if ($H_State == "Empty Comment") { ?>
+      it was empty.
+    <?PHP } elseif ($H_State == "Invalid Entry ID" || $H_State == "Not Blog Entry" ||
+        $H_State == "Entry Not Viewable") { ?>
+      the blog entry it is supposed to be associated with is invalid.
+    <?PHP } elseif ($H_State == "Failed Validation") { ?>
+      it failed validation. Please make sure all of the fields were filled out
+      properly and resubmit it.
+    <?PHP } elseif ($H_State == "Not Allowed to Edit") { ?>
+      you are not allowed to edit it.
+    <?PHP } else { ?>
+      an error occurred. Please <a href="index.php?P=LeaveFeedback">contact the
+      administrator</a> if this happens repeatedly.
+    <?PHP } ?>
+  </p>
+<?PHP } ?>
+
+<?PHP if (is_null($H_Action) && $H_State == "OK") { ?>
+    <?PHP Blog_PrintCommentForm($H_Comment); ?>
+<?PHP } ?>

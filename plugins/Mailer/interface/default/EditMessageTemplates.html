@@ -1,0 +1,389 @@
+<?PHP
+#
+#   FILE:  EditMessageTemplate.html (Mailer plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\ItemListUI;
+use Metavus\User;
+use ScoutLib\PluginManager;
+
+# ----- INITIALIZATION -------------------------------------------------------
+
+# CKEditor setup
+require_once($AF->GUIFile("CKEditorSetup.php"));
+
+# HTML page setup
+?><form method="POST" action="?P=P_Mailer_EditMessageTemplates"><?PHP
+
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+function DisplayMessages($Msgs)
+{
+    ?><ul class="cw-form-modified"><?PHP
+foreach ($Msgs as $Msg) {
+    print "<li>".$Msg."</li>\n";
+}
+?></ul><?PHP
+}
+
+
+# ----- STATE: ADDING/EDITING ------------------------------------------------
+
+$BodyKeywords = [
+    "PORTALNAME" => "portal name (from <a href='index.php?P=EditInterfaceConfig'>Interface Configuration</a>)",
+    "ADMINEMAIL" => "administrator email address (from <a
+    href='index.php?P=EditInterfaceConfig'>Interface Configuration</a>)",
+    "BASEURL" => "base URL for the site (useful in constructing links in the message)",
+    "LEGALNOTICE" => "legal/copyright notice (from <a
+    href='index.php?P=EditInterfaceConfig'>Interface Configuration</a>)",
+    "USERLOGIN" => "user account name (like <i>".User::getCurrentUser()->Get("UserName").")</i>",
+    "USERREALNAME" => "\"real\" name of user (as set in <a
+    href='index.php?P=Preferences'>Preferences</a>)",
+    "USEREMAIL" => "email address of user",
+    "RESOURCELIST" => "list of resources that triggered email",
+    "RESOURCECOUNT" => "number of items in list of resources that triggered email",
+    "DATE" => "full date (like <i>".date("M j Y")."</i>)",
+    "TIME" => "full time (like <i>".date("g:ia T")."</i>)",
+    "YEAR" => "year (like <i>".date("Y")."</i>)",
+    "MONTH" => "month as a number (like <i>".date("n")."</i>)",
+    "DAY" => "day as a number (like <i>".date("j")."</i>)",
+    "MONTHNAME" => "month name (like <i>".date("F")."</i>)",
+    "MONTHABBREV" => "month name abbreviation (like <i>".date("M")."</i>)",
+    "WEEKDAYNAME" => "weekday name (like <i>".date("l")."</i>)",
+    "DAYWITHSUFFIX" => "day as a number with suffix (like <i>".date("jS")."</i>)",
+];
+$ItemKeywords = [
+    "RESOURCENUMBER" => "numerical position of resource in list",
+    "RESOURCEID" => "ID of resource (useful in constructing URLs)",
+    "RESOURCEVIEWURL" => "URL for full record view for resource",
+    "FIELD:xxx" => "field value (see below)",
+];
+
+if (PluginManager::getInstance()->pluginEnabled("SocialMedia")) {
+    $ItemKeywords += [
+        "SHARE:FACEBOOK" => "URL to share the resource on Facebook",
+        "SHARE:TWITTER" => "URL to share the resource on Twitter",
+        "SHARE:LINKEDIN" => "URL to share the resource on LinkedIn"
+    ];
+}
+$SavedSearchKeywords = [
+    "SEARCHNAME" => "user-defined name of saved search",
+    "SEARCHCRITERIA" => "text description of search criteria",
+];
+
+function DisplayKeywordList($Keywords)
+{
+    ?><dl class="mv-content-specialstrings"><?PHP
+        ksort($Keywords);
+foreach ($Keywords as $Keyword => $Description) {
+    ?>
+            <dt>X-<?= $Keyword ?>-X</dt>
+            <dd><?= $Description ?></dd>
+            <?PHP
+}
+?></dl><?PHP
+}
+
+if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
+    # add appropriate content-area title
+    if ($H_DisplayMode == "Adding") {
+        PageTitle("Add Email Message Template");
+        ?><h1>Adding New Template</h1><?PHP
+    } else {
+        PageTitle("Edit Email Message Template");
+        ?><h1>Editing Message Template</h1><?PHP
+    }
+    if (isset($H_Msgs)) {
+        DisplayMessages($H_Msgs);
+    }
+
+    ?>
+
+    <p>These keywords will be replaced when the email is sent
+    as follows:</p>
+    <?PHP  DisplayKeywordList($BodyKeywords);  ?>
+
+    <p>The following keywords only apply to saved search mailings:</p>
+    <?PHP  DisplayKeywordList($SavedSearchKeywords);  ?>
+
+    <p>The following keywords only apply in the List Item text:</p>
+    <?PHP  DisplayKeywordList($ItemKeywords);  ?>
+    <p>For the "X-FIELD:xxx-X" keyword, the "xxx" portion should correspond to a
+    field name with all spaces and non-alphanumeric characters removed and all
+    letters translated to upper case (e.g.<i>X-FIELD:DATESUBMITTED-X</i>).</p>
+    <p>&nbsp;</p>
+
+    <input type="hidden" name="F_Id" value="<?= $H_Id; ?>">
+    <table class="table table-striped">
+      <tbody>
+        <tr><th colspan="2">Basic Settings</th></tr>
+        <tr>
+            <th><label for="F_Name">Template Name</label></th>
+            <td>
+                <input type="text" size="30" maxlength="50" name="F_Name" value="<?PHP
+                        print htmlspecialchars($H_Name);  ?>" id="F_Name">
+            </td>
+        </tr>
+        <tr>
+            <th><label for="F_EmailPerResource">Send One Email per Matching Resource</label></th>
+            <td>
+                <input type="checkbox" name="F_EmailPerResource"
+                id="F_EmailPerResource" <?PHP if ($H_EmailPerResource) {
+                    print 'checked="checked"';
+                                        } ?> />
+            </td>
+        </tr>
+        <tr>
+            <th><label for="F_From">From</label></th>
+            <td>
+                <input type="text" size="60" maxlength="80" name="F_From" value="<?PHP
+                        print htmlspecialchars($H_From);  ?>" id="F_From">
+            </td>
+        </tr>
+        <tr>
+            <th><label for="F_Subject">Subject</label></th>
+            <td>
+                <input type="text" size="60" maxlength="120" name="F_Subject" value="<?PHP
+                        print htmlspecialchars($H_Subject);  ?>" id="F_Subject">
+            </td>
+        </tr>
+      </tbody>
+      <tbody>
+        <tr><th colspan="2">HTML Message Settings</th></tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_Body">Body</label></th>
+            <td>
+                <textarea rows="30" cols="80" class="ckeditor" name="F_Body" id="F_Body"><?PHP
+                        print htmlspecialchars($H_Body, ENT_SUBSTITUTE);  ?></textarea>
+                <p>
+                  <strong>Note</strong>: Do not include
+                  <code>&lt;!<abbr title="Document Type Declaration">DOCTYPE</abbr>...&gt;</code>,
+                  <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, or
+                  <code>&lt;body&gt;</code> tags.
+                </p>
+            </td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_ItemBody">List Item</label></th>
+            <td>
+                <textarea rows="10" cols="80" class="ckeditor" name="F_ItemBody"
+                id="F_ItemBody"><?PHP
+                print htmlspecialchars($H_ItemBody, ENT_SUBSTITUTE);  ?></textarea>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="F_CollapseBodyMargins">Collapse Margins</label></th>
+            <td>
+                <input type="radio" name="F_CollapseBodyMargins" id="F_CollapseBodyMargins_Yes"
+                value="1" <?PHP if ($H_CollapseBodyMargins) {
+                              print 'checked="checked"';
+                          } ?> />
+                <label for="F_CollapseBodyMargins_Yes">Yes</label>
+
+                <input type="radio" name="F_CollapseBodyMargins" id="F_CollapseBodyMargins_No"
+                value="0" <?PHP if (!$H_CollapseBodyMargins) {
+                              print 'checked="checked"';
+                          } ?> />
+                <label for="F_CollapseBodyMargins_No">No</label>
+            </td>
+        </tr>
+      </tbody>
+      <tbody>
+        <tr><th colspan="2">Plain Text Message Settings</th></tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_PlainTextBody">Body</label></th>
+            <td>
+                <textarea rows="20" cols="100"
+                          name="F_PlainTextBody"
+                          id="F_PlainTextBody"
+                          style="font-family: courier, monospace;"><?PHP
+                            print htmlspecialchars($H_PlainTextBody, ENT_SUBSTITUTE);
+                            ?></textarea>
+                <p>
+                  <strong>Note</strong>: The plain text message is only
+                  displayed to users who are unable to view HTML e-mail or have
+                  configured their e-mail application to display plain text
+                  instead of HTML in e-mail.
+                </p>
+            </td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_PlainTextItemBody">List Item</label></th>
+            <td>
+                <textarea rows="10" cols="100"
+                          name="F_PlainTextItemBody"
+                          id="F_PlainTextItemBody"
+                          style="font-family: courier, monospace;"><?PHP
+                            print htmlspecialchars($H_PlainTextItemBody, ENT_SUBSTITUTE);
+                            ?></textarea>
+            </td>
+        </tr>
+      </tbody>
+      <tbody>
+        <tr><th colspan="2">Additional Settings</th></tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_Headers">Extra Message Headers</label></th>
+            <td>
+                <textarea rows="5" cols="100" name="F_Headers" id="F_Headers"><?PHP
+                        print htmlspecialchars($H_Headers);  ?></textarea>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="container">
+    <div class="row">
+        <div class="col">
+            <button type="submit" name="Submit" value="Save"
+                class="btn btn-primary mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
+                class="mv-button-icon" /> Save</button>
+            <?PHP  if ($H_DisplayMode == "Editing") {  ?>
+            <button type="submit" name="Submit" value="Delete"
+                class="btn btn-danger mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                class="mv-button-icon" /> Delete</button>
+            <?PHP  }  ?>
+            <button type="submit" name="Submit" value="Test"
+                class="btn btn-primary mv-button-iconed"><img
+                src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
+                class="mv-button-icon" /> Test</button>
+            <button type="submit" name="Submit" value="Cancel"
+                class="btn btn-danger mv-button-iconed"><img
+                src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+                class="mv-button-icon" /> Cancel</button>
+        </div>
+        <div class="col" title="The test seed value is used to generate the random selection of
+        resources used for test emails.The test resource IDs can be used to choose specific
+        resources for test emails.">
+            Test Resource IDs:
+            <input type="text" name="F_TestIds" size="20" value="<?PHP
+                    print $H_TestIds;  ?>">
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            Test Seed:
+            <input type="text" name="F_TestSeed" size="5" value="<?PHP
+                    print $H_TestSeed;  ?>">
+        </div>
+    </div>
+    </div>
+    <script type="text/javascript">
+      // use the full toolbar
+      $(document).ready(function(){
+        CKEDITOR.config.toolbar = "CwisFull";
+        CKEDITOR.config.allowedContent = true;
+      });
+    </script>
+    <?PHP
+} elseif ($H_DisplayMode == "Listing") {
+    # ----- STATE: LISTING -------------------------------------------------------
+
+    PageTitle("Email Message Templates");
+    if (isset($H_Msgs)) {
+        DisplayMessages($H_Msgs);
+    }
+
+    foreach ($H_Templates as $Id => $Template) {
+        $H_Templates[$Id]["TemplateUsers"] = $H_Plugin->FindTemplateUsers($Id);
+        $H_Templates[$Id]["Name"] = "<i>".$Template["Name"]."</i>";
+    }
+
+    $ListFields = [
+        "Name" => [
+            "AllowHTML" => true,
+        ],
+        "Users" => [
+            "Heading" => "",
+            "ValueFunction" => function ($Item, $FieldName) {
+                if (count($Item["TemplateUsers"])) {
+                    return "Currently in use and cannot be deleted.<br/>"
+                        ."Used by: <i>".implode(", ", $Item["TemplateUsers"])."</i>";
+                } else {
+                    return "";
+                }
+            },
+        ],
+    ];
+
+    $ItemList = new ItemListUI($ListFields);
+    $ItemList->Heading("Email Message Templates");
+    $ItemList->ItemsPerPage(count($H_Templates));
+    $ItemList->BaseLink("");
+    $ItemList->fieldsSortableByDefault(false);
+
+    $ItemList->AddActionButton(
+        "Edit",
+        "index.php?P=P_Mailer_EditMessageTemplates&amp;AC=Edit&amp;ID=\$ID",
+        "Pencil.svg"
+    );
+    $ItemList->AddActionButton(
+        "Delete",
+        "index.php?P=P_Mailer_EditMessageTemplates&amp;AC=Delete&amp;ID=\$ID",
+        "Cross.svg",
+        function ($Item) {
+            return count($Item["TemplateUsers"]) == 0 ? true : false ;
+        }
+    );
+
+    $ItemList->Display($H_Templates);
+    ?><button type="submit" name="Submit" value="Add Template"
+        class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
+        alt="" class="mv-button-icon" /> Add Template</button><?PHP
+} elseif ($H_DisplayMode == "Confirm") {
+    # ----- STATE: CONFIRMING DELETION --------------------------------------------
+
+    PageTitle("Confirm Email Message Template Deletion");
+    ?>
+    <h1>Confirm Template Deletion</h1>
+    <input type="hidden" name="F_Id" value="<?= $H_Id;  ?>">
+    <table class="table table-striped">
+        <tbody>
+        <tr>
+            <th><label for="F_Name">Template Name</label></th>
+            <td><i><?= htmlspecialchars($H_Name);  ?></i></td>
+        </tr>
+        <tr>
+            <th><label for="F_From">From</label></th>
+            <td><pre><?= htmlspecialchars($H_From);  ?></pre></td>
+        <tr>
+            <th><label for="F_Subject">Subject</label></th>
+            <td><pre><?= htmlspecialchars($H_Subject);  ?></pre></td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_Body">Body</label></th>
+            <td><pre><?= htmlspecialchars($H_Body);  ?></pre></td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_ItemBody">List Item</label></th>
+            <td><pre><?= htmlspecialchars($H_ItemBody);  ?></pre></td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_PlainTextBody">Plain Text Body</label></th>
+            <td><pre><?= htmlspecialchars($H_PlainTextBody);  ?></pre></td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_PlainTextItemBody">Plain Text List Item</label></th>
+            <td><pre><?= htmlspecialchars($H_PlainTextItemBody);  ?></pre></td>
+        </tr>
+        <tr class="mv-content-tallrow">
+            <th><label for="F_Headers">Extra Message Headers</label></th>
+            <td><pre><?= htmlspecialchars($H_Headers);  ?></pre></td>
+        </tr>
+        </tbody>
+    </table>
+    <button type="submit" name="Submit" value="Confirm"
+        class="btn btn-danger mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Confirm</button>
+    <button type="submit" name="Submit" value="Cancel"
+        class="btn btn-primary mv-button-iconed"><img
+        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
+        class="mv-button-icon" /> Cancel</button>
+    <?PHP
+}
+
+# HTML page closure
+?></form><?PHP

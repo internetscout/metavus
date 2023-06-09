@@ -1,0 +1,193 @@
+<?PHP
+#
+#   FILE:  DisplayPage.html (Pages plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\Plugins\Pages\Page;
+use Metavus\Plugins\Pages\PageFactory;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+$AF = ApplicationFramework::getInstance();
+
+# if no page ID available
+if (!isset($_GET["ID"]) || !strlen($_GET["ID"])) {
+    # display error message indicating no ID
+    ?><h1>Error</h1>
+    No page ID was supplied.<?PHP
+    PageTitle("Page Not Found");
+    return;
+}
+
+# if no page found with specified ID
+$PFactory = new PageFactory();
+$Id = $_GET["ID"];
+if (!$PFactory->itemExists($Id)) {
+    # display error message indicating page not found
+    ?><h1>Error</h1>
+    No page found with specified ID.
+    <?PHP
+    PageTitle("Page Not Found");
+    return;
+}
+
+
+# retrieve page
+$Page = new Page($Id);
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
+
+# if user cannot view this page
+if (!$Page->userCanView($User)) {
+    # display unauthorized access message
+    PageTitle("Unauthorized Access");
+    ?>
+    <h1>Unauthorized Access</h1>
+    <p>You do not have the permissions required to view this page.</p>
+    <?PHP
+    return;
+}
+
+# set a page title
+PageTitle($Page->get("Title"));
+
+# display edit and delete buttons if appropriate
+if ($Page->userCanEdit($User)) {
+    $Editor = new \Metavus\InlineEditingUI(
+        "index.php?P=P_Pages_InlineEdit&ID=".$Id
+    );
+
+    $RestingControls = [
+        ".cw-pages-controls.cw-pages-delete",
+        ".cw-pages-controls.cw-folders-addresource",
+    ];
+    $EditingControls = [
+        ".cw-pages-controls.cw-pages-edit",
+    ];
+
+    $Editor->onDiscardShowSelectors($RestingControls);
+    $Editor->onCancelShowSelectors($RestingControls);
+    $Editor->onSaveShowSelectors($RestingControls);
+    $Editor->onEditShowSelectors($EditingControls);
+
+    print '<span class="cw-pages-controls cw-pages-'
+    .($Page->containsTabs() ? '' : 'no').'tab-controls">';
+
+    ?>
+    <a class="btn btn-danger btn-sm mv-button-iconed cw-pages-delete"
+            style="float: right;"
+            href="index.php?P=P_Pages_DeletePage&amp;ID=<?= $Id; ?>">
+            <img class="mv-button-icon" src="<?= $AF->GUIFile("Delete.svg") ?>"> Delete</a>
+    <a class="btn btn-primary btn-sm mv-button-iconed cw-pages-edit" style="float: right;"
+            href="index.php?P=P_Pages_EditPage&amp;ID=<?= $Id; ?>">
+            <img class="mv-button-icon" src="<?= $AF->GUIFile("Pencil.svg") ?>"> Full Editor</a>
+    <?PHP  $AF->signalEvent(
+        "EVENT_HTML_INSERTION_POINT",
+        [
+            $AF->getPageName(),
+            "Resource Display Buttons",
+            ["Resource" => $Page]
+        ]
+    );  ?>
+    </span>
+    <?PHP
+
+    print $Editor->getEditingControlsHtml();
+}
+
+# add meta tag for page description
+$Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$Summary = $Page->get("Summary");
+if ($Summary !== null) {
+    $Summary = $AF->escapeInsertionKeywords(
+        $Summary,
+        $Plugin->getAllowedInsertionKeywords()
+    );
+    $AF->addMetaTag([
+        "name" => "description",
+        "content" => $Summary,
+    ]);
+}
+
+# retrieve page content
+$PageContent = $Page->get("Content");
+if ($PageContent === null) {
+    $PageContent = "";
+}
+
+# keep a copy of the unmodified version
+$SourceData = $PageContent;
+
+# if page contains tabs
+if ($Page->containsTabs()) {
+    # make sure JavaScript and CSS files needed for tabs are loaded
+    $AF->requireUIFile('jquery-ui.js');
+    $AF->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
+
+    # add in tab markup
+    $PageContent = Page::processTabMarkup($PageContent);
+}
+
+# make sure only allowed insertion keywords are expanded
+$PageContent = $AF->escapeInsertionKeywords(
+    $PageContent,
+    $Plugin->getAllowedInsertionKeywords()
+);
+
+# ensure all tags in the content are closed
+$PageContent = StdLib::closeOpenTags($PageContent);
+
+# signal view of page
+$AF->signalEvent(
+    "EVENT_FULL_RECORD_VIEW",
+    ["ResourceId" => $Page->id()]
+);
+
+# display the page
+$AF->requireUIFile('Pages_Controls.css');
+print "{{PAGES-BEFORECONTENT}}";
+
+print "<div class='cw-pages-float-barrier'>&nbsp;</div>";
+
+print "<div class='cw-pages-content'>";
+if ($Page->userCanEdit($User)) {
+    $Editor->htmlToDisplay($PageContent);
+    $Editor->sourceData($SourceData);
+    $Editor->display();
+} else {
+    print $PageContent;
+}
+print "</div>";
+
+print "<div class='cw-pages-float-barrier'>&nbsp;</div>";
+
+# add editing information if appropriate
+if ($Page->userCanEdit($User)) {
+    $MDate = $Page->get("Date Last Modified");
+    $MUser = $Page->get("Last Modified By Id", true);
+    $MUser = array_shift($MUser);
+    $MUserName = ($MUser instanceof User) ? $MUser->name() : "(unknown)";
+
+    $EditInfo = "<span><i>Last modified by </i>"
+        ."<span class='cw-pages-modifiedby'>".$MUserName."</span>"
+        ." <i class='cw-pages-modifiedtime'>".StdLib::getPrettyTimestamp($MDate, true)
+        ."</i></span>";
+    ?>
+    <div class="mv-pages-edit-info"><?= $EditInfo ?></div>
+
+    <script type="text/javascript">
+    $(document).ready(function(){
+      $(".cw-pages-controls.cw-pages-edit").hide();
+    });
+    </script>
+    <?PHP
+}
+
+print "{{PAGES-AFTERCONTENT}}";

@@ -1,0 +1,46 @@
+<?PHP
+#
+#   FILE:  PluginConfig.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+
+use Metavus\FormUI;
+
+PageTitle("Plugin Configuration");
+
+$BaseName = (isset($_GET["PN"])) ? $_GET["PN"] : null;
+$Attribs = $H_Plugin->GetAttributes();
+
+?>
+
+<?PHP if (is_null($H_Plugin)) { ?>
+<h1>Plugin Error</h1>
+
+<p>No plugin found with a base name of <i><?= $BaseName; ?></i>.</p>
+
+<?PHP } else { ?>
+<h1>Configure Plugin: <i><?= $Attribs["Name"]; ?></i></h1>
+
+    <?PHP if (!isset($Attribs["CfgSetup"]) || !count($Attribs["CfgSetup"])) { ?>
+<p>This plugin has no configuration settings.</p>
+    <?PHP } else { ?>
+        <?PHP  FormUI::DisplayErrorBlock();  ?>
+        <?PHP  if ($Attribs["Instructions"]) {
+            print("<p>".$Attribs["Instructions"]."</p><br/>");
+        }  ?>
+<form method="post" class="priv-form <?= $H_PluginCssClass ?>"
+    action="index.php?P=PluginConfig&amp;PN=<?= $H_Plugin->getBaseName() ?>">
+        <?PHP  $H_CfgUI->DisplayFormTable();  ?>
+    <button class="btn btn-primary mv-button-iconed" type="submit"
+        name="Submit" value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>"
+        alt="" class="mv-button-icon" /> Save Changes</button>
+    <button class="btn btn-danger mv-button-iconed" type="submit"
+        name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
+        alt="" class="mv-button-icon" /> Cancel</button>
+</form>
+    <?PHP } ?>
+
+<?PHP } ?>
