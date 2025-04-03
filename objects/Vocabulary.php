@@ -3,13 +3,13 @@
 #   FILE:  Vocabulary.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2007-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2007-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
+use Exception;
 use SimpleXMLElement;
 
 /**
@@ -45,17 +45,10 @@ class Vocabulary
         $this->Xml = simplexml_load_file($FileName);
 
         # set error code if load failed
-        $this->StatusString = ($this->Xml === false) ? "XML Load Failed" : "OK";
+        if ($this->Xml === false) {
+            throw new Exception("Failed to load XML");
+        }
         $this->Xml = isset($this->Xml->vocabulary) ? $this->Xml->vocabulary : $this->Xml;
-    }
-
-    /**
-     * Get string indicate status of last action.
-     * @return string Status description ("OK" for successful).
-     */
-    public function status(): string
-    {
-        return $this->StatusString;
     }
 
     /**
@@ -72,7 +65,7 @@ class Vocabulary
      * @param string $FileName Name of .voc file containing vocabulary.
      * @return string 32-character hash string.
      */
-    public static function hashForFile(string $FileName = null): string
+    public static function hashForFile(?string $FileName = null): string
     {
         return strtoupper(md5($FileName));
     }
@@ -205,7 +198,7 @@ class Vocabulary
      * @param array $NewValue Array of paths to search (OPTIONAL)
      * @return array Current search paths.
      */
-    public static function fileSearchPaths(array $NewValue = null): array
+    public static function fileSearchPaths(?array $NewValue = null): array
     {
         if ($NewValue !== null) {
             self::$SearchPaths = $NewValue;
@@ -216,7 +209,6 @@ class Vocabulary
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $FileName;
-    private $StatusString;
     private $Xml;
     private static $SearchPaths = [ "data/Vocabularies" ];
 

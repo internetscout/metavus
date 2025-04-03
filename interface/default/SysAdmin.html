@@ -3,12 +3,13 @@
 #   FILE:  SysAdmin.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
+
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\PluginManager;
@@ -92,7 +93,7 @@ function PrintUserListTable(array $Users): void
     ?>
     <table class="table table-striped">
         <thead>
-            <tr class="thead-dark">
+            <tr class="table-dark">
                 <th>User</th>
                 <th>Login</th>
                 <th>Idle</th>
@@ -196,6 +197,9 @@ if (isset($_GET["AC"]) && ($_GET["AC"] == "ClearPageCache")) {
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
+$ClearButton = new HtmlButton("CLEAR");
+$ClearButton->setSize(HtmlButton::SIZE_SMALL);
+$ClearButton->setLink("?P=SysAdmin&AC=ClearPageCache");
 
 # ----- DISPLAY --------------------------------------------------------------
 
@@ -204,7 +208,7 @@ $User = User::getCurrentUser();
 if ($User->HasPriv(PRIV_SYSADMIN)) {
     if ($AF->GetOrphanedTaskCount()) {
         ?><ul class="alert alert-danger"><li>
-        <b>WARNING:</b>  There are currently orphaned tasks.Please visit the
+        <b>WARNING:</b>  There are currently orphaned tasks. Please visit the
         <a href="index.php?P=TaskQueue">Task Queue</a> page and re-queue or
         delete the tasks as appropriate.
         </li></ul><?PHP
@@ -262,7 +266,7 @@ if ($User->HasPriv(PRIV_SYSADMIN)) {  ?>
 
 <table class="table table-striped">
     <?PHP
-    $SysLogEntries = $GLOBALS["AF"]->GetLogEntries(10);
+    $SysLogEntries = ApplicationFramework::getInstance()->GetLogEntries(10);
     if (count($SysLogEntries)) {
         $LevelStrings = [
             ApplicationFramework::LOGLVL_FATAL => "Fatal",
@@ -353,10 +357,9 @@ if ($User->HasPriv(PRIV_SYSADMIN)) {  ?>
                 print number_format($CacheInfo["NumberOfEntries"])." entries";
                 if ($CacheInfo["NumberOfEntries"]) {
                     print ", oldest from "
-                        .StdLib::getPrettyTimestamp($CacheInfo["OldestTimestamp"])
-                        ."&nbsp;&nbsp;&nbsp;&nbsp;"
-                        ."<a class=\"btn btn-primary btn-sm\" "
-                        ."href=\"?P=SysAdmin&amp;AC=ClearPageCache\">CLEAR</a>";
+                        . StdLib::getPrettyTimestamp($CacheInfo["OldestTimestamp"])
+                        . "&nbsp;&nbsp;&nbsp;&nbsp;"
+                        . $ClearButton->getHtml();
                 }
             } else {
                 print "(disabled)";

@@ -3,13 +3,12 @@
 #   FILE:  MetadataFieldGroup.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use InvalidArgumentException;
 
 /**
@@ -30,7 +29,11 @@ class MetadataFieldGroup extends Folder
 
         foreach ($ItemIds as $Info) {
             try {
-                $Items[] = new $Info["Type"]($Info["ID"]);
+                if ($Info["Type"] == 'Metavus\MetadataField') {
+                    $Items[] = MetadataField::getField($Info["ID"]);
+                } else {
+                    $Items[] = new $Info["Type"]($Info["ID"]);
+                }
             # skip invalid fields
             } catch (InvalidArgumentException $Exception) {
                 continue;

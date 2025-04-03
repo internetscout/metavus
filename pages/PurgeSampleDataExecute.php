@@ -6,28 +6,20 @@
 #   Copyright 2004-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Classification;
-use Metavus\Collection;
-use Metavus\CollectionFactory;
-use Metavus\ControlledName;
-use Metavus\Record;
-use Metavus\SearchEngine;
+namespace Metavus;
 
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
 # check if current user is authorized
-
-
 if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
-PageTitle("Purge Sample Data");
+$AF = ApplicationFramework::getInstance();
 $SearchEngine = new SearchEngine();
 
 # check for cancel button
@@ -44,7 +36,7 @@ $SearchResults = $SearchEngine->search($SearchParams);
 # convert search results to simple array of IDs
 $ResourceList = array_keys($SearchResults);
 
-$ResourceCount = 0;
+$H_ResourceCount = 0;
 $ClassIds = array();
 $CNIds = array();
 
@@ -72,24 +64,24 @@ foreach ($ResourceList as $ResourceId) {
     }
 
     $Resource->destroy();
-    $ResourceCount++;
+    $H_ResourceCount++;
 }
 
 # post-process classification ids
-$ClassificationCount = 0;
+$H_ClassificationCount = 0;
 foreach ($ClassIds as $ClassId => $Classification) {
     # nothing to do if classification has already been deleted
-    if (!Classification::itemExists($ClassId)) {
+    if (!Classification::itemExists((int)$ClassId)) {
         continue;
     }
 
     # delete classification if no resources assigned
     $Class = new Classification($ClassId);
-    $ClassificationCount += $Class->destroy(true);
+    $H_ClassificationCount += $Class->destroy(true);
 }
 
-# post-process controlledname ids
-$ControlledNameCount = 0;
+# post-process controlled name ids
+$H_ControlledNameCount = 0;
 foreach ($CNIds as $CNId => $Dummy) {
     # see if any resources are still using this controlled name
     $CN = new ControlledName($CNId);
@@ -97,7 +89,7 @@ foreach ($CNIds as $CNId => $Dummy) {
     # controlled name not in use, so delete it
     if (!$CN->InUse()) {
         $CN->destroy();
-        $ControlledNameCount++;
+        $H_ControlledNameCount++;
     }
 }
 

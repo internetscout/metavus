@@ -3,23 +3,41 @@
 #   FILE:  ListRules.html (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
+namespace Metavus;
+use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
 
 PageTitle("Rule List");
 
-function GetRuleAttribute($Item, $FieldId)
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Retrieve specified attribute of rule to display.
+ * @param mixed $Item Rule instance.
+ * @param string $FieldId Attribute name.
+ * @return string Text representation to display for attribute.
+ */
+function getRuleAttribute($Item, string $FieldId): string
 {
+    $AF = ApplicationFramework::getInstance();
     switch ($FieldId) {
         case "Criteria":
+            $ViewSearchResultsButton = new HtmlButton("View Search Results");
+            $ViewSearchResultsButton->setIcon("EyeOpen.svg");
+            $ViewSearchResultsButton->setSize(HtmlButton::SIZE_SMALL);
+            $ViewSearchResultsButton->setLink("index.php?P=SearchResults&"
+                . $Item->SearchParameters()->UrlParameterString());
+            $ViewSearchResultsButton->makeOpenNewTab();
             return "<p>"
-                .$Item->SearchParameters()->TextDescription()."<br/><br/>"
-                ."<a href=\"index.php?P=SearchResults&"
-                .$Item->SearchParameters()->UrlParameterString()."\">View Search Results</a>"
-                ."</p>";
+                . $Item->SearchParameters()->TextDescription() . "<br/>"
+                . $ViewSearchResultsButton->getHtml()
+                . "</p>";
 
         case "Enabled":
             return $Item->Enabled() ? "Yes" : "No";
@@ -38,15 +56,37 @@ function GetRuleAttribute($Item, $FieldId)
             } else {
                 return $Item->CheckFrequency()." minutes";
             }
+        default:
+            throw new Exception("Unexpected column in list (\"".$FieldId."\").");
     }
 }
 
+
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_ListChecksum)) {
+    throw new Exception("Variable \$H_ListChecksum not set.");
+}
+if (!isset($H_ItemsPerPage)) {
+    throw new Exception("Variable \$H_ItemsPerPage not set.");
+}
+if (!isset($H_ItemCount)) {
+    throw new Exception("Variable \$H_ItemCount not set.");
+}
+if (!isset($H_Items)) {
+    throw new Exception("Variable \$H_Items not set.");
+}
+if (!isset($H_StartingIndex)) {
+    throw new Exception("Variable \$H_StartingIndex not set.");
+}
+
 # set up links
-$BaseLink = "index.php?P=P_Rules_ListRules&amp;CK=".$H_ListChecksum;
-$AddRuleLink = "index.php?P=P_Rules_EditRule&amp;ID=NEW";
-$RuleDisplayLink = "index.php?P=P_Rules_DisplayRule&amp;ID=\$ID";
-$RuleEditLink = "index.php?P=P_Rules_EditRule&amp;ID=\$ID";
-$RuleDeleteLink = "index.php?P=P_Rules_DeleteRule&amp;ID=\$ID";
+$BaseLink = "index.php?P=P_Rules_ListRules&CK=".$H_ListChecksum;
+$AddRuleLink = "index.php?P=P_Rules_EditRule&ID=NEW";
+$RuleDisplayLink = "index.php?P=P_Rules_DisplayRule&ID=\$ID";
+$RuleEditLink = "index.php?P=P_Rules_EditRule&ID=\$ID";
+$RuleDeleteLink = "index.php?P=P_Rules_DeleteRule&ID=\$ID";
 
 # set up fields to display
 $Fields = [
@@ -55,19 +95,23 @@ $Fields = [
         "DefaultSortField" => true,
     ],
     "Criteria" => [
-        "ValueFunction" => "GetRuleAttribute",
+        "ValueFunction" => "Metavus\\getRuleAttribute",
         "AllowHTML" => true,
     ],
-    "Frequency" => ["ValueFunction" => "GetRuleAttribute"],
-    "Enabled" => ["ValueFunction" => "GetRuleAttribute"],
+    "Frequency" => ["ValueFunction" => "Metavus\\getRuleAttribute"],
+    "Enabled" => ["ValueFunction" => "Metavus\\getRuleAttribute"],
 ];
 
-# create and display list UI
+# create and configure list UI
 $ListUI = new ItemListUI($Fields);
-$ListUI->Heading("Rule List");
-$ListUI->ItemsPerPage($H_ItemsPerPage);
-$ListUI->BaseLink($BaseLink);
-$ListUI->AddTopButton("Add New Rule", $AddRuleLink, "Plus.svg");
-$ListUI->AddActionButton("Edit", $RuleEditLink, "Pencil.svg");
-$ListUI->AddActionButton("Delete", $RuleDeleteLink, "Delete.svg");
-$ListUI->Display($H_Items, $H_ItemCount, $H_StartingIndex);
+$ListUI->heading("Rule List");
+$ListUI->itemsPerPage($H_ItemsPerPage);
+$ListUI->baseLink($BaseLink);
+$ListUI->addTopButton("Add New Rule", $AddRuleLink, "Plus.svg");
+$ListUI->addActionButton("Edit", $RuleEditLink, "Pencil.svg");
+$ListUI->addActionButton("Delete", $RuleDeleteLink, "Delete.svg");
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+$ListUI->display($H_Items, $H_ItemCount, $H_StartingIndex);

@@ -6,14 +6,11 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+namespace Metavus;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Purge Sample Data");
 
 # check if current user is authorized
 CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);

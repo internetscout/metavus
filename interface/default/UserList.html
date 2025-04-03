@@ -3,23 +3,63 @@
 #   FILE:  UserList.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
-use Metavus\PrivilegeFactory;
-use Metavus\User;
+namespace Metavus;
+
+use Exception;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$RemoveButton = new HtmlButton("Remove Selected Users");
+$RemoveButton->setIcon("Delete.svg");
+$RemoveButton->makeSubmitButton();
 
-$AF = ApplicationFramework::getInstance();
+$SearchButton = new HtmlButton("Search");
+$SearchButton->setIcon("MagnifyingGlass.svg");
+$SearchButton->makeSubmitButton();
 
+$EditButton = new HtmlButton("Edit");
+$EditButton->setIcon("Pencil.svg");
+$EditButton->addSemanticClass("btn-primary");
+
+# checks to see if required incoming variables are set
+if (!isset($H_StartingIndex)) {
+    throw new Exception("Required variable \$H_StartingIndex is not initialized");
+}
+if (!isset($G_SortField)) {
+    throw new Exception("Required variable \$G_SortField is not initialized");
+}
+if (!isset($G_SortAscending)) {
+    throw new Exception("Required variable \$G_SortAscending is not initialized");
+}
+if (!isset($G_UserIdChecksum)) {
+    throw new Exception("Required variable \$G_UserIdChecksum is not initialized");
+}
+if (!isset($G_Users)) {
+    throw new Exception("Required variable \$G_Users is not initialized");
+}
+if (!isset($H_ExtraParams)) {
+    throw new Exception("Required variable \$H_ExtraParams is not initialized");
+}
+if (!isset($H_TransportUI)) {
+    throw new Exception("Required variable \$H_TransportUI is not initialized");
+}
+if (!isset($G_TotalItems)) {
+    throw new Exception("Required variable \$G_TotalItems is not initialized");
+}
+if (!isset($H_ItemsPerPage)) {
+    throw new Exception("Required variable \$H_ItemsPerPage is not initialized");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("User List");
 ?>
-
-<?PHP  PageTitle("User List");  ?>
 
 <div class="container-fluid">
     <div class="row">
@@ -89,9 +129,7 @@ $AF = ApplicationFramework::getInstance();
         ?>
         <input type="text" name="F_SearchText" id="SearchText" size="15" value="<?PHP
               print StdLib::getFormValue("F_SearchText");  ?>"/>
-        <button type="submit" class="btn btn-primary btn-sm mv-button-iconed">
-            <img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
-                class="mv-button-icon"/> Search</button>
+              <?= $SearchButton->getHtml() ?>
         </form>
       </div>
     </div>
@@ -140,7 +178,7 @@ $LoginHeaderChar = ($G_SortField != "LastLoginDate") ? ""
             (function($){
               var $checkbox = $("<img>");
               $checkbox.prop({
-                "src": "<?PHP $GLOBALS["AF"]->PUIFile("checkbox.png"); ?>",
+                "src": "<?PHP ApplicationFramework::getInstance()->PUIFile('checkbox.png'); ?>",
                 "title": "Select all of the user accounts on this page."});
               $checkbox.css({"cursor": "pointer"});
               $checkbox.insertAfter("#select-all");
@@ -190,6 +228,9 @@ if (count($G_Users)) {
             false
         );
         $SafeUserId = defaulthtmlentities($UserObj->Id());
+        $EditButton->setLink(
+            "index.php?P=EditUser&ID=".$UserObj->Id()
+        );
         ?>
         <tr>
           <td>
@@ -207,10 +248,7 @@ if (count($G_Users)) {
           <td><?= $UserObj->Get("EMail"); ?></td>
           <td><?= $SignupDate; ?></td>
           <td><?= $LastLogin; ?></td>
-          <td align="right"><a type="button" class="btn btn-primary btn-sm mv-button-iconed"
-                href="index.php?P=EditUser&amp;ID=<?=$UserObj->Id(); ?>">
-                <img src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
-                    class="mv-button-icon"/> Edit</a></td>
+          <td align="right"><?= $EditButton->getHtml() ?></td>
         </tr>
         <?PHP
     }
@@ -238,9 +276,6 @@ $H_TransportUI->message("Users <b>"
     ."</b> of <b>".number_format($G_TotalItems)."</b>");
 $H_TransportUI->display();
 ?>
-
-<button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-    value="Remove Selected Users"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
-    alt="" class="mv-button-icon" /> Remove Selected Users</button>
+<?= $RemoveButton->getHtml() ?>
 
 </form>

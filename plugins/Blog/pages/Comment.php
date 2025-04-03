@@ -3,7 +3,7 @@
 #   FILE:  Comment.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -23,9 +23,9 @@ use ScoutLib\StdLib;
 * validated prior to calling this function.
 * @param Entry $Entry Blog entry to which to add a comment.
 * @param string $CommentBody The body text of the comment.
-* @return Returns a Message object.
+* @return Message a Message object.
 */
-function Blog_PostComment(Entry $Entry, $CommentBody)
+function Blog_PostComment(Entry $Entry, string $CommentBody): Message
 {
     # create a new message
     $Comment = Message::Create();
@@ -45,7 +45,7 @@ function Blog_PostComment(Entry $Entry, $CommentBody)
 * @param Message $Comment The comment to edit.
 * @param string $CommentBody The new comment body.
 */
-function Blog_EditComment(Message $Comment, $CommentBody)
+function Blog_EditComment(Message $Comment, string $CommentBody): void
 {
     $Comment->EditorId(User::getCurrentUser()->Id());
     $Comment->DateEdited(date("YmdHis"));
@@ -55,9 +55,9 @@ function Blog_EditComment(Message $Comment, $CommentBody)
 /**
 * Jump to a CWIS page with the given GET parameters.
 * @param array $GetParameters GET parameters to use when jumping.
-* @param string $Fragment Optional fragment identifier to tack on.
+* @param string|null $Fragment Optional fragment identifier to tack on.
 */
-function Blog_JumpTo(array $GetParameters, $Fragment = null)
+function Blog_JumpTo(array $GetParameters, string $Fragment = null): void
 {
     $AF = ApplicationFramework::getInstance();
     $Url = "index.php";
@@ -122,7 +122,7 @@ $H_Action = StdLib::getFormValue("F_Action");
 $H_EntryId = StdLib::getFormValue("F_EntryId", StdLib::getFormValue("ID"));
 
 # get the blog plugin object
-$H_Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+$H_Blog = Blog::getInstance();
 
 # if the entry ID looks invalid
 if (!is_numeric($H_EntryId) || !Record::ItemExists($H_EntryId)) {
@@ -157,7 +157,7 @@ if (!$H_Blog->UserCanPostComment($User)) {
 # if performing an action to a comment
 if (!is_null($H_Action)) {
     # check for empty comment
-    if ($H_Action == "Post" || $H_Action == "Edit") {
+    if ($H_Action == "Post Comment" || $H_Action == "Save Changes") {
         if (!strlen(trim($H_CommentBody))) {
             $H_State = "Empty Comment";
             return;
@@ -165,7 +165,7 @@ if (!is_null($H_Action)) {
     }
 
     # if posting a new comment
-    if ($H_Action == "Post") {
+    if ($H_Action == "Post Comment") {
         $PublicationDate = $H_Entry->Get(Blog::PUBLICATION_DATE_FIELD_NAME);
 
         # if the user cannot view the entry
@@ -181,7 +181,7 @@ if (!is_null($H_Action)) {
             $H_State = "Comment Creation Failed";
             return;
         }
-    } elseif ($H_Action == "Edit" || $H_Action == "Delete" || $H_Action == "Cancel") {
+    } elseif ($H_Action == "Save Changes" || $H_Action == "Delete" || $H_Action == "Cancel") {
         # if editing or canceling editing an existing comment
         if (Message::ItemExists($H_CommentId)) {
             $H_Comment = new Message($H_CommentId);
@@ -196,7 +196,7 @@ if (!is_null($H_Action)) {
             return;
         }
 
-        if ($H_Action == "Edit") {
+        if ($H_Action == "Save Changes") {
             Blog_EditComment($H_Comment, $H_CommentBody);
         } elseif ($H_Action == "Delete") {
             $H_EntryId = $H_Comment->parentId();

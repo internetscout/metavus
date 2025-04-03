@@ -3,37 +3,46 @@
 #   FILE:  UnauthorizedAccess.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
+use Metavus\FormUI;
+use Metavus\HtmlButton;
 use Metavus\User;
 
+# ----- SETUP ----------------------------------------------------------------
+$FormFields = [
+    "UserName" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "User Name",
+        "Size" => 12,
+        "Placeholder" => ""
+    ],
+    "Password" => [
+        "Type" => FormUI::FTYPE_PASSWORD,
+        "Label" => "Password",
+        "Size" => 12,
+        "Placeholder" => ""
+    ],
+    "Login" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Content" => (new HtmlButton("Log In"))->getHtml(),
+        "Label" => ""
+    ]
+];
+$LogInForm = new FormUI($FormFields);
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
-<?PHP if (!User::getCurrentUser()->IsLoggedIn()) { ?>
+<?PHP if (!User::getCurrentUser()->isLoggedIn()) { ?>
 <div class="mv-content-authbox">
     <h1>Please Log In</h1>
 
     <form method="post" action="index.php?P=UserLogin">
-        <table class="table">
-            <tbody>
-                <tr>
-                    <th><label for="F_UserName">User name</label>:</th>
-                    <td><input type="text" size="12" id="F_UserName" name="F_UserName" /></td>
-                </tr>
-                <tr>
-                    <th><label for="F_Password">Password</label>:</th>
-                    <td><input type="password" size="12" id="F_Password" name="F_Password" /></td>
-                </tr>
-                <tr>
-                    <th></th>
-                    <td><button class="btn btn-primary" type="submit"
-                            value="Log In">Log In</button></td>
-                </tr>
-            </tbody>
-        </table>
+        <?PHP $LogInForm->displayFormTable(); ?>
     </form>
 
     <ul class="list-inline">

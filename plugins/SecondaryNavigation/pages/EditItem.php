@@ -3,9 +3,10 @@
 #   FILE:  EditItem.php (SecondaryNavigation plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use ScoutLib\StdLib;
 use Metavus\FormUI;
@@ -13,31 +14,39 @@ use Metavus\Plugins\SecondaryNavigation;
 use Metavus\Plugins\SecondaryNavigation\NavItem;
 use Metavus\Plugins\SecondaryNavigation\NavMenu;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
 # if user isn't logged in, go home so we don't get errors with user ID
 if (!$User->isLoggedIn()) {
-    $GLOBALS["AF"]->setJumpToPage("Home");
+    $AF->setJumpToPage("Home");
     return;
 }
 
 # get info from form values/set default values
 $NavItemId = StdLib::getFormValue("NI");
-$ReadOnly = true;
 $Link = urldecode(StdLib::getFormValue("AL", ""));
 $Label = urldecode(StdLib::getFormValue("PT", ""));
-$H_EditPage = false;
+$H_EditPage = !is_null($NavItemId);
 
 # determine if we're adding or editing a NavItem
-if (!is_null($NavItemId)) {
-    $H_EditPage = true;
+if ($H_EditPage) {
     # get current link/label
     $NavItem = new NavItem($NavItemId);
+
+    # if the current user is not the owner of this nav item
+    # then redirect them to the edit nav page
+    if ($NavItem->ownerId() != $User->id()) {
+        $AF->setJumpToPage("P_SecondaryNavigation_EditNav");
+        return;
+    }
+
     $Label = $NavItem->label();
     $Link = $NavItem->link();
-    $ReadOnly = !$NavItem->createdByUser();
 } else {
     # get link for display and save relative URL (to be added to the NavItem)
     $CleanUrl = $Link;
@@ -56,7 +65,6 @@ $Fields = [
     "Link" => [
         "Label" => "Link",
         "Type" => FormUI::FTYPE_TEXT,
-        "ReadOnly" => $ReadOnly,
         "Value" => $Link,
         "MaxLength" => 2083,
         "ValidateFunction" => function ($FieldName, $Link) {
@@ -79,6 +87,12 @@ $ButtonPushed = StdLib::getFormValue("Submit", false);
 if ($ButtonPushed) {
     switch ($ButtonPushed) {
         case "Add Link":
+            if ($H_EditPage) {
+                throw new Exception(
+                    "Trying to create an item when in edit mode is not allowed."
+                );
+            }
+
             # validate form input
             if ($H_FormUI->validateFieldInput()) {
                 return;
@@ -94,14 +108,20 @@ if ($ButtonPushed) {
             $Link = $CleanUrl;
 
             # create NavItem and add to NavMenu order
-            $NavItem = NavItem::create($OwnerId, $Label, $Link, false);
+            $NavItem = NavItem::create($OwnerId, $Label, $Link, true);
             $NavMenu = new NavMenu($OwnerId);
             $NavMenu->append($NavItem);
 
             # return to added page
-            $GLOBALS["AF"]->setJumpToPage($Link);
+            $AF->setJumpToPage($Link);
             return;
         case "Save Changes":
+            if (!$H_EditPage) {
+                throw new Exception(
+                    "Trying to save change when not in edit mode is not allowed."
+                );
+            }
+
             # validate form input
             if ($H_FormUI->validateFieldInput()) {
                 return;
@@ -115,11 +135,11 @@ if ($ButtonPushed) {
             $NavItem->link($FormValues["Link"]);
 
             # return to EditNav
-            $GLOBALS["AF"]->setJumpToPage("P_SecondaryNavigation_EditNav");
+            $AF->setJumpToPage("P_SecondaryNavigation_EditNav");
             return;
         case "Cancel":
         default:
-            $GLOBALS["AF"]->setJumpToPage(($H_EditPage) ? "P_SecondaryNavigation_EditNav" :
+            $AF->setJumpToPage(($H_EditPage) ? "P_SecondaryNavigation_EditNav" :
              $CleanUrl);
             return;
     }

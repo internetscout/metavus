@@ -82,6 +82,7 @@
                 <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
 		<Owner>MetavusCore</Owner>
 		<Editable>0</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
                 <EditingPrivileges>
                 	<AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
                 </EditingPrivileges>
@@ -105,6 +106,7 @@
 		<DefaultQualifier>16</DefaultQualifier>
 		<Owner>MetavusCore</Owner>
 		<Editable>0</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
                 <UpdateMethod>OnRecordRelease</UpdateMethod>
                 <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
 	</MetadataField>
@@ -127,6 +129,7 @@
                 <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
 		<Owner>MetavusCore</Owner>
 		<Editable>0</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
 	</MetadataField>
 	<MetadataField>
 		<Name>Added By Id</Name>
@@ -145,6 +148,7 @@
 		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
 		<Owner>MetavusCore</Owner>
 		<Editable>0</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
                 <ViewingPrivileges>
                 	<AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
                         <PrivilegeSet>
@@ -179,6 +183,7 @@
                 <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
 		<Owner>MetavusCore</Owner>
 		<Editable>0</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <ViewingPrivileges>
             <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
             <PrivilegeSet>
@@ -200,7 +205,7 @@
 		<Name>Cumulative Rating</Name>
 		<Type>NUMBER</Type>
 		<Description>This field records the evaluative ratings given to a particular resource by portal users.</Description>
-		<Enabled>1</Enabled>
+		<Enabled>1</Enabled>=
 		<Optional>1</Optional>
 		<CopyOnResourceDuplication>0</CopyOnResourceDuplication>
 		<IncludeInKeywordSearch>0</IncludeInKeywordSearch>
@@ -213,6 +218,7 @@
 		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
 		<Owner>MetavusCore</Owner>
 		<Editable>0</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <EditingPrivileges>
             <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
             <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>

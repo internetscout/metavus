@@ -3,13 +3,13 @@
 #   FILE:  CollectionStats
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 
 /**
@@ -20,8 +20,9 @@ class CollectionStats
     /**
      * Callback for updating the collection statistics, usually executed as a
      * background task.
+     * @return void
      */
-    public static function updateCollectionStats()
+    public static function updateCollectionStats(): void
     {
         $CollectionStats = [];
 
@@ -62,7 +63,7 @@ class CollectionStats
         # Get the local statistics:
         $LocalStats = [];
 
-        $SignalResult = $GLOBALS["AF"]->SignalEvent(
+        $SignalResult = ApplicationFramework::getInstance()->signalEvent(
             "EVENT_LOCAL_COLLECTION_STATS",
             ["LocalStats" => $LocalStats]
         );

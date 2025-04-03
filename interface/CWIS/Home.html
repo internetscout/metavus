@@ -9,9 +9,9 @@
 
 namespace Metavus;
 
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
-use Metavus\User;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
@@ -26,6 +26,7 @@ global $MoreResources;
 global $ResourceOffset;
 global $ReleaseResourceTotal;
 
+$AF = ApplicationFramework::getInstance();
 $SysConfig = SystemConfiguration::getInstance();
 $IntConfig = InterfaceConfiguration::getInstance();
 
@@ -40,10 +41,10 @@ $ResourceOffset = isset($_GET["ResourceOffset"]) ?
 
 # retrieve any announcement content
 ob_start();
-$GLOBALS["AF"]->SignalEvent(
+$AF->SignalEvent(
     "EVENT_HTML_INSERTION_POINT",
     [
-        $GLOBALS["AF"]->GetPageName(),
+        $AF->GetPageName(),
         "Blog Entries", [
             "Blog Name" => "News",
             "Max Entries" => $IntConfig->getInt("NumAnnounceOnHomePage")

@@ -3,25 +3,30 @@
 #   FILE:  TaskQueue.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\ItemListUI;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginCaller;
 use ScoutLib\StdLib;
 
-PageTitle("Task Queue");
-
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function GetTaskCallbackName($Task)
+/**
+ * Get human-friendly printable name for task callback.
+ * @param array $Task Task info.
+ * @return string Printable task name.
+ */
+function getTaskCallbackName(array $Task): string
 {
     $Name = null;
     $Callback = $Task["Callback"];
     $Parameters = $Task["Parameters"];
     if (is_array($Parameters) && (count($Parameters) == 3) &&
-        $GLOBALS["AF"]->isStaticOnlyEvent($Parameters[0])) {
+        ApplicationFramework::getInstance()->isStaticOnlyEvent($Parameters[0])) {
         $Callback = $Parameters[1];
         $Parameters = $Parameters[2];
     }
@@ -46,12 +51,17 @@ function GetTaskCallbackName($Task)
     return $Name;
 }
 
-function GetTaskCallbackParameterString($Task)
+/**
+ * Get human-friendly printable version of task callback parameters.
+ * @param array $Task Task info.
+ * @return string Printable summary of task parameters.
+ */
+function getTaskCallbackParameterString(array $Task): string
 {
-    $String = null;
+    $String = "";
     $Parameters = $Task["Parameters"];
     if (is_array($Parameters) && (count($Parameters) == 3) &&
-        $GLOBALS["AF"]->isStaticOnlyEvent($Parameters[0])) {
+        ApplicationFramework::getInstance()->isStaticOnlyEvent($Parameters[0])) {
         $Parameters = $Parameters[2];
     }
 
@@ -91,7 +101,12 @@ function GetTaskCallbackParameterString($Task)
     return $String;
 }
 
-function GetTaskCrashInfo($Task)
+/**
+ * Get human-friendly printable summary of task crash info.
+ * @param array $Task Task info.
+ * @return string Printable summary of task crash info.
+ */
+function getTaskCrashInfo($Task)
 {
     $CrashInfo = null;
 
@@ -128,16 +143,22 @@ function GetTaskCrashInfo($Task)
 }
 
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
+# verify that required incoming variables are set
+if (!isset($H_PageUrl)) {
+    throw new Exception("Variable \$H_PageUrl not set.");
+}
+
+$AF = ApplicationFramework::getInstance();
 $MaxTasksToDisplay = 50;
-$RunningTasks = $GLOBALS["AF"]->GetRunningTaskList();
+$RunningTasks = $AF->GetRunningTaskList();
 $RunningTaskCount = count($RunningTasks);
-$QueuedTasks = $GLOBALS["AF"]->GetQueuedTaskList($MaxTasksToDisplay);
-$QueuedTaskCount = $GLOBALS["AF"]->GetTaskQueueSize();
-$OrphanedTasks = $GLOBALS["AF"]->GetOrphanedTaskList($MaxTasksToDisplay);
-$OrphanedTaskCount = $GLOBALS["AF"]->GetOrphanedTaskCount();
-$PeriodicEventInfo = $GLOBALS["AF"]->GetKnownPeriodicEvents();
+$QueuedTasks = $AF->GetQueuedTaskList($MaxTasksToDisplay);
+$QueuedTaskCount = $AF->GetTaskQueueSize();
+$OrphanedTasks = $AF->GetOrphanedTaskList($MaxTasksToDisplay);
+$OrphanedTaskCount = $AF->GetOrphanedTaskCount();
+$PeriodicEventInfo = $AF->GetKnownPeriodicEvents();
 $PeriodicEventCount = count($PeriodicEventInfo);
 uasort($PeriodicEventInfo, function ($A, $B) {
     return ($A["NextRun"] < $B["NextRun"]) ? -1 : 1;
@@ -149,7 +170,7 @@ $BaseFields = [
     ],
     "Callback" => [
         "ValueFunction" => function ($Task) {
-            return GetTaskCallbackName($Task)."(".GetTaskCallbackParameterString($Task).")";
+            return getTaskCallbackName($Task)."(".getTaskCallbackParameterString($Task).")";
         },
     ],
     "Description" => [
@@ -157,7 +178,7 @@ $BaseFields = [
     ],
     "Priority" => [
         "ValueFunction" => function ($Task) {
-            return AF::$AvailablePriorities[$Task["Priority"]];
+            return ApplicationFramework::$AvailablePriorities[$Task["Priority"]];
         },
     ],
 ];
@@ -167,7 +188,7 @@ $ButtonLinkPrefix = $BaseLink."&amp;ID=\$ID&amp;AC=";
 $DeleteLink = $ButtonLinkPrefix."DELETE";
 $RequeueLink = $ButtonLinkPrefix."REQUEUE";
 $RunLink = $ButtonLinkPrefix."RUN";
-$RequeueAllLink = $BaseLink."&amp;ID=ALL&amp;AC=REQUEUEALL";
+$RequeueAllLink = $BaseLink."&ID=ALL&AC=REQUEUEALL";
 
 # ----- RUNNING TASKS
 $RFields = [
@@ -193,7 +214,7 @@ $RListUI->noItemsMessage("(no tasks currently running)");
 $RListUI->willDisplayEmptyTable(true);
 $RListUI->addTopCheckbox(
     "Automatic Task Execution Enabled<br/><span id=\"mv-reload-timer\">&nbsp;</span>",
-    $GLOBALS["AF"]->TaskExecutionEnabled(),
+    $AF->TaskExecutionEnabled(),
     "F_TaskExecutionEnabled",
     $BaseLink."&amp;CE=1"
 );
@@ -204,7 +225,7 @@ $QListUI = new ItemListUI($QFields);
 $QListUI->fieldsSortableByDefault(false);
 $QListUI->heading("Queued Tasks");
 if ($QueuedTaskCount) {
-    $Subheading = $QueuedTaskCount." "
+    $Subheading = number_format($QueuedTaskCount)." "
             .StdLib::pluralize("task", $QueuedTaskCount)." currently queued";
     if ($QueuedTaskCount > count($QueuedTasks)) {
         $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
@@ -222,14 +243,12 @@ if ($OrphanedTaskCount) {
     $OListUI = new ItemListUI($RFields);
     $OListUI->fieldsSortableByDefault(false);
     $OListUI->heading("Orphaned Tasks");
-    if ($OrphanedTaskCount) {
-        $Subheading = $OrphanedTaskCount." "
-                .StdLib::pluralize("task", $OrphanedTaskCount)." currently orphaned";
-        if ($OrphanedTaskCount > count($OrphanedTasks)) {
-            $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
-        }
-        $OListUI->subheading($Subheading);
+    $Subheading = number_format($OrphanedTaskCount)." "
+            .StdLib::pluralize("task", $OrphanedTaskCount)." currently orphaned";
+    if ($OrphanedTaskCount > count($OrphanedTasks)) {
+        $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
     }
+    $OListUI->subheading($Subheading);
     $OListUI->heading("Orphaned Tasks");
     $OListUI->baseLink($BaseLink);
     $OListUI->addActionButton("Requeue", $RequeueLink, "RefreshArrow.svg");
@@ -261,7 +280,8 @@ $PFields = [
                 $Value = StdLib::getPrettyTimestamp($NextRun);
                 $MinutesUntil = floor(max(($NextRun - time()), 0) / 60);
                 if ($MinutesUntil < 60) {
-                    $Value .= " (".$MinutesUntil." ".StdLib::pluralize("minute", $MinutesUntil).")";
+                    $Value .= " (".$MinutesUntil." "
+                            .StdLib::pluralize("minute", (int)$MinutesUntil).")";
                 }
             }
             return $Value;
@@ -280,6 +300,11 @@ $PListUI->addActionButton("Run", $RunLink, "accept.png");
 $PListUI->noItemsMessage("(no periodic events found)");
 $PListUI->willDisplayEmptyTable(true);
 
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Task Queue");
+
 $RListUI->display($RunningTasks);
 $QListUI->display($QueuedTasks);
 if ($OrphanedTaskCount) {
@@ -287,7 +312,7 @@ if ($OrphanedTaskCount) {
 }
 $PListUI->display($PeriodicEventInfo);
 
-if ($GLOBALS["AF"]->TaskExecutionEnabled()) {
+if ($AF->TaskExecutionEnabled()) {
     ?><script type="text/javascript">
     // refresh the page in case the HTTP header (in TaskQueue.php) fails
     setTimeout(function(){

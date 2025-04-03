@@ -6,7 +6,10 @@
 #   Copyright 2006-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
+
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
-$GLOBALS["AF"]->setJumpToPage("ResetPassword");
+ApplicationFramework::getInstance()->setJumpToPage("ResetPassword");

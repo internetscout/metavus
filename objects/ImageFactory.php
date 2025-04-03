@@ -3,13 +3,13 @@
 #   FILE:  ImageFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
+use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\ItemFactory;
@@ -37,8 +37,9 @@ class ImageFactory extends ItemFactory
      * Get the list of image Ids associated with a given record and field.
      * @param int $RecordId Record to search for.
      * @param int $FieldId Field to search for.
+     * @return array Associated Images ID s for a given record.
      */
-    public function getImageIdsForRecord(int $RecordId, int $FieldId)
+    public function getImageIdsForRecord(int $RecordId, int $FieldId): array
     {
         # find all images associated with this resource
         $this->DB->query(
@@ -133,8 +134,8 @@ class ImageFactory extends ItemFactory
         $AF = ApplicationFramework::getInstance();
 
         return preg_replace_callback(
-            "%".ImageFactory::SCALED_STORAGE_LOCATION
-            ."/img_([0-9]+)_([0-9]+)x([0-9]+)\.[a-z]+%",
+            "%".self::SCALED_STORAGE_LOCATION."/"
+            .self::SCALED_FILENAME_REGEX."%",
             function ($Matches) use ($AF) {
                 $Id = intval($Matches[1]);
                 $Width = intval($Matches[2]);
@@ -264,8 +265,9 @@ class ImageFactory extends ItemFactory
     /**
      * Queue tasks to check the fixity of files that have not been checked in
      * self::$FixityCheckInterval days.
+     * @return void
      */
-    public static function queueFixityChecks()
+    public static function queueFixityChecks(): void
     {
         $DB = new Database();
         $DB->query(
@@ -281,7 +283,7 @@ class ImageFactory extends ItemFactory
                 "\\Metavus\\Image::callMethod",
                 [$ImageId, "checkFixity"],
                 ApplicationFramework::PRIORITY_LOW,
-                "Check fixity for Image Id ".$ImageId
+                "Check fixity for image with ID ".$ImageId
             );
         }
     }
@@ -291,7 +293,7 @@ class ImageFactory extends ItemFactory
      * had when they were updated.
      * @return array where each row gives an ImageId.
      */
-    public static function getImagesWithFixityProblems()
+    public static function getImagesWithFixityProblems(): array
     {
         $DB = new Database();
         $DB->query("SELECT ImageId FROM Images WHERE ContentUnchanged = 0");
@@ -301,89 +303,80 @@ class ImageFactory extends ItemFactory
     /**
      * Delete scaled versions of images that refer to sizes we no longer use
      * or source images that no longer exist.
+     * @return void
      */
-    public static function cleanOldScaledImages()
+    public static function cleanOldScaledImages(): void
     {
-        # bail if scaled storage directory doesn't exist
-        if (!is_dir(self::SCALED_STORAGE_LOCATION)) {
-            return;
-        }
+        # get all image sizes defined in all interfaces
+        $AllSizes = static::getAllImageSizes();
 
-        # get all the sizes defined in all interfaces
-        $AllSizes = [];
-        $InterfaceConfigFiles = glob("interface/*/interface.ini");
-
-        # if there were no config files, nothing to do
-        if ($InterfaceConfigFiles === false) {
-            return;
-        }
-
-        if (is_dir("local/interface")) {
-            $LocalInterfaceConfigFiles = glob("local/interface/*/interface.ini");
-            if ($LocalInterfaceConfigFiles !== false) {
-                $InterfaceConfigFiles = array_merge(
-                    $InterfaceConfigFiles,
-                    $LocalInterfaceConfigFiles
+        $FileNames = static::getAllScaledImageFileNames();
+        foreach ($FileNames as $FileName) {
+            # parse file name to extract image ID, width, and height
+            preg_match('/^'.self::SCALED_FILENAME_REGEX.'$/', $FileName, $Matches);
+            if (!isset($Matches[1]) || !isset($Matches[2]) || !isset($Matches[3])) {
+                throw new Exception(
+                    "Scaled Image filename in unrecognized format: "
+                        .$FileName
                 );
             }
-        }
-        foreach ($InterfaceConfigFiles as $InterfaceConfigFile) {
-            $Config = parse_ini_file($InterfaceConfigFile);
-            # if file was successfully parsed and contains ImageSizes settings
-            if ($Config !== false && isset($Config["ImageSizes"])) {
-                $AllSizes = array_merge(
-                    array_values($Config["ImageSizes"]),
-                    $AllSizes
-                );
-            }
-        }
-        $AllSizes = array_unique($AllSizes);
 
-        # list the scaled files
-        $Entries = scandir(self::SCALED_STORAGE_LOCATION);
-
-        # scandir() returns FALSE on errors
-        if ($Entries === false) {
-            return;
-        }
-
-        foreach ($Entries as $Entry) {
-            $MatchResult = preg_match(
-                '/^img_([0-9]+)_([0-9]+)x([0-9]+).[a-z]+$/',
-                $Entry,
-                $Matches
-            );
-
-            # if this file does not follow our naming convention for scaled
-            # images, skip it (see Image::getScaledImage())
-            if ($MatchResult !== 1) {
-                continue;
-            }
-
-            $Path = self::SCALED_STORAGE_LOCATION."/".$Entry;
             $ImageId = intval($Matches[1]);
             $Size = intval($Matches[2])."x".intval($Matches[3]);
 
-            # delete scaled versions were the source image no longer exists
-            if (!Image::itemExists($ImageId)) {
-                unlink($Path);
-                continue;
-            }
-
             # delete scaled versions where the generated size is no longer
             # used by any UIs
+            $FullFileName = self::SCALED_STORAGE_LOCATION."/".$FileName;
             if (!in_array($Size, $AllSizes)) {
-                unlink($Path);
+                unlink($FullFileName);
+            }
+
+            # delete scaled versions were the source image no longer exists
+            if (!Image::itemExists($ImageId)) {
+                unlink($FullFileName);
+                continue;
             }
         }
+    }
+
+    /**
+     * Delete all scaled versions of images.  All cached versions of pages
+     * that might contain images should also be deleted after doing this, so
+     * that scaled versions can be regenerated as needed.
+     * @return void
+     */
+    public static function deleteAllScaledImages(): void
+    {
+        $FileNames = static::getAllScaledImageFileNames();
+        foreach ($FileNames as $FileName) {
+            $FullFileName = self::SCALED_STORAGE_LOCATION."/".$FileName;
+            if (file_exists($FullFileName)) {
+                unlink($FullFileName);
+            }
+        }
+    }
+
+    /**
+     * Delete all scaled versions of images and clear global page cache.
+     * Intended to be run as a queued task.  (Needed for command line
+     * use because the user will often not have the necessary OS
+     * permissions to remove the scaled image files.)
+     * @return void
+     * @see ImageFactory::deleteAllScaledImages()
+     */
+    public static function deleteAllScaledImagesAsTask(): void
+    {
+        static::deleteAllScaledImages();
+        (ApplicationFramework::getInstance())->clearPageCache();
     }
 
     /**
      * Delete all image symlinks from Record::IMAGE_CACHE_PATH. Must be called
      * whenever the files these symlinks point to could be removed (e.g.,
      * after deleting the large/preview/thumbnail directories).
+     * @return void
      */
-    public static function deleteAllImageSymlinks()
+    public static function deleteAllImageSymlinks(): void
     {
         # nuke all the image symlinks because they are now invalid
         if (!is_dir(Record::IMAGE_CACHE_PATH)) {
@@ -408,4 +401,83 @@ class ImageFactory extends ItemFactory
     # ---- PRIVATE STATIC INTERFACE ------------------------------------------
 
     private static $FixityCheckInterval = 30; // days
+
+    # regular expression (without bounding delimiters) for name of scaled image files
+    # ($Matches[1] = image ID, $Matches[2] = image width, $Matches[3] = image height)
+    const SCALED_FILENAME_REGEX = "img_([0-9]+)_([0-9]+)x([0-9]+)\.[a-z]+";
+
+    /**
+     * Get all images sizes from all interface directories found under
+     * "interface" and "local/interface".
+     */
+    protected static function getAllImageSizes(): array
+    {
+        $AllSizes = [];
+
+        # load list of interface config files
+        $InterfaceConfigFiles = glob("interface/*/interface.ini");
+        if ($InterfaceConfigFiles === false) {
+            $InterfaceConfigFiles = [];
+        }
+
+        # if local interface tree exists
+        if (is_dir("local/interface")) {
+            # add local versions of interface config files to list
+            $LocalInterfaceConfigFiles = glob("local/interface/*/interface.ini");
+            if ($LocalInterfaceConfigFiles !== false) {
+                $InterfaceConfigFiles = array_merge(
+                    $InterfaceConfigFiles,
+                    $LocalInterfaceConfigFiles
+                );
+            }
+        }
+
+        # for each interface config file
+        foreach ($InterfaceConfigFiles as $InterfaceConfigFile) {
+            # parse out all settings from config file
+            $Config = parse_ini_file($InterfaceConfigFile);
+
+            # if file was successfully parsed and contains image size settings
+            if (($Config !== false) && isset($Config["ImageSizes"])) {
+                # add image size settings to list
+                $AllSizes = array_merge(
+                    array_values($Config["ImageSizes"]),
+                    $AllSizes
+                );
+            }
+        }
+
+        # prune out any duplicate sizes
+        $AllSizes = array_unique($AllSizes);
+
+        return $AllSizes;
+    }
+
+    /**
+     * Get (names of) all scaled image files currently present.
+     * @return array Names of all scaled image files.
+     */
+    protected static function getAllScaledImageFileNames(): array
+    {
+        # return nothing if scaled storage directory doesn't exist
+        if (!is_dir(self::SCALED_STORAGE_LOCATION)) {
+            return [];
+        }
+
+        # get list of all files in scaled file storage directory
+        $FileNames = scandir(self::SCALED_STORAGE_LOCATION);
+
+        # (scandir() returns FALSE on errors)
+        if ($FileNames === false) {
+            return [];
+        }
+
+        # filter list to only those that appear to be scaled files
+        $FilterFunc = function ($FileName) {
+            return (preg_match('/^'.self::SCALED_FILENAME_REGEX.'$/', $FileName) == 1);
+        };
+        $FileNames = array_filter($FileNames, $FilterFunc);
+
+        return $FileNames;
+    }
 }

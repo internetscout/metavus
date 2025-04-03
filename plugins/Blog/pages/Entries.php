@@ -18,7 +18,7 @@ use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-$H_Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+$H_Blog = Blog::getInstance();
 $AF = ApplicationFramework::getInstance();
 
 # retrieve user currently logged in

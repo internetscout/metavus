@@ -6,6 +6,7 @@
 #   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\Message;
 use Metavus\MessageFactory;

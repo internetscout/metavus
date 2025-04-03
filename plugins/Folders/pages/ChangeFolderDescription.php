@@ -3,14 +3,16 @@
 #   FILE:  ChangeFolderDescription.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\User;
 use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -25,6 +27,8 @@ PageTitle("Change Folder Description");
 if (!CheckAuthorization()) {
     return;
 }
+
+$AF = ApplicationFramework::getInstance();
 
 # redirect if no folder ID is given
 if (!isset($_GET["FolderId"])) {

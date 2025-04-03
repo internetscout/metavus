@@ -3,7 +3,7 @@
 #   FILE:  Status.html (AutoFetch plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -114,12 +114,14 @@ $RPOptionList->SubmitOnChange(true);
 # pull out the currently active tab
 $TabParameter = "{active: ".$H_ActiveTab."}";
 
+$AF = ApplicationFramework::getInstance();
+
 # load the js and css necessary for a tabbed interface
-$GLOBALS["AF"]->RequireUIFile(
+$AF->RequireUIFile(
     'jquery-ui.css',
     ApplicationFramework::ORDER_FIRST
 );
-$GLOBALS["AF"]->RequireUIFile('jquery-ui.js');
+$AF->RequireUIFile('jquery-ui.js');
 ?>
 <style type="text/css">
 .ac-main-container table { table-layout: fixed; }

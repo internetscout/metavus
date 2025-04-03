@@ -3,13 +3,12 @@
 #   FILE:  ErrorLoggingTrait.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2024 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 
 /**
@@ -65,7 +64,7 @@ trait ErrorLoggingTrait
      * Log error message for current method.
      * @param string $ErrMsg Error message.
      */
-    protected function logErrorMessage(string $ErrMsg)
+    protected function logErrorMessage(string $ErrMsg): void
     {
         $this->ErrorMsgs[self::getCallingMethod()][] = $ErrMsg;
     }
@@ -82,7 +81,7 @@ trait ErrorLoggingTrait
     /**
      * Clear any existing error messages for current method.
      */
-    protected function clearErrorMessages()
+    protected function clearErrorMessages(): void
     {
         $Method = self::getCallingMethod();
         if (isset($this->ErrorMsgs[$Method])) {
@@ -93,7 +92,7 @@ trait ErrorLoggingTrait
     /**
      * Clear any existing error messages for all method in this class.
      */
-    protected function clearAllErrorMessages()
+    protected function clearAllErrorMessages(): void
     {
         $this->ErrorMsgs = [];
     }

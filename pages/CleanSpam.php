@@ -14,6 +14,8 @@ use Metavus\UserFactory;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
+# ----- MAIN -----------------------------------------------------------------
+
 if (!CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
     return;
 }

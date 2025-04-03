@@ -6,18 +6,13 @@
 #   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Email;
 use ScoutLib\StdLib;
-
-# request that this page not be indexed by search engines
-$GLOBALS["AF"]->addMetaTag(["robots" => "noindex"]);
-
-# retrieve user currently logged in
-$User = User::getCurrentUser();
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
@@ -51,8 +46,12 @@ function GetUserName(User $User)
 function GetUserRealName(User $User)
 {
     if ($User->IsLoggedIn()) {
-        $RealName = trim($User->Get("RealName"));
-        return $RealName ? $RealName : "(not set)";
+        $RealName = $User->Get("RealName");
+        if ($RealName === null || strlen($RealName) == 0) {
+            return "(not set)";
+        }
+        $TrimmedRealName = trim($User->Get("RealName"));
+        return $TrimmedRealName ? $TrimmedRealName : "(not set)";
     }
 
     return "(not logged in)";
@@ -71,9 +70,11 @@ function GetSenderEmail(User $User, $Secondary = null)
     # assemble e-mail address for user
     if ($User->IsLoggedIn()) {
         # try to use the user's real name
-        if (trim($User->Get("RealName"))) {
-            $Name = $User->Get("RealName");
-            # use the user name if the real name is blank
+        $RealName = $User->Get("RealName");
+        if ($RealName !== null && strlen($RealName) > 0 && trim($RealName)) {
+            $Name = trim($RealName);
+
+        # use the user name if the real name is blank
         } else {
             $Name = $User->Get("UserName");
         }
@@ -150,6 +151,12 @@ function getSentMessage($FeedbackType)
 }
 
 # ----- MAIN -----------------------------------------------------------------
+# request that this page not be indexed by search engines
+$AF = ApplicationFramework::getInstance();
+$AF->addMetaTag(["robots" => "noindex"]);
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
 
 $H_FeedbackType = StdLib::getArrayValue(
     $_GET,
@@ -175,7 +182,10 @@ if (!$H_ReturnTo || !IsSafeRedirectUrl($H_ReturnTo)) {
 }
 
 # set the page title based on the feedback type
-PageTitle(GetPageHeader($H_FeedbackType));
+$H_PageHeader = GetPageHeader($H_FeedbackType);
+
+$H_SentMessage = getSentMessage($H_FeedbackType);
+$H_Subheader = getSubheader($H_FeedbackType);
 
 $Fields = [];
 $DescriptionLabel = "Description";
@@ -257,7 +267,7 @@ $Fields["Description"] = [
     "Required" => true,
 ];
 
-if (!$GLOBALS["User"]->IsLoggedIn()) {
+if (!$User->IsLoggedIn()) {
     $Fields["Email"] = [
         "Label" => "Your E-mail Address",
         "Type" => FormUI::FTYPE_TEXT,
@@ -312,7 +322,7 @@ if ($ButtonPushed) {
                     $H_InvalidRecord = true;
                 }
                 if (($RecordId === null || !Record::ItemExists($RecordId))) {
-                    $GLOBALS["AF"]->SetJumpToPage($H_ReturnTo);
+                    $AF->SetJumpToPage($H_ReturnTo);
                     return;
                 }
 
@@ -363,7 +373,7 @@ if ($ButtonPushed) {
             $H_FeedbackSent = true;
             break;
         default:
-            $GLOBALS["AF"]->setJumpToPage($H_ReturnTo);
+            $AF->setJumpToPage($H_ReturnTo);
             return;
     }
 }

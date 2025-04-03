@@ -23,8 +23,9 @@ final class MetavusCore extends Plugin
 
     /**
      * Set plugin attributes.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Metavus Core";
         $this->Version = METAVUS_VERSION;

@@ -3,17 +3,20 @@
 #   FILE:  CalendarEventUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\CalendarEvents;
 
+use Metavus\HtmlButton;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\GoogleMaps;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
 use ScoutLib\iCalendarEvent;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
@@ -26,12 +29,13 @@ class CalendarEventUI
   /**
    * Print an event.
    * @param Event $Event Event to print.
+   * @return void
    */
-    public static function printEvent(Event $Event)
+    public static function printEvent(Event $Event): void
     {
         $AF = ApplicationFramework::getInstance();
         $PluginMgr = PluginManager::getInstance();
-        $CalendarEventsPlugin = $PluginMgr->getPlugin("CalendarEvents");
+        $CalendarEventsPlugin = CalendarEvents::getInstance();
 
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -53,6 +57,7 @@ class CalendarEventUI
         $SafeEndDate = defaulthtmlentities($Event->endDateForDisplay());
         $SafeEndDateForParsing = defaulthtmlentities($Event->endDateForParsing());
         $SafeEndDateTimeForDisplay = defaulthtmlentities($Event->endDateTimeForDisplay());
+        $SafeStartDateTimeForDisplay = defaulthtmlentities($Event->startDateTimeForDisplay());
         $SafeContactEmail = defaulthtmlentities($Event->get("Contact Email"));
         $SafeContactUrl = defaulthtmlentities($Event->get("Contact URL"));
         $SafeiCalUrl = defaulthtmlentities($Event->iCalUrl());
@@ -79,10 +84,15 @@ class CalendarEventUI
         if (!(is_null($Coordinates[GoogleMaps::POINT_LATITUDE]) &&
           is_null($Coordinates[GoogleMaps::POINT_LONGITUDE])) &&
           $PluginMgr->pluginEnabled("GoogleMaps")) {
-            $GMaps = $PluginMgr->getPlugin("GoogleMaps");
-            $SafeMapUrl = $GMaps->GoogleMapsUrl($Location);
+            $GMaps = GoogleMaps::getInstance();
+            $SafeMapUrl = $GMaps->googleMapsUrl($Event->locationString());
             $HasMap = true;
         }
+
+        $EditButton = new HtmlButton("Edit");
+        $EditButton->setIcon("Pencil.svg");
+        $EditButton->setSize(HtmlButton::SIZE_SMALL);
+        $EditButton->setLink(str_replace('$ID', $SafeId, $Event->getSchema()->getEditPage()));
 
         // @codingStandardsIgnoreStart
     ?>
@@ -100,10 +110,7 @@ class CalendarEventUI
                     itemprop="name"><?= $SafeTitle; ?></h1>
               </div>
               <div class="col">
-                <a class="btn btn-primary btn-sm mv-button-iconed"
-                    href="<?= str_replace('$ID', $SafeId, $Event->getSchema()->editPage()); ?>">
-                    <img class="mv-button-icon" alt=""
-                        src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit</a>
+                <?= $EditButton->getHtml(); ?>
                 <?PHP  $AF->signalEvent("EVENT_HTML_INSERTION_POINT",
                     [
                         $AF->getPageName(),
@@ -121,16 +128,17 @@ class CalendarEventUI
           <time class="dtstart calendar_events-start_date"
                 itemprop="startDate"
                 datetime="<?= $SafeStartDateForParsing; ?>">
-              <?= $SafeStartDate; ?></time>
+            <?= $SafeStartDateTimeForDisplay; ?></time>
             <?PHP if ($SpanInDays > 1) { ?>
             <time class="dtend calendar_events-end_date"
                   itemprop="endDate"
                   datetime="<?= $SafeEndDateForParsing; ?>">
-              <?= $SafeEndDate; ?></time>
+              <?= $SafeEndDateTimeForDisplay; ?></time>
             <?PHP if ($SpanInDays < 11) { ?>
               <span class="calendar_events-span">(<?= $SafeSpanInDays; ?> days)</span>
             <?PHP } ?>
-          <?PHP } else if (!$IsAllDay && $SafeStartDate != $SafeEndDateTimeForDisplay) { ?>
+          <?PHP } else if ($SafeStartDate != $SafeEndDateTimeForDisplay
+                          && !$Event->checkIfStartAndEndTimesAreBothMidnight()) { ?>
             <time class="dtend calendar_events-end_date"
                   itemprop="endDate"
                   datetime="<?= $SafeEndDateForParsing; ?>">
@@ -207,12 +215,12 @@ class CalendarEventUI
         <a href="<?= $SafeMapUrl; ?>"
             title="View this location in Google Maps"
             target="_blank"
-            ><?PHP $GMaps->StaticMap(
+            ><?PHP $GMaps->staticMap(
                 $Coordinates[GoogleMaps::POINT_LATITUDE],
                 $Coordinates[GoogleMaps::POINT_LONGITUDE],
-                $CalendarEventsPlugin->configSetting("StaticMapWidth"),
-                $CalendarEventsPlugin->configSetting("StaticMapHeight"),
-                $CalendarEventsPlugin->configSetting("StaticMapZoom")); ?>
+                $CalendarEventsPlugin->getConfigSetting("StaticMapWidth"),
+                $CalendarEventsPlugin->getConfigSetting("StaticMapHeight"),
+                $CalendarEventsPlugin->getConfigSetting("StaticMapZoom")); ?>
         </a>
       <?PHP } else {?>
         <span><?= $Location; ?></span>
@@ -236,11 +244,12 @@ class CalendarEventUI
   /**
    * Print an event summary.
    * @param Event $Event Event to print.
+   * @return void
    */
-    public static function printEventSummary(Event $Event)
+    public static function printEventSummary(Event $Event): void
     {
         $AF = ApplicationFramework::getInstance();
-        $CalendarEventsPlugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+        $CalendarEventsPlugin = CalendarEvents::getInstance();
         $SafeId = defaulthtmlentities($Event->id());
         $SafeEventUrl = defaulthtmlentities($Event->eventUrl());
         $SafeTitle = defaulthtmlentities($Event->get("Title"));
@@ -250,17 +259,22 @@ class CalendarEventUI
             90,
             true
         ));
-        $SafeStartDate = defaulthtmlentities($Event->startDateForDisplay());
+        $SafeStartDateTime = defaulthtmlentities($Event->startDateTimeForDisplay());
         $SafeStartDateForParsing = defaulthtmlentities($Event->startDateForParsing());
         $SafeEndDate = defaulthtmlentities($Event->endDateForDisplay());
         $SafeEndDateForParsing = defaulthtmlentities($Event->endDateForParsing());
-        $SafeEndDateTimeForDisplay = defaulthtmlentities($Event->endDateTimeForDisplay());
+        $SafeStartDateTimeForDisplay = defaulthtmlentities($Event->startDateTimeForDisplay());
         $Description = $Event->get("Description");
         $Location = $Event->locationForHtml();
         $SpanInDays = $Event->spanInDays();
         $SafeSpanInDays = defaulthtmlentities($SpanInDays);
         $IsAllDay = $Event->get("All Day");
         $CanEditEvents = $CalendarEventsPlugin->userCanEditEvents(User::getCurrentUser(), $Event);
+
+        $EditButton = new HtmlButton("Edit");
+        $EditButton->setIcon("Pencil.svg");
+        $EditButton->setLink(str_replace('$ID', $SafeId, $Event->getSchema()->getEditPage()));
+
         // @codingStandardsIgnoreStart
     ?>
     <article class="vevent calendar_events-event calendar_events-summary"
@@ -281,10 +295,7 @@ class CalendarEventUI
                 </h1>
               </div>
               <div class="col">
-                <a class="btn btn-primary mv-button-iconed"
-                    href="<?= str_replace('$ID', $SafeId, $Event->getSchema()->editPage()); ?>">
-                    <img class="mv-button-icon" alt=""
-                        src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit</a>
+                <?=$EditButton->getHtml(); ?>
               </div>
             </div>
           </div>
@@ -300,24 +311,18 @@ class CalendarEventUI
           <time class="dtstart calendar_events-start_date"
                 itemprop="startDate"
                 datetime="<?= $SafeStartDateForParsing; ?>">
-            <?= $SafeStartDate; ?></time>
+                <?= $SafeStartDateTime ?>
+            </time>
           <?PHP if ($SpanInDays > 1) { ?>
-            <time class="dtend calendar_events-end_date"
-                  itemprop="endDate"
-                  datetime="<?= $SafeEndDateForParsing; ?>">
+              <time class="dtend calendar_events-end_date"
+                    itemprop="endDate"
+                    datetime="<?= $SafeEndDateForParsing; ?>">
               <?= $SafeEndDate; ?></time>
-            <?PHP if ($SpanInDays < 11) { ?>
-              <span class="calendar_events-span">(<?= $SafeSpanInDays; ?> days)</span>
-            <?PHP } ?>
-          <?PHP } else if (!$IsAllDay) { ?>
-            <time class="dtend calendar_events-end_date"
-                  itemprop="endDate"
-                  datetime="<?= $SafeEndDateForParsing; ?>">
-              <?= $SafeEndDateTimeForDisplay; ?></time>
-          <?PHP } else { ?>
-            <time class="dtend calendar_events-end_date"
-                  itemprop="endDate"
-                  datetime="<?= $SafeEndDateForParsing; ?>"></time>
+              <?PHP if ($SpanInDays < 11) { ?>
+                  <span class="calendar_events-span">
+                      (<?= $SafeSpanInDays; ?> days)
+                  </span>
+              <?PHP } ?>
           <?PHP } ?>
           <?PHP if ($Location) { ?>
             <span class="location calendar_events-location"><?= $Location; ?></span>
@@ -351,10 +356,11 @@ class CalendarEventUI
      /**
      * Print the metrics for an event.
      * @param Event $Event Event for which to print metrics.
+     * @return void
      */
-    public static function printEventMetrics(Event $Event)
+    public static function printEventMetrics(Event $Event): void
     {
-        $CalendarEventsPlugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+        $CalendarEventsPlugin = CalendarEvents::getInstance();
         $Metrics = $CalendarEventsPlugin->getEventMetrics($Event);
 
         $SafeNumViews = defaulthtmlentities(count($Metrics["Views"]));
@@ -403,12 +409,13 @@ class CalendarEventUI
      * @param int $Size The size of the share buttons.
      * @param string $Color The color of the share buttons.(NULL, "grey", or
      *      "maroon").
+     * @return void
      */
     public static function printShareButtonsForEvent(
         Event $Event,
         $Size = 24,
         $Color = null
-    ) {
+    ): void {
         $AF = ApplicationFramework::getInstance();
         $SafeId = defaulthtmlentities(urlencode((string)$Event->id()));
         $SafeTitle = defaulthtmlentities(rawurlencode(strip_tags($Event->get("Title"))));
@@ -432,7 +439,7 @@ class CalendarEventUI
         <a title="Share this event via e-mail"
            onclick="jQuery.get(cw.getRouterUrl()+'?P=P_SocialMedia_ShareResource&ResourceId=<?= $SafeId; ?>&Site=em');"
            href="mailto:?to=&amp;subject=<?= $SafeTitle; ?>&amp;body=<?= $SafeTitle; ?>:%0D%0A<?= $SafeUrl; ?>">
-            <img src="<?PHP $AF->PUIFile("email_".$FileSuffix.".png"); ?>" alt="E-mail" />
+            <img src="<?PHP $AF->pUIFile("email_".$FileSuffix.".png"); ?>" alt="E-mail" />
         </a>
     </li>
     <li class="list-inline-item">
@@ -459,8 +466,9 @@ class CalendarEventUI
      * Print extra buttons for an event.
      * @param Event $Event Event.
      * @param string $Color The color of the buttons.(NULL or "grey")
+     * @return void
      */
-    public static function printExtraButtonsForEvent(Event $Event, $Color = null)
+    public static function printExtraButtonsForEvent(Event $Event, $Color = null): void
     {
         $AF = ApplicationFramework::getInstance();
         # get the file suffix
@@ -527,6 +535,7 @@ class CalendarEventUI
      * @param string $LastMonth The last month that contains an event.
      * @param int $PreviousMonthTimestamp The timestamp for the previous month.
      * @param int $NextMonthTimestamp The timestamp for the next month.
+     * @return void
      */
     public static function printTransportControls(
         array $EventCounts,
@@ -535,24 +544,33 @@ class CalendarEventUI
         $LastMonth,
         $PreviousMonthTimestamp,
         $NextMonthTimestamp
-    ) {
-        $CalendarEventsPlugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+    ): void {
+        $CalendarEventsPlugin = CalendarEvents::getInstance();
         $SafePreviousMonthName = date("F", $PreviousMonthTimestamp);
         $SafeNextMonthName = date("F", $NextMonthTimestamp);
         $CurrentMonthKey = date("MY");
         $HasEventsForCurrentMonth =
             isset($EventCounts[$CurrentMonthKey])
             && $EventCounts[$CurrentMonthKey] > 0;
+
+        $PreviousMonthButton = new HtmlButton("← $SafePreviousMonthName");
+        $PreviousMonthButton->setLink($CalendarEventsPlugin->getUrl($PreviousMonthTimestamp));
+
+        $TodayButton = new HtmlButton("Today");
+        $TodayButton->setSize(HtmlButton::SIZE_SMALL);
+        $TodayButton->addClass("calendar_events-go_to_today");
+        $TodayButton->setLink($CalendarEventsPlugin->eventsListUrl([], "today"));
+
+        $NextMonthButton = new HtmlButton("$SafeNextMonthName →");
+        $NextMonthButton->setLink($CalendarEventsPlugin->getUrl($NextMonthTimestamp));
+
         // @codingStandardsIgnoreStart
     ?>
       <div class="container calendar_events-transport_controls">
         <div class="row">
           <div class="col calendar_events-back">
             <?PHP if ($CalendarEventsPlugin->showUrl($EventCounts, $PreviousMonthTimestamp)) { ?>
-              <a class="btn btn-primary"
-                 href="<?=
-                    defaulthtmlentities($CalendarEventsPlugin->getUrl($PreviousMonthTimestamp)); ?>"
-                >&larr; <?= $SafePreviousMonthName; ?></a>
+                <?= $PreviousMonthButton->getHtml(); ?>
             <?PHP } ?>
           </div>
           <div class="col calendar_events-selector">
@@ -560,16 +578,13 @@ class CalendarEventUI
               <input type="hidden" name="P" value="P_CalendarEvents_Events" />
               <?PHP self::printMonthSelector($EventCounts, $FirstMonth, $LastMonth, $CurrentMonth); ?>
               <?PHP if ($HasEventsForCurrentMonth) { ?>
-                <a class="btn btn-primary btn-sm calendar_events-go_to_today"
-                   href="<?= $CalendarEventsPlugin->eventsListUrl([], "today"); ?>">Today</a>
+                  <?= $TodayButton->getHtml(); ?>
               <?PHP } ?>
             </form>
           </div>
           <div class="col calendar_events-forward">
             <?PHP if ($CalendarEventsPlugin->showUrl($EventCounts, $NextMonthTimestamp)) { ?>
-              <a class="btn btn-primary" href="<?=
-                defaulthtmlentities($CalendarEventsPlugin->getUrl($NextMonthTimestamp)); ?>"><?=
-                $SafeNextMonthName; ?> &rarr;</a>
+                <?= $NextMonthButton->getHtml(); ?>
             <?PHP } ?>
           </div>
         </div>
@@ -582,22 +597,23 @@ class CalendarEventUI
      * Print the month selector.
      * @param array $EventCounts An array of months mapped to the count of events
      *      for that month.
-     * @param string $FirstMonth The first month that contains an event.
-     * @param string $LastMonth The last month that contains an event.
-     * @param string $SelectedMonth The month that should be selected.
+     * @param ?string $FirstMonth The first month that contains an event.
+     * @param ?string $LastMonth The last month that contains an event.
+     * @param ?string $SelectedMonth The month that should be selected.
+     * @return void
      */
     public static function printMonthSelector(
         array $EventCounts,
-        $FirstMonth,
-        $LastMonth,
-        $SelectedMonth = null
-    ) {
+        ?string $FirstMonth,
+        ?string $LastMonth,
+        ?string $SelectedMonth = null
+    ): void {
         # print nothing if there are no events
         if (!count($EventCounts)) {
             return;
         }
 
-        $CalendarEventsPlugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+        $CalendarEventsPlugin = CalendarEvents::getInstance();
         $CleanUrlPrefix = $CalendarEventsPlugin->cleanUrlPrefix();
 
         # convert the month strings to timestamps
@@ -620,33 +636,38 @@ class CalendarEventUI
         $SelectedYearNumber = intval(date("Y", $SelectedMonthTimestamp));
         $SelectedMonthNumber = intval(date("m", $SelectedMonthTimestamp));
         $SelectedMonthAbbr = strtolower(date("M", $SelectedMonthTimestamp));
-        // @codingStandardsIgnoreStart
-    ?>
-      <select class="calendar_events-month_selector" name="Month">
-        <?PHP if (!$SelectedHasEvents) { ?>
-          <!-- dummy option for the current month -->
-          <option value="<?= $SelectedMonthAbbr; ?> <?= $SelectedYearNumber; ?>"><?= $SelectedMonth; ?></option>
-        <?PHP } ?>
-        <?PHP for ($i = $FirstYearNumber; $i <= $LastYearNumber; $i++) { ?>
-          <optgroup label="<?= defaulthtmlentities($i); ?>">
-            <?PHP for ($j = ($i == $FirstYearNumber ? $FirstMonthNumber : 1);
-                       ($i == $LastYearNumber ? $j <= $LastMonthNumber : $j < 13);
-                       $j++)
-                  {
-                      $Selected = $SelectedYearNumber == $i && $SelectedMonthNumber == $j;
-                      $MonthName = date("F", (int)mktime(0, 0, 0, $j));
-                      $MonthNameAbbr = date("M", (int)mktime(0, 0, 0, $j));
-                      $EventCount = $EventCounts[$MonthNameAbbr.$i];
-                                                                              ?>
-              <option <?PHP if ($Selected) print ' selected="selected" '; ?>
-                      <?PHP if ($EventCount < 1) print ' disabled="disabled" '; ?>
-                      value="<?= strtolower($MonthNameAbbr)." ".$i; ?>">
-                <?= $MonthName; ?>
-              </option>
-            <?PHP } ?>
-          </optgroup>
-        <?PHP } ?>
-      </select>
+
+        $Options = [];
+        $DisabledOptions = [];
+        $SelectedValue = null;
+        if (!$SelectedHasEvents) {
+            # dummy option for the current month
+            $Options[$SelectedYearNumber][$SelectedMonthAbbr . " " . $SelectedYearNumber]
+                = $SelectedMonth;
+        }
+        for ($YearGroup = $FirstYearNumber; $YearGroup <= $LastYearNumber; $YearGroup++) {
+            $Options[$YearGroup] = [];
+            for ($MonthNum = (($YearGroup == $FirstYearNumber) ? $FirstMonthNumber : 1);
+                    $MonthNum <= (($YearGroup == $LastYearNumber) ? $LastMonthNumber : 12);
+                    $MonthNum++) {
+                $MonthName = date("F", (int)mktime(0, 0, 0, $MonthNum));
+                $MonthNameAbbr = date("M", (int)mktime(0, 0, 0, $MonthNum));
+                $EventCount = $EventCounts[$MonthNameAbbr . $YearGroup];
+                $OptionValue = strtolower($MonthNameAbbr) . " " . $YearGroup;
+                $Options[$YearGroup][$OptionValue] = $MonthName;
+                if ($SelectedYearNumber == $YearGroup && $SelectedMonthNumber == $MonthNum) {
+                    $SelectedValue = $OptionValue;
+                }
+                if ($EventCount < 1) {
+                    $DisabledOptions[$OptionValue] = "X";
+                }
+            }
+        }
+        $OptionList = new HtmlOptionList("Month", $Options, $SelectedValue);
+        $OptionList->classForList("calendar_events-month_selector");
+        $OptionList->disabledOptions($DisabledOptions);
+        print $OptionList->getHtml();
+        ?>
       <script type="text/javascript">
         (function(){
           var selector = jQuery(".calendar_events-month_selector");
@@ -660,7 +681,8 @@ class CalendarEventUI
             <?PHP if ((ApplicationFramework::getInstance())->cleanUrlSupportAvailable()) { ?>
               // use clean URLs whenever possible
               var values = jQuery(this).val().split(" ");
-              window.location.href = cw.getBaseUrl() + "<?= $CleanUrlPrefix; ?>/month/" + values[1] + "/" + values[0];
+              window.location.href = cw.getBaseUrl() + "<?= $CleanUrlPrefix; ?>/month/" + values[1]
+                  + "/" + values[0];
             <?PHP } else { ?>
               this.form.submit();
             <?PHP } ?>
@@ -691,7 +713,6 @@ class CalendarEventUI
           selector.blur();
         }());
       </script>
-    <?PHP
-        // @codingStandardsIgnoreEnd
+        <?PHP
     }
 }

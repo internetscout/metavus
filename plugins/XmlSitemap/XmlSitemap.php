@@ -3,37 +3,38 @@
 #   FILE:  XmlSitemap.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\User;
 use Metavus\MetadataSchema;
+use Metavus\Record;
 use Metavus\RecordFactory;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
-use ScoutLib\StdLib;
 
 class XmlSitemap extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "XML Sitemap";
         $this->Version = "1.0.0";
         $this->Description =
             "Provide search engine crawlers with an XML sitemap "
-            ."listing all available Resources.";
+            ."listing all available resources.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
         ];
         $this->EnabledByDefault = true;
     }
@@ -41,14 +42,19 @@ class XmlSitemap extends Plugin
     /**
      * Initialize this plugin, setting up a CleanURL for the xml sitemap.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $Result = $this->checkCacheDirectory();
         if ($Result !== null) {
             return $Result;
         }
 
-        $GLOBALS["AF"]->AddCleanUrl("%^sitemap.xml$%", "P_XmlSitemap_Sitemap");
+        ApplicationFramework::getInstance()->addCleanUrl("%^sitemap.xml$%", "P_XmlSitemap_Sitemap");
+
+        Record::registerObserver(
+            Record::EVENT_ADD | Record::EVENT_SET | Record::EVENT_REMOVE,
+            [$this, "updateResourceTimestamp"]
+        );
 
         return null;
     }
@@ -57,7 +63,7 @@ class XmlSitemap extends Plugin
      * Uninstall the plugin.
      * @return NULL|string NULL if successful or an error message otherwise
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         $this->deleteCacheFile();
         return null;
@@ -66,7 +72,7 @@ class XmlSitemap extends Plugin
     /**
      * Set up configuration for the plugin.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $this->CfgSetup["MemLimitForUpdate"] = [
             "Type" => "Number",
@@ -101,13 +107,10 @@ class XmlSitemap extends Plugin
      * @return array Returns an array of events to be hooked into the application
      *      framework.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [
             "EVENT_DAILY" => "DailyMaintenance",
-            "EVENT_RESOURCE_ADD" => "UpdateResourceTimestamp",
-            "EVENT_RESOURCE_MODIFY" => "UpdateResourceTimestamp",
-            "EVENT_RESOURCE_DELETE" => "UpdateResourceTimestamp",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "pluginConfigChange",
         ];
     }
@@ -118,8 +121,9 @@ class XmlSitemap extends Plugin
      * @param string $ConfigSetting Name of the setting that has change.
      * @param mixed $OldValue The old value of the setting.
      * @param mixed $NewValue The new value of the setting.
+     * @return void
      */
-    public function pluginConfigChange($PluginName, $ConfigSetting, $OldValue, $NewValue)
+    public function pluginConfigChange($PluginName, $ConfigSetting, $OldValue, $NewValue): void
     {
         # only worried about changes to the XmlSitemap plugin
         if ($PluginName != "XML Sitemap") {
@@ -134,23 +138,27 @@ class XmlSitemap extends Plugin
 
     /**
      * Update the timestamp storing the last change to any resource.
+     * @param int $Events Record::EVENT_* values OR'd together.
+     * @param Record $Resource The resource being affected.
+     * @return void
      */
-    public function updateResourceTimestamp()
+    public function updateResourceTimestamp(int $Events, Record $Resource): void
     {
-        $this->configSetting("ResourcesLastModified", time());
+        $this->setConfigSetting("ResourcesLastModified", time());
     }
 
     /**
      * Daily maintenance to regenerate the XML sitemap if it has gotten
      * stale.
+     * @return void
      */
-    public function dailyMaintenance()
+    public function dailyMaintenance(): void
     {
         $CacheFile = $this->getCachePath()."/sitemap.xml";
 
         # if the cache has gone stale, regenerate it
         if (!file_exists($CacheFile) || (filemtime($CacheFile) <
-                $this->configSetting("ResourceLastModified"))) {
+                $this->getConfigSetting("ResourceLastModified"))) {
             file_put_contents($CacheFile, $this->generateSitemap());
         }
     }
@@ -159,7 +167,7 @@ class XmlSitemap extends Plugin
      * Fetch the XML sitemap.
      * @return string xml sitemap content
      */
-    public function getSitemap()
+    public function getSitemap(): string
     {
         $CacheFile = $this->getCachePath()."/sitemap.xml";
 
@@ -183,7 +191,7 @@ class XmlSitemap extends Plugin
      * Get the path of the cache directory.
      * @return string Returns the path of the cache directory.
      */
-    private function getCachePath()
+    private function getCachePath(): string
     {
         return getcwd() . "/local/data/caches/XmlSitemap";
     }
@@ -193,7 +201,7 @@ class XmlSitemap extends Plugin
      * necessary.
      * @return string|null Returns a string if there's an error and NULL otherwise.
      */
-    private function checkCacheDirectory()
+    private function checkCacheDirectory(): ?string
     {
         $CachePath = $this->getCachePath();
 
@@ -223,27 +231,28 @@ class XmlSitemap extends Plugin
      * Genreate XML for the sitemap.
      * @return string xml sitemap.
      */
-    private function generateSitemap()
+    private function generateSitemap(): string
     {
+        $AF = ApplicationFramework::getInstance();
         # increase memory limit
         ini_set(
             "memory_limit",
-            $this->configSetting("MemLimitForUpdate")."M"
+            $this->getConfigSetting("MemLimitForUpdate")."M"
         );
 
         # set up an anon user
         $AnonUser = User::getAnonymousUser();
 
         # compute our URL prefix
-        $UrlPrefix = $GLOBALS["AF"]->rootUrl()
-            .$GLOBALS["AF"]->basePath();
+        $UrlPrefix = $AF->rootUrl()
+            .$AF->basePath();
 
         # generate start tags for the sitemap
         $Xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
             .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
 
         # iterate over all the schemas that we're including
-        foreach ($this->configSetting("Schemas") as $SCId) {
+        foreach ($this->getConfigSetting("Schemas") as $SCId) {
             $Schema = new MetadataSchema($SCId);
 
             # grab a Resource Factory for this schema
@@ -258,7 +267,7 @@ class XmlSitemap extends Plugin
             # iterate over viewable resources
             foreach ($ViewableIds as $Id) {
                 # compute the view page path
-                $PagePath = str_replace('$ID', $Id, $Schema->viewPage());
+                $PagePath = str_replace('$ID', $Id, $Schema->getViewPage());
                 if ($PagePath[0] == "?") {
                     $PagePath = "index.php".$PagePath;
                 }
@@ -266,7 +275,7 @@ class XmlSitemap extends Plugin
                 # append this element to the sitemap
                 $Xml .= "<url><loc>".defaulthtmlentities(
                     $UrlPrefix
-                    .$GLOBALS["AF"]->getCleanRelativeUrlForPath($PagePath)
+                    .$AF->getCleanRelativeUrlForPath($PagePath)
                 )."</loc></url>\n";
             }
         }
@@ -279,8 +288,9 @@ class XmlSitemap extends Plugin
 
     /**
      * Delete the cached sitemap.xml
+     * @return void
      */
-    private function deleteCacheFile()
+    private function deleteCacheFile(): void
     {
         $CacheFile = $this->getCachePath()."/sitemap.xml";
         if (file_exists($CacheFile)) {

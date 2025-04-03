@@ -3,7 +3,7 @@
 #   FILE:  RestAPIHelper
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2017-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2023 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu/cwis/
 #
 
@@ -74,6 +74,13 @@ class RestAPIHelper
 
         # fetch the data
         $Data = curl_exec($Context);
+        if (!is_string($Data)) {
+            return array(
+                "Status" => "Error",
+                "Message" => "cURL execution failed.",
+                "Data" => $Data,
+            );
+        }
 
         # attempt to parse the reply into an encrypted envelope
         $Result = json_decode($Data, true);
@@ -126,8 +133,8 @@ class RestAPIHelper
         $IV = random_bytes(16);
 
         # encrypt and base64 our payload
-        $Payload = base64_encode(openssl_encrypt(
-            json_encode($Env),
+        $Payload = base64_encode((string)openssl_encrypt(
+            (string)json_encode($Env),
             "aes-256-cbc",
             $EncKey,
             OPENSSL_RAW_DATA,
@@ -161,9 +168,10 @@ class RestAPIHelper
         # verify that the provided POST data has the correct elements
         if (!isset($PostData["MAC"]) || !isset($PostData["Payload"]) ||
             !isset($PostData["IV"])) {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "PostData lacks required elements.");
+                "Message" => "PostData lacks required elements."
+            ];
         }
 
         # generate full key from provided password
@@ -184,9 +192,10 @@ class RestAPIHelper
 
         # check MAC, bail if it was not valid
         if (!hash_equals($MAC, base64_decode($PostData["MAC"]))) {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "HMAC validation failure -- message is corrupted.");
+                "Message" => "HMAC validation failure -- message is corrupted."
+            ];
         }
 
         # strip base64 encoding from payload and IV
@@ -201,35 +210,45 @@ class RestAPIHelper
             OPENSSL_RAW_DATA,
             $IV
         );
+        if ($Env === false) {
+            return [
+                "Status" => "Error",
+                "Message" => "Payload decryption failed."
+            ];
+        }
 
         # attempt to unserialize the envelope, bailing on failure
         $Env = json_decode($Env, true);
         if ($Env === null) {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "Could not decode message envelope.");
+                "Message" => "Could not decode message envelope."
+            ];
         }
 
         # check that the envelope contains all the required headers
         if (!isset($Env["Version"]) || !isset($Env["Timestamp"]) ||
             !isset($Env["Cookie"]) || !isset($Env["Data"])) {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "Payload did not include all required parameters.");
+                "Message" => "Payload did not include all required parameters."
+            ];
         }
 
         # check that this is an envelope in a version we understand
         if ($Env["Version"] != "3") {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "Message was not version 3.");
+                "Message" => "Message was not version 3."
+            ];
         }
 
         # check that this envelope isn't too old
         if (time() - $Env["Timestamp"] > 300) {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "Message is more than 5 minutes old.");
+                "Message" => "Message is more than 5 minutes old."
+            ];
         }
 
         # check if this is a duplicate message
@@ -238,9 +257,10 @@ class RestAPIHelper
             $Env["Timestamp"],
             $Env["Cookie"]
         )) {
-            return array(
+            return [
                 "Status" => "Error",
-                "Message" => "This is a duplicate message");
+                "Message" => "This is a duplicate message"
+            ];
         }
 
         call_user_func(
@@ -249,9 +269,10 @@ class RestAPIHelper
             $Env["Cookie"]
         );
 
-        return array(
+        return [
             "Status" => "OK",
-            "Data" => $Env["Data"]);
+            "Data" => $Env["Data"]
+        ];
     }
 
     private $APIUrl;

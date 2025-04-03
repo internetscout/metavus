@@ -3,7 +3,7 @@
 #   FILE:  Comment.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -21,6 +21,11 @@ function Blog_PrintCommentForm(Message $Comment): void
     $SafeCommentId = defaulthtmlentities($Comment->MessageId());
     $SafeCommentBody = defaulthtmlentities($Comment->Body());
 
+    $SaveButton = new HtmlButton("Save Changes");
+    $SaveButton->setName("F_Action");
+
+    $CancelButton = new HtmlButton("Cancel");
+    $CancelButton->setName("F_Action");
     ?>
   <form method="post" action="index.php?P=P_Blog_Comment" class="blog-comment-form">
     <input type="hidden" name="F_EntryId" value="<?= $SafeEntryId; ?>" />
@@ -30,10 +35,8 @@ function Blog_PrintCommentForm(Message $Comment): void
         class="blog-body"><?= $SafeCommentBody; ?></textarea>
 
     <div class="blog-actions">
-      <button id="F_Action" name="F_Action" value="Edit" class="blog-first_submit">
-        Save Changes
-      </button>
-      <button id="F_Action" name="F_Action" value="Cancel">Cancel</button>
+      <?= $SaveButton->getHtml(); ?>
+      <?= $CancelButton->getHtml(); ?>
     </div>
   </form>
   <script type="text/javascript">
@@ -48,8 +51,9 @@ function Blog_PrintCommentForm(Message $Comment): void
     <?PHP
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Edit Comment</h1>

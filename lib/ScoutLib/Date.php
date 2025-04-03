@@ -3,13 +3,12 @@
 #   FILE:  Date.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 1999-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 1999-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 
@@ -44,8 +43,8 @@ class Date
      */
     public function __construct(
         string $BeginDate,
-        string $EndDate = null,
-        int $Precision = null,
+        ?string $EndDate = null,
+        ?int $Precision = null,
         int $DebugLevel = 0
     ) {
         # set debug state
@@ -243,12 +242,12 @@ class Date
 
         # use current month if begin day but no begin month specified
         if (isset($BeginDay) && !isset($BeginMonth)) {
-            $BeginMonth = date("m");
+            $BeginMonth = intval(date("m"));
         }
 
         # use current year if begin month but no begin year specified
         if (isset($BeginMonth) && !isset($BeginYear)) {
-            $BeginYear = date("Y");
+            $BeginYear = intval(date("Y"));
         }
 
         # use begin year if end month but no end year specified
@@ -256,10 +255,27 @@ class Date
             $EndYear = $BeginYear;
         }
 
+        # validate that the day value is valid for the specified month
+        if (isset($BeginDay) && isset($BeginMonth) && isset($BeginYear)) {
+            if (!$this->isValidDayMonthCombo($BeginMonth, $BeginDay, $BeginYear)) {
+                throw new InvalidArgumentException(
+                    "Unable to parse date."
+                );
+            }
+        }
+
+        if (isset($EndDay) && isset($EndMonth) && isset($EndYear)) {
+            if (!$this->isValidDayMonthCombo($EndMonth, $EndDay, $EndYear)) {
+                throw new InvalidArgumentException(
+                    "Unable to parse date."
+                );
+            }
+        }
+
         # after we've shuffled around the numbers, check the result to see if
         # it looks valid, dropping that which doesn't
         foreach (array("Begin", "End") as $Time) {
-            if (isset(${$Time."Year"}) && !${$Time."Year"} >= 1) {
+            if (isset(${$Time."Year"}) && !(${$Time."Year"} >= 0)) {
                 unset(${$Time."Year"});
             }
 
@@ -620,7 +636,7 @@ class Date
      * @param int $NewPrecision New precision value.  (OPTIONAL)
      * @return int|null Current precision value or NULL if unknown.
      */
-    public function precision(int $NewPrecision = null)
+    public function precision(?int $NewPrecision = null)
     {
         if ($NewPrecision != null) {
             $this->Precision = $NewPrecision;
@@ -639,7 +655,7 @@ class Date
      */
     public function sqlCondition(
         string $FieldName,
-        string $EndFieldName = null,
+        ?string $EndFieldName = null,
         string $Operator = "="
     ): string {
         # if no date value is set
@@ -719,30 +735,30 @@ class Date
             # construct SQL condition
             switch ($Operator) {
                 case ">":
-                    $Condition = " ${FieldName} > ${RangeEnd} ";
+                    $Condition = " ".$FieldName." > ".$RangeEnd." ";
                     break;
 
                 case ">=":
-                    $Condition = " ${FieldName} > ${RangeBegin} ";
+                    $Condition = " ".$FieldName." > ".$RangeBegin." ";
                     break;
 
                 case "<":
-                    $Condition = " ${FieldName} <= ${RangeBegin} ";
+                    $Condition = " ".$FieldName." <= ".$RangeBegin." ";
                     break;
 
                 case "<=":
-                    $Condition = " ${FieldName} <= ${RangeEnd} ";
+                    $Condition = " ".$FieldName." <= ".$RangeEnd." ";
                     break;
 
                 case "!=":
-                    $Condition = " (${FieldName} <= ${RangeBegin}"
-                            ." OR ${FieldName} > ${RangeEnd}) ";
+                    $Condition = " (".$FieldName." <= ".$RangeBegin.""
+                            ." OR ".$FieldName." > ".$RangeEnd.") ";
                     break;
 
                 case "=":
                 default:
-                    $Condition = " (${FieldName} > ${RangeBegin}"
-                            ." AND ${FieldName} <= ${RangeEnd}) ";
+                    $Condition = " (".$FieldName." > ".$RangeBegin.""
+                            ." AND ".$FieldName." <= ".$RangeEnd.") ";
                     break;
             }
         }
@@ -757,7 +773,7 @@ class Date
      *       current precision value for date)
      * @return string Printable precision string.
      */
-    public function formattedPrecision(int $Precision = null): string
+    public function formattedPrecision(?int $Precision = null): string
     {
         if ($Precision === null) {
             $Precision = $this->Precision;
@@ -808,9 +824,17 @@ class Date
      */
     public static function isValidDate(
         string $BeginDate,
-        string $EndDate = null
+        ?string $EndDate = null
     ): bool {
         $Result = true;
+        # TODO: This is a temporary solution because Date::__construct()
+        # erroneously doesn't throw an exception when passed an empty begin
+        # date. This should be removed when Date::__construct() is updated to
+        # not accept empty dates.
+        if (strlen(trim($BeginDate)) < 1) {
+            return false;
+        }
+
         try {
             new self($BeginDate, $EndDate);
         } catch (InvalidArgumentException $e) {
@@ -847,5 +871,24 @@ class Date
             }
         }
         return null;
+    }
+
+    /**
+     * Given the year and month, determine if day is valid.
+     * For example, 02/29/2000 is valid but 04/31/2000 is not
+     * @param int $Month
+     * @param int $Day
+     * @param int $Year
+     * @return bool TRUE for days that are in bounds, FALSE for days out of bounds
+     */
+    private function isValidDayMonthCombo($Month, $Day, $Year): bool
+    {
+        $LEAP_YEAR = 4;
+        # If year is 0000, use 0004 instead because:
+        # - checkdate accepts years between 1 and 32767 inclusive
+        # - in some systems 0000 is a leap year, so we should accept
+        #   0000-02-29. See https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar
+        $YearToCheck = $Year === 0 ? $LEAP_YEAR : $Year;
+        return checkdate($Month, $Day, $YearToCheck);
     }
 }

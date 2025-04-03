@@ -3,13 +3,12 @@
 #   FILE:  FolderFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use InvalidArgumentException;
 use ScoutLib\ItemFactory;
 
@@ -28,7 +27,7 @@ class FolderFactory extends ItemFactory
      *       If specified then all operations pertain only to folders with
      *       the specified owner.  (OPTIONAL)
      */
-    public function __construct(int $OwnerId = null)
+    public function __construct(?int $OwnerId = null)
     {
         # set up item factory base class
         parent::__construct("Folder", "Folders", "FolderId", "FolderName", true);
@@ -49,8 +48,8 @@ class FolderFactory extends ItemFactory
      */
     public function createFolder(
         $ItemType,
-        string $FolderName = null,
-        int $OwnerId = null
+        ?string $FolderName = null,
+        ?int $OwnerId = null
     ): Folder {
         # retrieve numerical item type
         $ItemTypeId = ($ItemType === Folder::MIXEDCONTENT)
@@ -82,8 +81,8 @@ class FolderFactory extends ItemFactory
      * @return Folder New folder object.
      */
     public function createMixedFolder(
-        string $FolderName = null,
-        int $OwnerId = null
+        ?string $FolderName = null,
+        ?int $OwnerId = null
     ): Folder {
         # create new mixed-content folder and return it to caller
         return $this->createFolder(Folder::MIXEDCONTENT, $FolderName, $OwnerId);
@@ -108,7 +107,7 @@ class FolderFactory extends ItemFactory
      *       folders with the specified name are found, the one with the lowest
      *       folder ID is returned.
      */
-    public function getFolderByNormalizedName(string $NormalizedName, int $OwnerId = null)
+    public function getFolderByNormalizedName(string $NormalizedName, ?int $OwnerId = null)
     {
         # use default owner if available and none specified
         if (($OwnerId === null) & ($this->OwnerId !== null)) {
@@ -145,7 +144,7 @@ class FolderFactory extends ItemFactory
     public function getFoldersContainingItem(
         $Item,
         $ItemType,
-        int $OwnerId = null,
+        ?int $OwnerId = null,
         bool $SharedFoldersOnly = false
     ): array {
 
@@ -216,10 +215,10 @@ class FolderFactory extends ItemFactory
      */
     public function getFolders(
         $ItemType = null,
-        int $OwnerId = null,
-        string $Name = null,
+        ?int $OwnerId = null,
+        ?string $Name = null,
         int $Offset = 0,
-        int $Count = null
+        ?int $Count = null
     ): array {
 
         # retrieve numerical item type
@@ -253,6 +252,41 @@ class FolderFactory extends ItemFactory
         # return folders (if any) to caller
         return $Folders;
     }
+
+    /**
+     * Filter a list of folders to remove those with no publicly visible items
+     *     in them.
+     * @param array $FolderIds List of folders.
+     * @param array $SchemaIds Schemas to check. (OPTIONAL, defaults to the
+     *     Resource schema).
+     * @return array $Olders that contain public items.
+     */
+    public static function filterOutFoldersWithNoPublicItems(
+        array $FolderIds,
+        array $SchemaIds = [MetadataSchema::SCHEMAID_DEFAULT]
+    ) : array {
+        $Result = [];
+
+        foreach ($FolderIds as $FolderId) {
+            $Folder = new Folder($FolderId);
+
+            $ItemIdsBySchema = RecordFactory::buildMultiSchemaRecordList(
+                $Folder->getVisibleItemIds(
+                    User::getAnonymousUser()
+                )
+            );
+
+            foreach ($SchemaIds as $SchemaId) {
+                if (isset($ItemIdsBySchema[$SchemaId])) {
+                    $Result[] = $FolderId;
+                    continue 2;
+                }
+            }
+        }
+
+        return $Result;
+    }
+
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 

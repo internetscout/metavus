@@ -3,22 +3,65 @@
 #   FILE:  EditClassification.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Classification;
+namespace Metavus;
+
+use Exception;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ChildClasses)) {
+    $H_ChildClasses = null;
+}
+if (!isset($H_Class)) {
+    throw new Exception("H_Class not defined.");
+}
+if (!isset($H_ClassId)) {
+    throw new Exception("H_ClassId not defined.");
+}
+if (!isset($H_ConfirmDelete)) {
+    throw new Exception("H_ConfirmDelete not defined.");
+}
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+if (!isset($H_JumpParams)) {
+    throw new Exception("H_JumpParams not defined.");
+}
 
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->setSize(HtmlButton::SIZE_SMALL);
+$SaveButton->makeSubmitButton();
+
+$DeleteButton = new HtmlButton("Delete Classification");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+$DeleteButton->makeSubmitButton();
+
+$ConfirmButton = new HtmlButton("Confirm Delete Classification");
+$ConfirmButton->setIcon("Delete.svg");
+$ConfirmButton->setSize(HtmlButton::SIZE_SMALL);
+$ConfirmButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->setSize(HtmlButton::SIZE_SMALL);
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classification");
 ?>
 
 <?PHP if ($H_ConfirmDelete) { ?>
-<h1>Confirm Delete <i><?= $H_Class->FullName() ?></i></h1>
-
+<h1>Confirm Delete <i><?= $H_Class->FullName() ?></i>
+</h1>
     <?PHP if ($H_Class->ChildCount()) { ?>
 <p>The following classifications below <i><?= $H_Class->FullName() ?></i>
     will also be deleted:</p>
@@ -30,12 +73,8 @@ PageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classificat
 
 <form method="post" action="index.php?P=EditClassification<?= $H_JumpParams ?>">
     <input type="hidden" name="F_ClassificationId" value="<?= $H_ClassId ?>"/>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Confirm Delete Classification"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Confirm Delete Classification</button>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+        <?= $ConfirmButton->getHtml() ?>
+        <?= $CancelButton->getHtml() ?>    
 </form>
 <?PHP } else { ?>
 <h1>Edit Classification</h1>
@@ -43,14 +82,8 @@ PageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classificat
     <?PHP $H_FormUI->displayErrorBlock(); ?>
 <form method="post" action="index.php?P=EditClassification<?= $H_JumpParams ?>">
     <?PHP $H_FormUI->displayFormTable(); ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon" /> Save Changes</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Delete Classification"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete Classification</button>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $SaveButton->getHtml() ?>
+    <?= $DeleteButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>
 <?PHP } ?>

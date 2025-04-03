@@ -6,9 +6,13 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
 
+if (!isset($H_ResourcesQueued)) {
+    throw new Exception("Variable \$H_ResourcesQueued not set.");
+}
 ?>
 
 <h1>Search Database Rebuild</h1>

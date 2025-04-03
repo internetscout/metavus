@@ -3,17 +3,17 @@
 #   FILE:  StoredEmail.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Mailer;
 
+use Metavus\Plugins\Mailer;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Email;
 use ScoutLib\Item;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -66,17 +66,17 @@ class StoredEmail extends Item
     /**
      * Send the saved Email and destroy this object.
      */
-    public function send()
+    public function send(): void
     {
         $Msg = $this->getEmail();
         $Result = $Msg->send();
         if ($Result) {
             $this->destroy();
         } else {
-            $Mailer = PluginManager::getInstance()->getPlugin("Mailer");
+            $MailerPlugin = Mailer::getInstance();
 
             $TemplateId = $this->DB->UpdateValue("TemplateId");
-            $Templates = $Mailer->GetTemplateList();
+            $Templates = $MailerPlugin->GetTemplateList();
             $TemplateName = $Templates[$TemplateId];
 
             ApplicationFramework::getInstance()->logMessage(
@@ -94,7 +94,7 @@ class StoredEmail extends Item
      * Set the Email object to be stored.
      * @param Email $Email Email to store.
      */
-    private function setEmail($Email)
+    private function setEmail($Email): void
     {
         $this->Email = $Email;
         $this->DB->UpdateValue("Email", serialize($Email));
@@ -109,7 +109,7 @@ class StoredEmail extends Item
      * due to issues with Class and database table names not lining up.
      * @param string $Index Class to set values for.
      */
-    protected static function setDatabaseAccessValues(string $Index)
+    protected static function setDatabaseAccessValues(string $Index): void
     {
         $ClassName = "Mailer_StoredEmail";
         if (!isset(self::$ItemIdColumnNames[$Index])) {

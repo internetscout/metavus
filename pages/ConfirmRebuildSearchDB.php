@@ -6,12 +6,9 @@
 #   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 PageTitle("Confirm Search Database Rebuild");
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 

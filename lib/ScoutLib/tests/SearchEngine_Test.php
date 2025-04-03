@@ -1,7 +1,7 @@
 <?PHP
+// phpcs:disable PSR1.Classes.ClassDeclaration.MultipleClasses
 
 namespace ScoutLib;
-
 use ReflectionObject;
 use ScoutLib\SearchEngine;
 
@@ -204,7 +204,7 @@ class SearchEngine_Test extends \PHPUnit\Framework\TestCase
 */
 class TestSearchEngine extends SearchEngine
 {
-    protected function searchFieldForPhrases(int $FieldId, string $Phrase)
+    protected function searchFieldForPhrases(int $FieldId, string $Phrase): array
     {
         throw Exception("Abstract method placeholder unexpectedly invoked.");
     }
@@ -226,7 +226,7 @@ class TestSearchEngine extends SearchEngine
         throw Exception("Abstract method placeholder unexpectedly invoked.");
     }
 
-    protected function getFieldContent(int $ItemId, string  $FieldId)
+    protected function getFieldContent(int $ItemId, string $FieldId)
     {
         throw Exception("Abstract method placeholder unexpectedly invoked.");
     }

@@ -3,21 +3,23 @@
 #   FILE:  EditConfig.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use ScoutLib\PluginManager;
+use Metavus\Plugins\OAIPMHServer;
+use ScoutLib\ApplicationFramework;
 
 if (!CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN)) {
     return;
 }
 
-$Plugin = PluginManager::getInstance()
-    ->getPlugin("OAIPMHServer");
+$AF = ApplicationFramework::getInstance();
+$OAIPMHServerPlugin = OAIPMHServer::getInstance();
 
 # check for format edit button click
-$Formats = $Plugin->configSetting("Formats");
+$Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
 $Index = 0;
 $FormatToEdit = "";
 foreach ($Formats as $FormatName => $Format) {
@@ -43,6 +45,7 @@ if (isset($_POST["Submit"])) {
             "EarliestDate" => "Earliest Date",
             "DateGranularity" => "Date Granularity"
         ];
+
         foreach ($FormVars as $FieldName => $PrintableName) {
             if (!strlen(trim($_POST["F_RepDescr_".$FieldName]))) {
                 $H_ErrorMessages[] = "<i>".$PrintableName."</i> is required.";
@@ -55,15 +58,23 @@ if (isset($_POST["Submit"])) {
             }
         }
 
-        # if no errors found
+        // if we didn't encounter any errors, we can proceed to saving the configuration
         if (!isset($H_ErrorMessages)) {
-            # save configuration
-            $Plugin->configSetting("RepositoryDescr", $RepDescr);
-            $Plugin->configSetting("SQEnabled", $_POST["F_SQEnabled"]);
+            // verify whether the repository description array is set
+            if (!isset($RepDescr)) {
+                // since this should not be possible, we can just throw an exception
+                throw new Exception(
+                    "No errors were found, but the Repository Description array is not set."
+                    ." This should not be possible."
+                );
+            }
+            // otherwise, we can proceed to saving the configuration
+            $OAIPMHServerPlugin->setConfigSetting("RepositoryDescr", $RepDescr);
+            $OAIPMHServerPlugin->setConfigSetting("SQEnabled", $_POST["F_SQEnabled"]);
         } else {
             # reload values for use in HTML
-            $H_RepDescr = $RepDescr;
-            $H_Formats = $Plugin->configSetting("Formats");
+            $H_RepDescr = $RepDescr ?? [];
+            $H_Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
             $H_SQEnabled = $_POST["F_SQEnabled"];
         }
     }
@@ -92,7 +103,7 @@ if (isset($_POST["Submit"])) {
 # coming into page from elsewhere
 } else {
     # load values for use in HTML
-    $H_RepDescr = $Plugin->configSetting("RepositoryDescr");
-    $H_Formats = $Plugin->configSetting("Formats");
-    $H_SQEnabled = $Plugin->configSetting("SQEnabled");
+    $H_RepDescr = $OAIPMHServerPlugin->getConfigSetting("RepositoryDescr");
+    $H_Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
+    $H_SQEnabled = $OAIPMHServerPlugin->getConfigSetting("SQEnabled");
 }

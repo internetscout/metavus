@@ -3,13 +3,12 @@
 #   FILE:  Email.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -82,7 +81,7 @@ class Email
      *       acceptable email addresses.  (OPTIONAL)
      * @return array Array of current whitelist entries.
      */
-    public static function toWhitelist(array $NewValue = null): array
+    public static function toWhitelist(?array $NewValue = null): array
     {
         if ($NewValue !== null) {
             self::$RecipientWhitelist = $NewValue;
@@ -95,7 +94,7 @@ class Email
      * @param callable $NewValue Function to call just before an Email
      * is sent. The Email will be provided as the first parameter.
      */
-    public static function registerLoggingFunction($NewValue)
+    public static function registerLoggingFunction($NewValue): void
     {
         if (!is_callable($NewValue)) {
             throw new Exception("Invalid logging function provided.");
@@ -119,7 +118,7 @@ class Email
      * parameter to the callback, when it is called.
      * @param callable $NewValue Function to call.
      */
-    public static function registerWhitelistNoticeCallback(callable $NewValue)
+    public static function registerWhitelistNoticeCallback(callable $NewValue): void
     {
         if (!is_callable($NewValue)) {
             throw new Exception("Invalid whitelist notice function provided.");
@@ -131,7 +130,7 @@ class Email
      * If both a recipient whitelist and a whitelist notice callback have been
      * provided, invoke the callback.
      */
-    public static function printWhitelistNotice()
+    public static function printWhitelistNotice(): void
     {
         if (is_null(self::$WhitelistNoticeFunc)) {
             return;
@@ -149,7 +148,7 @@ class Email
      * is logged.
      * @param array $LogData Associative array of data.
      */
-    public function addLogData(array $LogData)
+    public function addLogData(array $LogData): void
     {
         $this->LogData = $LogData;
     }
@@ -161,7 +160,7 @@ class Email
      * @param string $NewValue New message body.  (OPTIONAL)
      * @return string Current message body.
      */
-    public function body(string $NewValue = null): string
+    public function body(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->Body = $NewValue;
@@ -174,7 +173,7 @@ class Email
      * @param string $NewValue New plain-text alternative.  (OPTIONAL)
      * @return string Returns the current plain-text alternative, if any.
      */
-    public function alternateBody(string $NewValue = null): string
+    public function alternateBody(?string $NewValue = null): string
     {
         # set the plain-text alternative if a parameter is given
         if (func_num_args() > 0) {
@@ -189,7 +188,7 @@ class Email
      * @param string $NewValue New message subject.  (OPTIONAL)
      * @return string Current message subject.
      */
-    public function subject(string $NewValue = null): string
+    public function subject(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->Subject = $NewValue;
@@ -205,7 +204,7 @@ class Email
      * @return string Current message sender in RFC-2822 format ("user@example.com"
      *       or "User <user@example.com>" if name available).
      */
-    public function from(string $NewAddress = null, string $NewName = null): string
+    public function from(?string $NewAddress = null, ?string $NewName = null): string
     {
         if ($NewAddress !== null) {
             $NewAddress = trim($NewAddress);
@@ -225,7 +224,7 @@ class Email
      * @param string $NewValue New default address.  (OPTIONAL)
      * @return string Current default address.
      */
-    public static function defaultFrom(string $NewValue = null): string
+    public static function defaultFrom(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::$DefaultFrom = $NewValue;
@@ -241,7 +240,7 @@ class Email
      * @return string Current message "Reply-To" address in RFC-2822 format
      *       ("user@example.com" or "User <user@example.com>" if name available).
      */
-    public function replyTo(string $NewAddress = null, string $NewName = null): string
+    public function replyTo(?string $NewAddress = null, ?string $NewName = null): string
     {
         if ($NewAddress !== null) {
             $NewAddress = trim($NewAddress);
@@ -316,7 +315,7 @@ class Email
      * Specify additional message headers to be included.
      * @param array $NewHeaders Array of header lines.
      */
-    public function addHeaders(array $NewHeaders)
+    public function addHeaders(array $NewHeaders): void
     {
         $HeadersToAdd = [];
 
@@ -364,7 +363,7 @@ class Email
      * @param string $NewValue New character encoding (OPTIONAL)
      * @return string Current character encoding.
      */
-    public function charSet(string $NewValue = null): string
+    public function charSet(?string $NewValue = null): string
     {
         # set the plain-text alternative if a parameter is given
         if (func_num_args() > 0) {
@@ -379,7 +378,7 @@ class Email
      * @param bool $NewValue New setting (OPTIONAL)
      * @return bool TRUE for HTML messages
      */
-    public function isHtml(bool $NewValue = null) : bool
+    public function isHtml(?bool $NewValue = null) : bool
     {
         if (!is_null($NewValue)) {
             $this->IsHtml = $NewValue;
@@ -393,7 +392,7 @@ class Email
      * @param string $NewValue Character sequence used to end lines.
      * @return string Current character sequence used to end lines.
      */
-    public static function lineEnding(string $NewValue = null): string
+    public static function lineEnding(?string $NewValue = null): string
     {
         if (!is_null($NewValue)) {
             self::$LineEnding = $NewValue;
@@ -539,7 +538,7 @@ class Email
      * @param int $NewValue New delivery method.  (OPTIONAL)
      * @return int Current delivery method.
      */
-    public static function defaultDeliveryMethod(int $NewValue = null): int
+    public static function defaultDeliveryMethod(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             self::$DefaultDeliveryMethod = $NewValue;
@@ -558,7 +557,7 @@ class Email
      * @return string Current server.
      * @see server()
      */
-    public static function defaultServer(string $NewValue = null): string
+    public static function defaultServer(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::$DefaultServer = $NewValue;
@@ -572,7 +571,7 @@ class Email
      * @return int Current port number.
      * @see port()
      */
-    public static function defaultPort(int $NewValue = null): int
+    public static function defaultPort(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             self::$DefaultPort = $NewValue;
@@ -586,7 +585,7 @@ class Email
      * @return string Current user name.
      * @see userName()
      */
-    public static function defaultUserName(string $NewValue = null): string
+    public static function defaultUserName(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::$DefaultUserName = $NewValue;
@@ -600,7 +599,7 @@ class Email
      * @return string Current password.
      * @see password()
      */
-    public static function defaultPassword(string $NewValue = null): string
+    public static function defaultPassword(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::$DefaultPassword = $NewValue;
@@ -614,7 +613,7 @@ class Email
      * @return bool Current authentication setting.
      * @see useAuthentication()
      */
-    public static function defaultUseAuthentication(bool $NewValue = null): bool
+    public static function defaultUseAuthentication(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             self::$DefaultUseAuthentication = $NewValue;
@@ -629,7 +628,7 @@ class Email
      * @param string $NewSettings New delivery settings values.
      * @return string Current delivery settings values.
      */
-    public static function defaultDeliverySettings(string $NewSettings = null): string
+    public static function defaultDeliverySettings(?string $NewSettings = null): string
     {
         if ($NewSettings !== null) {
             $Settings = unserialize($NewSettings);
@@ -1190,7 +1189,7 @@ class Email
 
             # stop getting the tag name if whitespace is found and something is
             # available for the tag name
-            if ($TagName !== null && strlen($TagName) && preg_match('/[\r\n\s]/', $Char)) {
+            if ($TagName !== null && preg_match('/[\r\n\s]/', $Char)) {
                 break;
             }
 

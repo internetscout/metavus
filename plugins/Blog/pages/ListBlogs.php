@@ -7,6 +7,7 @@
 #   http://metavus.net
 #
 
+use Metavus\Plugins\Blog;
 use Metavus\TransportControlsUI;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
@@ -15,7 +16,7 @@ if (!CheckAuthorization(PRIV_SYSADMIN)) {
     return;
 }
 
-$BlogPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$BlogPlugin = Blog::getInstance();
 
 # blog list field definition
 $H_BlogFields = [

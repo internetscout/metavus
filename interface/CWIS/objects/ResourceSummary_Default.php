@@ -9,9 +9,9 @@
 
 namespace Metavus;
 
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Image;
-use Metavus\User;
 
 /**
 * Class for default resource summary display.
@@ -29,8 +29,9 @@ class ResourceSummary_Default extends ResourceSummary
     /**
      * Display (output HTML) for resource summary.
      */
-    public function display()
+    public function display() : void
     {
+        $AF = ApplicationFramework::getInstance();
         $Resource = $this->Resource;
 
         # retrieve user currently logged in
@@ -108,7 +109,7 @@ class ResourceSummary_Default extends ResourceSummary
 
         # get link to full record page
         $FullRecordLink = htmlspecialchars(
-            preg_replace('%\$ID%', $Resource->Id(), $Schema->viewPage())
+            preg_replace('%\$ID%', $Resource->Id(), $Schema->getViewPage())
         );
         $FullRecordLinkTag = "<a href=\"".$FullRecordLink."\""
                 ." title=\"View More Info for ".(isset($Title)
@@ -152,7 +153,7 @@ class ResourceSummary_Default extends ResourceSummary
                 $ResourceRating = $Resource->get($RatingField);
 
                 # signal event to allow other code to change rating value
-                $ResourceRating = $GLOBALS["AF"]->signalEvent(
+                $ResourceRating = $AF->signalEvent(
                     "EVENT_FIELD_DISPLAY_FILTER",
                     [
                         "Field" => $RatingField,
@@ -240,7 +241,7 @@ class ResourceSummary_Default extends ResourceSummary
                             </div>
                         <?PHP } else {?>
                             <?= $GoButtonOpenTagNoFocus ?>
-                            <img src="<?= ApplicationFramework::baseUrl().$GLOBALS["AF"]->GUIFile("go.gif") ?>"
+                            <img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile("go.gif") ?>"
                                  class="mv-content-resourcesummary-gobutton" alt="View Resource" />
                             <?= $GoButtonCloseTag ?>
                         <?PHP } ?>
@@ -270,7 +271,7 @@ class ResourceSummary_Default extends ResourceSummary
                     <td class="mv-content-resourcesummary-actions">
                         <ul class="list-group list-group-flush">
                             <?PHP if (isset($RatingGraphic) && $RatingsEnabled && isset($RatingAltText)) { ?>
-                            <li class="list-group-item"><img src="<?= ApplicationFramework::baseUrl().$GLOBALS["AF"]->GUIFile($RatingGraphic) ?>" title="<?= $RatingAltText; ?>" alt="<?= $RatingAltText; ?>" class="mv-rating-graphic" /></li>
+                            <li class="list-group-item"><img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile($RatingGraphic) ?>" title="<?= $RatingAltText; ?>" alt="<?= $RatingAltText; ?>" class="mv-rating-graphic" /></li>
                             <?PHP } else if (isset($RatingString) && $RatingsEnabled) { ?>
                             <li class="list-group-item"><?= $RatingString ?></li>
                             <?PHP } ?>
@@ -278,7 +279,7 @@ class ResourceSummary_Default extends ResourceSummary
                             <?PHP if ($this->Editable) { ?>
                             <li class="list-group-item">
                               <a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $Resource->getEditPageUrl() ?>">
-                                <img class="mv-button-icon" src="<?= ApplicationFramework::baseUrl().$GLOBALS["AF"]->GUIFile("Pencil.svg") ?>" alt="" />
+                                <img class="mv-button-icon" src="<?= ApplicationFramework::baseUrl().$AF->GUIFile("Pencil.svg") ?>" alt="" />
                                 Edit
                               </a>
                             </li>
@@ -317,7 +318,7 @@ class ResourceSummary_Default extends ResourceSummary
     /**
      * Display (output HTML) for compact resource summary.
      */
-    public function displayCompact()
+    public function displayCompact() : void
     {
         $Resource = $this->Resource;
 
@@ -397,7 +398,7 @@ class ResourceSummary_Default extends ResourceSummary
 
         # get link to full record page
         $FullRecordLink = htmlspecialchars(
-            preg_replace('%\$ID%', $Resource->Id(), $Schema->viewPage())
+            preg_replace('%\$ID%', $Resource->Id(), $Schema->getViewPage())
         );
         $FullRecordLinkTag = "<a href=\"".$FullRecordLink."\""
                 ." title=\"View More Info for ".(isset($Title)
@@ -466,6 +467,7 @@ class ResourceSummary_Default extends ResourceSummary
      */
     public static function displayFastRating(int $ResourceId, $UserRating = 0)
     {
+        $AF = ApplicationFramework::getInstance();
         static $SupportJsDisplayed = false;
 
         if (!$SupportJsDisplayed) {
@@ -509,7 +511,6 @@ class ResourceSummary_Default extends ResourceSummary
             // @codingStandardsIgnoreEnd
             $SupportJsDisplayed = true;
         }
-
         $Stars = intval(($UserRating + 5) / 20);
         $UserRatingGraphic = "BigStars--".$Stars."_0.gif";
 
@@ -525,7 +526,7 @@ class ResourceSummary_Default extends ResourceSummary
         $RatingUrlHead = ApplicationFramework::baseUrl()."index.php?P=RateResource"
             ."&amp;F_ResourceId=".$ResourceId."&amp;F_Rating=";
         $ImageURLBase = ApplicationFramework::baseUrl()
-            .$GLOBALS["AF"]->GUIFile($UserRatingGraphic);
+            .$AF->GUIFile($UserRatingGraphic);
         $ImageURLBase = preg_replace('/BigStars.*/', '', $ImageURLBase);
         $OnMouseOut = "SwapStars( '".$ResourceId."', ".$Stars.", true, '"
             .$ImageURLBase."' );";
@@ -565,7 +566,7 @@ class ResourceSummary_Default extends ResourceSummary
         // @codingStandardsIgnoreStart
 ?>
     <div class="RatingDiv mv-content-rating" id="RatingDiv<?= $ResourceId ?>">
-        <img src="<?= ApplicationFramework::baseUrl().$GLOBALS["AF"]->GUIFile($UserRatingGraphic); ?>"
+        <img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile($UserRatingGraphic); ?>"
           width="75" height="16" border="0" usemap="#StarMap_<?= $ResourceId; ?>"
           id="Stars<?= $ResourceId; ?>" alt="<?= $RatingGraphicAlt; ?>" class="inline">
     </div>

@@ -1,11 +1,13 @@
 <?php
 
 # parameters for accessing SQL database server
+# (single quotes for strings so that values with dollar signs (esp password)
+#  will work correctly)
 $GLOBALS["G_Config"]["Database"] = array(
-        "UserName" => "X-DBUSER-X",
-        "Password" => "X-DBPASSWORD-X",
-        "Host" => "X-DBHOST-X",
-        "DatabaseName" => "X-DBNAME-X",
+        "UserName" => 'X-DBUSER-X',
+        "Password" => 'X-DBPASSWORD-X',
+        "Host" => 'X-DBHOST-X',
+        "DatabaseName" => 'X-DBNAME-X',
         );
 
 # default/fallback user interface

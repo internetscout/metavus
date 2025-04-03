@@ -3,13 +3,33 @@
 #   FILE:  ErrorLog.html (GoogleMaps plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\ItemListUI;
 
 PageTitle("GoogleMaps Error Log");
+
+# report errors
+if (isset($H_Error)) {
+    print '<p class="alert alert-danger">'.$H_Error.'</p>';
+    return;
+}
+
+# check required variables
+if (!isset($H_BaseLink)) {
+    throw new Exception("Variable \$H_BaseLink not set.");
+}
+if (!isset($H_Items)) {
+    throw new Exception("Variable \$H_Items not set.");
+}
+if (!isset($H_ItemsPerPage)) {
+    throw new Exception("Variable \$H_ItemsPerPage not set.");
+}
+if (!isset($H_TotalItems)) {
+    throw new Exception("Variable \$H_TotalItems not set.");
+}
 
 $ListFields = [
     "Address" => [
@@ -19,10 +39,20 @@ $ListFields = [
     ],
 ];
 
-# create and display list UI
 $ListUI = new ItemListUI($ListFields);
-$ListUI->Heading("Google Maps: Geocode Errors");
-$ListUI->ItemsPerPage($H_ItemsPerPage);
-$ListUI->BaseLink($H_BaseLink);
 $ListUI->fieldsSortableByDefault(false);
-$ListUI->Display($H_Items, $H_TotalItems);
+$ListUI->itemsPerPage($H_ItemsPerPage);
+$ListUI->baseLink($H_BaseLink);
+$ListUI->addActionButton(
+    "Delete",
+    function ($Item) {
+        return 'index.php?P=P_GoogleMaps_ErrorLog&A=DELETE&ID='.$Item["Id"];
+    },
+    "Delete.svg"
+);
+?>
+<h1>Google Maps: Geocode Errors</h1>
+<p><i>Failing addresses will be automatically retried. Retries can be stopped by
+    deleting the errors for an address using the <code>Delete</code> buttons below.</i></p>
+<?PHP
+$ListUI->display($H_Items, $H_TotalItems);

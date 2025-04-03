@@ -3,13 +3,12 @@
 #   FILE:  PersistentDoublyLinkedList.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use ScoutLib\Database;
 use Exception;
 
@@ -54,8 +53,8 @@ class PersistentDoublyLinkedList
     public function __construct(
         string $ItemTableName,
         string $ItemIdFieldName,
-        string $SqlCondition = null,
-        string $ItemTypeFieldName = null
+        ?string $SqlCondition = null,
+        ?string $ItemTypeFieldName = null
     ) {
 
         # grab our own database handle
@@ -80,7 +79,7 @@ class PersistentDoublyLinkedList
      * @param string $Condition New SQL condition clause.  (OPTIONAL)
      * @return string|null Current SQL condition clause or NULL if no clause set.
      */
-    public function sqlCondition(string $Condition = null)
+    public function sqlCondition(?string $Condition = null)
     {
         if ($Condition) {
             $this->SqlCondition = $Condition;
@@ -100,9 +99,9 @@ class PersistentDoublyLinkedList
     public function insertBefore(
         $TargetItemOrItemId,
         $NewItemOrItemId,
-        int $TargetItemType = null,
-        int $NewItemType = null
-    ) {
+        ?int $TargetItemType = null,
+        ?int $NewItemType = null
+    ): void {
 
         # verify item types supplied or omitted as appropriate
         $this->checkItemTypeParameter($TargetItemType);
@@ -176,9 +175,9 @@ class PersistentDoublyLinkedList
     public function insertAfter(
         $TargetItemOrItemId,
         $NewItemOrItemId,
-        int $TargetItemType = null,
-        int $NewItemType = null
-    ) {
+        ?int $TargetItemType = null,
+        ?int $NewItemType = null
+    ): void {
 
         # verify item types supplied or omitted as appropriate
         $this->checkItemTypeParameter($TargetItemType);
@@ -187,10 +186,10 @@ class PersistentDoublyLinkedList
         # retrieve item IDs
         $NewItemId = (is_object($NewItemOrItemId)
                         && method_exists($NewItemOrItemId, "id"))
-                ? $NewItemOrItemId->Id() : $NewItemOrItemId;
+                ? $NewItemOrItemId->id() : $NewItemOrItemId;
         $TargetItemId = (is_object($TargetItemOrItemId)
                         && method_exists($TargetItemOrItemId, "id"))
-                ? $TargetItemOrItemId->Id() : $TargetItemOrItemId;
+                ? $TargetItemOrItemId->id() : $TargetItemOrItemId;
 
         # remove new item from existing position (if necessary)
         $this->remove($NewItemId, $NewItemType);
@@ -246,7 +245,7 @@ class PersistentDoublyLinkedList
      * @param mixed $ItemOrItemId Item to add.
      * @param int $ItemType Numerical type of item to add.  (OPTIONAL)
      */
-    public function prepend($ItemOrItemId, int $ItemType = null)
+    public function prepend($ItemOrItemId, ?int $ItemType = null): void
     {
         # verify item types supplied or omitted as appropriate
         $this->checkItemTypeParameter($ItemType);
@@ -302,7 +301,7 @@ class PersistentDoublyLinkedList
      *       supplied for the item ID(s)/object(s), or a single item type may
      *       be specified, which will be assumed for all items.  (OPTIONAL)
      */
-    public function append($ItemsOrItemIds, $ItemTypes = null)
+    public function append($ItemsOrItemIds, $ItemTypes = null): void
     {
         # verify item types supplied or omitted as appropriate
         $this->checkItemTypeParameter($ItemTypes);
@@ -509,7 +508,7 @@ class PersistentDoublyLinkedList
      * @param int $ItemType Numerical type of item to be removed.
      * @return bool TRUE if item was removed or FALSE if item was not found.
      */
-    public function remove(int $ItemId, int $ItemType = null): bool
+    public function remove(int $ItemId, ?int $ItemType = null): bool
     {
         # verify item types supplied or omitted as appropriate
         $this->checkItemTypeParameter($ItemType);
@@ -677,7 +676,7 @@ class PersistentDoublyLinkedList
      * @param int $NewId ID of item to insert.
      * @param int|null $NewType Type of item (numerical value) to insert.
      */
-    private function setPreviousItemId(int $ItemId, $ItemType, int $NewId, $NewType)
+    private function setPreviousItemId(int $ItemId, $ItemType, int $NewId, $NewType): void
     {
         if ($this->ItemTypesInUse) {
             $this->DB->Query("UPDATE ".$this->ItemTableName
@@ -701,7 +700,7 @@ class PersistentDoublyLinkedList
      * @param int $NewId ID of item to insert.
      * @param int|null $NewType Type of item (numerical value) to insert.
      */
-    private function setNextItemId(int $ItemId, $ItemType, int $NewId, $NewType)
+    private function setNextItemId(int $ItemId, $ItemType, int $NewId, $NewType): void
     {
         if ($this->ItemTypesInUse) {
             $this->DB->Query("UPDATE ".$this->ItemTableName
@@ -734,7 +733,7 @@ class PersistentDoublyLinkedList
         $NewPreviousType,
         int $NewNextId,
         $NewNextType
-    ) {
+    ): void {
 
         if ($this->ItemTypesInUse) {
             $this->DB->Query("UPDATE ".$this->ItemTableName
@@ -759,7 +758,7 @@ class PersistentDoublyLinkedList
      * Verify that item types are supplied when required and not supplied otherwise.
      * @param mixed $ItemType ItemType value to check
      */
-    private function checkItemTypeParameter($ItemType)
+    private function checkItemTypeParameter($ItemType): void
     {
         if ($this->ItemTypesInUse) {
             if ($ItemType === null) {

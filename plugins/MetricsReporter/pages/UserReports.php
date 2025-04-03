@@ -3,13 +3,15 @@
 #   FILE:  CollectionReports.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
+use Metavus\InterfaceConfiguration;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
-use Metavus\InterfaceConfiguration;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -20,16 +22,22 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
+$AF = ApplicationFramework::getInstance();
+
 # grab ahold of the relevant metrics objects
-$Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-$Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+$Recorder = MetricsRecorder::getInstance();
+$Reporter = MetricsReporter::getInstance();
 
 # regular users vs time
 $H_RegUserCount = [];
 foreach ($Recorder->GetSampleData(
     MetricsRecorder::ST_REGUSERCOUNT
 ) as $SampleDate => $SampleValue) {
-    $TS = strtotime(date("Y-m-d", strtotime($SampleDate)));
+    $SampleDateAsTime = strtotime($SampleDate);
+    if ($SampleDateAsTime === false) {
+        continue;
+    }
+    $TS = strtotime(date("Y-m-d", $SampleDateAsTime));
     $H_RegUserCount[$TS] = $SampleValue;
 }
 ksort($H_RegUserCount);
@@ -39,7 +47,11 @@ $H_PrivUserCount = [];
 foreach ($Recorder->GetSampleData(
     MetricsRecorder::ST_PRIVUSERCOUNT
 ) as $SampleDate => $SampleValue) {
-    $TS = strtotime(date("Y-m-d", strtotime($SampleDate)));
+    $SampleDateAsTime = strtotime($SampleDate);
+    if ($SampleDateAsTime === false) {
+        continue;
+    }
+    $TS = strtotime(date("Y-m-d", $SampleDateAsTime));
     $H_PrivUserCount[$TS] = $SampleValue;
 }
 ksort($H_PrivUserCount);
@@ -51,6 +63,9 @@ foreach ($Recorder->GetSampleData(
 ) as $SampleDate => $SampleValue) {
     # discard the 'time' part of the timestamp
     $SampleTS = strtotime($SampleDate);
+    if ($SampleTS === false) {
+        continue;
+    }
     $DayTS  = strtotime(date("Y-m-d", $SampleTS));
 
     # make sure we haven't seen this day already,
@@ -73,6 +88,9 @@ foreach ($Recorder->GetSampleData(
 ) as $SampleDate => $SampleValue) {
     # discard the 'time' part of the timestamp
     $SampleTS = strtotime($SampleDate);
+    if ($SampleTS === false) {
+        continue;
+    }
     $DayTS  = strtotime(date("Y-m-d", $SampleTS));
 
     # Make sure we haven't seen this day before,
@@ -89,7 +107,7 @@ foreach ($Recorder->GetSampleData(
 }
 
 if (isset($_GET["JSON"])) {
-    $GLOBALS["AF"]->SuppressHTMLOutput();
+    $AF->SuppressHTMLOutput();
     header("Content-Type: application/json; charset="
            .InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet"), true);
 

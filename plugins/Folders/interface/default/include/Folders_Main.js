@@ -2,7 +2,7 @@
  * FILE:  Folders_Main.js (Folders plugin)
  *
  * Part of the Metavus digital collections platform
- * Copyright 2021 Edward Almasy and Internet Scout Research Group
+ * Copyright 2021-2024 Edward Almasy and Internet Scout Research Group
  * http://metavus.net
  *
  * Contains main Javascript functionality for Folders plugin
@@ -211,4 +211,16 @@
 // toggle view folder sorting order
 $("#mv-folders-sort-order-button").click(function() {
     $('input[type="radio"]').not(':checked').prop("checked", true);
+});
+
+// when "Share" checkbox is toggled, add/remove CSS class that indicates that
+// folder is not publicly-visible
+$('input[name="Share"]').change(function() {
+    var folderId = $(this).attr('data-folderid');
+    var FolderContainer = $(`.mv-folders-folder[data-folderid=${folderId}]`);
+    if ($(this).is(':checked')) {
+        FolderContainer.removeClass('mv-notpublic');
+    } else {
+        FolderContainer.addClass('mv-notpublic');
+    }
 });

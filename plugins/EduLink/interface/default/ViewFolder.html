@@ -1,0 +1,188 @@
+<?PHP
+#
+#   FILE:  SelectFolder.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\HtmlButton;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\EduLink;
+use Metavus\Plugins\EduLink\ResourceSelectionUI;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get HTML for the owner information to be displayed at top right of the
+ * page.  Will display an icon if available, falling back to the publisher's
+ * name if not.
+ * @param string $LaunchId LTI Launch Id for this request.
+ * @param int $UserId User to describe.
+ * @return string HTML.
+ */
+function ownerInfo(string $LaunchId, int $UserId)
+{
+    $Owner = new User($UserId);
+
+    $AF = ApplicationFramework::getInstance();
+    $SelectFolderUrl = $AF->baseUrl()."index.php"
+        ."?P=P_EduLink_SelectFolder"
+        ."&L=".$LaunchId;
+
+    $UserImageFieldId = EduLink::getInstance()
+        ->configSetting("UserAvatarField");
+    $UserImageField = !is_null($UserImageFieldId) ?
+        MetadataField::getField($UserImageFieldId) :
+        null;
+
+    $Html = '<a class="btn btn-primary mv-p-edulink-user-button"'
+        .' href="'.$SelectFolderUrl."&amp;O=".$UserId.'">';
+
+    $FoundImage = false;
+    if (!is_null($UserImageField)) {
+        $Avatar = $Owner->get($UserImageField);
+        if (count($Avatar)) {
+            $Html.= (new Image($Avatar[0]))
+                ->getHtml("mv-image-thumbnail");
+            $FoundImage = true;
+        }
+    }
+
+    if (!$FoundImage) {
+        $Html .= $Owner->getBestName();
+    }
+
+    $Html .= "</a>";
+
+    return $Html;
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+# if there was not an error, check for required parameters
+if (!isset($H_Error)) {
+    if (!isset($H_LaunchId)) {
+        throw new Exception("H_LaunchId not defined.");
+    }
+
+    if (!isset($H_Folder)) {
+        throw new Exception("H_Folder not defined.");
+    }
+}
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+$User = User::getCurrentUser();
+
+$LogoFileName = $Plugin->getConfigSetting("LogoFileName");
+$LogoHref = trim($Plugin->getConfigSetting("LogoHref") ?? "");
+if (strlen($LogoHref) == 0) {
+    $LogoHref = $AF->baseUrl();
+}
+
+$AF->doNotUrlFingerprint('Meeple.svg');
+$AF->doNotUrlFingerprint('Plus.svg');
+
+$AF->requireUIFile("P_EduLink.css");
+$AF->requireUIFile("P_EduLink.js");
+
+$SendButton = new HtmlButton("Send Collection to LMS");
+$SendButton->addClass('mv-p-edulink-send-button');
+$SendButton->setIcon("ArrowUpInsideCircle.svg");
+$SendButton->makeSubmitButton();
+
+$SelectFolderUrl = "index.php?P=P_EduLink_SelectFolder"
+    ."&amp;L=".$H_LaunchId
+    ."&amp;O=".$H_Folder->ownerId();
+
+$SelectRecordsUrl = $AF->baseUrl()."index.php"
+    ."?P=P_EduLink_LTIHome"
+    ."&L=".$H_LaunchId;
+
+$BaseLink = "index.php?P=P_EduLink_ViewFolder"
+    ."&amp;L=".$H_LaunchId
+    ."&amp;F=".$H_Folder->id();
+
+
+$SelectionUI = new ResourceSelectionUI(
+    $H_ResourceIds,
+    $H_SelectedRecordIds
+);
+
+# ----- DISPLAY --------------------------------------------------------------
+
+include($AF->gUIFile("EduLink-StdPageStart.html"));
+
+if (isset($H_Error)) {
+    print "<div style='alert alert-danger'>"
+        ."<p><b>ERROR:</b> ".$H_Error."</p>"
+        ."</div>";
+    include($AF->gUIFile("EduLink-StdPageEnd.html"));
+    return;
+}
+
+?>
+<div class="float-end"><?= ownerInfo($H_LaunchId, $H_Folder->ownerId()) ?></div>
+<h1><?= $H_Folder->name() ?></h1>
+<p><?= $H_Folder->note() ?></p>
+<form id="mv-collection-form" method="post" enctype="multipart/form-data"
+      <?= count($H_SelectedRecordIds) > 0 ? 'style="display: none"' : '' ?>
+      action="<?= $BaseLink ?>"
+
+    >
+  <p><?= $SendButton->getHtml() ?></p>
+  <p><i>(Selecting a collection will incorporate all the resources in the collection as a unit.
+      Changes to the list of resources in the collection will propagate into the LMS
+      automatically.)</i></p>
+</form>
+
+<p class="clearfix">&nbsp;</p>
+
+<form id="mv-selection-form" method="post" enctype="multipart/form-data"
+      action="<?= $SelectRecordsUrl ?>">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col">
+        <?= $SelectionUI->selectedRecordListHtml() ?>
+
+        <div class="mv-search-results">
+          <?= $SelectionUI->recordListHtml() ?>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script type='text/javascript'>
+(function () {
+    function toggleSelectCollectionVisibility() {
+        if ($(".row:visible", ".mv-p-edulink-selected-records").length > 0) {
+            $("#mv-collection-form").hide();
+        } else {
+            $("#mv-collection-form").show();
+        }
+    }
+
+    $(document).ready(function(){
+        $(".mv-p-edulink-record-control").on(
+            "click",
+            toggleSelectCollectionVisibility
+        );
+        $(".mv-p-edulink-record-control input[type='checkbox']").on(
+            "change",
+            toggleSelectCollectionVisibility
+        );
+    });
+})();
+</script>
+
+<?PHP
+include($AF->gUIFile("EduLink-StdPageEnd.html"));

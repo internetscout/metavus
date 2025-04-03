@@ -6,14 +6,15 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\ControlledName;
 use Metavus\MetadataSchema;
-use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
-$GLOBALS["AF"]->beginAjaxResponse();
+ApplicationFramework::getInstance()->beginAjaxResponse();
 
 # check that the user is authorized to view the page
 if (!CheckAuthorization(PRIV_NAMEADMIN)) {

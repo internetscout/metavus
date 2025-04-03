@@ -11,6 +11,7 @@
 namespace Metavus;
 use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -47,9 +48,19 @@ if (isset($_SERVER["HTTP_REFERER"]) && strpos("EditResource", $_SERVER["HTTP_REF
     $ReturnPrompt = "Return to full record for ";
 }
 
-# construct download link
-$DownloadLink = "index.php?P=FullImage&ID=".$H_Image->id()
-        ."&RI=".$H_Resource->id()."&FI=".$H_Field->id()."&DL=1";
+# construct download button
+$DownloadButton = new HtmlButton("Download Original Image");
+$DownloadButton->setLink(
+    "index.php?P=FullImage&ID=".$H_Image->id()
+        ."&RI=".$H_Resource->id()."&FI=".$H_Field->id()."&DL=1"
+);
+$DownloadButton->setIcon("Download.svg");
+$UseIIIF = PluginManager::getInstance()->pluginReady("IIIFImageViewer");
+
+$ImageHtml = $UseIIIF ?
+    \Metavus\Plugins\IIIFImageViewer::getInstance()
+            ->getHtmlForImageViewer($H_Image->id(), "mv-image-large") :
+    "<div>".$H_Image->getHtml("mv-image-large")."</div>";
 
 # ----- DISPLAY --------------------------------------------------------------
 
@@ -68,10 +79,9 @@ PageTitle($H_Field->Name()." Display");
 
 <hr />
 
-<?= $H_Image->getHtml("mv-image-large"); ?>
-<a class="btn btn-primary mv-button-iconed" href="<?= $DownloadLink
-        ?>"><img class="mv-button-icon" src="<?= $AF->gUIFile("Download.svg")
-        ?>"> Download Original Image</a>
+<?= $ImageHtml ?>
+
+<p class="pt-4"><?= $DownloadButton->getHtml() ?></p>
 
 <hr />
 

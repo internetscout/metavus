@@ -8,10 +8,10 @@
 #
 
 # ----- MAIN -----------------------------------------------------------------
+use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\CalendarEvents\Event;
 use Metavus\Plugins\CalendarEvents\EventFactory;
 use Metavus\User;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -22,7 +22,7 @@ use ScoutLib\StdLib;
 */
 function GetSqlForField($FieldName, $Condition)
 {
-    $Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+    $Plugin = CalendarEvents::getInstance();
 
     if (($Condition == "contains") && preg_match("/Date/", $FieldName)) {
         # when we do a Contains on a date, translate the contents of
@@ -41,7 +41,7 @@ function GetSqlForField($FieldName, $Condition)
 PageTitle("Calendar Events");
 
 # get the plugin
-$Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$Plugin = CalendarEvents::getInstance();
 
 # don't allow unauthorized access
 if (!$Plugin->UserCanEditEvents(User::getCurrentUser())) {
@@ -58,6 +58,7 @@ $H_EventsPerPage = 50;
 $H_SchemaId = $Plugin->GetSchemaId();
 
 $EFactory = new EventFactory();
+$EFactory->limitRetrievedEventsToOwnerId(false);
 
 $H_EventCountsByTense = $EFactory->GetEventCountsByTense();
 

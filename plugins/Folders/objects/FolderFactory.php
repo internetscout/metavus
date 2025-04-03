@@ -3,7 +3,7 @@
 #   FILE:  Folder_FolderFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -152,7 +152,7 @@ class FolderFactory extends \Metavus\FolderFactory
      * @return Folder New folder.
      * @throws Exception if no owner ID is available
      */
-    public function createDefaultFolder(int $OwnerId = null): Folder
+    public function createDefaultFolder(?int $OwnerId = null): Folder
     {
         # throws exception if it cannot get the owner ID
         $OwnerId = $this->getOwnerId($OwnerId);
@@ -164,6 +164,26 @@ class FolderFactory extends \Metavus\FolderFactory
         $ResourceFolder->prependItem($DefaultFolder->id());
 
         return $DefaultFolder;
+    }
+
+    /**
+     * Get the public folders owned by a given list of users.
+     * @param array $UserIds User IDs.
+     * @return array Folder IDs.
+     */
+    public static function getSharedFoldersOwnedByUsers(
+        array $UserIds
+    ): array {
+        array_walk(
+            $UserIds,
+            function (&$x) {
+                $x = (int)$x;
+            }
+        );
+
+        return (new \Metavus\FolderFactory())->getItemIds(
+            "IsShared = 1 AND OwnerId IN (".implode(",", $UserIds).")"
+        );
     }
 
     /**

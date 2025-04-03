@@ -1,0 +1,106 @@
+--- /home/chalpin/filepond_parts/filepond-server-php-2.0.1/index.php	2019-09-19 06:02:24.000000000 -0500
++++ index.php	2024-12-20 11:11:21.000000000 -0600
+@@ -59,7 +59,7 @@
+     
+     // exit if is get
+     if ($_SERVER['REQUEST_METHOD'] === 'HEAD') {
+-        $patch = glob($dir . '.patch.*');
++        $patch = preg_split('%\R%', file_get_contents($dir . ".index"), -1, PREG_SPLIT_NO_EMPTY);
+         $offsets = array();
+         $size = '';
+         $last_offset = 0;
+@@ -104,11 +104,24 @@
+     $name = FilePond\sanitize_filename($_SERVER['HTTP_UPLOAD_NAME']);
+ 
+     // write patch file for this request
+-    file_put_contents($dir . '.patch.' . $offset, fopen('php://input', 'r'));
++    $result = file_put_contents($dir . '.patch.' . $offset, fopen('php://input', 'r'));
++    if ($result === false) {
++        throw new Exception("Unable to write data to patch file.");
++    }
++
++    // update index
++    $result = file_put_contents(
++        $dir . '.index',
++        $dir . '.patch.' . $offset . "\n",
++        FILE_APPEND
++    );
++    if ($result === false) {
++        throw new Exception("Unable to write data to index file.");
++    }
+ 
+     // calculate total size of patches
+     $size = 0;
+-    $patch = glob($dir . '.patch.*');
++    $patch = preg_split('%\R%', file_get_contents($dir . ".index"), -1, PREG_SPLIT_NO_EMPTY);
+     foreach ($patch as $filename) {
+         $size += filesize($filename);
+     }
+@@ -116,8 +129,28 @@
+     // if total size equals length of file we have gathered all patch files
+     if ($size == $length) {
+ 
++        $patch_glob = glob($dir . '.patch.*');
++
++        $intersection = array_intersect($patch, $patch_glob);
++        if (count($patch) != count($intersection) ) {
++            $message = "Index file and glob() disagree.\n"
++                ."Index contains:\n"
++                .var_export($patch, true)."\n"
++                ."glob() reports:\n"
++                .var_export($patch_glob, true)."\n"
++                ."--\n\n";
++            file_put_contents(
++                TRANSFER_DIR . "/debug.log",
++                $message,
++                FILE_APPEND
++            );
++        }
++
+         // create output file
+         $file_handle = fopen($dir . $name, 'w');
++        if ($file_handle === false) {
++            throw new Exception("Unable to open ".$name);
++        }
+ 
+         // write patches to file
+         foreach ($patch as $filename) {
+@@ -127,12 +160,26 @@
+ 
+             // read patch and close
+             $patch_handle = fopen($filename, 'r');
++            if ($patch_handle === false) {
++                throw new Exception("Unable to open ".$filename);
++            }
++
+             $patch_contents = fread($patch_handle, filesize($filename));
++            if ($patch_contents === false) {
++                throw new Exception("Unable to read patch file contents.");
++            }
+             fclose($patch_handle); 
+             
+             // apply patch
+-            fseek($file_handle, $offset);
+-            fwrite($file_handle, $patch_contents);
++            $result = fseek($file_handle, $offset);
++            if ($result == -1){
++                throw new Exception("Unable to seek");
++            }
++
++            $result = fwrite($file_handle, $patch_contents);
++            if ($result === false) {
++                throw new Exception("Unable to write chunk to combined file.");
++            }
+         }
+ 
+         // remove patches
+@@ -142,6 +189,9 @@
+ 
+         // done with file
+         fclose($file_handle);
++
++        // done with index
++        unlink($dir . ".index");
+     }
+ 
+     http_response_code(204);

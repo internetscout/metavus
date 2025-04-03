@@ -6,8 +6,7 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
 

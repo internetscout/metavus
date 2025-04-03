@@ -3,13 +3,12 @@
 #   FILE: VectorImageFile.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 
@@ -48,7 +47,7 @@ class VectorImageFile extends ImageFile
      * @param string $FileName New name for image file.
      * @param int $NewImageType New type for image.  (OPTIONAL)
      */
-    public function saveAs(string $FileName, int $NewImageType = null)
+    public function saveAs(string $FileName, ?int $NewImageType = null): void
     {
         # error out if destination file exists and is not writable
         if (file_exists($FileName) && (is_writable($FileName) != true)) {

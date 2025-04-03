@@ -3,7 +3,7 @@
 #   FILE:  Recommender.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -73,7 +73,7 @@ abstract class Recommender
      * Set level for debugging output.
      * @param int $Setting New debugging output level.
      */
-    public function debugLevel($Setting)
+    public function debugLevel($Setting): void
     {
         $this->DebugLevel = $Setting;
     }
@@ -88,20 +88,25 @@ abstract class Recommender
      *       item is 0).  (OPTIONAL, defaults to 0)
      * @param int $NumberOfResults Number of items to return.  (OPTIONAL,
      *       defaults to 10)
+     * @return array Recommended items, with item IDs for the index and
+     *      recommendation scores for the values.
      */
-    public function recommend($UserId, $StartingResult = 0, $NumberOfResults = 10)
-    {
+    public function recommend(
+        $UserId,
+        $StartingResult = 0,
+        $NumberOfResults = 10
+    ): array {
         if ($this->DebugLevel > 0) {
-            print "REC:  Recommend(${UserId}, ${StartingResult},"
-                    ." ${NumberOfResults})<br>\n";
+            print "REC:  Recommend(".$UserId.", ".$StartingResult.", "
+                .$NumberOfResults.")<br>\n";
         }
 
         # load in user ratings
         $Ratings = array();
         $DB =& $this->DB;
         $DB->query("SELECT ".$this->ItemIdFieldName.", ".$this->RatingFieldName
-                ." FROM ".$this->RatingTableName
-                ." WHERE ".$this->UserIdFieldName." = ${UserId}");
+                   ." FROM ".$this->RatingTableName
+                   ." WHERE ".$this->UserIdFieldName." = ".$UserId);
         while ($Row = $DB->fetchRow()) {
             $Ratings[$Row[$this->ItemIdFieldName]] =
                     $Row[$this->RatingFieldName];
@@ -116,7 +121,7 @@ abstract class Recommender
             # for each content correlation available for that item
             $DB->query("SELECT Correlation, ItemIdB "
                     ."FROM RecContentCorrelations "
-                    ."WHERE ItemIdA = ${ItemId}");
+                    ."WHERE ItemIdA = ".$ItemId);
             while ($Row = $DB->fetchRow()) {
                 # multiply that correlation by normalized rating and add
                 #       resulting value to recommendation value for that item
@@ -187,7 +192,7 @@ abstract class Recommender
      * @param callable $FunctionName Filter function, that accepts an item ID
      *       and returns TRUE if item should be filtered out of results.
      */
-    public function addResultFilterFunction($FunctionName)
+    public function addResultFilterFunction($FunctionName): void
     {
         # save filter function name
         $this->FilterFuncs[] = $FunctionName;
@@ -224,8 +229,8 @@ abstract class Recommender
     {
         # pull list of correlations from DB
         $this->DB->query("SELECT * FROM RecContentCorrelations, ".$this->RatingTableName
-                ." WHERE (ItemIdA = ${RecommendedItemId}"
-                        ." OR ItemIdB = ${RecommendedItemId})"
+                ." WHERE (ItemIdA = ".$RecommendedItemId
+                        ." OR ItemIdB = ".$RecommendedItemId.")"
                         ." AND ".$this->UserIdFieldName." = ".$UserId
                         ." AND (RecContentCorrelations.ItemIdA = "
                                 .$this->RatingTableName.".".$this->ItemIdFieldName
@@ -440,8 +445,8 @@ abstract class Recommender
     public function updateForItems($StartingItemId, $NumberOfItems)
     {
         if ($this->DebugLevel > 0) {
-            print "REC:  UpdateForItems(${StartingItemId},"
-                    ." ${NumberOfItems})<br>\n";
+            print "REC:  UpdateForItems(".$StartingItemId.", "
+                .$NumberOfItems.")<br>\n";
         }
         # make sure we have item IDs available
         $this->loadItemIds();
@@ -454,7 +459,7 @@ abstract class Recommender
             if ($ItemId >= $StartingItemId) {
                 # update recommender info for item
                 if ($this->DebugLevel > 1) {
-                    print("REC:  doing item ${ItemId}<br>\n");
+                    print("REC:  doing item ".$ItemId."<br>\n");
                 }
                 $this->updateForItem($ItemId, true);
                 $ItemsUpdated++;
@@ -463,7 +468,7 @@ abstract class Recommender
                 if ($ItemsUpdated >= $NumberOfItems) {
                     # bail out
                     if ($this->DebugLevel > 1) {
-                        print "REC:  bailing out with item ${ItemId}<br>\n";
+                        print "REC:  bailing out with item ".$ItemId."<br>\n";
                     }
                     return $ItemId;
                 }
@@ -480,7 +485,7 @@ abstract class Recommender
      * @param bool $FullPass If TRUE, update is assumed to be part of an
      *       update of all items.  (OPTIONAL, default to FALSE)
      */
-    public function updateForItem($ItemId, $FullPass = false)
+    public function updateForItem($ItemId, $FullPass = false): void
     {
         if ($this->DebugLevel > 1) {
             print "REC:  updating for item \"".$ItemId."\"<br>\n";
@@ -491,7 +496,7 @@ abstract class Recommender
 
         # clear existing correlations for this item
         $this->DB->query("DELETE FROM RecContentCorrelations "
-                ."WHERE ItemIdA = ${ItemId}");
+                ."WHERE ItemIdA = ".$ItemId."");
 
         # for every item
         foreach ($this->ItemIds as $Id) {
@@ -507,7 +512,7 @@ abstract class Recommender
      * Drop item from stored recommender data.
      * @param int $ItemId ID of item to drop.
      */
-    public function dropItem($ItemId)
+    public function dropItem($ItemId): void
     {
         # drop all correlation entries referring to item
         $this->DB->query("DELETE FROM RecContentCorrelations "
@@ -518,7 +523,7 @@ abstract class Recommender
     /**
      * Prune any stored correlation values that are below-average.
      */
-    public function pruneCorrelations()
+    public function pruneCorrelations(): void
     {
         # get average correlation
         $AverageCorrelation = $this->DB->query("SELECT AVG(Correlation) "
@@ -527,7 +532,7 @@ abstract class Recommender
         # dump all below-average correlations
         if ($AverageCorrelation > 0) {
             $this->DB->query("DELETE FROM RecContentCorrelations "
-                    ."WHERE Correlation <= ${AverageCorrelation}");
+                    ."WHERE Correlation <= ".$AverageCorrelation."");
         }
     }
 
@@ -549,7 +554,7 @@ abstract class Recommender
      * Clear internal caches of item and correlation data.  This is primarily
      * intended for situations where memory may have run low.
      */
-    public static function clearCaches()
+    public static function clearCaches(): void
     {
         self::$CorrelationCache = null;
         self::$ItemIdCache = null;
@@ -581,7 +586,7 @@ abstract class Recommender
     /**
      * Load internal item ID cache (if not already loaded).
      */
-    protected function loadItemIds()
+    protected function loadItemIds(): void
     {
         # if item IDs not already loaded
         if (!isset($this->ItemIds)) {
@@ -712,7 +717,7 @@ abstract class Recommender
      * @param int $ItemIdA ID for first item.
      * @param int $ItemIdB ID for second item.
      */
-    protected function updateContentCorrelation($ItemIdA, $ItemIdB)
+    protected function updateContentCorrelation($ItemIdA, $ItemIdB): void
     {
         if ($this->DebugLevel > 6) {
             print("REC:  updating correlation between"
@@ -868,7 +873,7 @@ abstract class Recommender
                 # insert new correlation value in DB
                 $this->DB->query("INSERT INTO RecContentCorrelations "
                         ."(ItemIdA, ItemIdB, Correlation) "
-                        ."VALUES (${ItemIdA}, ${ItemIdB}, ${NewCorrelation})");
+                        ."VALUES (".$ItemIdA.", ".$ItemIdB.", ".$NewCorrelation.")");
 
                 # return correlation value is new value
                 $Correlation = $NewCorrelation;
@@ -880,7 +885,7 @@ abstract class Recommender
             # retrieve correlation value from DB
             $Correlation = $this->DB->query(
                 "SELECT Correlation FROM RecContentCorrelations "
-                            ."WHERE ItemIdA = ${ItemIdA} AND ItemIdB = ${ItemIdB}",
+                    ."WHERE ItemIdA = ".$ItemIdA." AND ItemIdB = .".$ItemIdB,
                 "Correlation"
             );
 
@@ -913,7 +918,7 @@ abstract class Recommender
                         # discard result
                         if ($this->DebugLevel > 2) {
                             print("REC:      filter callback rejected resource"
-                                    ." ${ResourceId}<br>\n");
+                                    ." ".$ResourceId."<br>\n");
                         }
                         unset($Results[$ResourceId]);
 

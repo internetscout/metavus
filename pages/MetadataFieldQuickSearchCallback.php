@@ -3,19 +3,18 @@
 #   FILE:  MetadataFieldQuickSearchResponse.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\MetadataField;
-use Metavus\QuickSearchHelper;
+namespace Metavus;
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
-#
 # set headers to control caching
-$GLOBALS["AF"]->BeginAjaxResponse();
+ApplicationFramework::getInstance()->BeginAjaxResponse();
 
 # retrieve field to search
 if (isset($_GET["MF"])) {
@@ -24,25 +23,25 @@ if (isset($_GET["MF"])) {
         $Search = $_GET["SS"];
     } else {
         # return nothing if there is no search
-        $FailureArray = array(
+        $FailureArray = [
             "success" => false,
             "general_message" =>
                 'You must provide a search string to receive results.'
-            );
+        ];
         echo json_encode($FailureArray);
         return;
     }
 } else {
     # return if there's no MetadataFieldId
-    $FailureArray = array(
+    $FailureArray = [
         "success" => false,
-        "general_message" =>
-            'You must search a field to receive results.' );
+        "general_message" => 'You must search a field to receive results.'
+    ];
     echo json_encode($FailureArray);
     return;
 }
 
-$Field = new MetadataField($FieldId);
+$Field = MetadataField::getField($FieldId);
 
 # grab all the matches, sort them, and pull out the chunk we want
 list($NumResults, $NumAdditionalResults, $ANames) =
@@ -52,26 +51,28 @@ list($NumResults, $NumAdditionalResults, $ANames) =
 $AvailableNames = array();
 foreach ($ANames as $Id => $Name) {
     if (is_array($Name)) {
-        $AvailableNames[] = array(
+        $AvailableNames[] = [
             "label" => QuickSearchHelper::HighlightSearchString(
                 $Search,
                 $Name["name"]
             ),
             "value" => $Name["title"],
-            "ItemId" => $Id);
+            "ItemId" => $Id
+        ];
     } else {
-        $AvailableNames[] = array(
+        $AvailableNames[] = [
             "label" => QuickSearchHelper::HighlightSearchString(
                 $Search,
                 $Name
             ),
             "value" => $Name,
-            "ItemId" => $Id);
+            "ItemId" => $Id
+        ];
     }
 }
 
 if ($NumAdditionalResults > 0) {
-    $AvailableNames[] = array(
+    $AvailableNames[] = [
         "label" =>
             "<div class=\"cw-quicksearch-moreresults\">"
             ."There ".($NumAdditionalResults > 1 ? "are" : "is")
@@ -81,7 +82,8 @@ if ($NumAdditionalResults > 0) {
             ."if you do not see what you are trying to find."
             ."</div>",
         "value" => "",
-        "ItemId" => "");
+        "ItemId" => ""
+    ];
 }
 
 echo json_encode($AvailableNames);

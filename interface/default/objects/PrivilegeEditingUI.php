@@ -3,12 +3,12 @@
 #   FILE:  PrivilegeEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\ApplicationFramework;
@@ -61,7 +61,7 @@ class PrivilegeEditingUI
         if (is_numeric(reset($MetadataFields))) {
             $NewMetadataFields = [];
             foreach ($MetadataFields as $FieldId) {
-                $NewMetadataFields[$FieldId] = new MetadataField($FieldId);
+                $NewMetadataFields[$FieldId] = MetadataField::getField($FieldId);
             }
             $MetadataFields = $NewMetadataFields;
         }
@@ -107,10 +107,10 @@ class PrivilegeEditingUI
         string $Identifier,
         PrivilegeSet $PrivilegeSet,
         bool $IsNested = false
-    ) {
+    ): void {
         $AF = ApplicationFramework::getInstance();
         # include needed JavaScript
-        $AF->RequireUIFile("PrivilegeEditingUI.js");
+        $AF->requireUIFile("PrivilegeEditingUI.js");
 
         # build form field prefix
         $FFPrefix = "F_Priv_".$Identifier."_";
@@ -161,7 +161,7 @@ class PrivilegeEditingUI
                 $this->displayOperatorField($FFPrefix, $Condition["Operator"]);
 
                 try {
-                    $Field = new MetadataField($Condition["FieldId"]);
+                    $Field = MetadataField::getField($Condition["FieldId"]);
                 } catch (Exception $e) {
                     # do nothing here, but we'd like to continue
                 }
@@ -232,7 +232,7 @@ class PrivilegeEditingUI
             print "</fieldset>";
             # print the button to add a new row when using JavaScript
             print "<button class=\"btn btn-primary btn-sm priv-js-add mv-button-iconed\"><img "
-            ."src=\"".$AF->GUIFile('Plus.svg')."\" alt=\"\" "
+            ."src=\"".$AF->gUIFile('Plus.svg')."\" alt=\"\" "
             ."class=\"mv-button-icon\"/> Add Condition</button>";
             # print the closing div for the set
             print "</div>";
@@ -306,7 +306,7 @@ class PrivilegeEditingUI
     * @param string $FFPrefix Prefix to use for form fields.
     * @param mixed $Selected The value to select. (OPTIONAL)
     */
-    private function displaySubjectField($FFPrefix, $Selected = null)
+    private function displaySubjectField($FFPrefix, $Selected = null): void
     {
         # construct the list of options to present for this field
         # present all the metadata fields using their FieldIds
@@ -385,7 +385,7 @@ class PrivilegeEditingUI
     * @param string $FFPrefix Prefix to use for form fields.
     * @param mixed $Selected The value to select. (OPTIONAL)
     */
-    private function displayOperatorField($FFPrefix, $Selected = null)
+    private function displayOperatorField($FFPrefix, $Selected = null): void
     {
         $Options = [];
         $OptionCSS = [];
@@ -424,7 +424,7 @@ class PrivilegeEditingUI
     * @param mixed $Selected The value to select for the select box. (OPTIONAL)
     * @param mixed $Value The existing value for the input box. (OPTIONAL)
     */
-    private function displayValueField($FFPrefix, $Selected = null, $Value = null)
+    private function displayValueField($FFPrefix, $Selected = null, $Value = null): void
     {
         $this->printPrivilegeValueSelectorField($FFPrefix, $Selected);
         $this->printPrivilegeValueInputField($FFPrefix, $Value);
@@ -542,7 +542,7 @@ class PrivilegeEditingUI
     * @param string $FFPrefix Prefix to use for form fields.
     * @param mixed $Selected The value to select. (OPTIONAL)
     */
-    private function printPrivilegeValueSelectorField($FFPrefix, $Selected = null)
+    private function printPrivilegeValueSelectorField($FFPrefix, $Selected = null): void
     {
         # build up the list of options
         $Options = [];
@@ -588,7 +588,7 @@ class PrivilegeEditingUI
     * @param string $FFPrefix Prefix to use for form fields.
     * @param mixed $Value The existing value. (OPTIONAL)
     */
-    private function printPrivilegeValueInputField($FFPrefix, $Value = null)
+    private function printPrivilegeValueInputField($FFPrefix, $Value = null): void
     {
         $SafeValue = defaulthtmlentities($Value);
         ?>

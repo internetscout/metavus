@@ -3,15 +3,15 @@
 #   FILE:  ConfirmAutofix.php (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\UrlChecker\Record;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
@@ -20,7 +20,7 @@ PageTitle("Confirm an automatic fix to the URL");
 CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
 
 $AF = ApplicationFramework::getInstance();
-$MyPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$MyPlugin = \Metavus\Plugins\UrlChecker::getInstance();
 
 $H_Id = StdLib::getFormValue("Id");
 $UrlInfo = $MyPlugin->decodeUrlIdentifier($H_Id);
@@ -30,7 +30,7 @@ $FieldId = $UrlInfo["FieldId"];
 
 if (Record::itemExists($ResourceId) &&
     MetadataSchema::fieldExistsInAnySchema($FieldId)) {
-    $H_Field = new MetadataField($FieldId);
+    $H_Field = MetadataField::getField($FieldId);
     $H_Resource = new Record($ResourceId);
     $H_InvalidUrl = $MyPlugin->getInvalidUrl(
         $ResourceId,

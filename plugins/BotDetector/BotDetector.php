@@ -3,14 +3,14 @@
 #   FILE:  BotDetector.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\User;
+use Metavus\Plugins\MetricsRecorder;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Plugin;
@@ -26,10 +26,10 @@ class BotDetector extends Plugin
     /**
      * Register information about this plugin.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Bot Detector";
-        $this->Version = "1.3.0";
+        $this->Version = "1.4.0";
         $this->Description = "Provides support for detecting whether the"
                 ." current page load is by an actual person or by an automated"
                 ." <a href=\"http://en.wikipedia.org/wiki/Web_crawler\""
@@ -37,7 +37,7 @@ class BotDetector extends Plugin
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
 
         $this->CfgSetup["HttpBLAccessKey"] = [
@@ -77,60 +77,9 @@ class BotDetector extends Plugin
      * @return null|string NULL on success, string containing an error
      *      message otherwise.
      */
-    public function install()
+    public function install(): ?string
     {
-        return $this->createTables($this->SqlTables);
-    }
-
-    /**
-     * Perform work necessary on upgrades.
-     * @param string $PreviousVersion The version number of the plugin
-     * that was previously installed.
-     * @return null|string NULL if upgrade succeeded, string with an error
-     *      message otherwise.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        if (version_compare($PreviousVersion, "1.1.0", "<")) {
-            $Result = $this->createTables($this->SqlTables);
-            if ($Result !== null) {
-                return $Result;
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.2.0", "<")) {
-            $DB = new Database();
-
-            if ($DB->fieldExists("BotDetector_DNSCache", "IP")) {
-                $Result = $DB->query(
-                    "ALTER TABLE BotDetector_DNSCache "
-                    ."CHANGE IP IPAddress INT UNSIGNED "
-                );
-                if ($Result === false) {
-                    return "Could not update the IP Column";
-                }
-            }
-
-            $Result = $this->createMissingTables($this->SqlTables);
-            if ($Result !== null) {
-                return $Result;
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.2.2", "<")) {
-            $DB = new Database();
-            if (!$DB->fieldExists("BotDetector_DNSCache", "LastUsed")) {
-                $Result = $DB->query(
-                    "ALTER TABLE BotDetector_DNSCache "
-                    ."ADD COLUMN LastUsed TIMESTAMP, ADD INDEX (LastUsed)"
-                );
-                if ($Result === false) {
-                    return "Could not add LastUsed column to DNSCache";
-                }
-            }
-        }
-
-        return null;
+        return $this->createTables(self::SQL_TABLES);
     }
 
     /**
@@ -138,9 +87,9 @@ class BotDetector extends Plugin
      * @return null|string NULL on success, string containing error message
      *      on failure.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
-        return $this->dropTables($this->SqlTables);
+        return $this->dropTables(self::SQL_TABLES);
     }
 
     /**
@@ -149,14 +98,14 @@ class BotDetector extends Plugin
      * are called.
      * @return null|string NULL on success, error string otherwise.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $AF = ApplicationFramework::getInstance();
 
         # if an access key was provided but that key is not valid, complain
-        if (!is_null($this->configSetting("HttpBLAccessKey")) &&
-            strlen($this->configSetting("HttpBLAccessKey")) > 0 &&
-            !self::blacklistAccessKeyLooksValid($this->configSetting("HttpBLAccessKey"))) {
+        if (!is_null($this->getConfigSetting("HttpBLAccessKey")) &&
+            strlen($this->getConfigSetting("HttpBLAccessKey")) > 0 &&
+            !self::blacklistAccessKeyLooksValid($this->getConfigSetting("HttpBLAccessKey"))) {
             return "Incorrect Http:BL key format.  Keys are 12 lowercase letters.";
         }
 
@@ -200,8 +149,13 @@ class BotDetector extends Plugin
     /**
      * Generate HTML elements to display a CSS and JS Canary used to test for bots.
      */
-    public function generateHTMLForCanary()
+    public function generateHTMLForCanary(): void
     {
+        # nothing to do when no IP available
+        if (!isset($_SERVER["REMOTE_ADDR"])) {
+            return;
+        }
+
         # if the user's IP address looks reasonably valid
         if (preg_match(
             "/[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/",
@@ -237,7 +191,7 @@ class BotDetector extends Plugin
      * Determine whether the page was loaded by a person or an automated program.
      * @return bool Returns TRUE if the page was loaded by an automated program.
      */
-    public function checkForBot()
+    public function checkForBot(): bool
     {
         static $BotCheckValue = null;
 
@@ -282,27 +236,35 @@ class BotDetector extends Plugin
     }
 
     /**
-     * Remove stale cached DNSCache entries.
+     * Remove stale cache entries.
      */
-    public function cleanCacheData()
+    public function cleanCacheData(): void
     {
         $AF = ApplicationFramework::getInstance();
         $DB = new Database();
 
+        # clean out Hostname cache data that was last fetched > 48 hours ago
+        $DB->query(
+            "DELETE FROM BotDetector_HostnameCache "
+            ."WHERE RetrievalDate < (NOW() - INTERVAL 48 HOUR)"
+        );
+
         # clean out DNS cache data that was last used > 2 hours ago
-        $DB->query("DELETE FROM BotDetector_DNSCache "
-                   ."WHERE LastUsed < (NOW() - INTERVAL 2 HOUR)");
+        $DB->query(
+            "DELETE FROM BotDetector_HttpBLCache "
+            ."WHERE LastUsed < (NOW() - INTERVAL 2 HOUR)"
+        );
 
         # queue background tasks to refresh DNS cache data for IPs
         # that are still being used
         $DB->query(
-            "SELECT INET_NTOA(IPAddress) AS IP FROM BotDetector_DNSCache "
+            "SELECT INET_NTOA(IPAddress) AS IP FROM BotDetector_HttpBLCache "
             ."WHERE Retrieved < (NOW() - INTERVAL 2 HOUR)"
         );
         $IPs = $DB->fetchColumn("IP");
         foreach ($IPs as $IP) {
             $AF->queueUniqueTask(
-                [get_class(), "updateDnsCacheForIP"],
+                [__CLASS__, "updateHttpBLCacheForIP"],
                 [$IP],
                 ApplicationFramework::PRIORITY_BACKGROUND,
                 "Update HttpBL DNS cache data for ".$IP
@@ -323,7 +285,7 @@ class BotDetector extends Plugin
             $BadIps = $DB->fetchRows();
             foreach ($BadIps as $Row) {
                 $AF->queueUniqueTask(
-                    [get_class(), "cleanBotFromMetrics"],
+                    [__CLASS__, "cleanBotFromMetrics"],
                     [ $Row["IP"], $Row["CanaryLastShown"] ],
                     ApplicationFramework::PRIORITY_LOW,
                     "Clean out metrics data for a bot at ".$Row["IP"]
@@ -347,13 +309,12 @@ class BotDetector extends Plugin
      * @param string $TargetIP IP address to clean up.
      * @param string $StartTime Oldest date/time to remove.
      */
-    public static function cleanBotFromMetrics($TargetIP, $StartTime)
+    public static function cleanBotFromMetrics($TargetIP, $StartTime): void
     {
         $PluginMgr = PluginManager::getInstance();
         if ($PluginMgr->pluginEnabled("MetricsRecorder")) {
-            $Recorder = $PluginMgr->getPlugin("MetricsRecorder");
-
-            $Recorder->removeEventsForIPAddress(
+            $MetricsRecorderPlugin = MetricsRecorder::getInstance();
+            $MetricsRecorderPlugin->removeEventsForIPAddress(
                 $TargetIP,
                 $StartTime
             );
@@ -364,10 +325,10 @@ class BotDetector extends Plugin
      * Perform background update of cached HttpBL result for a given IP address.
      * @param string $RemoteIP Remote address to update.
      */
-    public static function updateDnsCacheForIP($RemoteIP)
+    public static function updateHttpBLCacheForIP($RemoteIP): void
     {
-        $Plugin = PluginManager::getInstance()->getPlugin("BotDetector");
-        $AccessKey = $Plugin->configSetting("HttpBLAccessKey");
+        $BotDetector = BotDetector::getInstance();
+        $AccessKey = $BotDetector->getConfigSetting("HttpBLAccessKey");
 
         # if access key setting is valid
         if (self::blacklistAccessKeyLooksValid($AccessKey)) {
@@ -377,11 +338,29 @@ class BotDetector extends Plugin
             # and update database cache
             $DB = new Database();
             $DB->query(
-                "UPDATE BotDetector_DNSCache "
+                "UPDATE BotDetector_HttpBLCache "
                 ."SET Result=INET_ATON('".addslashes($Result)."'), Retrieved=NOW() "
                 ."WHERE IPAddress=INET_ATON('".addslashes($RemoteIP)."')"
             );
         }
+    }
+
+    /**
+     * Perform background update of cached hostname for a given IP address.
+     * @param string $IP IP address to look up.
+     */
+    public static function updateHostnameCacheForIP(string $IP): void
+    {
+        $Hostname = gethostbyaddr($IP);
+        $Result = (($Hostname !== false) && ($Hostname != $IP)) ? $Hostname : "";
+
+        $DB = new Database();
+        $DB->query(
+            "INSERT INTO BotDetector_HostnameCache (IPAddress, Hostname)"
+            ." VALUES (INET_ATON('".addslashes($IP)."'),'".addslashes($Result)."') "
+            ." ON DUPLICATE KEY UPDATE "
+            ."Hostname='".addslashes($Result)."', RetrievalDate=NOW()"
+        );
     }
 
     # ---- PRIVATE INTERFACE ---------------------------------------------------
@@ -411,7 +390,7 @@ class BotDetector extends Plugin
      */
     private function checkIfUserLoggedIn()
     {
-        if (User::getCurrentUser()->IsLoggedIn()) {
+        if (User::getCurrentUser()->isLoggedIn()) {
             return false;
         }
 
@@ -423,23 +402,47 @@ class BotDetector extends Plugin
      * domain patterns.
      * @return bool|null TRUE for bots, NULL (indicating 'unsure') otherwise
      */
-    private function checkHostname()
+    private function checkHostname(): ?bool
     {
         # if we don't know the remote hostname, nothing to do
         if (!isset($_SERVER["REMOTE_ADDR"])) {
             return null;
         }
 
-        $Hostname = gethostbyaddr($_SERVER["REMOTE_ADDR"]);
-        if ($Hostname === false) {
-            return null;
-        }
-
-        $PatternSetting = $this->configSetting("BotDomainPatterns");
+        # if we have no bot domain patterns, nothing to do
+        $PatternSetting = $this->getConfigSetting("BotDomainPatterns");
         if (strlen(trim($PatternSetting)) == 0) {
             return null;
         }
 
+        $IP = $_SERVER["REMOTE_ADDR"];
+
+        # check to see if we have a cached hostname for this IP
+        $DB = new Database();
+        $DB->query(
+            "SELECT Hostname, RetrievalDate FROM BotDetector_HostnameCache "
+            ."WHERE IPAddress=INET_ATON('".addslashes($IP)."')"
+        );
+        $Row = $DB->fetchRow();
+
+        # if we have no data or if what we have is older than a day, refresh it
+        if (($Row === false) || ((time() - strtotime($Row["RetrievalDate"])) > 86400)) {
+            ApplicationFramework::getInstance()
+                ->queueUniqueTask(
+                    [get_class($this), "updateHostnameCacheForIP"],
+                    [$IP],
+                    ApplicationFramework::PRIORITY_BACKGROUND,
+                    "Update hostname cache data for ".$IP
+                );
+        }
+
+        # if no data, return unsure
+        if ($Row === false || $Row["Hostname"] == "") {
+            return null;
+        }
+
+        # if hostname matches pattern for known bot domain, report a bot
+        $Hostname = $Row["Hostname"];
         $Patterns = explode("\n", trim($PatternSetting));
         foreach ($Patterns as $Pattern) {
             if (preg_match($Pattern, $Hostname)) {
@@ -447,6 +450,7 @@ class BotDetector extends Plugin
             }
         }
 
+        # otherwise, unsure
         return null;
     }
 
@@ -454,7 +458,7 @@ class BotDetector extends Plugin
      * Check if the provided Useragent is a known robot.
      * @return bool|null TRUE for bots, NULL otherwise
      */
-    private function checkUserAgent()
+    private function checkUserAgent(): ?bool
     {
         # if no useragent, assume it is not a bot
         if (!isset($_SERVER['HTTP_USER_AGENT'])) {
@@ -476,7 +480,7 @@ class BotDetector extends Plugin
      *   client is likely to be a bot.
      * @return bool|null TRUE for bots, NULL (indicating unsure) otherwise.
      */
-    private function checkHttpBLForBot()
+    private function checkHttpBLForBot(): ?bool
     {
         return $this->checkHttpBLWithCallback(
             function ($BLValue) {
@@ -497,7 +501,7 @@ class BotDetector extends Plugin
      *   client is a know spam robot.
      * @return bool|null TRUE for spam bots, NULL (indicating unsure) otherwise.
      */
-    private function checkHttpBLForSpamBot()
+    private function checkHttpBLForSpamBot(): ?bool
     {
         return $this->checkHttpBLWithCallback(
             function ($BLValue) {
@@ -524,7 +528,7 @@ class BotDetector extends Plugin
      * @return bool|null TRUE for bots, FALSE for humans, NULL when unsure
      * @see getHttpBLRecordForClient
      */
-    private function checkHttpBLWithCallback($Callback)
+    private function checkHttpBLWithCallback($Callback): ?bool
     {
         $BLValue = $this->getHttpBLRecordForClient();
 
@@ -555,11 +559,16 @@ class BotDetector extends Plugin
     {
         static $HttpBLValue;
 
+        # if we don't know the remote hostname, nothing to do
+        if (!isset($_SERVER["REMOTE_ADDR"])) {
+            return null;
+        }
+
         $AF = ApplicationFramework::getInstance();
 
         if (!isset($HttpBLValue)) {
             $RemoteIP = $_SERVER["REMOTE_ADDR"];
-            $AccessKey = $this->configSetting("HttpBLAccessKey");
+            $AccessKey = $this->getConfigSetting("HttpBLAccessKey");
 
             # if not from localhost and a key is set and of the right length
             if (($RemoteIP !== "::1")
@@ -572,8 +581,10 @@ class BotDetector extends Plugin
                 # check to see if we have a cached status for this IP
                 # so that we're not doing a dnslookup on every pageload
                 $DB = new Database();
-                $DB->query("SELECT INET_NTOA(Result) as Rx FROM BotDetector_DNSCache "
-                           ."WHERE IPAddress=INET_ATON('".addslashes($RemoteIP)."')");
+                $DB->query(
+                    "SELECT INET_NTOA(Result) as Rx FROM BotDetector_HttpBLCache "
+                    ."WHERE IPAddress=INET_ATON('".addslashes($RemoteIP)."')"
+                );
 
                 $Row = $DB->fetchRow();
                 # if a cached HttpBL result was found
@@ -581,7 +592,7 @@ class BotDetector extends Plugin
                     # use it and update the LastUsed time for this cache row
                     $Result = $Row["Rx"];
                     $DB->query(
-                        "UPDATE BotDetector_DNSCache SET LastUsed=NOW()"
+                        "UPDATE BotDetector_HttpBLCache SET LastUsed=NOW()"
                         ." WHERE IPAddress=INET_ATON('".addslashes($RemoteIP)."')"
                     );
                 } else {
@@ -590,7 +601,7 @@ class BotDetector extends Plugin
 
                     # and store the result in the cache
                     $DB->query(
-                        "INSERT INTO BotDetector_DNSCache (IPAddress, Result, LastUsed) VALUES ("
+                        "INSERT INTO BotDetector_HttpBLCache (IPAddress, Result, LastUsed) VALUES ("
                         ."INET_ATON('".addslashes($RemoteIP)."'),"
                         .(is_null($Result) ? "NULL" : "INET_ATON('".addslashes($Result)."')").","
                         ."NOW())"
@@ -641,8 +652,13 @@ class BotDetector extends Plugin
      * BotDetector CSS/JS canary, indicating that they are probably a bot.
      * @return bool TRUE for IPs that failed to load the canary, FALSE otherwise
      */
-    private function checkIfCanaryWasLoaded()
+    private function checkIfCanaryWasLoaded(): ?bool
     {
+        # if we don't know the remote hostname, nothing to do
+        if (!isset($_SERVER["REMOTE_ADDR"])) {
+            return null;
+        }
+
         $DB = new Database();
         $DB->query(
             "SELECT CanaryLastShown, CanaryLastLoaded"
@@ -685,14 +701,17 @@ class BotDetector extends Plugin
      * Prune metrics if configured to do so.
      * @param mixed $IsBot TRUE for bots, FALSE for humans, NULL if unsure.
      */
-    private function pruneMetricsIfNecessary($IsBot)
+    private function pruneMetricsIfNecessary($IsBot): void
     {
+        # if we don't know the remote hostname, nothing to do
+        if (!isset($_SERVER["REMOTE_ADDR"])) {
+            return;
+        }
+
         $PluginMgr = PluginManager::getInstance();
-        if ($IsBot === true && $this->configSetting("BotPruning") &&
+        if ($IsBot === true && $this->getConfigSetting("BotPruning") &&
             $PluginMgr->pluginEnabled("MetricsRecorder")) {
-            $PluginMgr
-                ->getPlugin("MetricsRecorder")
-                ->removeEventsForIPAddress($_SERVER["REMOTE_ADDR"]);
+            MetricsRecorder::getInstance()->removeEventsForIPAddress($_SERVER["REMOTE_ADDR"]);
         }
     }
 
@@ -703,7 +722,7 @@ class BotDetector extends Plugin
      * @return string|null Synthetic IP address returned from dnsbl or NULL
      *     when nothing is returned.
      */
-    private static function doHttpBLDNSLookup($AccessKey, $IpAddress)
+    private static function doHttpBLDNSLookup($AccessKey, $IpAddress): ?string
     {
 
         $ReversedIp = implode('.', array_reverse(explode('.', $IpAddress)));
@@ -724,7 +743,7 @@ class BotDetector extends Plugin
      * @param ?string $AccessKey Access key value to test.
      * @return bool TRUE for valid-looking keys
      */
-    private static function blacklistAccessKeyLooksValid($AccessKey)
+    private static function blacklistAccessKeyLooksValid($AccessKey): bool
     {
         if (is_null($AccessKey)) {
             return false;
@@ -936,8 +955,8 @@ class BotDetector extends Plugin
         'SELECT(%20|%2520)NAME_CONST\(CHAR\(',
     ];
 
-    private $SqlTables = [
-        "DNSCache" => "CREATE TABLE BotDetector_DNSCache (
+    public const SQL_TABLES = [
+        "HttpBLCache" => "CREATE TABLE BotDetector_HttpBLCache (
                IPAddress INT UNSIGNED,
                Result INT UNSIGNED,
                Retrieved TIMESTAMP DEFAULT NOW(),
@@ -945,6 +964,12 @@ class BotDetector extends Plugin
                INDEX (IPAddress),
                INDEX (LastUsed),
                INDEX (Retrieved) )",
+        "HostnameCache" => "CREATE TABLE BotDetector_HostnameCache (
+               IPAddress INT UNSIGNED,
+               Hostname TEXT,
+               RetrievalDate TIMESTAMP DEFAULT NOW(),
+               PRIMARY KEY (IPAddress),
+               INDEX (RetrievalDate) )",
         "CanaryData" => "CREATE TABLE BotDetector_CanaryData (
                IPAddress INT UNSIGNED,
                CanaryLastShown TIMESTAMP NULL DEFAULT NULL,

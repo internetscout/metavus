@@ -3,13 +3,12 @@
 #   FILE:  QuickSearchHelper.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -164,6 +163,7 @@ class QuickSearchHelper
     * @param boolean $CloneAfter Whether to place a clone after this field
     * @param string $FormFieldName Value to use for the input name
     *   attribute in the generated html (OPTIONAL, defaults to field name)
+    * @return void
     */
     public static function printQuickSearchField(
         $FieldId,
@@ -171,13 +171,14 @@ class QuickSearchHelper
         $CurrentDisplayValue,
         $CloneAfter = false,
         $FormFieldName = null
-    ) {
-        $GLOBALS["AF"]->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
-        $GLOBALS["AF"]->requireUIFile("jquery-ui.js");
-        $GLOBALS["AF"]->requireUIFile("CW-QuickSearch.js");
+    ): void {
+        $AF = ApplicationFramework::getInstance();
+        $AF->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
+        $AF->requireUIFile("jquery-ui.js");
+        $AF->requireUIFile("CW-QuickSearch.js");
 
         if (is_numeric($FieldId)) {
-            $Field = new MetadataField(intval($FieldId));
+            $Field = MetadataField::getField(intval($FieldId));
 
             if ($FormFieldName === null) {
                 $FormFieldName = "F_".$Field->dBFieldName();
@@ -531,7 +532,7 @@ class QuickSearchHelper
         $ResourceData = [];
         foreach ($SearchResults as $ResourceId => $Score) {
             $Resource = new Record($ResourceId);
-            $ResourceData[$ResourceId] = $Resource->getForDisplay(
+            $ResourceData[$ResourceId] = (string)$Resource->getForDisplay(
                 $Resource->getSchema()->getFieldByMappedName("Title")
             );
         }

@@ -6,6 +6,7 @@
 #   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
@@ -38,7 +39,7 @@ if ($H_Schema->FieldExists($FieldId)) {
 
 # extract form values
 $H_ControlledName = StdLib::getFormValue("F_ControlledName");
-$H_VariantName = StdLib::getFormValue("F_VariantName");
+$H_VariantName = StdLib::getFormValue("F_Variant");
 $H_Qualifier = StdLib::getFormValue("F_Qualifier");
 
 # values used only when the form is submitted
@@ -83,7 +84,7 @@ if (!is_null($H_Field)) {
 }
 
 # if the form was submitted
-if (StdLib::getFormValue("F_Submit") == "Add") {
+if (StdLib::getFormValue("Submit") == "Add") {
     if (!strlen(trim($H_ControlledName))) {
         $H_ErrorMessage = "The controlled name cannot be blank.";
         return;

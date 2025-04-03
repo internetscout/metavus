@@ -3,21 +3,24 @@
 #   FILE:  DisplayPage.html (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\HtmlButton;
+use Metavus\Plugins\Pages;
 use Metavus\Plugins\Pages\Page;
 use Metavus\Plugins\Pages\PageFactory;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
 
 # if no page ID available
 if (!isset($_GET["ID"]) || !strlen($_GET["ID"])) {
+    $AF->doNotCacheCurrentPage();
     # display error message indicating no ID
     ?><h1>Error</h1>
     No page ID was supplied.<?PHP
@@ -27,8 +30,9 @@ if (!isset($_GET["ID"]) || !strlen($_GET["ID"])) {
 
 # if no page found with specified ID
 $PFactory = new PageFactory();
-$Id = $_GET["ID"];
-if (!$PFactory->itemExists($Id)) {
+$Id = (int)$_GET["ID"];
+if (!is_numeric($_GET["ID"]) || !$PFactory->itemExists($Id)) {
+    $AF->doNotCacheCurrentPage();
     # display error message indicating page not found
     ?><h1>Error</h1>
     No page found with specified ID.
@@ -80,15 +84,23 @@ if ($Page->userCanEdit($User)) {
     print '<span class="cw-pages-controls cw-pages-'
     .($Page->containsTabs() ? '' : 'no').'tab-controls">';
 
-    ?>
-    <a class="btn btn-danger btn-sm mv-button-iconed cw-pages-delete"
-            style="float: right;"
-            href="index.php?P=P_Pages_DeletePage&amp;ID=<?= $Id; ?>">
-            <img class="mv-button-icon" src="<?= $AF->GUIFile("Delete.svg") ?>"> Delete</a>
-    <a class="btn btn-primary btn-sm mv-button-iconed cw-pages-edit" style="float: right;"
-            href="index.php?P=P_Pages_EditPage&amp;ID=<?= $Id; ?>">
-            <img class="mv-button-icon" src="<?= $AF->GUIFile("Pencil.svg") ?>"> Full Editor</a>
-    <?PHP  $AF->signalEvent(
+    $DeleteButton = new HtmlButton("Delete");
+    $DeleteButton->setIcon("Delete.svg");
+    $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+    $DeleteButton->addClass("float-end cw-pages-delete");
+    $DeleteButton->addSemanticClass("btn-danger");
+    $DeleteButton->setLink("index.php?P=P_Pages_DeletePage&ID=" . $Id);
+
+    $FullEditorButton = new HtmlButton("Full Editor");
+    $FullEditorButton->setIcon("Pencil.svg");
+    $FullEditorButton->setSize(HtmlButton::SIZE_SMALL);
+    $FullEditorButton->addClass("float-end cw-pages-edit");
+    $FullEditorButton->setLink("index.php?P=P_Pages_EditPage&ID=" . $Id);
+
+    print $DeleteButton->getHtml();
+    print $FullEditorButton->getHtml();
+
+    $AF->signalEvent(
         "EVENT_HTML_INSERTION_POINT",
         [
             $AF->getPageName(),
@@ -103,7 +115,7 @@ if ($Page->userCanEdit($User)) {
 }
 
 # add meta tag for page description
-$Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$Plugin = Pages::getInstance();
 $Summary = $Page->get("Summary");
 if ($Summary !== null) {
     $Summary = $AF->escapeInsertionKeywords(

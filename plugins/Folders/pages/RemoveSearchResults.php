@@ -8,6 +8,7 @@
 #
 # @scout:phpstan
 
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
@@ -16,7 +17,6 @@ use Metavus\SearchEngine;
 use Metavus\SearchParameterSet;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 
 # ----- SETUP -------------------------------------------------------
 
@@ -35,7 +35,7 @@ $SearchParams->urlParameters($_GET);
 $User = User::getCurrentUser();
 
 # get the folders plugin
-$FoldersPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$FoldersPlugin = Folders::getInstance();
 
 # set up variables
 $Errors = [];
@@ -88,5 +88,4 @@ if ($ResourceFolder->containsItem($Folder->id())) {
 # This page does not output any HTML
 ApplicationFramework::getInstance()->suppressHTMLOutput();
 
-/** @phpstan-ignore-next-line */
 $FoldersPlugin::processPageResponse($Errors);

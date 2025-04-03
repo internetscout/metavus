@@ -6,20 +6,19 @@
 #   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\MetadataSchema;
-use Metavus\QuickSearchHelper;
-use Metavus\Record;
 use Metavus\RecordFactory;
 use Metavus\ResourceSummary;
 use Metavus\SearchEngine;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\SearchParameterSet;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-$GLOBALS["AF"]->beginAjaxResponse();
+ApplicationFramework::getInstance()->beginAjaxResponse();
 
 # number of results to return
 $DesiredNumberOfResults = 5;

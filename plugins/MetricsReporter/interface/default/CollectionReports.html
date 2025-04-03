@@ -3,10 +3,11 @@
 #   FILE:  CollectionReports.html (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\Graph;
 use Metavus\Record;
 use Metavus\SearchParameterSet;
@@ -133,7 +134,7 @@ function SearchDesc($Params)
         $SearchParams->TextDescription(true, false)."</a>";
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
 # convert data we want to graph into graph-friendly formats
 $GraphItems = [
@@ -181,6 +182,12 @@ if (isset($H_SharesByDay)) {
     $SharesGraph->Scale(Graph::WEEKLY);
 }
 
+$UpdateButton = new HtmlButton("Update Now");
+$UpdateButton->setIcon("RefreshArrow.svg");
+$UpdateButton->setSize(HtmlButton::SIZE_SMALL);
+$UpdateButton->setLink("index.php?P=P_MetricsReporter_CollectionReports&US=1");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <style type="text/css">
 .mv-stat-header {
@@ -193,10 +200,7 @@ if (isset($H_SharesByDay)) {
 
 <div>
   <div style="float: right">
-    <a class="btn btn-primary btn-sm mv-button-iconed"
-        href="index.php?P=P_MetricsReporter_CollectionReports&amp;US=1"
-    ><img src="<?= $AF->GUIFile('RefreshArrow.svg'); ?>" alt=""
-        class="mv-button-icon" /> Update Now</a>
+      <?= $UpdateButton->getHtml(); ?>
   </div>
 <h1>Collection Usage Metrics</h1>
 </div>
@@ -269,7 +273,7 @@ if (isset($H_SharesByDay)) {
   </tr>
 </table>
 
-<table class="mv-table mv-table-fullsize" style="margin-bttom: 20px;">
+<table class="mv-table mv-table-fullsize" style="margin-bottom: 20px;">
 <tr valign="top">
  <td width="50%">
     <div class="mv-stat-container">
@@ -300,7 +304,7 @@ if (isset($H_SharesByDay)) {
   <td width="50%">
     <div class="mv-stat-container">
       <h2 class="mv-stat-header">Searches: Privileged Users</h2>
-      <uspan class="mv-button-group mv-content-mfetabs" style="float: right;">
+      <span class="mv-button-group mv-content-mfetabs" style="float: right;">
         <span class="mv-range-button" style="font-weight: bold;">
           <a class="mv-button-daily mv-button-searchpriv">Day</a>
         </span> | 
@@ -310,7 +314,7 @@ if (isset($H_SharesByDay)) {
         <span class="mv-range-button">
           <a class="mv-button-monthly mv-button-searchpriv">Month</a>
         </span>
-        </span>
+      </span>
     </div>
     <div class="mv-stat-searchpriv mv-stat-daily">
     <?PHP  PrintSearchTable($H_SearchDataDayPriv, $Past["Day"], $Now);  ?>
@@ -437,7 +441,7 @@ if (isset($SharesGraph)) {
 /** styling for stat header areas */
 .mv-stat-container {
     padding-bottom: 5px;
-    height: 2.5 em;
+    height: 2.5em;
 }
 
 .mv-range-button:hover {

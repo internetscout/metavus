@@ -2,7 +2,7 @@
  * FILE:  HtmlOptionListSet.js
  *
  * Part of the Metavus digital collections platform
- * Copyright 2019-2020 Edward Almasy and Internet Scout Research Group
+ * Copyright 2019-2024 Edward Almasy and Internet Scout Research Group
  * http://metavus.net
  *
  * JavaScript support for HtmlOptionListSet
@@ -10,152 +10,233 @@
  * @scout:eslint
  */
 
-$(document).ready(function(){
+class HtmlOptionListSet {
     /**
      * Adjust the avaiable options in an OptionListSet so that the
      * same option cannot be selected multiple times.
-     * @param container div containing the HtmlOptionListSet
+     * @param jQuery Container A jQuery collection for the containing
+     *     the HtmlOptionListSet
      */
-    function toggleDisabledOptions(container) {
+    static updateWhichOptionsAreDisabled(Container) {
         // iterate over all the <select> elements to build a list of
         // selected values
-        var setValues = [];
-        $("select", container).each(function(selIndex, selElement){
-            var value = $(selElement).val();
-            if (value != '') {
-                setValues.push(value);
+        var SetValues = [];
+        $("select", Container).each(function(SelIndex, SelElement){
+            var Value = $(SelElement).val();
+            if (Value !== '') {
+                SetValues.push(Value);
             }
         });
 
         // enable everything
-        $("option", container).removeAttr('disabled');
+        $("option", Container).removeAttr('disabled');
+        $(".mv-button-delete", Container).show();
 
         // then disable options that are selected in other lists
-        setValues.forEach(function(value){
-            $("option[value='"+value+"']:not(:selected)", container).attr('disabled', true);
+        SetValues.forEach(function(Value){
+            $("option[value='" + Value + "']:not(:selected)", Container).attr('disabled', true);
         });
 
-    }
-
-    // adjust each optionlistset when the page is first loaded
-    $(".mv-optionlistset").each(function(){
-        toggleDisabledOptions($(this));
-    });
-
-    // clear 'name' from empty items so they won't be submitted with
-    // form data
-    $(".mv-optionlistset").closest("form").submit(function() {
-        $(".mv-optionlistset select").each(function(index, element) {
-            if ($(element).val() == '') {
-                $(element).removeAttr('name');
+        // hide the 'delete' buttons for lists where '--' is the current selection
+        $("select", Container).each(function(SelIndex, SelElement){
+            if ($(SelElement).val() === '') {
+                $(".mv-button-delete", $(SelElement).parent()).hide();
             }
         });
-    });
+    }
 
-    // handle changes to selections
-    $("select", ".mv-optionlistset").change(function(){
-        var container = $(this).parent();
+    /**
+     * When a selection is made in an option lists, add new lists and
+     * adjust disabled values as necessary.
+     */
+    static listChange() {
+        var Container = $(this).parents(".mv-optionlistset");
 
         // if this list is dynamic, add/remove elements as needed
-        if (container.data('dynamic')) {
-            var numLists = $("select", container).length,
-                maxLists = container.data('maxlists'),
-                minLists = container.data('minlists');
+        if (Container.data('dynamic')) {
+            // number of lists currently displayed
+            var NumLists = $("select", Container).length;
 
-            if ($(this).is(':last-child') && numLists < maxLists) {
-                $(this).clone(true).insertAfter($(this));
-            } else if ($(this).val() == '' && numLists > minLists) {
-                $(this).remove();
+            // number of options in each list, not counting '--'
+            var NumOptions = $("option", $("select", Container).first()).length - 1;
+
+            // maximum number of lists to display
+            var MaxLists = Container.data('maxlists');
+
+            // minimum number of lists to display
+            var MinLists = Container.data('minlists');
+
+            if ($(this).val() === '') {
+                // if we have enough lists and this one is not the last one,
+                // delete this one
+                if (NumLists > MinLists && !$(this).parent().is(':last-child') ) {
+                    $(this).parent().remove();
+                    NumLists--;
+                }
+            }
+
+            // if the number of lists is fewer than the number of options
+            // and also less than the max number of lists allowed
+            if (NumLists < NumOptions && NumLists < MaxLists) {
+                // get the last select element
+                var LastSelect = $("select", Container).last();
+
+                // if it was just set to a value rather than the placeholder '--'
+                if (LastSelect.val() !== '') {
+                    // add a new placeholder at the end of our select list
+                    var NewRow = $(LastSelect).parent().clone(true);
+                    $("select", NewRow).val('');
+                    NewRow.insertAfter(LastSelect.parent());
+                }
             }
         }
 
-        toggleDisabledOptions(container);
-    });
+        HtmlOptionListSet.updateWhichOptionsAreDisabled(Container);
+    }
 
-    // custom event to get the current list of selections
-    // (see https://api.jquery.com/on/ )
-    $(".mv-optionlistset").on("mv:getselections", function() {
-        var selections = [];
-        $("select", $(this)).each(function(index, element) {
-            if ($(element).val() != "") {
-                selections.push({
-                    tid: $(element).val(),
-                    name: $(":selected", element).text()
+    /**
+     * Remove the corresponding row when a delete button is clicked.
+     * @param BtnElement JS Object for the button element that was clicked.
+     */
+    static handleDeleteButtonClick(BtnElement) {
+        var Row = $(BtnElement).parent();
+        $("select", Row).val('');
+        $("select", Row).trigger("change");
+    }
+
+    /**
+     * Get the current list of selections from an option list set.
+     * @return Array Current selections. Each element is a JS object
+     *     having 'tid' and 'name' keys, where 'tid' is the option
+     *     value and 'name' is the displayed text.
+     */
+    static getSelections() {
+        var Selections = [];
+        $("select", $(this)).each(function(Index, Element) {
+            if ($(Element).val() !== "") {
+                Selections.push({
+                    tid: $(Element).val(),
+                    name: $(":selected", Element).text()
                 });
             }
         });
-        return selections;
-    });
 
-    // custom event to set the current list of selections
-    $(".mv-optionlistset").on("mv:setselections", function(event, selections) {
+        return Selections;
+    }
+
+    /**
+     * Set the selections in an option list set.
+     * @param Event Event JS Event object (required by jQuery.on).
+     * @param Array Selections Selections to set. Each element in the
+     *     array should be a JS object having 'tid' and 'name'
+     *     keys. 'tid' will be used for the option value attributes
+     *     and 'name' will be the text displayed.
+     */
+    static setSelections(Event, Selections) {
         // determine how many lists we need
-        var tgtNumLists = selections.length;
+        var TgtNumLists = Selections.length;
         if ($(this).data('dynamic')) {
-            tgtNumLists++;
+            TgtNumLists++;
         }
 
-        // delete all but one of the lists
-        while ($("select", $(this)).length > 1) {
-            $("select", $(this)).last().remove();
+        // delete all but one row
+        while ($(".mv-optionlistset-row", $(this)).length > 1) {
+            $(".mv-optionlistset-row", $(this)).last().remove();
         }
 
         // ensure that we have an <option> for each provided selection
-        var selectEl = $("select", $(this));
-        selections.forEach(function(term) {
+        var SelectEl = $("select", $(this));
+        Selections.forEach(function(Term) {
             // if we already have an option for this term, nothing to do
-            if ($("option[value='"+term.tid+"']", selectEl).length > 0) {
+            if ($("option[value='" + Term.tid + "']", SelectEl).length > 0) {
                 return;
             }
 
             // otherwise, get the list of <option>s that exist and
             // create an HTML element for our new one
-            var options = $("option", selectEl),
-                element = $("<option value='"+term.tid+"'>"+term.name+"</option>");
+            var Options = $("option", SelectEl),
+                Element = $("<option value='" + Term.tid + "'>" + Term.name + "</option>");
 
             // if there is nothing in the <select>, we can add our new
             // element to it and be done
-            if (options.length == 0) {
-                $(selectEl).append(element);
+            if (Options.length == 0) {
+                $(SelectEl).append(Element);
                 return;
             }
 
             // otherwise, iterate over the <options> in our <select>,
             // looking for the first one that that our new option
             // should not come before
-            var curRow = null;
+            var CurRow = null;
 
-            for (var index = 0; index < options.length; index++) {
-                curRow = $(options.get(index));
+            for (var Index = 0; Index < Options.length; Index++) {
+                CurRow = $(Options.get(Index));
 
                 // if the new term should be before the current term,
                 // then put it there and exit
-                if (term.name.localeCompare(curRow.text()) < 0) {
-                    element.insertBefore(curRow);
+                if (Term.name.localeCompare(CurRow.text()) < 0) {
+                    Element.insertBefore(CurRow);
                     return;
                 }
             }
 
             // othrewise, add the new one at the end
-            element.insertAfter(curRow);
+            Element.insertAfter(CurRow);
         });
 
         // ensure that we have the right number of select elements
-        while ($("select", $(this)).length < tgtNumLists) {
-            $("select", $(this)).last().clone(true).appendTo($(this));
+        while ($(".mv-optionlistset-row", $(this)).length < TgtNumLists) {
+            $(".mv-optionlistset-row", $(this)).last().clone(true).appendTo($(this));
         }
 
         $("option", $(this)).removeAttr('disabled');
         $("option", $(this)).removeAttr('selected');
-        $("select", $(this)).each(function(index, element) {
-            var tgtVal = '';
-            if (index < selections.length) {
-                tgtVal = selections[index].tid;
+        $("select", $(this)).each(function(Index, Element) {
+            var TgtVal = '';
+            if (Index < Selections.length) {
+                TgtVal = Selections[Index].tid;
             }
-            $(element).val(tgtVal);
+            $(Element).val(TgtVal);
         });
 
         // toggle disabled options appropriately
-        toggleDisabledOptions($(this));
+        HtmlOptionListSet.updateWhichOptionsAreDisabled($(this));
+    }
+
+    /**
+     * Remove the empty values from an option list set. Should be
+     * invoked prior to form submission.
+     */
+    static removeEmptyValues() {
+        $(".mv-optionlistset select").each(function(Index, Element) {
+            if ($(Element).val() === '') {
+                $(Element).removeAttr('name');
+            }
+        });
+    }
+
+    /**
+     * Set up the event handlers neded for HtmlOptionListSets
+     */
+    static setUpEventHandlers() {
+        $("select", ".mv-optionlistset").on("change", HtmlOptionListSet.listChange);
+        $(".mv-optionlistset").closest("form").on("submit", HtmlOptionListSet.removeEmptyValues);
+
+        // custom event to get the current list of selections
+        // (see https://api.jquery.com/on/ )
+        $(".mv-optionlistset").on("mv:getselections", HtmlOptionListSet.getSelections);
+
+        // custom event to set the current list of selections
+        $(".mv-optionlistset").on("mv:setselections", HtmlOptionListSet.setSelections);
+    }
+}
+
+$(document).ready(function(){
+    // adjust each optionlistset when the page is first loaded
+    $(".mv-optionlistset").each(function(){
+        HtmlOptionListSet.updateWhichOptionsAreDisabled($(this));
     });
+
+    // and set up event handlers
+    HtmlOptionListSet.setUpEventHandlers();
 });

@@ -6,6 +6,9 @@
 #   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
+
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -16,6 +19,7 @@ if (!CheckAuthorization(PRIV_SYSADMIN)) {
     return;
 }
 
+$AF = ApplicationFramework::getInstance();
 $PluginName = isset($_GET["PN"]) ? $_GET["PN"] : null;
 $H_Plugin = $GLOBALS["G_PluginManager"]->GetPlugin($PluginName, true);
 $H_UninstallFailed = false;

@@ -3,15 +3,16 @@
 #   FILE:  BlogEntryUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Blog;
-
+use Metavus\HtmlButton;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\Blog;
+use Metavus\Plugins\SocialMedia;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
@@ -27,7 +28,7 @@ class BlogEntryUI
      * Print a blog entry.
      * @param Entry $Entry Blog entry to print.
      */
-    public static function printBlogEntry(Entry $Entry)
+    public static function printBlogEntry(Entry $Entry): void
     {
         static $Blog;
 
@@ -37,7 +38,7 @@ class BlogEntryUI
 
         $PluginMgr = PluginManager::getInstance();
         if (!isset($Blog)) {
-            $Blog = $PluginMgr->getPlugin("Blog");
+            $Blog = Blog::getInstance();
             $Blog->SetCurrentBlog($Entry->GetBlogId());
         }
 
@@ -54,8 +55,14 @@ class BlogEntryUI
         $PrintMoreLink = strlen($Entry->get(Blog::BODY_FIELD_NAME)) > strlen($Teaser);
         $ArticleCssClasses = "blog-entry blog-short";
         if (!$Entry->userCanView(User::getAnonymousUser())) {
-            $ArticleCssClasses .= " mv-blog-prepublication";
+            $ArticleCssClasses .= " mv-notpublic";
         }
+
+        $EditButton = new HtmlButton("Edit");
+        $EditButton->setIcon("Pencil.svg");
+        $EditButton->setSize(HtmlButton::SIZE_SMALL);
+        $EditButton->setLink(str_replace('$ID', $SafeId, $Entry->getSchema()->getEditPage()));
+
     // @codingStandardsIgnoreStart
     ?>
 <article class="<?= $ArticleCssClasses; ?>" itemscope="itemscope" itemtype="http://schema.org/BlogPosting">
@@ -66,13 +73,10 @@ class BlogEntryUI
       <div class="row">
         <div class="col">
           <h1 class="blog-title">
-            <a href="index.php?P=P_Blog_Entry&amp;ID=<?= $SafeId; ?>">
+            <a href="index.php?P=FullRecord&amp;ID=<?= $Entry->id() ?>">
               <span itemprop="headline"><?= $SafeTitle; ?></span>
             </a>
-            <a class="btn btn-sm btn-primary mv-button-iconed"
-               href="<?=str_replace('$ID', $SafeId, $Entry->getSchema()->editPage()); ?>">
-               <img class="mv-button-icon" src="<?= $AF->GUIFile('Pencil.svg') ?>"
-                    alt=""/> Edit</a>
+              <?= $EditButton->getHtml(); ?>
           </h1>
 
         </div>
@@ -80,7 +84,7 @@ class BlogEntryUI
     </div>
     <?PHP } else { ?>
     <h1 class="blog-title">
-      <a href="index.php?P=P_Blog_Entry&amp;ID=<?= $SafeId; ?>">
+      <a href="index.php?P=FullRecord&amp;ID=<?= $Entry->id() ?>">
         <span itemprop="headline"><?= $SafeTitle; ?></span>
       </a>
     </h1>
@@ -102,19 +106,19 @@ class BlogEntryUI
 
   <?PHP if (!count($Categories) || !$PrintMoreLink) { ?>
   <section class="share" aria-label="sharing buttons">
-    <?PHP $PluginMgr->getPlugin("SocialMedia")->DisplaySmallShareButtons($Entry); ?>
+    <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons($Entry); ?>
   </section>
   <?PHP } ?>
 
   <?PHP if (count($Categories) && $PrintMoreLink) { ?>
   <section class="share" aria-label="sharing buttons">
-    <?PHP $PluginMgr->getPlugin("SocialMedia")->DisplaySmallShareButtons($Entry); ?>
+    <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons($Entry); ?>
   </section>
   <?PHP } ?>
 
   <?PHP if ($PrintMoreLink || $Blog->EnableComments()) {  ?>
   <p>
-    <a class="blog-more" href="index.php?P=P_Blog_Entry&amp;ID=<?= $SafeId; ?>">
+    <a class="blog-more" href="index.php?P=FullRecord&amp;ID=<?= $Entry->id() ?>">
       <span class="blog-bullet">&raquo;</span>
       <?PHP if ($PrintMoreLink) { ?> Read More <?PHP } ?>
       <?PHP if ($PrintMoreLink && $Blog->EnableComments()) { ?>or<?PHP } ?>
@@ -140,10 +144,10 @@ class BlogEntryUI
     public static function printSummaryBlock(
         int $BlogId,
         $NumberOrIdsToPrint = null,
-        User $User = null
-    ) {
+        ?User $User = null
+    ): void {
         $AF = ApplicationFramework::getInstance();
-        $BlogPlugin = PluginManager::getInstance()->getPlugin("Blog");
+        $BlogPlugin = Blog::getInstance();
         $AF->AddPageCacheTag(
             "ResourceList".$BlogPlugin->GetSchemaId()
         );
@@ -215,7 +219,7 @@ class BlogEntryUI
                     .str_replace(
                         '$ID',
                         "NEW&amp;SC=".$BlogSchema->id(),
-                        $BlogSchema->editPage()
+                        $BlogSchema->getEditPage()
                     )."\">"
                     ."Add an entry</a></td></tr>";
             }

@@ -3,13 +3,12 @@
 #   FILE:  Qualifier.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use InvalidArgumentException;
 use ScoutLib\Item;
 
@@ -41,7 +40,7 @@ class Qualifier extends Item
      * @param string $NewValue Optional new qualfier namespace.
      * @return string The current qualifier namespace.
      */
-    public function nSpace(string $NewValue = null): string
+    public function nSpace(?string $NewValue = null): string
     {
         return $this->DB->updateValue("QualifierNamespace", $NewValue);
     }
@@ -51,7 +50,7 @@ class Qualifier extends Item
      * @param string $NewValue Optional new qualifier URL.
      * @return string The current qualifier URL.
      */
-    public function url(string $NewValue = null): string
+    public function url(?string $NewValue = null): string
     {
         return $this->DB->updateValue("QualifierUrl", $NewValue);
     }

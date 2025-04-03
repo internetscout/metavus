@@ -3,11 +3,13 @@
 #   FILE:  SearchFacetUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
+use ScoutLib\ApplicationFramework;
 
 /**
 * SearchFacetUI supports the generation of a user interface for faceted
@@ -18,18 +20,21 @@ class SearchFacetUI extends SearchFacetUI_Base
 {
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
-    public function printSearchFacets()
+    /**
+     * Generate and return HTML for search facet user interface.
+     * @return string Generated HTML.
+     */
+    public function getHtml(): string
     {
-        $this->generateFacets();
+        $this->loadFacets();
 
-        $this->printFacetGroup(
-            $this->SuggestionsByFieldName
-        );
-
-        $this->printFacetGroup(
-            $this->TreeSuggestionsByFieldName
-        );
+        ob_start();
+        $this->addSupportingJavascript();
+        $this->printFacetGroup($this->SuggestionsByFieldName);
+        $this->printFacetGroup($this->TreeSuggestionsByFieldName);
+        return (string)ob_get_clean();
     }
+
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
@@ -42,7 +47,7 @@ class SearchFacetUI extends SearchFacetUI_Base
      */
     private function printFacetGroup(
         array $Facets
-    ) {
+    ): void {
         if (count($Facets) == 0) {
             return;
         }
@@ -59,9 +64,9 @@ class SearchFacetUI extends SearchFacetUI_Base
             # check cookie and currently open fields to see if this one should
             # be open
             $CookieKey = md5($Key);
-            $CookieName = $GLOBALS["AF"]->getPageName()."_Facet_".$CookieKey;
+            $CookieName = ApplicationFramework::getInstance()->getPageName()."_Facet_".$CookieKey;
             $Show = isset($this->FieldsOpenByDefault[$Key]) ||
-                ($_COOKIE[$CookieName] ?? false);
+                ($_COOKIE[$CookieName] ?? $this->OpenFieldsByDefault);
 
             # store the open/closed state of this facet
             $_COOKIE[$CookieName] = $Show;
@@ -72,9 +77,9 @@ class SearchFacetUI extends SearchFacetUI_Base
             $ToggleClass = "DD_Toggle".$ShrinkCounter;
 
             print "<div class='mv-search-facets' "
-                ."onclick=\"toggle_facet(".$ShrinkCounter.",'".$CookieKey."');\">"
-                ."<b>".$Field->GetDisplayName()
-                ."<span class='float-right'>";
+                ."onclick=\"toggleFacet(".$ShrinkCounter.",'".$CookieKey."');\">"
+                ."<b>".$Field->getDisplayName()
+                ."<span class='float-end'>";
 
             if ($Show) {
                 print "<span style='display: none;' class='".$ToggleClass."'>v</span>"
@@ -110,8 +115,7 @@ class SearchFacetUI extends SearchFacetUI_Base
         int $Logic,
         string $ToggleClass = "",
         bool $Show = true
-    ) {
-
+    ): void {
         print "<ul class='list-group list-group-flush mv-search-facets "
             .$ToggleClass."' ".(!$Show ? "style='display: none;'" : "").">\n";
 
@@ -158,5 +162,39 @@ class SearchFacetUI extends SearchFacetUI_Base
         }
 
         print "</ul>\n";
+    }
+
+    /**
+     * Output JavaScript code (with surrounding <script> tags) needed to
+     * support search facet UI.  If this method is called multiple times,
+     * the code is only written out once, by the first call.
+     */
+    private function addSupportingJavascript(): void
+    {
+        static $SupportJsDisplayed = false;
+        if ($SupportJsDisplayed) {
+            return;
+        }
+        (ApplicationFramework::getInstance())->requireUIFile(
+            'jquery.cookie.js',
+            ApplicationFramework::ORDER_FIRST
+        );
+
+        ?>
+        <script type='text/javascript'>
+        function toggleFacet(FacetNumber, CookieKey){
+            var CookieName = 'SearchResults_Facet_' + CookieKey;
+            $.cookie(CookieName, 1 - $.cookie(CookieName));
+
+            $('.DD_Toggle'+FacetNumber).each(function(Index, Element){
+                if ($(Element).is("ul")) {
+                    $(Element).slideToggle();
+                } else {
+                    $(Element).toggle();
+                }
+            });
+        }
+        </script>
+        <?PHP
     }
 }

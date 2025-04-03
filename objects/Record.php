@@ -3,19 +3,19 @@
 #   FILE:  Record.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Date;
 use ScoutLib\Item;
+use ScoutLib\ObserverSupportTrait;
 use ScoutLib\StdLib;
 
 /**
@@ -23,6 +23,8 @@ use ScoutLib\StdLib;
  */
 class Record extends Item
 {
+    use ObserverSupportTrait;
+
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     # types of changes to fields that can be performed by Record::applyListOfChanges()
@@ -35,12 +37,19 @@ class Record extends Item
     /* const CHANGE_REPLACE = 6; (legacy value; no longer used) */
     const CHANGE_FIND_REPLACE = 7;
 
-
     const IMAGE_CACHE_PATH = "local/data/caches/ImageLinks";
 
+    # events that can be monitored via registerObserver()
+    # (TO DO: push down into ObserverSupportTrait once our minimum
+    #   supported PHP version allows constants in traits (PHP 8.2))
+    const EVENT_SET = 1;
+    const EVENT_CLEAR = 2;
+    const EVENT_ADD = 4;
+    const EVENT_REMOVE = 8;
+
     /**
-     * Object constructor for loading an existing resource.(To create a new
-     * resource, use Resource::Create().)
+     * Object constructor for loading an existing record.(To create a new
+     * record, use Record::create().)
      * @param int $RecordId ID of resource to load.
      * @see Record::create()
      * @throws InvalidArgumentException If ID is invalid.
@@ -64,8 +73,8 @@ class Record extends Item
     /**
      * Create a new resource.
      * @param int $SchemaId ID of metadata schema for new resource.
-     * @return Record Resource object.
-     * @throws Exception If resource creation failed.
+     * @return Record New Record object.
+     * @throws Exception If record creation failed.
      */
     public static function create(int $SchemaId)
     {
@@ -97,8 +106,8 @@ class Record extends Item
         # release DB tables
         $DB->query("UNLOCK TABLES");
 
-        # create new Resource object
-        $Resource = new Record($Id);
+        # instantiate newly-added record as object
+        $Record = new Record($Id);
 
         # for each field that can have a default value
         $Schema = new MetadataSchema($SchemaId);
@@ -116,34 +125,44 @@ class Record extends Item
                     # if there are values in the array
                     if (!empty($DefaultValue)) {
                         # set default value
-                        $Resource->set($Field, $DefaultValue);
+                        $Record->set($Field, $DefaultValue);
                     }
                 } else {
                     # set default value
-                    $Resource->set($Field, $DefaultValue);
+                    $Record->set($Field, $DefaultValue);
                 }
             }
         }
 
-        $Resource->updateAutoupdateFields(
+        $Record->updateAutoupdateFields(
             MetadataField::UPDATEMETHOD_ONRECORDCREATE,
             User::getCurrentUser()
         );
 
-        # signal resource creation
-        $GLOBALS["AF"]->signalEvent("EVENT_RESOURCE_CREATE", ["Resource" => $Resource]);
+        # signal record creation
+        (ApplicationFramework::getInstance())->signalEvent(
+            "EVENT_RESOURCE_CREATE",
+            ["Resource" => $Record]
+        );
+        $Record->notifyObservers(self::EVENT_ADD);
 
         # return new Resource object to caller
-        return $Resource;
+        return $Record;
     }
 
     /**
      * Duplicate the specified resource and return to caller.
      * @param int $ResourceId ID of resource to duplicate.
+     * @param bool $MarkAsDuplicate TRUE to add a [DUPLICATE] tag to the
+     *     record. If a mapped Title field exists, it is added
+     *     there. Otherwise, mapped Description is used. If neither is mapped,
+     *     nothing is added. (OPTIONAL, default TRUE)
      * @return Record New Resource object.
      */
-    public static function duplicate(int $ResourceId)
-    {
+    public static function duplicate(
+        int $ResourceId,
+        bool $MarkAsDuplicate = true
+    ) {
         # check that resource to be duplicated exists
         if (!Record::itemExists($ResourceId)) {
             throw new InvalidArgumentException(
@@ -186,14 +205,16 @@ class Record extends Item
         }
 
         # modify likely field to indicate resource is duplicate
-        foreach (["Title", "Description"] as $FieldName) {
-            $MappedField = $Schema->getFieldByMappedName($FieldName);
-            if ($MappedField instanceof MetadataField) {
-                $DstResource->set(
-                    $MappedField,
-                    $DstResource->get($MappedField)." [DUPLICATE]"
-                );
-                break;
+        if ($MarkAsDuplicate) {
+            foreach (["Title", "Description"] as $FieldName) {
+                $MappedField = $Schema->getFieldByMappedName($FieldName);
+                if ($MappedField instanceof MetadataField) {
+                    $DstResource->set(
+                        $MappedField,
+                        $DstResource->get($MappedField)." [DUPLICATE]"
+                    );
+                    break;
+                }
             }
         }
 
@@ -224,11 +245,17 @@ class Record extends Item
     /**
      * Remove resource (and accompanying associations) from database and
      * delete any associated files.
+     * @return void|int|array May return number of records destroyed or list of
+     *      IDs of records that were destroyed.
      */
     public function destroy()
     {
         # signal that resource deletion is about to occur
-        $GLOBALS["AF"]->SignalEvent("EVENT_RESOURCE_DELETE", ["Resource" => $this]);
+        (ApplicationFramework::getInstance())->signalEvent(
+            "EVENT_RESOURCE_DELETE",
+            ["Resource" => $this]
+        );
+        $this->notifyObservers(self::EVENT_REMOVE);
 
         # grab list of classifications
         $Classifications = $this->classifications();
@@ -340,7 +367,7 @@ class Record extends Item
 
     /**
      * Get instance of record with appropriate class.
-     * @param int $RecordId ID of record to laod.
+     * @param int $RecordId ID of record to load.
      * @return mixed Instance of appropriate class.
      */
     public static function getRecord(int $RecordId)
@@ -353,49 +380,33 @@ class Record extends Item
      * Update the auto-updated fields as necessary.
      * @param string $UpdateType Type of update being performed, one of
      *     the MetadataField::UPDATEMETHOD_ constants.
-     * @param User $User User responsible for the update (OPTIONAL).
+     * @param User $User User responsible for the update.
+     * @return void
      */
-    public function updateAutoupdateFields(string $UpdateType, User $User = null)
+    public function updateAutoupdateFields(string $UpdateType, User $User)
     {
-        # update classification counts for associated terms on record release
-        # so that counts of public records will be correct
-        if ($UpdateType == MetadataField::UPDATEMETHOD_ONRECORDRELEASE) {
-            $TreeFields = $this->getSchema()->getFields(
-                MetadataSchema::MDFTYPE_TREE
-            );
-
-            foreach ($TreeFields as $Field) {
-                $Classes = $this->get($Field, true);
-                foreach ($Classes as $Class) {
-                    $Class->recalcResourceCount();
-                }
-            }
-        }
-
-        # update all the timestamp fields as required
+        # update timestamp fields
         $TimestampFields = $this->getSchema()->getFields(
             MetadataSchema::MDFTYPE_TIMESTAMP
         );
         foreach ($TimestampFields as $Field) {
             if ($Field->UpdateMethod() == $UpdateType) {
-                if ($UpdateType == MetadataField::UPDATEMETHOD_ONRECORDRELEASE &&
-                    !$this->userCanView(User::getAnonymousUser())) {
-                    $this->clear($Field);
-                } else {
-                    $this->set($Field, "now");
-                }
+                $this->set($Field, "now");
             }
         }
 
-        # if a user was provided, update the user fields as well
-        if (!is_null($User) && !$User->isAnonymous()) {
-            $UserFields = $this->getSchema()->getFields(
-                MetadataSchema::MDFTYPE_USER
-            );
-            foreach ($UserFields as $Field) {
-                if ($Field->UpdateMethod() == $UpdateType) {
-                    $this->set($Field, $User);
-                }
+        # if no user logged in, nothing to do
+        if ($User->isAnonymous()) {
+            return;
+        }
+
+        # update user fields
+        $UserFields = $this->getSchema()->getFields(
+            MetadataSchema::MDFTYPE_USER
+        );
+        foreach ($UserFields as $Field) {
+            if ($Field->UpdateMethod() == $UpdateType) {
+                $this->set($Field, $User);
             }
         }
     }
@@ -418,7 +429,7 @@ class Record extends Item
     public function schemaId(): int
     {
         # log a warning message to alert the usage of a deprecated function
-        $GLOBALS["AF"]->logMessage(
+        (ApplicationFramework::getInstance())->logMessage(
             ApplicationFramework::LOGLVL_WARNING,
             "Call to deprecated function ".__FUNCTION__. " at ".StdLib::getMyCaller()
         );
@@ -444,7 +455,7 @@ class Record extends Item
     public function schema(): MetadataSchema
     {
         # log a warning message to alert the usage of a deprecated function
-        $GLOBALS["AF"]->logMessage(
+        (ApplicationFramework::getInstance())->logMessage(
             ApplicationFramework::LOGLVL_WARNING,
             "Call to deprecated function ".__FUNCTION__. " at ".StdLib::getMyCaller()
         );
@@ -453,88 +464,101 @@ class Record extends Item
     }
 
     /**
-     * Get/set whether resource is a temporary record.
-     * @param bool $NewSetting TRUE/FALSE setting for whether resource is
-     *       temporary.(OPTIONAL)
+     * Get/set whether resource is a temporary record. Once permanent, records
+     *     cannot be made temporary again.
+     * @param bool|null $NewSetting FALSE to toggle a record to permanent
+     *     status. (OPTIONAL)
      * @return bool TRUE if resource is temporary record, or FALSE otherwise.
      */
-    public function isTempRecord(bool $NewSetting = null): bool
+    public function isTempRecord(?bool $NewSetting = null): bool
     {
-        # if new temp resource setting supplied
-        if (!is_null($NewSetting)) {
-            # if caller requested to switch
-            $DB = $this->DB;
-            if ((($this->id() < 0) && ($NewSetting == false)) ||
-            (($this->id() >= 0) && ($NewSetting == true))) {
-                $Factory = new RecordFactory($this->SchemaId);
+        $OldSetting = ($this->id() < 0);
 
-                # lock DB tables to prevent next ID from being grabbed
-                $DB->query("LOCK TABLES `".$this->ItemTableName."` WRITE");
-
-                # get next resource ID as appropriate
-                $OldRecordId = $this->Id;
-                if ($NewSetting == true) {
-                    $this->Id = $Factory->getNextTempItemId();
-                } else {
-                    $this->Id = $Factory->getNextItemId();
-                }
-
-                # change resource ID
-                $DB->query(
-                    "UPDATE `".$this->ItemTableName."` SET "
-                    ."`".$this->ItemIdColumnName."` = ".$this->Id
-                    ." WHERE `".$this->ItemIdColumnName."` = ".$OldRecordId
-                );
-
-                # update parameters for value update methods
-                $this->DB->SetValueUpdateParameters(
-                    $this->ItemTableName,
-                    "`".$this->ItemIdColumnName."` = ".$this->Id
-                );
-
-                # release DB tables
-                $DB->query("UNLOCK TABLES");
-
-                # change associations
-                unset($this->ClassificationCache);
-                $DB->query("UPDATE RecordClassInts SET RecordId = ".
-                    $this->Id." WHERE RecordId = ".$OldRecordId);
-                unset($this->ControlledNameCache);
-                unset($this->ControlledNameVariantCache);
-                $DB->query("UPDATE RecordNameInts SET RecordId = ".
-                    $this->Id." WHERE RecordId = ".$OldRecordId);
-                $DB->query("UPDATE Files SET RecordId = ".
-                    $this->Id." WHERE RecordId = ".$OldRecordId);
-                $DB->query("UPDATE ReferenceInts SET SrcRecordId = ".
-                    $this->Id." WHERE SrcRecordId = ".$OldRecordId);
-                $DB->query("UPDATE Images SET ItemId = ".
-                    $this->Id." WHERE ItemId = ".$OldRecordId);
-                $DB->query("UPDATE RecordUserInts SET RecordId = ".
-                    $this->Id." WHERE RecordId = ".$OldRecordId);
-                $DB->query("UPDATE RecordRatings SET RecordId = ".
-                    $this->Id." WHERE RecordId = ".$OldRecordId);
-
-                # recalculate record counts for tree fields because temp
-                # records aren't included in counts
-                $TreeFields = $this->getSchema()->getFields(
-                    MetadataSchema::MDFTYPE_TREE
-                );
-                foreach ($TreeFields as $Field) {
-                    $Classes = $this->get($Field, true);
-                    foreach ($Classes as $Class) {
-                        $Class->recalcResourceCount();
-                    }
-                }
-
-                # signal event as appropriate
-                if ($NewSetting === false) {
-                    $GLOBALS["AF"]->SignalEvent("EVENT_RESOURCE_ADD", ["Resource" => $this]);
-                }
-            }
+        # if setting has not changed, report current one back to caller
+        if (is_null($NewSetting) || $NewSetting === $OldSetting) {
+            return $OldSetting;
         }
 
-        # report to caller whether we are a temp resource
-        return ($this->id() < 0) ? true : false;
+        # disallow perm -> temp changes
+        if ($OldSetting === false && $NewSetting === true) {
+            throw new Exception(
+                "Permanent records cannot be made temporary again."
+            );
+        }
+
+        $DB = $this->DB;
+        $Factory = new RecordFactory($this->SchemaId);
+
+        # if no calls to set() have yet been made such that we don't know if this record
+        # was initially visible, compute visibility now
+        if (!isset(self::$WasPublic[$this->id()])) {
+            self::$WasPublic[$this->id()] = $this->userCanView(User::getAnonymousUser());
+        }
+
+        # lock DB tables to prevent next ID from being grabbed
+        $DB->query("LOCK TABLES `".$this->ItemTableName."` WRITE");
+
+        # get next resource ID as appropriate
+        $OldRecordId = $this->Id;
+        $this->Id = $Factory->getNextItemId();
+
+        # change resource ID
+        $DB->query(
+            "UPDATE `".$this->ItemTableName."` SET "
+                ."`".$this->ItemIdColumnName."` = ".$this->Id
+                ." WHERE `".$this->ItemIdColumnName."` = ".$OldRecordId
+        );
+
+        # update parameters for value update methods
+        $this->DB->SetValueUpdateParameters(
+            $this->ItemTableName,
+            "`".$this->ItemIdColumnName."` = ".$this->Id
+        );
+
+        # release DB tables
+        $DB->query("UNLOCK TABLES");
+
+        # clear internal caches
+        unset($this->ClassificationCache);
+        unset($this->ControlledNameCache);
+        unset($this->ControlledNameVariantCache);
+
+        # change associations
+        $DB->query("UPDATE RecordClassInts SET RecordId = ".
+                   $this->Id." WHERE RecordId = ".$OldRecordId);
+        $DB->query("UPDATE RecordNameInts SET RecordId = ".
+                   $this->Id." WHERE RecordId = ".$OldRecordId);
+        $DB->query("UPDATE Files SET RecordId = ".
+                   $this->Id." WHERE RecordId = ".$OldRecordId);
+        $DB->query("UPDATE ReferenceInts SET SrcRecordId = ".
+                   $this->Id." WHERE SrcRecordId = ".$OldRecordId);
+        $DB->query("UPDATE Images SET ItemId = ".
+                   $this->Id." WHERE ItemId = ".$OldRecordId);
+        $DB->query("UPDATE RecordUserInts SET RecordId = ".
+                   $this->Id." WHERE RecordId = ".$OldRecordId);
+        $DB->query("UPDATE RecordRatings SET RecordId = ".
+                   $this->Id." WHERE RecordId = ".$OldRecordId);
+
+        # update stored visibility info
+        self::$WasPublic[$this->id()] = self::$WasPublic[$OldRecordId];
+        unset(self::$WasPublic[$OldRecordId]);
+
+        # and run housekeeping
+        $User = User::getCurrentUser();
+        $this->doHousekeepingAfterChangeToRecord(
+            $User->id(),
+            self::$WasPublic[$this->id()],
+            true,
+            true
+        );
+
+        (ApplicationFramework::getInstance())->signalEvent(
+            "EVENT_RESOURCE_ADD",
+            ["Resource" => $this]
+        );
+        $this->notifyObservers(self::EVENT_ADD);
+
+        return $NewSetting;
     }
 
     # --- Generic Attribute Retrieval Methods -------------------------------
@@ -549,11 +573,11 @@ class Record extends Item
         $Url = str_replace(
             "\$ID",
             (string)$this->id(),
-            $this->getSchema()->viewPage()
+            $this->getSchema()->getViewPage()
         );
 
         # return clean url, if one is available
-        return $GLOBALS["AF"]->getCleanRelativeUrlForPath($Url);
+        return (ApplicationFramework::getInstance())->getCleanRelativeUrlForPath($Url);
     }
 
     /**
@@ -566,11 +590,11 @@ class Record extends Item
         $Url = str_replace(
             "\$ID",
             (string)$this->id(),
-            $this->getSchema()->editPage()
+            $this->getSchema()->getEditPage()
         );
 
         # return clean url, if one is available
-        return $GLOBALS["AF"]->getCleanRelativeUrlForPath($Url);
+        return (ApplicationFramework::getInstance())->getCleanRelativeUrlForPath($Url);
     }
 
     /**
@@ -645,7 +669,7 @@ class Record extends Item
 
                 if (strlen($Begin)) {
                     if (Date::isValidDate($Begin, $End) == false) {
-                        $GLOBALS["AF"]->logMessage(
+                        (ApplicationFramework::getInstance())->logMessage(
                             ApplicationFramework::LOGLVL_WARNING,
                             "Invalid date (".$Begin." - ".$End.")"
                             ." in Field ".$Field->name()." (".$Field->id().")"
@@ -909,7 +933,7 @@ class Record extends Item
         $Value = $this->get($Field, $ReturnObject, $IncludeVariants);
 
         # signal event to allowed hooked code to modify value
-        $SignalResult = $GLOBALS["AF"]->SignalEvent(
+        $SignalResult = (ApplicationFramework::getInstance())->signalEvent(
             "EVENT_FIELD_DISPLAY_FILTER",
             [
                 "Field" => $Field,
@@ -1246,6 +1270,7 @@ class Record extends Item
      * @param bool $Reset When TRUE Controlled Names, Classifications,
      *       and Options will be set to contain *ONLY* the contents of
      *       NewValue, rather than appending $NewValue to the current value.
+     * @return void
      * @throws Exception When attempting to set a value for a field that is
      *       part of a different schema than the resource.
      * @throws InvalidArgumentException When attempting to set a controlled
@@ -1263,6 +1288,15 @@ class Record extends Item
         if ($Field->schemaId() != $this->getSchemaId()) {
             throw new Exception("Attempt to set a value for a field "
                     ."from a different schema.");
+        }
+
+        # if this is the first call to set(), determine if record
+        # was initially publicly visible
+        # (done here rather than in __construct() because 1) we don't need the
+        # check when we aren't setting anything and 2) getAnonymousUser()
+        # calls Record::__construct(), resulting in infinite recursion)
+        if (!isset(self::$WasPublic[$this->id()])) {
+            self::$WasPublic[$this->id()] = $this->userCanView(User::getAnonymousUser());
         }
 
         $DBFieldName = $Field->dBFieldName();
@@ -1379,32 +1413,24 @@ class Record extends Item
                 throw new Exception("Attempt to set unknown resource field type");
         }
 
-        if ($ValueWasChanged && !$this->isTempRecord()) {
-            $this->updateModificationTimestampForField($Field);
-
-            # on resource modification, clear the UserPermsCache entry
-            #   so that stale permissions checks are not cached
-            $this->clearPermissionsCache();
-
-            # if this field is not an option or a controlled name, but it is
-            # checked for visibility, then we need to clear resource
-            # visibility cache (for example, if this is AddedById and
-            # our schema allows users to view resources where they are
-            # the AddedById)
-            if (!in_array(
-                $Field->type(),
-                [MetadataSchema::MDFTYPE_OPTION, MetadataSchema::MDFTYPE_CONTROLLEDNAME]
-            ) && $this->getSchema()->viewingPrivileges()->checksField($Field->id())) {
-                $RFactory = new RecordFactory($this->SchemaId);
-                $RFactory->clearVisibleRecordCount($this);
-            }
+        # if no changes, nothing else to do
+        if (!$ValueWasChanged) {
+            return;
         }
+
+        # if temp record, nothing else to do
+        if ($this->isTempRecord()) {
+            return;
+        }
+
+        $this->doHousekeepingAfterChangeToValue($Field);
     }
 
     /**
      * Set qualifier using field object.
      * @param string|int|MetadataField $Field Metadata field name, ID, or field object.
      * @param mixed $NewValue Qualifier object or ID.
+     * @return void
      */
     public function setQualifier($Field, $NewValue)
     {
@@ -1433,6 +1459,7 @@ class Record extends Item
      * @param string|int|MetadataField $Field Metadata field name, ID, or field object.
      * @param mixed $ValueToClear Specific value to clear (for fields that
      *       support multiple values).(OPTIONAL)
+     * @return void
      */
     public function clear($Field, $ValueToClear = null)
     {
@@ -1508,7 +1535,7 @@ class Record extends Item
 
                 foreach ($Files as $File) {
                     # signal event to indicate file deletion
-                    $GLOBALS["AF"]->SignalEvent(
+                    (ApplicationFramework::getInstance())->signalEvent(
                         "EVENT_RESOURCE_FILE_DELETE",
                         [
                             "Field" => $Field,
@@ -1580,15 +1607,13 @@ class Record extends Item
      *   If left unspecified, all provided changes will be made.
      * @return bool TRUE when resource was changed, FALSE otherwise.
      */
-    public function applyListOfChanges(array $ChangesToApply, User $User = null): bool
+    public function applyListOfChanges(array $ChangesToApply, ?User $User = null): bool
     {
         $RecordWasChanged = false;
 
-        $WasPublic = $this->userCanView(User::getAnonymousUser());
-
         # iterate over the changes we were given
         foreach ($ChangesToApply as $Change) {
-            $Field = new MetadataField($Change["FieldId"]);
+            $Field = MetadataField::getField($Change["FieldId"]);
 
             if ($User !== null) {
                 # if this field is not editable, move to the next
@@ -1687,33 +1712,77 @@ class Record extends Item
             }
         }
 
-        # if there were any changes
-        if ($RecordWasChanged) {
+        return $RecordWasChanged;
+    }
+
+    /**
+     * Perform necessary actions after a record has been modified -- handles
+     * clearing caches, automatic field updates, search/recommender updates,
+     * and signaling EVENT_RESOURCE_MODIFY. (Method is public because it needs
+     * to be run as a post-processing call or background task.)
+     * @param int|null $UserId User that modified the record or null when no
+     *    user was logged in.
+     * @param bool $WasPublic TRUE when record was public when loaded on the
+     *    page that set up this function call (passed as a parameter to work
+     *    correctly when run in a background task)
+     * @param bool $RunAutoUpdates TRUE to run updates triggered by record changes,
+     *     FALSE to skip them.
+     * @param bool $WasTemp TRUE if the record has just been toggled from temp
+     *     to perm, FALSE otherwise (OPTIONAL, default FALSE)
+     * @return void
+     */
+    public function doHousekeepingAfterChangeToRecord(
+        ?int $UserId,
+        bool $WasPublic,
+        bool $RunAutoUpdates,
+        bool $WasTemp = false
+    ) : void {
+        $AF = ApplicationFramework::getInstance();
+        $User = is_null($UserId) ? User::getAnonymousUser() : new User($UserId);
+
+        if ($RunAutoUpdates) {
             $this->updateAutoupdateFields(
                 MetadataField::UPDATEMETHOD_ONRECORDCHANGE,
                 $User
             );
-
-            $IsPublic = $this->userCanView(User::getAnonymousUser());
-            if ($WasPublic != $IsPublic) {
-                $this->updateAutoupdateFields(
-                    MetadataField::UPDATEMETHOD_ONRECORDRELEASE,
-                    $User
-                );
-            }
-
-            $this->queueSearchAndRecommenderUpdate();
-
-            # signal the modified event if the resource isn't a temp one
-            if (!$this->isTempRecord()) {
-                $GLOBALS["AF"]->SignalEvent(
-                    "EVENT_RESOURCE_MODIFY",
-                    ["Resource" => $this]
-                );
-            }
         }
 
-        return $RecordWasChanged;
+        # if this method is run in the background, the anonymous user will be
+        # logged in
+        # the ID of the user who performed the action that initated this call
+        # should be the ID used to set last modified by ID
+        $LoggedInUser = User::getCurrentUser();
+        User::setCurrentUser($User);
+
+        $AF->signalEvent(
+            "EVENT_RESOURCE_MODIFY",
+            ["Resource" => $this]
+        );
+
+        $this->notifyObservers(self::EVENT_SET);
+
+        # restore the user who was logged in when the method was called
+        User::setCurrentUser($LoggedInUser);
+
+        # on resource modification, clear the UserPermsCache entry
+        #   so that stale permissions checks are not cached
+        $this->clearPermissionsCache();
+
+        $IsPublic = $this->userCanView(User::getAnonymousUser());
+
+        # recalculate resource counts for tree fields if necessary
+        if ($WasTemp || $WasPublic != $IsPublic) {
+            $this->recalculateCountsForClassifications();
+        }
+
+        if ($WasPublic == false && $IsPublic == true) {
+            $this->updateAutoupdateFields(
+                MetadataField::UPDATEMETHOD_ONRECORDRELEASE,
+                $User
+            );
+        }
+
+        $this->queueSearchAndRecommenderUpdate();
     }
 
     # --- Field-Specific or Type-Specific Attribute Retrieval Methods -------
@@ -1795,7 +1864,7 @@ class Record extends Item
      * @return int|null Current rating value of resource by user or NULL
      *       if user has not rated resource.
      */
-    public function rating(int $NewRating = null, int $UserId = null)
+    public function rating(?int $NewRating = null, ?int $UserId = null)
     {
         $DB = $this->DB;
 
@@ -1805,9 +1874,9 @@ class Record extends Item
         # if user ID not supplied
         if ($UserId == null) {
             # if user is logged in
-            if ($User->IsLoggedIn()) {
+            if ($User->isLoggedIn()) {
                 # use ID of current user
-                $UserId = $User->Get("UserId");
+                $UserId = $User->get("UserId");
             } else {
                 # return NULL to caller
                 return null;
@@ -1838,7 +1907,7 @@ class Record extends Item
                 $Rating = $NewRating;
             } else {
                 # get rating value to return to caller
-                $Rating = $Record["Rating"];
+                $Rating = intval($Record["Rating"]);
             }
         } else {
             # if new rating was supplied
@@ -1931,6 +2000,11 @@ class Record extends Item
      */
     public function userCanView(\ScoutLib\User $User, bool $AllowHooksToModify = true)
     {
+        # anon users cannot view temp records
+        if ($this->isTempRecord() && !$User->isLoggedIn()) {
+            return false;
+        }
+
         return $this->checkSchemaPermissions($User, "View", $AllowHooksToModify);
     }
 
@@ -1972,7 +2046,7 @@ class Record extends Item
      * Check if the result of the most recent userCanView() call will only be
      * valid for a certain time because it contains a comparison against a
      * TIMESTAMP field, getting the expiration time of the check if so.
-     * @return bool|string FALSE when the userCanView() result does not expire, a date in
+     * @return false|string FALSE when the userCanView() result does not expire, a date in
      *   SQL format giving the expiration time otherwise.
      * @see Record::userCanView()
      */
@@ -2043,8 +2117,9 @@ class Record extends Item
 
     /**
      * Clear permissions caches referring to this record.
+     * @return void
      */
-    public function clearPermissionsCache()
+    public function clearPermissionsCache(): void
     {
         $this->DB->query("DELETE FROM UserPermsCache WHERE RecordId=".$this->Id);
         PrivilegeSet::clearCaches();
@@ -2057,13 +2132,21 @@ class Record extends Item
 
     /**
      * Update search and recommender system DBs.
+     * @return void
      */
-    public function queueSearchAndRecommenderUpdate()
+    public function queueSearchAndRecommenderUpdate(): void
     {
-        if (!$this->isTempRecord()) {
+        if ($this->isTempRecord()) {
+            return;
+        }
+
+        $SysConfig = SystemConfiguration::getInstance();
+        if ($SysConfig->getBool("SearchDBEnabled")) {
             $SearchEngine = new SearchEngine();
             $SearchEngine->queueUpdateForItem($this);
+        }
 
+        if ($SysConfig->getBool("RecommenderDBEnabled")) {
             $Recommender = new Recommender();
             $Recommender->queueUpdateForItem($this);
         }
@@ -2173,6 +2256,23 @@ class Record extends Item
         return self::$ItemIdColumnNames[$Class];
     }
 
+    /**
+     * Notify registered observers about the specified event.
+     * Observer functions should have the following signature:
+     *      function myObserver(
+     *          int $Event,
+     *          Record $Record): void
+     * Record addition and deletion produce ADD and REMOVE events, and
+     * record modification produces a SET event.  Observers are notified
+     * about the REMOVE event before the record is actually deleted.
+     * @param int $Event Event to notify about (EVENT_ constant).
+     */
+    public function notifyObservers(int $Event): void
+    {
+        $Args = [ $Event, $this ];
+        $this->notifyObserversWithArgs($Event, $Args, $this->Id);
+    }
+
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $ClassificationCache;
@@ -2182,22 +2282,94 @@ class Record extends Item
     private $CumulativeRating;
     private $NumberOfComments;
     private $NumberOfRatings;
+    private $RunAutoUpdates = false;
     private $SchemaId;
     private $ViewPrivExpirationDate = false;
 
-    private static $Schemas;
     private static $SchemaIdCache;
+    private static $Schemas;
+    private static $WasPublic = [];
 
     protected $PermissionCache;
 
     # ---- Field Setting Methods ---------------------------------------------
 
     /**
+     * Perform internal housekeeping necessary after changing a value -- sets
+     * up a callback to run near the end of execution to handle record
+     * modification, updates field timestamps, and clears caches.
+     * @param MetadataField $Field Field that was changed.
+     * @return void
+     */
+    private function doHousekeepingAfterChangeToValue(MetadataField $Field) : void
+    {
+        $this->updateModificationTimestampForField($Field);
+
+        # if this field is not an option or a controlled name, but it is
+        # checked for visibility, then we need to clear resource
+        # visibility cache (for example, if this is AddedById and
+        # our schema allows users to view resources where they are
+        # the AddedById)
+        if (!in_array(
+            $Field->type(),
+            [MetadataSchema::MDFTYPE_OPTION, MetadataSchema::MDFTYPE_CONTROLLEDNAME]
+        ) && $this->getSchema()->viewingPrivileges()->checksField($Field->id())) {
+            $RFactory = new RecordFactory($this->SchemaId);
+            $RFactory->clearVisibleRecordCount($this);
+        }
+
+        if ($Field->triggersAutoUpdates()) {
+            $this->RunAutoUpdates = true;
+        }
+
+        $AF = ApplicationFramework::getInstance();
+        $User = User::getCurrentUser();
+
+        if ($this->RunAutoUpdates) {
+            # grab a lock on the task queue
+            $AF->beginAtomicTaskOperation();
+
+            # check if there's a no update version of this task queued, deleting
+            # it if there was
+            $Params = [
+                $this->id(),
+                "doHousekeepingAfterChangeToRecord",
+                $User->id(),
+                self::$WasPublic[$this->id()],
+                false
+            ];
+
+            $TaskId = $AF->getTaskId("\\Metavus\\Record::callMethod", $Params);
+            if ($TaskId !== false) {
+                $AF->deleteTask($TaskId);
+            }
+
+            # release lock
+            $AF->endAtomicTaskOperation();
+        }
+
+        $Params = [
+            $this->id(),
+            "doHousekeepingAfterChangeToRecord",
+            $User->id(),
+            self::$WasPublic[$this->id()],
+            $this->RunAutoUpdates
+        ];
+        $AF->queueUniqueTask(
+            "\\Metavus\\Record::callMethod",
+            $Params,
+            ApplicationFramework::PRIORITY_HIGH,
+            "Update fields after change to record ID ".$this->id()
+                ." by user ID ".$User->id().($this->RunAutoUpdates ? " (with AutoUpdates)" : "")
+        );
+    }
+
+    /**
      * Update the value stored for a Point field
      * @param mixed $NewValue Array containing X and Y values.
      * @return bool TRUE if changes were made to the Record, false otherwise.
      */
-    private function setPointField(MetadataField $Field, $NewValue)
+    private function setPointField(MetadataField $Field, $NewValue): bool
     {
         if ($Field->type() != MetadataSchema::MDFTYPE_POINT) {
             throw new Exception("setPointField() can only be used for Point fields");
@@ -2262,6 +2434,16 @@ class Record extends Item
     {
         if ($Field->type() != MetadataSchema::MDFTYPE_USER) {
             throw new Exception("setUserField() can only be used for User fields");
+        }
+
+        # do not try to set User fields to the anonymous user
+        if (($NewValue instanceof User) && ($NewValue->id() === null)) {
+            (ApplicationFramework::getInstance())->logMessage(
+                ApplicationFramework::LOGLVL_WARNING,
+                "Attempt to set metadata field \"".$Field->name()
+                        ."\" (ID:".$Field->id().") to the anonymous user."
+            );
+            return false;
         }
 
         $OldValue = array_keys($this->get($Field));
@@ -2509,7 +2691,7 @@ class Record extends Item
      *   current list of ControlledNames
      * @return bool TRUE if changes were made to the Record, false otherwise.
      */
-    private function setControlledNameField(MetadataField $Field, $NewValue, bool $Reset)
+    private function setControlledNameField(MetadataField $Field, $NewValue, bool $Reset): bool
     {
         $ValidTypes = [
             MetadataSchema::MDFTYPE_CONTROLLEDNAME,
@@ -2725,6 +2907,7 @@ class Record extends Item
             $ValueChanged = true;
 
             # for each new incoming file
+            $AddedFileIds = [];
             foreach ($ToAdd as $FileId) {
                 # get the file
                 $File = new File($FileId);
@@ -2737,7 +2920,7 @@ class Record extends Item
                 $NewFile->fieldId($Field->id());
 
                 # signal event to indicate file addition
-                $GLOBALS["AF"]->SignalEvent(
+                (ApplicationFramework::getInstance())->signalEvent(
                     "EVENT_RESOURCE_FILE_ADD",
                     [
                         "Field" => $Field,
@@ -2745,8 +2928,11 @@ class Record extends Item
                         "File" => $NewFile,
                     ]
                 );
+
+                # note copy's file ID for observers
+                $AddedFileIds[] = $NewFile->id();
             }
-            $Field->notifyObservers(MetadataField::EVENT_ADD, $this->Id, $ToAdd);
+            $Field->notifyObservers(MetadataField::EVENT_ADD, $this->Id, $AddedFileIds);
         }
 
         # report to caller if we changed anything
@@ -2824,12 +3010,13 @@ class Record extends Item
      * @param User|null $User User performing the modification or NULL if unknown.
      * @param MetadataField $Field Field to modify
      * @param mixed $NewValue Value to set
+     * @return void
      */
     private function modifyFieldValue(
         $User,
         MetadataField $Field,
         $NewValue
-    ) {
+    ): void {
         $ShouldDoDateSubs = [
             MetadataSchema::MDFTYPE_TEXT,
             MetadataSchema::MDFTYPE_PARAGRAPH,
@@ -2882,7 +3069,7 @@ class Record extends Item
         ];
 
         if (in_array($Field->type(), $ShouldCallHooks)) {
-            $SignalResult = $GLOBALS["AF"]->SignalEvent(
+            $SignalResult = (ApplicationFramework::getInstance())->signalEvent(
                 "EVENT_POST_FIELD_EDIT_FILTER",
                 [
                     "Field" => $Field,
@@ -2944,7 +3131,7 @@ class Record extends Item
         $Value = $this->PermissionCache[$CacheKey];
 
         if ($AllowHooksToModify) {
-            $SignalResult = $GLOBALS["AF"]->SignalEvent(
+            $SignalResult = (ApplicationFramework::getInstance())->signalEvent(
                 "EVENT_RESOURCE_".strtoupper($CheckType)."_PERMISSION_CHECK",
                 [
                     "Resource" => $this,
@@ -2996,7 +3183,7 @@ class Record extends Item
             }
 
             # allow plugins to modify result of permission check
-            $SignalResult = $GLOBALS["AF"]->signalEvent(
+            $SignalResult = (ApplicationFramework::getInstance())->signalEvent(
                 "EVENT_FIELD_".strtoupper($CheckType)."_PERMISSION_CHECK",
                 [
                     "Field" => $Field,
@@ -3051,7 +3238,7 @@ class Record extends Item
         $ImageUrl = $this->getPersistentUrlForImage($Field, $Index, $Size);
 
         # if we have no CleanURL support, just pass the value up
-        if (!$GLOBALS["AF"]->cleanUrlSupportAvailable()) {
+        if (!(ApplicationFramework::getInstance())->cleanUrlSupportAvailable()) {
             return $ImageUrl;
         }
 
@@ -3113,7 +3300,7 @@ class Record extends Item
         $SrcFile = $Image->url($Size);
 
         # if we have no CleanURL support, just return the file name
-        if (!$GLOBALS["AF"]->cleanUrlSupportAvailable()) {
+        if (!(ApplicationFramework::getInstance())->cleanUrlSupportAvailable()) {
             return $SrcFile;
         }
 
@@ -3144,8 +3331,9 @@ class Record extends Item
     /**
      * Remove symlinks used for to cache image mappings for a given field.
      * @param int $FieldId Source field.
+     * @return void
      */
-    private function clearImageSymlinksForField(int $FieldId)
+    private function clearImageSymlinksForField(int $FieldId): void
     {
         $this->clearImageSymlinksByGlob(
             self::IMAGE_CACHE_PATH."/".$this->id()."_".$FieldId."_*"
@@ -3154,8 +3342,9 @@ class Record extends Item
 
     /**
      * Remove all symlinks used for to cache image mappings for this record.
+     * @return void
      */
-    private function clearAllImageSymlinks()
+    private function clearAllImageSymlinks(): void
     {
         $this->clearImageSymlinksByGlob(
             self::IMAGE_CACHE_PATH."/".$this->id()."_*"
@@ -3166,8 +3355,9 @@ class Record extends Item
      * Remove image symlinks that match a specified glob.
      * @param string $Pattern File name pattern to match in a format
      *   acceptable to PHP's glob().
+     * @return void
      */
-    private function clearImageSymlinksByGlob(string $Pattern)
+    private function clearImageSymlinksByGlob(string $Pattern): void
     {
         if (!is_dir(self::IMAGE_CACHE_PATH)) {
             return;
@@ -3192,8 +3382,9 @@ class Record extends Item
 
     /**
      * Recalculate and save cumulative rating value for resource.
+     * @return void
      */
-    private function fetchAndPossiblyUpdateCumulativeRating()
+    private function fetchAndPossiblyUpdateCumulativeRating(): void
     {
         # grab totals from DB
         $this->DB->query("SELECT COUNT(Rating) AS Count, "
@@ -3227,7 +3418,7 @@ class Record extends Item
         string $TableName,
         string $FieldName,
         $Value,
-        MetadataField $Field = null
+        ?MetadataField $Field = null
     ): bool {
         # we should ignore duplicate key errors when doing inserts
         $this->DB->SetQueryErrorsToIgnore([
@@ -3283,7 +3474,7 @@ class Record extends Item
         string $TableName,
         string $FieldName,
         $Value,
-        MetadataField $Field = null
+        ?MetadataField $Field = null
     ): bool {
         # start out assuming no association will be removed
         $AssociationRemoved = false;
@@ -3310,6 +3501,24 @@ class Record extends Item
 
         # report to caller whether association was added
         return $AssociationRemoved;
+    }
+
+    /**
+     * Recalculate counts (of associated records) for all classifications
+     *     associated with this record.
+     * @return void
+     */
+    private function recalculateCountsForClassifications() : void
+    {
+        $TreeFields = $this->getSchema()->getFields(
+            MetadataSchema::MDFTYPE_TREE
+        );
+        foreach ($TreeFields as $Field) {
+            $Classes = $this->get($Field, true);
+            foreach ($Classes as $Class) {
+                $Class->recalcResourceCount();
+            }
+        }
     }
 
     /**
@@ -3434,6 +3643,7 @@ class Record extends Item
     /**
      * Update modification timestamp for specified field.
      * @param MetadataField $Field Field to update timestamp for.
+     * @return void
      */
     protected function updateModificationTimestampForField(MetadataField $Field): void
     {
@@ -3465,8 +3675,9 @@ class Record extends Item
      * name) for specified class.This may be overridden in a child class, if
      * different values are needed.
      * @param string $ClassName Class to set values for.
+     * @return void
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         if (!isset(self::$ItemIdColumnNames[$ClassName])) {
             self::$ItemIdColumnNames[$ClassName] = "RecordId";

@@ -3,15 +3,38 @@
 #   FILE:  AddControlledName.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
 use ScoutLib\HtmlOptionList;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ControlledName)) {
+    $H_ControlledName = null;
+}
+if (!isset($H_ErrorMessage)) {
+    $H_ErrorMessage = null;
+}
+if (!isset($H_Field)) {
+    $H_Field = null;
+}
+if (!isset($H_FormUI)) {
+    $H_FormUI = null;
+}
+if (!isset($H_Schema)) {
+    throw new Exception("H_Schema not defined.");
+}
+if (!isset($H_SuccessfullyAdded)) {
+    throw new Exception("H_SuccessfullyAdded not defined.");
+}
+if (!isset($H_VariantName)) {
+    $H_VariantName = null;
+}
 
 $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 $SafeFieldId = !is_null($H_Field) ? defaulthtmlentities($H_Field->Id()) : "";
@@ -39,6 +62,10 @@ if (!is_null($H_Field)) {
     $H_FormUI->addHiddenField("F_FieldId", $H_Field->Id());
 }
 
+$AddButton = new HtmlButton("Add");
+$AddButton->setIcon("Plus.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <?PHP if ($H_SuccessfullyAdded) { ?>
@@ -92,9 +119,7 @@ if (!is_null($H_Field)) {
     <form method="post"
           action="index.php?P=AddControlledName&amp;SC=<?= $SafeSchemaId; ?>">
         <?PHP $H_FormUI->DisplayFormTable(); ?>
-      <button class="btn btn-primary mv-button-iconed" name="F_Submit" type="Submit"
-        value="Add"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add</button>
+        <?= $AddButton->getHtml(); ?>
     </form>
     <?PHP } else { ?>
     <p>

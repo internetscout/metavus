@@ -3,7 +3,7 @@
 #   FILE:  OAIServer.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2009-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -99,7 +99,7 @@ class OAIServer extends \ScoutLib\OAIServer
      * @param string $LocalFieldName local field to map
      * @param string $OAIFieldName mapped value to set
      */
-    public function setFieldMapping($FormatName, $LocalFieldName, $OAIFieldName)
+    public function setFieldMapping($FormatName, $LocalFieldName, $OAIFieldName): void
     {
         # retrieve ID for local field
         $Schema = new MetadataSchema();

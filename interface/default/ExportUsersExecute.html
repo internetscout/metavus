@@ -3,12 +3,27 @@
 #   FILE:  ExportUsersExecute.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ExportComplete)) {
+    throw new Exception("H_ExportComplete not defined.");
+}
+if (!isset($H_FileName)) {
+    throw new Exception("H_FileName not defined.");
+}
+if (!isset($H_UserCount)) {
+    throw new Exception("H_UserCount not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <?PHP if ($H_ExportComplete) { ?>

@@ -1,0 +1,98 @@
+<?PHP
+#
+#   FILE:  BuildFeed.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use Exception;
+use Metavus\Plugins\CalendarFeed;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Display info about calendar feed.
+ * @param string $Title Title of feed (if any).
+ * @param string $Description Text description of feed.
+ * @param string $Link URL for feed.
+ */
+function displayFeed(
+    string $Title,
+    string $Description,
+    string $Link
+): void {
+    static $FeedCount = 0;
+
+    $HtmlId = "mv-p-calendarfeed-link-".$FeedCount;
+    $FeedCount++;
+
+    $CopyButton = new CopyButton($HtmlId);
+    ?>
+    <table class="mv-p-calendarfeed-feeddescription">
+        <?PHP  if (strlen($Title)) {  ?>
+        <tr><th>Title</th><td><?= $Title ?></td></tr>
+        <?PHP  }  ?>
+        <tr><th>Parameters</th><td><?= $Description ?></td></tr>
+        <tr>
+            <th>Link</th>
+            <td><a id="<?= $HtmlId ?>"
+                   href="<?= $Link ?>"><?= htmlentities($Link) ?></a></td>
+            <td><?= $CopyButton->getHtml() ?></td>
+        </tr>
+    </table>
+    <?PHP
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_Form)) {
+    throw new Exception("Variable \$H_Form not set.");
+}
+
+$Plugin = CalendarFeed::getInstance();
+$DescriptiveText = $Plugin->getConfigSetting("BuildFeedDescriptiveText") ?? "";
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Build Calendar Feed");
+
+?>
+<h1>Calendar Feeds</h1>
+<?= $DescriptiveText ?>
+
+<?PHP if (isset($H_CreatedFeed)) { ?>
+  <div>
+    <h2>New Feed</h2>
+    <?PHP
+    displayFeed(
+        $H_CreatedFeed["Title"],
+        $H_CreatedFeed["Description"],
+        $H_CreatedFeed["Link"]
+    );
+    ?>
+</div>
+<?PHP } ?>
+
+<h2>Create Feed</h2>
+<div>
+  <form method="POST" action="index.php?P=P_CalendarFeed_BuildFeed">
+    <?= $H_Form->displayFormTable() ?>
+    <?= $H_Form->getSubmitButtonHtml("Create") ?>
+  </form>
+</div>
+
+<?PHP
+if (!empty($H_UserPastFeeds)) {
+    ?>
+    <h2>Past Feeds Created</h2>
+    <?PHP
+    foreach ($H_UserPastFeeds as $FeedLink => $FeedInfo) {
+        displayFeed($FeedInfo["Title"], $FeedInfo["Description"], $FeedLink);
+    }
+}

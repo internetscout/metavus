@@ -3,7 +3,7 @@
 #   FILE:  EditInterfaceConfig.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -15,7 +15,6 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
@@ -51,6 +50,14 @@ $H_Form = new FormUI($FormParams);
 
 # act on any button push
 switch ($H_Form->getSubmitButtonValue()) {
+    case "Upload":
+        $H_Form->handleUploads();
+        break;
+
+    case "Delete":
+        $H_Form->handleDeletes();
+        break;
+
     case "Save":
         # check values and bail out if any are invalid
         if ($H_Form->validateFieldInput()) {

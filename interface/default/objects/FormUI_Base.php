@@ -3,15 +3,15 @@
 #   FILE:  FormUI_Base.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 /**
@@ -47,9 +47,9 @@ abstract class FormUI_Base
     const FTYPE_GROUPEND = "Group End";
 
     /** Option field input types. */
-    const OTYPE_INPUTSET = "HtmlInputSet";
-    const OTYPE_LIST = "OptionList";
-    const OTYPE_LISTSET = "OptionListSet";
+    const OTYPE_INPUTSET = "HtmlInputSet";  # radio buttons or checkboxes
+    const OTYPE_LIST = "OptionList";        # single option list
+    const OTYPE_LISTSET = "OptionListSet";  # multiple option lists dynamically-created
 
     /** Help display types. */
     const HELPTYPE_DIALOG = "Help Dialog Text";
@@ -69,7 +69,7 @@ abstract class FormUI_Base
     public function __construct(
         array $FieldParams,
         array $FieldValues = [],
-        string $UniqueKey = null
+        ?string $UniqueKey = null
     ) {
         $ErrMsgs = [];
         $this->checkForUnrecognizedFieldParameters($FieldParams, $ErrMsgs);
@@ -79,6 +79,23 @@ abstract class FormUI_Base
         if (count($ErrMsgs)) {
             $ErrMsgString = implode("  ", $ErrMsgs);
             throw new InvalidArgumentException($ErrMsgString);
+        }
+
+        # check for exceeded configured PHP POST size limit (post_max_size)
+        $MaxPostSize = StdLib::convertPhpIniSizeToBytes(
+            (string)ini_get("post_max_size")
+        );
+        if (empty($_POST) &&
+            isset($_SERVER["CONTENT_LENGTH"]) && $_SERVER['CONTENT_LENGTH'] > $MaxPostSize) {
+            if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+                $Message = "The content in your form exceeds the current POST "
+                    ."size limit of ".($MaxPostSize / 1000000)." MB. This is "
+                    ."usually from uploaded files that are too large. Please "
+                    ."contact your server administrator if you need this limit "
+                    ."(set via the PHP configuration parameter "
+                    ."\"post_max_size\") increased.";
+                $this->logError($Message, null, $this->UniqueKey);
+            }
         }
 
         $this->normalizeFieldParameters($FieldParams);
@@ -97,11 +114,12 @@ abstract class FormUI_Base
      * @param string $ParamName Parameter name.
      * @param array $FieldTypes Field types for which parameter is valid.
      *       (OPTIONAL, defaults to all field types)
+     * @return void
      */
     public static function ignoreFieldParameter(
         string $ParamName,
-        array $FieldTypes = null
-    ) {
+        ?array $FieldTypes = null
+    ) : void {
         if ((in_array($ParamName, self::$UniversalFieldParameters))
                 || isset(self::$TypeSpecificFieldParameters[$ParamName])) {
             throw new InvalidArgumentException("Cannot ignore existing"
@@ -116,11 +134,28 @@ abstract class FormUI_Base
     }
 
     /**
+     * Validate initial values of form fields.
+     * Any errors found are logged and can be retrieved with getLoggedErrors()
+     * or displayed with displayErrorBlock().
+     * @return int Number of errors found.
+     */
+    public function validateInitialValues(): int
+    {
+        $ErrorsFound = 0;
+        foreach ($this->FieldParams as $Name => $Params) {
+            $ErrorsFound +=
+                    $this->validateFieldValue($Name, $this->FieldValues);
+        }
+        return $ErrorsFound;
+    }
+
+    /**
      * Add extra hidden field to form.
      * @param string $FieldName Form field name.
      * @param string $Value Form field value.
+     * @return void
      */
-    public function addHiddenField(string $FieldName, string $Value)
+    public function addHiddenField(string $FieldName, string $Value): void
     {
         $this->AdditionalHiddenFields[$FieldName] = $Value;
     }
@@ -130,12 +165,13 @@ abstract class FormUI_Base
      * @param string $TableId CSS ID for table element.  (OPTIONAL)
      * @param string $TableStyle CSS styles for table element.  (OPTIONAL)
      * @param string $TableCssClass Additional CSS class for table element. (OPTIONAL)
+     * @return void
      */
     abstract public function displayFormTable(
-        string $TableId = null,
-        string $TableStyle = null,
-        string $TableCssClass = null
-    );
+        ?string $TableId = null,
+        ?string $TableStyle = null,
+        ?string $TableCssClass = null
+    ) : void;
 
     /**
      * Get HTML for button with form-appropriate submit name.  If no icon file is
@@ -150,8 +186,8 @@ abstract class FormUI_Base
      */
     abstract public function getSubmitButtonHtml(
         string $Label,
-        string $IconFile = null,
-        string $Classes = null
+        ?string $IconFile = null,
+        ?string $Classes = null
     ): string;
 
     /**
@@ -163,7 +199,7 @@ abstract class FormUI_Base
      * @see displaySubmitButton()
      * @see getButtonName()
      */
-    public function getSubmitButtonValue()
+    public function getSubmitButtonValue(): ?string
     {
         return StdLib::getFormValue($this->getButtonName());
     }
@@ -174,8 +210,9 @@ abstract class FormUI_Base
      * @param string $Field Field associated with error.  (OPTIONAL, defaults
      *       to no field association)
      * @param string $UniqueKey key to log error under, for form specific error handling
+     * @return void
      */
-    public static function logError(string $Msg, string $Field = null, $UniqueKey = "")
+    public static function logError(string $Msg, ?string $Field = null, $UniqueKey = ""): void
     {
         self::$ErrorMessages[$UniqueKey][$Field][] = $Msg;
     }
@@ -241,8 +278,9 @@ abstract class FormUI_Base
      * Clear logged errors.
      * @param string $Field Clear only errors for specified field.  (OPTIONAL)
      * @param string $UniqueKey representing the UniqueKey of errors to remove (OPTIONAL).
+     * @return void
      */
-    public static function clearLoggedErrors(string $Field = null, $UniqueKey = null)
+    public static function clearLoggedErrors(?string $Field = null, $UniqueKey = null): void
     {
         if ($Field === null) {
             if (strlen($UniqueKey)) {
@@ -268,9 +306,11 @@ abstract class FormUI_Base
      */
     public function validateFieldInput(): int
     {
-        # retrieve field values without normalizing (prevents date
-        # normalization from accepting potentially invalid entries)
+        # retrieve raw field values
         $Values = $this->getRawNewValuesFromForm();
+
+        # standardize data encoding
+        $Values = $this->normalizeFormValueEncoding($Values);
 
         # for each field
         $ErrorsFound = 0;
@@ -300,170 +340,17 @@ abstract class FormUI_Base
                 continue;
             }
 
+            # nothing to do for read only fields
+            if ($this->isReadOnly($Name)) {
+                continue;
+            }
+
             # skip fields not shown to the user
             if (!$this->fieldWasDisplayedWhenFormWasSubmitted($Name)) {
                 continue;
             }
 
-            # determine if field has a value set
-            switch ($Params["Type"]) {
-                case self::FTYPE_SEARCHPARAMS:
-                    $IsEmpty = !$Values[$Name]->parameterCount();
-                    break;
-
-                case self::FTYPE_PRIVILEGES:
-                    $IsEmpty = !$Values[$Name]->comparisonCount();
-                    break;
-
-                default:
-                    if (is_array($Values[$Name])) {
-                        $IsEmpty = !count($Values[$Name]);
-                    } else {
-                        $IsEmpty = !strlen(trim($Values[$Name]));
-                    }
-                    break;
-            }
-
-            # if field has validation function
-            if (isset($Params["ValidateFunction"])) {
-                # swap in our object if this is one of our methods
-                $VFunc = $Params["ValidateFunction"];
-                if (is_array($VFunc) && is_subclass_of($VFunc[0], self::class)) {
-                    $VFunc[0] = $this;
-                }
-
-                # call validation function for value
-                $Args = array_merge(
-                    [$Name, $Values[$Name], $Values],
-                    $this->ExtraValidationParams
-                );
-                $ErrMsg = call_user_func_array($VFunc, $Args);
-                if ($ErrMsg === false) {
-                    throw new Exception("Calling validation function for"
-                            ." parameter \"".$Name."\" failed.");
-                }
-
-                # log any resulting error
-                if ($ErrMsg !== null) {
-                    self::logError($ErrMsg, $Name, $this->UniqueKey);
-                    $ErrorsFound++;
-                }
-            }
-
-            # if field is required and empty
-            if ($IsEmpty && !$Params["ReadOnly"] && $Params["Required"]) {
-                # log error to indicate required value is missing
-                self::logError(
-                    "<i>".$Params["Label"]."</i> is required.",
-                    $Name,
-                    $this->UniqueKey
-                );
-                $ErrorsFound++;
-            } else {
-                # else validate based on field type
-                switch ($Params["Type"]) {
-                    case self::FTYPE_NUMBER:
-                        # make sure value is numeric and within any specified range
-                        $Value = $Values[$Name];
-
-                        if (strlen($Value) > 0 && !is_numeric($Value)) {
-                            self::logError(
-                                "<i>".$Params["Label"]."</i> must be a number.",
-                                $Name,
-                                $this->UniqueKey
-                            );
-                            $ErrorsFound++;
-                        } elseif ((isset($Params["MinVal"])
-                                        && ($Value < $Params["MinVal"]))
-                                || (isset($Params["MaxVal"])
-                                        && ($Value > $Params["MaxVal"]))) {
-                            if (!isset($Params["MaxVal"])) {
-                                self::logError("<i>".$Params["Label"]."</i> must be "
-                                        .$Params["MinVal"]
-                                        ." or greater.", $Name, $this->UniqueKey);
-                            } elseif (!isset($Params["MinVal"])) {
-                                self::logError("<i>".$Params["Label"]."</i> must be "
-                                        .$Params["MaxVal"]
-                                        ." or less.", $Name, $this->UniqueKey);
-                            } else {
-                                self::logError("<i>".$Params["Label"]."</i> must be"
-                                        ." in the range ".$Params["MinVal"]
-                                        ." to ".$Params["MaxVal"]
-                                        .".", $Name, $this->UniqueKey);
-                            }
-                            $ErrorsFound++;
-                        }
-                        # check if the value is allowed to be a float.
-                        # if the param "AllowFloats" was not set, we should
-                        #       then default to false.
-                        if (!isset($Params["AllowFloats"]) || !$Params["AllowFloats"]) {
-                            if (is_numeric($Value) && (floor((float)$Value) != $Value)) {
-                                self::logError(
-                                    "<i>".$Params["Label"]
-                                            ."</i> cannot be a decimal number.",
-                                    $Name,
-                                    $this->UniqueKey
-                                );
-                                $ErrorsFound++;
-                            }
-                        }
-                        break;
-
-                    case self::FTYPE_URL:
-                        # make sure URL entered looks valid
-                        if (!$IsEmpty && (filter_var(
-                            $Values[$Name],
-                            FILTER_VALIDATE_URL
-                        ) === false)) {
-                            self::logError("Value \"".$Values[$Name]
-                                    ."\" does not appear to be a valid URL for <i>"
-                                    .$Params["Label"]."</i>.", $Name, $this->UniqueKey);
-                            $ErrorsFound++;
-                        }
-
-                        # make sure that the URL doesn't exceed max length if set
-                        if (isset($Params["MaxLength"]) &&
-                            strlen($Values[$Name]) > $Params["MaxLength"]) {
-                            self::logError(
-                                "<i>".$Params["Label"]."</i> must not exceed "
-                                .$Params["MaxLength"]." characters.",
-                                $Name,
-                                $this->UniqueKey
-                            );
-                            $ErrorsFound++;
-                        }
-                        break;
-
-                    case self::FTYPE_USER:
-                        # make sure user name entered is valid
-                        $UFactory = new UserFactory();
-                        foreach ($Values[$Name] as $UId) {
-                            if (strlen($UId) && !$UFactory->userExists($UId)) {
-                                self::logError("User ID \"".$UId."\" not found for <i>"
-                                        .$Params["Label"]
-                                        ."</i>.", $Name, $this->UniqueKey);
-                                $ErrorsFound++;
-                            }
-                        }
-                        break;
-
-                    case self::FTYPE_TEXT:
-                    case self::FTYPE_PARAGRAPH:
-                    case self::FTYPE_PASSWORD:
-                        # make sure that the value length doesn't exceed max length if set
-                        if (isset($Params["MaxLength"]) &&
-                            strlen($Values[$Name]) > $Params["MaxLength"]) {
-                            self::logError(
-                                "<i>".$Params["Label"]."</i> must not exceed "
-                                .$Params["MaxLength"]." characters.",
-                                $Name,
-                                $this->UniqueKey
-                            );
-                            $ErrorsFound++;
-                        }
-                        break;
-                }
-            }
+            $ErrorsFound += $this->validateFieldValue($Name, $Values);
         }
 
         # report number of fields with invalid values found to caller
@@ -473,9 +360,10 @@ abstract class FormUI_Base
     /**
      * Add values to be passed to input validation functions, in addition
      * to field name and value.
+     * @return void
      * @see FormUI_Base::ValidateFieldInput()
      */
-    public function addValidationParameters()
+    public function addValidationParameters(): void
     {
         $this->ExtraValidationParams = func_get_args();
     }
@@ -487,27 +375,17 @@ abstract class FormUI_Base
      */
     public function getNewValuesFromForm() : array
     {
+        # start with raw values
         $NewSettings = $this->getRawNewValuesFromForm();
 
-        foreach ($NewSettings as $Name => $Values) {
-            $Params = $this->FieldParams[$Name];
+        # apply normalization that standardizes encoding (e.g., line endings)
+        $NewSettings = $this->normalizeFormValueEncoding($NewSettings);
 
-            switch ($Params["Type"]) {
-                case self::FTYPE_DATETIME:
-                    $NewSettings[$Name] = strlen($Values) ?
-                        date($Params["Format"], strtotime($Values)) : false;
-                    break;
+        # apply normalization that standardizes data formats (e.g., dates)
+        $NewSettings = $this->normalizeFormValueData($NewSettings);
 
-                case self::FTYPE_PARAGRAPH:
-                    # normalize newlines to '\n' instead of '\r\n' or '\r'
-                    $NewSettings[$Name] = str_replace(["\r\n", "\r"], "\n", $Values);
-                    break;
-
-                default:
-                    # nothing to do
-                    break;
-            }
-        }
+        # add in values for read only fields not present in form data
+        $NewSettings = $this->setValuesForReadOnlyFields($NewSettings);
 
         return $NewSettings;
     }
@@ -534,23 +412,7 @@ abstract class FormUI_Base
             ($FieldType != self::FTYPE_PRIVILEGES)
         );
 
-        # get fallback value for field (in case no value from form)
-        if (isset($this->FieldValues[$FieldName])) {
-            $Value = $this->FieldValues[$FieldName];
-        } else {
-            if (isset($this->FieldParams[$FieldName]["Value"])) {
-                $ValueData = $this->FieldParams[$FieldName]["Value"];
-            } elseif (isset($this->FieldParams[$FieldName]["Default"])) {
-                $ValueData = $this->FieldParams[$FieldName]["Default"];
-            } elseif (isset($this->FieldParams[$FieldName]["DefaultFunction"])) {
-                $ValueData = $this->FieldParams[$FieldName]["DefaultFunction"](
-                    $FieldName
-                );
-            } else {
-                $ValueData = null;
-            }
-            $Value = self::loadValue($FieldType, $ValueData);
-        }
+        $Value = $this->getFallbackValueForField($FieldName);
 
         switch ($FieldType) {
             case self::FTYPE_FILE:
@@ -608,7 +470,7 @@ abstract class FormUI_Base
                 break;
 
             case self::FTYPE_QUICKSEARCH:
-                $MField = new MetadataField(
+                $MField = MetadataField::getField(
                     $this->FieldParams[$FieldName]["Field"]
                 );
 
@@ -656,8 +518,9 @@ abstract class FormUI_Base
 
     /**
      * Handle image and file uploads.
+     * @return void
      */
-    public function handleUploads()
+    public function handleUploads(): void
     {
         # for each form field
         foreach ($this->FieldParams as $FieldName => $FieldParams) {
@@ -667,17 +530,83 @@ abstract class FormUI_Base
                 continue;
             }
 
-            # move on to next field if this field does not have an uploaded file
+            # get the form field name
             $FormFieldName = $this->getFormFieldName($FieldName);
-            if (!isset($_FILES[$FormFieldName]["name"])) {
-                continue;
-            }
-            $UploadedFileName = $_FILES[$FormFieldName]["name"];
-            if (!strlen($UploadedFileName)) {
-                continue;
+
+            # defaults
+            $FileErrorCode = UPLOAD_ERR_OK;
+            $UploadedFileName = null;
+
+            # check for an upload via filepond
+            $TmpFile = $this->preprocessFilepondUpload($FormFieldName);
+
+            # if there was not one, look for an upload in _FILES
+            if ($TmpFile === null) {
+                # move on to next field if this field does not have an uploaded file
+                if (!isset($_FILES[$FormFieldName]["name"])) {
+                    continue;
+                }
+                $UploadedFileName = $_FILES[$FormFieldName]["name"];
+                if (!strlen($UploadedFileName)) {
+                    continue;
+                }
+
+                # check if the uploaded file has a temp file name generated
+                if (!isset($_FILES[$FormFieldName]["tmp_name"])) {
+                    continue;
+                }
+                $TmpFile = $_FILES[$FormFieldName]["tmp_name"];
+
+                # check if the uploaded file has an error code.
+                # there are error codes for successful and unsuccessful uploads,
+                # however this check accounts for any server mishaps that would
+                # lead to an unset error code.
+                if (!isset($_FILES[$FormFieldName]['error'])) {
+                    continue;
+                }
+                $FileErrorCode = $_FILES[$FormFieldName]['error'];
             }
 
-            $TmpFile = $_FILES[$FormFieldName]["tmp_name"];
+            # if we don't have a file name, use the basename of the temp file
+            if ($UploadedFileName === null) {
+                $UploadedFileName = basename($TmpFile);
+            }
+
+            # check for errors
+            switch ($FileErrorCode) {
+                # if no error, we can proceed
+                case UPLOAD_ERR_OK:
+                    break;
+
+                # check if file exceeded configured PHP upload size limit (upload_max_filesize)
+                case UPLOAD_ERR_INI_SIZE:
+                    $MaxFileSize = StdLib::convertPhpIniSizeToBytes(
+                        (string)ini_get("upload_max_filesize")
+                    );
+                    $Message = "The file ".$UploadedFileName." exceeds the current"
+                        ." upload size limit of ".($MaxFileSize / 1000000)." MB."
+                        ." Please contact your server administrator if you need"
+                        ." this limit (set via the PHP configuration parameter"
+                        ." \"upload_max_filesize\") increased.";
+                    $this->logError(
+                        $Message,
+                        $FieldName,
+                        $this->UniqueKey
+                    );
+                    continue 2;
+
+                # for other errors report that something went wrong and pass
+                # the error code up to the user
+                default:
+                    $Message = "Error uploading file."
+                        ." Error code: ".$FileErrorCode;
+                    $this->logError(
+                        $Message,
+                        $FieldName,
+                        $this->UniqueKey
+                    );
+                    continue 2;
+            }
 
             switch ($FieldParams["Type"]) {
                 case self::FTYPE_FILE:
@@ -704,22 +633,8 @@ abstract class FormUI_Base
                                 );
 
                                 $Message = "Error encountered with uploaded file "
-                                    .$UploadedFileName.": ".$ErrorName."(Code ".$File."). ";
-                                if (strlen($TmpFile) == 0) {
-                                    $MaxFileSize = StdLib::convertPhpIniSizeToBytes(
-                                        (string)ini_get("upload_max_filesize")
-                                    );
-
-                                    $Message .= "No upload file was created on the server. "
-                                        ."This most commonly occurs when your file exceeds the "
-                                        ."configured upload_max_filesize (currently "
-                                        .($MaxFileSize / 1048576)." MiB). "
-                                        ."Contact your server administrator if you need this "
-                                        ."limit increased.";
-                                } else {
-                                    $Message .= "Temp upload location was ".$TmpFile.".";
-                                }
-
+                                    .$UploadedFileName.": ".$ErrorName."(Code ".$File."). "
+                                    ."Temp upload location was ".$TmpFile.".";
                                 $this->logError(
                                     $Message,
                                     $FieldName,
@@ -770,13 +685,17 @@ abstract class FormUI_Base
                     $this->AddedImages[] = $Image->id();
                     break;
             }
+
+            # clean up filepond uploads, if any
+            $this->postprocessFilepondUpload($FormFieldName);
         }
     }
 
     /**
      * Handle image and file deletions.
+     * @return void
      */
-    public function handleDeletes()
+    public function handleDeletes(): void
     {
         # if image ID to delete was supplied
         $DeleteFieldName = $this->getFormFieldName("ImageToDelete");
@@ -812,6 +731,22 @@ abstract class FormUI_Base
     }
 
     /**
+     * Delete uploaded files and images, to be used when editing is canceled
+     * without associating uploads with a record.
+     * @return void
+     */
+    public function deleteUploads(): void
+    {
+        foreach ($this->AddedFiles as $FileId) {
+            (new File($FileId))->destroy();
+        }
+
+        foreach ($this->AddedImages as $ImageId) {
+            (new Image($ImageId))->destroy();
+        }
+    }
+
+    /**
      * Set event to signal when retrieving values from form when settings
      * have changed.  If the supplied event parameters include parameter
      * names (indexes) of "SettingName", "OldValue", or "NewValue", the
@@ -820,12 +755,13 @@ abstract class FormUI_Base
      * @param string $EventName Name of event to signal.
      * @param array $EventParams Array of event parameters, with CamelCase
      *       parameter names for index.  (OPTIONAL)
+     * @return void
      * @see FormUI_Base::GetNewsettingsFromForm()
      */
     public function setEventToSignalOnChange(
         string $EventName,
         array $EventParams = []
-    ) {
+    ): void {
         $this->SettingChangeEventName = $EventName;
         $this->SettingChangeEventParams = $EventParams;
     }
@@ -836,7 +772,7 @@ abstract class FormUI_Base
      * @param mixed $NewValue New field value.
      * @return bool Returns TRUE if the values are different and FALSE otherwise.
      */
-    public static function didValueChange($OldValue, $NewValue)
+    public static function didValueChange($OldValue, $NewValue): bool
     {
         # didn't change if they are identical
         if ($OldValue === $NewValue) {
@@ -921,7 +857,7 @@ abstract class FormUI_Base
      * Load value of requested type from supplied data.
      * @param string $Type Type of value (FTYPE_*).
      * @param mixed $Data Data to use in loading value.
-     * @return mixed Loaded value.
+     * @return int|string|File|Image|PrivilegeSet|SearchParameterSet Loaded value.
      */
     public static function loadValue(string $Type, $Data)
     {
@@ -1037,6 +973,74 @@ abstract class FormUI_Base
         return null;
     }
 
+    /**
+     * Clean up data from incomplete or canceled downloads in the FilePond
+     * upload directory.
+     */
+    public static function cleanFilePondUploadDir() : void
+    {
+        # nothing to do when FilePond upload dir does not (yet) exist
+        if (!is_dir(self::FILEPOND_UPLOAD_DIR)) {
+            return;
+        }
+
+        # directories where we've not added a new chunk of data in the last
+        # MaxAge seconds are assumed to belong to canceled or interrupted
+        # downloads
+        $MaxAge = 3600;
+        $Now = time();
+
+        $DirsToDelete = [];
+
+        $DirEntries = scandir(self::FILEPOND_UPLOAD_DIR);
+        if ($DirEntries === false) {
+            throw new Exception(
+                "scandir() on ".self::FILEPOND_UPLOAD_DIR." failed"
+                    ." (should be impossible)."
+            );
+        }
+        foreach ($DirEntries as $Entry) {
+            if ($Entry == "." || $Entry == "..") {
+                continue;
+            }
+
+            $TargetPath = self::FILEPOND_UPLOAD_DIR."/".$Entry;
+
+            # skip non-directories
+            if (!is_dir($TargetPath)) {
+                continue;
+            }
+
+            # if a file was added to the dir within the last MaxAge seconds
+            # (which is what mtime means for dirs), then skip it
+            if ($Now - filemtime($TargetPath) < $MaxAge) {
+                continue;
+            }
+
+            # otherwise, it should be deleted
+            $DirsToDelete [] = $TargetPath;
+        }
+
+        foreach ($DirsToDelete as $Dir) {
+            $DirEntries = scandir($Dir);
+            if ($DirEntries === false) {
+                throw new Exception(
+                    "scandir() on ".$Dir." failed"
+                        ." (should be impossible)."
+                );
+            }
+            foreach ($DirEntries as $File) {
+                $TargetPath = $Dir."/".$File;
+                if (is_file($TargetPath)) {
+                    unlink($TargetPath);
+                }
+            }
+
+            rmdir($Dir);
+        }
+    }
+
+
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     protected $AdditionalHiddenFields = [];
@@ -1131,6 +1135,7 @@ abstract class FormUI_Base
         "HelpType",
         "Label",
         "ReadOnly",
+        "ReadOnlyFunction",
         "RecVal",
         "Required",
         "Size",
@@ -1143,14 +1148,210 @@ abstract class FormUI_Base
     /** Marker used to indicate currently no value for field. */
     const NO_VALUE_FOR_FIELD = "NO VALUE";
 
+    # interpret a timestamp specified as a 4-digit integer as a year if the
+    # number is within range
+    protected const MIN_YEAR = 1902;
+    protected const MAX_YEAR = 2200;
+    protected const FOUR_DIGIT_NUMBER_REGEX = '/^\s*\d{4}\s*$/';
+
+    const FILEPOND_UPLOAD_DIR = "tmp/FilePondUploads";
+
+    /**
+     * Normalize and format the value for a datetime form field.
+     * If a 4-digit integer input for a timestamp is within a valid range,
+     * interpret that integer as a year and produce a timestamp for the first
+     * second of that year.
+     * @param string $DateTimeValue Raw input value for a datetime field.
+     * @param string $DateFormat Format string for storing/displaying the
+     *         datetime value provided.
+     * @return string|false Normalized datetime if the datetime value provided
+     *         is not-empty and can be normalized with strtotime. Returns false
+     *         if the provided datetime value is blank or cannot be normalized.
+     */
+    protected static function normalizeDateTimeValue(
+        string $DateTimeValue,
+        string $DateFormat
+    ) {
+
+        if (!strlen($DateTimeValue)) {
+            return false;
+        }
+
+        # interpret a 4-digit number in this range as
+        # being at the first second of the specified year
+        if (preg_match(self::FOUR_DIGIT_NUMBER_REGEX, $DateTimeValue) === 1) {
+            $YearNumber = (int) $DateTimeValue;
+            if (($YearNumber >= self::MIN_YEAR)
+                    && ($YearNumber <= self::MAX_YEAR)) {
+                $DateTimeValue = $YearNumber."-01-01 00:00:00";
+            }
+        }
+
+        $NormalizedDate = strtotime($DateTimeValue);
+        # strtotime returns false when the value cannot be normalized to a
+        # timestamp
+
+        if ($NormalizedDate === false) {
+            return false;
+        }
+
+        return date($DateFormat, $NormalizedDate);
+    }
+
+    /**
+     * Print all the supporting javascript for our form.
+     * @param string $FormTableId ID of the table containing our form.
+     */
+    protected function printSupportingJavascript(string $FormTableId) : void
+    {
+        $this->printDoubleClickSubmitLockoutJavascript($FormTableId);
+
+        $this->printFilepondJavascript($FormTableId);
+    }
+
+    /**
+     * Get Javascript snippet that prevents a FormUI form's "Submit" buttons
+     * from submitting the form when the form has already been submitted.
+     * @param string $FormTableId ID of table containing the form to disable
+     *     submit buttons on once one of them is clicked.
+     */
+    private function printDoubleClickSubmitLockoutJavascript(
+        string $FormTableId
+    ): void {
+        ?>
+        <script type="text/javascript">
+        $(document).ready(function() {
+            var FormToLock = $("#<?= $FormTableId ?>").parents("form");
+            $("button[type='submit']", FormToLock)
+                    .on("click", function(Event) {
+                 // determine if one of the form's "submit" buttons has already
+                 // been clicked
+                 if (FormToLock.data("clicked")) {
+                     // block the form submission
+                     Event.preventDefault();
+                 } else {
+                     // set a data attribute on the form to indicate that
+                     // the form has been submitted
+                     FormToLock.data("clicked", true);
+                 }
+            });
+        });
+        </script>
+        <?PHP
+    }
+
+    /**
+     * Output Javascript to use the filepond upload library.
+     * @param string $FormTableId ID of table containing the form to disable
+     *     submit buttons on once one of them is clicked.
+     */
+    private function printFilepondJavascript(
+        string $FormTableId
+    ): void {
+        $SysConfig = SystemConfiguration::getInstance();
+
+        # if filepond is disabled, nothing to do
+        if (!$SysConfig->getBool("UseFilepond")) {
+            return;
+        }
+
+        static $Initialized = false;
+        if (!$Initialized) {
+            $AF = ApplicationFramework::getInstance();
+            $AF->requireUIFile("filepond.min.css");
+            $AF->requireUIFile("filepond.js");
+            $AF->requireUIFile("filepond.jquery.js");
+            ?>
+            <script type="text/javascript">
+            $(document).ready(function() {
+                FilePond.setOptions({
+                    server: {
+                        url: '<?= $AF->baseUrl() ?>lib/FilePond/server/index.php'
+                    },
+                    chunkUploads: true,
+                    chunkSize: <?= $SysConfig->getInt("UploadChunkSize") * 1024 * 1024 ?>,
+                    credits: false
+                });
+            });
+            </script>
+            <?PHP
+            $Initialized = true;
+        }
+        ?>
+        <script type="text/javascript">
+        $(document).ready(function() {
+            var Form = $("#<?= $FormTableId ?>").parents("form");
+            $("input[type='file']", Form).filepond();
+            $("button[type='submit'][value='Upload']", Form).hide();
+
+            // on upload start, add 'data-clicked' to trigger the "lockout"
+            // from printDoubleClickSubmitLockoutJavascript() so that users
+            // can't submit the form before the upload completes
+            Form.on('FilePond:processfilestart', function(Event) {
+                Form.data("clicked", true);
+            });
+
+            // on upload completion
+            Form.on('FilePond:processfile', function(Event) {
+                Form.data("clicked", false);
+                var Row = $(Event.target).parents("tr.mv-content-tallrow");
+                if (Event.detail.error === null) {
+                    $("button[type='submit'][value='Upload']", Row).click();
+                }
+            });
+        });
+        </script>
+        <?PHP
+    }
+
+
+    /**
+     * Get fallback value for field to use when no value is provided in
+     *     submitted form data.
+     * @param string $FieldName Field name.
+     * @return int|string|File|Image|PrivilegeSet|SearchParameterSet Loaded value.
+     */
+    private function getFallbackValueForField(string $FieldName)
+    {
+        if (!isset($this->FieldParams[$FieldName])) {
+            throw new Exception(
+                "Attempt to get fallback value for a non-existent field "
+                    .$FieldName
+            );
+        }
+
+        # get fallback value for field (in case no value from form)
+        if (isset($this->FieldValues[$FieldName])) {
+            $Value = $this->FieldValues[$FieldName];
+        } else {
+            if (isset($this->FieldParams[$FieldName]["Value"])) {
+                $ValueData = $this->FieldParams[$FieldName]["Value"];
+            } elseif (isset($this->FieldParams[$FieldName]["Default"])) {
+                $ValueData = $this->FieldParams[$FieldName]["Default"];
+            } elseif (isset($this->FieldParams[$FieldName]["DefaultFunction"])) {
+                $ValueData = $this->FieldParams[$FieldName]["DefaultFunction"](
+                    $FieldName
+                );
+            } else {
+                $ValueData = null;
+            }
+
+            $FieldType = $this->FieldParams[$FieldName]["Type"];
+            $Value = self::loadValue($FieldType, $ValueData);
+        }
+
+        return $Value;
+    }
+
     /**
      * Check for invalid field parameters.
      * @param array $FieldParams Associative array of associative arrays, with
      *       field names for the top-level index, and field parameter names for
      *       the second-level index.
      * @param array $ErrMsgs Current error message list.  (REFERENCE)
+     * @return void
      */
-    private function checkForInvalidFieldParameters(array $FieldParams, &$ErrMsgs)
+    private function checkForInvalidFieldParameters(array $FieldParams, &$ErrMsgs): void
     {
         foreach ($FieldParams as $FieldName => $Params) {
             if (isset($Params["Type"]) && ($Params["Type"] == self::FTYPE_QUICKSEARCH)) {
@@ -1159,7 +1360,7 @@ abstract class FormUI_Base
                     $ErrMsgs[] = "Specified search field for quicksearch form field "
                             .$FieldName." does not exist.";
                 } else {
-                    $MField = new MetadataField(
+                    $MField = MetadataField::getField(
                         $FieldParams[$FieldName]["Field"]
                     );
                     $AllowedMFieldTypes = [
@@ -1175,22 +1376,30 @@ abstract class FormUI_Base
                 }
             }
 
-            if (isset($Params["ValidateFunction"])) {
-                $VFunc = $Params["ValidateFunction"];
-                if (is_array($VFunc) && is_subclass_of($VFunc[0], self::class)) {
-                    $VFunc[0] = $this;
-                }
-
-                if (!is_callable($VFunc)) {
-                    $ErrMsgs[] = "Uncallable validation function for form field "
-                        .$FieldName.".";
+            $CallableParams = [
+                "ValidateFunction" => "validation",
+                "DefaultFunction" => "default value",
+                "ReadOnlyFunction" => "read only",
+            ];
+            foreach ($CallableParams as $ParamName => $ParamDescrip) {
+                if (isset($Params[$ParamName])) {
+                    $PFunc = $Params[$ParamName];
+                    if (is_array($PFunc) && is_subclass_of($PFunc[0], self::class)) {
+                        $PFunc[0] = $this;
+                    }
+                    if (!is_callable($PFunc)) {
+                        $ErrMsgs[] = "Uncallable ".$ParamDescrip." function"
+                                ." for form field ".$FieldName.".";
+                    }
                 }
             }
+
             if (isset($Params["InsertIntoField"]) &&
                 !isset($FieldParams[$Params["InsertIntoField"]])) {
                 $ErrMsgs[] = "Unknown insertion field (".$Params["InsertIntoField"]
                     .") found for form field ".$FieldName.".";
             }
+
             if (array_key_exists("Default", $Params)) {
                 if (isset($Params["Type"])) {
                     $FieldTypesThatRequireArrays = [
@@ -1203,10 +1412,14 @@ abstract class FormUI_Base
                                 ." must be an array.";
                     }
                 }
-            } elseif (isset($Params["DefaultFunction"])
-                    && !is_callable($Params["DefaultFunction"])) {
-                $ErrMsgs[] = "Default callback form field ".$FieldName
-                        ." is not callable.";
+            }
+
+            if (isset($Params["OptionType"])
+                    && ($Params["OptionType"] == self::OTYPE_LISTSET)
+                    && (!isset($Params["AllowMultiple"])
+                            || ($Params["AllowMultiple"] == false))) {
+                $ErrMsgs[] = "Option type for form field ".$FieldName
+                        ." set to LISTSET without also allowing multiple values";
             }
         }
     }
@@ -1217,8 +1430,9 @@ abstract class FormUI_Base
      *       field names for the top-level index, and field parameter names for
      *       the second-level index.
      * @param array $ErrMsgs Current error message list.  (REFERENCE)
+     * @return void
      */
-    private function checkForMissingFieldParameters(array $FieldParams, &$ErrMsgs)
+    private function checkForMissingFieldParameters(array $FieldParams, &$ErrMsgs): void
     {
         foreach ($FieldParams as $FieldName => $Params) {
             if (!isset($Params["Type"])) {
@@ -1262,8 +1476,9 @@ abstract class FormUI_Base
      *       field names for the top-level index, and field parameter names for
      *       the second-level index.
      * @param array $ErrMsgs Current error message list.  (REFERENCE)
+     * @return void
      */
-    private function checkForUnrecognizedFieldParameters(array $FieldParams, &$ErrMsgs)
+    private function checkForUnrecognizedFieldParameters(array $FieldParams, &$ErrMsgs): void
     {
         foreach ($FieldParams as $FieldName => $Params) {
             foreach ($Params as $Key => $Value) {
@@ -1313,12 +1528,27 @@ abstract class FormUI_Base
     }
 
     /**
+     * Determine if a field is read-only.
+     * @param string $FieldName Field to check.
+     * @return bool TRUE for read-only fields.
+     */
+    private function isReadOnly(string $FieldName): bool
+    {
+        $Params = $this->FieldParams[$FieldName];
+
+        return isset($Params["ReadOnlyFunction"])
+            ? $Params["ReadOnlyFunction"]($FieldName)
+            : $Params["ReadOnly"];
+    }
+
+    /**
      * Normalize field parameters.
      * @param array $FieldParams Associative array of associative arrays, with
      *       field names for the top-level index, and field parameter names for
      *       the second-level index.  (REFERENCE)
+     * @return void
      */
-    protected function normalizeFieldParameters(&$FieldParams)
+    protected function normalizeFieldParameters(&$FieldParams): void
     {
         $BooleanParams = [
             "AllowMultiple",
@@ -1387,8 +1617,9 @@ abstract class FormUI_Base
      * @param string $Name Field name.
      * @param mixed $Value Current value for field.
      * @param array $Params Field parameters.
+     * @return void
      */
-    abstract protected function displayFormField(string $Name, $Value, array $Params);
+    abstract protected function displayFormField(string $Name, $Value, array $Params): void;
 
     /**
      * Get HTML form field name for specified field.
@@ -1397,7 +1628,7 @@ abstract class FormUI_Base
      *       defaults to TRUE.)
      * @return string Form field name.
      */
-    protected function getFormFieldName(string $FieldName, bool $IncludePrefix = true)
+    protected function getFormFieldName(string $FieldName, bool $IncludePrefix = true): string
     {
         return ($IncludePrefix ? "F_" : "")
                 .($this->UniqueKey ? $this->UniqueKey."_" : "")
@@ -1406,8 +1637,9 @@ abstract class FormUI_Base
 
     /**
      * Get HTML for hidden form fields associated with form processing.
+     * @return string Hidden field HTML.
      */
-    protected function getHiddenFieldsHtml()
+    protected function getHiddenFieldsHtml(): string
     {
         $Html = "";
         if (count($this->HiddenFields)) {
@@ -1451,6 +1683,107 @@ abstract class FormUI_Base
         }
 
         return $Html;
+    }
+
+    /**
+     * Check for an upload via the filepond upload library for a given form
+     * field, returning the path to the uploaded file if there was one.
+     * @param string $FormFieldName Form field name to check.
+     * @return string|null Name of uploaded file or NULL when there was not one.
+     * @throws Exception on scandir() failure.
+     * @throws Exception on multiple files in one upload directory (not
+     *     possible with our filepond configuration).
+     * @see https://pqina.nl/filepond/
+     */
+    private function preprocessFilepondUpload(string $FormFieldName): ?string
+    {
+        if (!isset($_POST[$FormFieldName])) {
+            return null;
+        }
+
+        if (strlen($_POST[$FormFieldName]) == 0) {
+            throw new Exception(
+                "No filename propvided for filepond upload "
+                    ." (should be impossible)."
+            );
+        }
+
+        # look in the `transfer` dir configured by lib/filepond/config.php,
+        # which contains completed uploads
+        $FilepondTransferDir = self::FILEPOND_UPLOAD_DIR."/".$_POST[$FormFieldName];
+
+        $FilesToSkip = [".htaccess", ".metadata",];
+
+        $Files = [];
+        $DirEntries = scandir($FilepondTransferDir);
+        if ($DirEntries === false) {
+            throw new Exception(
+                "scandir() on ".$FilepondTransferDir." failed"
+                    ." (should be impossible)."
+            );
+        }
+        foreach ($DirEntries as $File) {
+            # skip non-file entries
+            if (!is_file($FilepondTransferDir."/".$File)) {
+                continue;
+            }
+
+            if (in_array($File, $FilesToSkip)) {
+                continue;
+            }
+
+            $Files[] = $FilepondTransferDir."/".$File;
+        }
+
+        if (count($Files) == 0) {
+            throw new Exception(
+                "No files present in a filepond upload directory"
+                    ." (should be impossible)."
+            );
+        }
+
+        if (count($Files) > 1) {
+            throw new Exception(
+                "Multiple files in a filepond upload directory"
+                    ." (should be impossible)."
+            );
+        }
+
+        $TmpFile = array_shift($Files);
+
+        return $TmpFile;
+    }
+
+    /**
+     * Clean up after filepond uploads.
+     * @param string $FormFieldName Form field name to check.
+     */
+    private function postprocessFilepondUpload(string $FormFieldName): void
+    {
+        if (!isset($_POST[$FormFieldName])
+                || strlen($_POST[$FormFieldName]) == 0) {
+            return;
+        }
+
+        # delete directory from this upload
+        $TargetDir = self::FILEPOND_UPLOAD_DIR."/".$_POST[$FormFieldName];
+        $DirEntries = scandir($TargetDir);
+        if ($DirEntries === false) {
+            throw new Exception(
+                "scandir() on ".$TargetDir." failed"
+                    ." (should be impossible)."
+            );
+        }
+        foreach ($DirEntries as $Entry) {
+            $TargetPath = $TargetDir."/".$Entry;
+            if (is_file($TargetPath)) {
+                unlink($TargetPath);
+            }
+        }
+
+        rmdir($TargetDir);
+
+        self::cleanFilePondUploadDir();
     }
 
     /**
@@ -1554,7 +1887,420 @@ abstract class FormUI_Base
     }
 
     /**
-     * Retrieve values set by form without any normalization.
+     * Set values for read-only fields in supplied field values array.
+     *     (Any existing values will be overwritten.)
+     * @param array $Values Form values, indexed by field name.
+     * @return array Potentially extended list of form values, indexed by field name.
+     */
+    private function setValuesForReadOnlyFields(array $Values): array
+    {
+        foreach (array_keys($this->FieldParams) as $FieldName) {
+            $FieldName = (string)$FieldName;
+            if ($this->isReadOnly($FieldName)) {
+                $Values[$FieldName] = $this->getFallbackValueForField($FieldName);
+            }
+        }
+
+        return $Values;
+    }
+
+    /**
+     * Validate value for form field, including checks that required values
+     *     are supplied and read-only values were not modified, logging errors
+     *     if any were found.
+     * @param string $FieldName Name of form field to validate.
+     * @param array $FieldValues Form field values, indexed by field name. All
+     *     values are provided so that validation functions may implement
+     *     checks that look at multiple fields.
+     * @return int Number of errors found.
+     */
+    private function validateFieldValue(
+        string $FieldName,
+        array $FieldValues
+    ): int {
+        if (!isset($this->FieldParams[$FieldName])) {
+            throw new Exception(
+                "Attempt to validate a non-existent field "
+                    .$FieldName
+            );
+        }
+
+        $ErrorsFound = 0;
+        $FieldParams = $this->FieldParams[$FieldName];
+        $FieldValue = $FieldValues[$FieldName] ?? null;
+
+        # if a validation function was defined
+        if (isset($FieldParams["ValidateFunction"])) {
+            # swap in our object if this is one of our methods
+            $VFunc = $FieldParams["ValidateFunction"];
+            if (is_array($VFunc) && is_subclass_of($VFunc[0], self::class)) {
+                $VFunc[0] = $this;
+            }
+
+            # call validation function for value
+            $Args = array_merge(
+                [$FieldName, $FieldValue, $FieldValues],
+                $this->ExtraValidationParams
+            );
+            $ErrMsg = call_user_func_array($VFunc, $Args);
+            if ($ErrMsg === false) {
+                throw new Exception("Calling validation function for"
+                        ." parameter \"".$FieldName."\" failed.");
+            }
+
+            # log any resulting error
+            if ($ErrMsg !== null) {
+                self::logError($ErrMsg, $FieldName, $this->UniqueKey);
+                $ErrorsFound++;
+            }
+        }
+
+        # check if a read-only value was changed
+        if ($this->isReadOnly($FieldName)) {
+            $OldValue = $this->getFallbackValueForField($FieldName);
+            if ($FieldValue != $OldValue) {
+                # log error to indicate that a readonly value was changed
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> is read-only, "
+                        ."but appears to have been modified.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+                $ErrorsFound++;
+            }
+
+            return $ErrorsFound;
+        }
+
+        # check if a required field was missing
+        if ($FieldParams["Required"]) {
+            switch ($FieldParams["Type"]) {
+                case self::FTYPE_SEARCHPARAMS:
+                    $IsEmpty = $FieldValue->parameterCount() == 0;
+                    break;
+
+                case self::FTYPE_PRIVILEGES:
+                    $IsEmpty = $FieldValue->comparisonCount() == 0;
+                    break;
+
+                default:
+                    if (is_array($FieldValue)) {
+                        $IsEmpty = count($FieldValue) == 0;
+                    } else {
+                        $IsEmpty = strlen(trim($FieldValue ?? "")) == 0;
+                    }
+                    break;
+            }
+
+            if ($IsEmpty) {
+                # log error to indicate required value is missing
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> is required.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+                $ErrorsFound++;
+
+                return $ErrorsFound;
+            }
+        }
+
+        # otherwise validate based on field type
+        switch ($FieldParams["Type"]) {
+            case self::FTYPE_NUMBER:
+                $ErrorsFound += $this->validateNumberFieldValue($FieldName, $FieldValue);
+                break;
+
+            case self::FTYPE_URL:
+                $ErrorsFound += $this->validateUrlFieldValue($FieldName, $FieldValue);
+                break;
+
+            case self::FTYPE_USER:
+                $ErrorsFound += $this->validateUserFieldValue($FieldName, $FieldValue);
+                break;
+
+            case self::FTYPE_TEXT:
+            case self::FTYPE_PARAGRAPH:
+            case self::FTYPE_PASSWORD:
+                $ErrorsFound += $this->validateTextFieldValue($FieldName, $FieldValue);
+                break;
+        }
+
+        return $ErrorsFound;
+    }
+
+    /**
+     * Validate data for a number field.
+     * @param string $FieldName Name of form field to validate.
+     * @param ?string $FieldValue Provided value.
+     * @return int Number of errors found.
+     */
+    private function validateNumberFieldValue(
+        string $FieldName,
+        ?string $FieldValue
+    ) : int {
+        if (!isset($this->FieldParams[$FieldName])) {
+            throw new Exception(
+                "Attempt to validate a non-existent field "
+                    .$FieldName
+            );
+        }
+
+        $ErrorsFound = 0;
+        $FieldParams = $this->FieldParams[$FieldName];
+
+        # check if provided value is numeric
+        if (!is_null($FieldValue) && strlen($FieldValue) > 0 && !is_numeric($FieldValue)) {
+            self::logError(
+                "<i>".$FieldParams["Label"]."</i> must be a number.",
+                $FieldName,
+                $this->UniqueKey
+            );
+            $ErrorsFound++;
+            return $ErrorsFound;
+        }
+
+        # check if value falls within configured range
+        if ((isset($FieldParams["MinVal"]) && ($FieldValue < $FieldParams["MinVal"]))
+            || (isset($FieldParams["MaxVal"]) && ($FieldValue > $FieldParams["MaxVal"]))) {
+            if (!isset($FieldParams["MaxVal"])) {
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> must be "
+                        .$FieldParams["MinVal"]." or greater.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+            } elseif (!isset($FieldParams["MinVal"])) {
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> must be "
+                        .$FieldParams["MaxVal"] ." or less.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+            } else {
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> must be"
+                        ." in the range ".$FieldParams["MinVal"]
+                        ." to ".$FieldParams["MaxVal"].".",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+            }
+            $ErrorsFound++;
+            return $ErrorsFound;
+        }
+
+        # check if the value is allowed to be a float.
+        # if the param "AllowFloats" was not set, we should
+        #       then default to false.
+        if (!isset($FieldParams["AllowFloats"]) || !$FieldParams["AllowFloats"]) {
+            if (is_numeric($FieldValue) && (floor((float)$FieldValue) != $FieldValue)) {
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> cannot be a decimal number.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+                $ErrorsFound++;
+            }
+        }
+
+        return $ErrorsFound;
+    }
+
+    /**
+     * Validate data for a Url field.
+     * @param string $FieldName Name of form field to validate.
+     * @param ?string $FieldValue Provided value.
+     * @return int Number of errors found.
+     */
+    private function validateUrlFieldValue(
+        string $FieldName,
+        ?string $FieldValue
+    ) : int {
+        if (!isset($this->FieldParams[$FieldName])) {
+            throw new Exception(
+                "Attempt to validate a non-existent field "
+                    .$FieldName
+            );
+        }
+
+        $ErrorsFound = 0;
+        $FieldParams = $this->FieldParams[$FieldName];
+
+        # make sure URL entered looks valid
+        $IsValidUrl = filter_var($FieldValue, FILTER_VALIDATE_URL) !== false;
+        if (!is_null($FieldValue) && strlen($FieldValue) > 0 && !$IsValidUrl) {
+            self::logError(
+                "Value \"".$FieldValue."\" does not appear to be a valid URL for <i>"
+                    .$FieldParams["Label"]."</i>.",
+                $FieldName,
+                $this->UniqueKey
+            );
+            $ErrorsFound++;
+        }
+
+        $ErrorsFound += $this->validateTextFieldValue(
+            $FieldName,
+            $FieldValue
+        );
+
+        return $ErrorsFound;
+    }
+
+    /**
+     * Validate data for a User field.
+     * @param string $FieldName Name of form field to validate.
+     * @param array $FieldValue Provided value.
+     * @return int Number of errors found.
+     */
+    private function validateUserFieldValue(
+        string $FieldName,
+        array $FieldValue
+    ) : int {
+        if (!isset($this->FieldParams[$FieldName])) {
+            throw new Exception(
+                "Attempt to validate a non-existent field "
+                    .$FieldName
+            );
+        }
+
+        $ErrorsFound = 0;
+        $FieldParams = $this->FieldParams[$FieldName];
+
+        # make sure user name entered is valid
+        $UFactory = new UserFactory();
+        foreach ($FieldValue as $UId) {
+            if (strlen($UId) && !$UFactory->userExists($UId)) {
+                self::logError(
+                    "User ID \"".$UId."\" not found for <i>"
+                        .$FieldParams["Label"]."</i>.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+                $ErrorsFound++;
+            }
+        }
+
+        return $ErrorsFound;
+    }
+
+    /**
+     * Validate data for a textual field.
+     * @param string $FieldName Name of form field to validate.
+     * @param ?string $FieldValue Provided value.
+     * @return int Number of errors found.
+     */
+    private function validateTextFieldValue(
+        string $FieldName,
+        ?string $FieldValue
+    ) : int {
+        if (!isset($this->FieldParams[$FieldName])) {
+            throw new Exception(
+                "Attempt to validate a non-existent field "
+                    .$FieldName
+            );
+        }
+
+        $ErrorsFound = 0;
+        $FieldParams = $this->FieldParams[$FieldName];
+
+        # make sure that the value length doesn't exceed max length if set
+        $DefaultCharset = InterfaceConfiguration::getInstance()
+            ->getString("DefaultCharacterSet");
+        if (isset($FieldParams["MaxLength"]) &&
+            !is_null($FieldValue) &&
+            mb_strlen($FieldValue, $DefaultCharset) > $FieldParams["MaxLength"]) {
+            self::logError(
+                "<i>".$FieldParams["Label"]."</i> must not exceed "
+                    .$FieldParams["MaxLength"]." characters.",
+                $FieldName,
+                $this->UniqueKey
+            );
+            $ErrorsFound++;
+        }
+
+        return $ErrorsFound;
+    }
+
+    /**
+     * Perform normalization of form values that converts data to a standard
+     *     encoding without changing the data it represents (e.g.,
+     *     standardizing line endings).
+     * @param array $FormValues Incoming form values.
+     * @return array Normalized data.
+     */
+    private function normalizeFormValueEncoding($FormValues): array
+    {
+
+        foreach ($FormValues as $Name => $Values) {
+            if (!isset($this->FieldParams[$Name])) {
+                throw new Exception(
+                    "Attempt to normalize encoding for a non-existent field "
+                        .$Name
+                );
+            }
+
+            $Params = $this->FieldParams[$Name];
+
+            switch ($Params["Type"]) {
+                case self::FTYPE_PARAGRAPH:
+                    # normalize newlines to '\n' instead of '\r\n' or '\r'
+                    $FormValues[$Name] = str_replace(["\r\n", "\r"], "\n", $Values);
+                    break;
+
+                default:
+                    # nothing to do
+                    break;
+            }
+        }
+
+        return $FormValues;
+    }
+
+    /**
+     * Perform normalization of form values that converts data to a standard
+     *     format in ways that may alter or reformat the input (e.g.,
+     *     converting date/time values into a standard format)
+     * @param array $FormValues Incoming form values.
+     * @return array Normalized data.
+     */
+    private function normalizeFormValueData($FormValues)
+    {
+        foreach ($FormValues as $Name => $Values) {
+            if (!isset($this->FieldParams[$Name])) {
+                throw new Exception(
+                    "Attempt to normalize data for a non-existent field "
+                        .$Name
+                );
+            }
+
+            $Params = $this->FieldParams[$Name];
+
+            switch ($Params["Type"]) {
+                case self::FTYPE_DATETIME:
+                    # normalizeDateTimeValue returns false if the
+                    # value for a timestamp is empty or cannot be
+                    # normalized
+                    $FormValues[$Name] =
+                        self::normalizeDateTimeValue(
+                            $Values,
+                            $Params["Format"]
+                        );
+                    break;
+
+                default:
+                    # nothing to do
+                    break;
+            }
+        }
+
+        return $FormValues;
+    }
+
+    /**
+     * Retrieve values for user-editable fields set by form without
+     *     any normalization. (No values will be returned for
+     *     read-only fields and fields not shown to the user.)
      * @return array Array of configuration settings, with setting names
      *       for the index, and new setting values for the values.
      */
@@ -1569,6 +2315,11 @@ abstract class FormUI_Base
 
             # skip fields not shown to the user
             if (!$this->fieldWasDisplayedWhenFormWasSubmitted($Name)) {
+                continue;
+            }
+
+            # skip read only fields
+            if ($this->isReadOnly($Name)) {
                 continue;
             }
 
@@ -1729,15 +2480,14 @@ abstract class FormUI_Base
                     if (isset($_POST[$FieldName])) {
                         # filter blank entries out of input
                         # (these come up when a user was deleted from the list)
-                        $NewValue = array_filter(
-                            $_POST[$FieldName],
-                            function ($v) {
-                                return strlen($v) > 0 ? true : false;
+                        $NewValue = [];
+                        foreach ($_POST[$FieldName] as $UserId) {
+                            if (strlen($UserId) > 0) {
+                                $NewValue[] = $UserId;
                             }
-                        );
+                        }
 
                         $DidValueChange = self::didValueChange($OldValue, $NewValue);
-
                         $NewSettings[$Name] = $NewValue;
                     }
                     break;
@@ -1786,7 +2536,7 @@ abstract class FormUI_Base
                 }
 
                 # signal event
-                $GLOBALS["AF"]->signalEvent(
+                ApplicationFramework::getInstance()->signalEvent(
                     $this->SettingChangeEventName,
                     $EventParams
                 );

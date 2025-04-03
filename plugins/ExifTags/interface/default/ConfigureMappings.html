@@ -1,0 +1,315 @@
+<?PHP
+#
+#   FILE:  ConfigureMappings.html (ExifTags plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+#   * Expects that the following arrays are defined:
+#   $H_PotentialFields - Array indexed by schema ID. The value for each schema
+#           ID is an array for each schema contains an array for each its
+#           metadata fields that is one of the types that the plugin supports
+#           for mapping EXIF tags to. The array for each field has the type (as
+#           a MDFTYPE_ constant) and display name of the field. The types
+#           supported for mapping are Text, Paragraph, Date, Timestamp, Number,
+#           Controlled Name, Option, Flag, and Point.
+#   $H_ErrorMessages - (OPTIONALL) List of error messages if any were produced
+#           by the most recent form submission. Invalid mappings raise errors
+#           and are not allowed to be saved.
+#   $H_WarningMessages - (OPTIONAL) List of warning messages if any were produced by the
+#           last form submission. Mappings that raise warnings *can* be saved.
+#
+#   @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\ExifTags;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/*
+ * Create HTML for a metadata field drop down for a mapping that already
+ * exists when the page loads.
+ * @param MetadataSchema $Schema Schema the dropdown is for.
+ * @param array $MappableFieldsForSchema Metadata fields in a schema which have
+ *         types which are able to have values assigned from EXIF tags.
+ *         Array is keyed on metadata field ID. Values have the metadata field's
+ *         type and name.
+ * @param int|null $Index Index number of mapping within a given schema if the
+ *         dropdown is for an existing mapping, NULL if the dropdown will be for
+ *         a new mapping on the template row.
+ * @param int $CurrentValue ID of currently mapped field, if any.
+ * @return string HTML for a dropdown with a list of options of fields
+ *         in a schema that have types that values from EXIF tags can be mapped
+ *         to.
+ */
+function getOptionListHtmlForMappedField(
+    MetadataSchema $Schema,
+    array $MappableFieldsForSchema,
+    ?int $Index,
+    int $CurrentValue
+): string {
+    $LocalFieldOptions = [];
+    $LocalFieldTypes = [];
+    foreach ($MappableFieldsForSchema as $MDFieldId => $MDFieldInfo) {
+        $LocalFieldOptions[$MDFieldId] = $MDFieldInfo["Name"];
+
+        # preparing array indexed by option value for use as a parameter
+        # to classForOptions
+        $LocalFieldTypes[$MDFieldId] =
+                "option-type-".$MDFieldInfo["Type"];
+    }
+
+    # if no index is specified, this row is the template row at the bottom
+    # of the table for each schema, used to add a new mapping to those
+    # configured for the schema
+    $IndexForDropdown = $Index ?? "N";
+
+    $LocalFieldOptions[0] = "--";
+    # placeholder value used when an EXIF tag is selected that can not be mapped
+    # to the metadata field already selected for this mapping
+
+    $FieldOptionList = new HtmlOptionList(
+        "F_LocalField-".$Schema->Id().'-'.$Index,
+        $LocalFieldOptions,
+        [$CurrentValue]
+    );
+    $FieldOptionList->classForOptions($LocalFieldTypes);
+    $FieldOptionList->classForList("mv-localfields");
+    $FieldOptionsHtml = $FieldOptionList->getHtml();
+    return $FieldOptionsHtml;
+}
+
+/*
+ * Create HTML for an EXIF tag drop down for a mapping from an EXIF tag to one
+ * of a schema's metadata fields.
+ * @param MetadataSchema $Schema The drop down allows an EXIF tag to be
+ *          selected to create a mapping to a metataa field in this schema.
+ * @param int|null $Index Index number of mapping of an EXIF tag to a metadata
+ *         field within a given schema, NULL if this dropdown is for the
+ *         template row for new mappings.
+ * @param string|null $Tag EXIF tag that is mapped for this mapping when the
+ *         page loads if this dropdown is for an already-configurd mapping, NULL
+ *         if this dropdown is for the template row for new mappings.
+ * @return string HTML for a drop down with a list of options of EXIF tags
+ *         this mapping can be set to use, with the $Tag already selected.
+ */
+function getOptionListHtmlForMappedTag(
+    MetadataSchema $Schema,
+    ?int $Index,
+    ?string $Tag
+): string {
+
+    # retrieve the list  EXIF tags that can have their values assigned to
+    # schemas' metadata fields based on configured mappings from the plugin
+    # configuration
+    $AvailableTags = setupTagsForHtmlOptionList();
+
+    # the row index will be N if this dropdown will be on the template (bottom)
+    # row, otherwise is numeric and indicates which row in the table
+    $RowIndex = $Index ?? "N";
+
+    $StartingValue = [];
+    if (!is_null($Tag)) {
+        $StartingValue [] = $Tag;
+    } else {
+        # if this dropdown is for the template row, there will be am empty initial
+        # selection indicated by a placeholder "--"
+        $AvailableTags = array_merge(["-1" => "--"], $AvailableTags);
+    }
+
+    $TagOptionList = new HtmlOptionList(
+        'F_ExifPicker-'.$Schema->Id().'-'.$RowIndex,
+        $AvailableTags,
+        $StartingValue
+    );
+
+    $TagOptionList->classForList("mv-tags");
+    return $TagOptionList->getHtml();
+}
+
+/**
+ *  Set up an array of EXIF tags and their display labels for use as a
+ *  parameter for HtmlOptionList.
+ *  Pull the "ExifTags" plugin configuration setting, an array of all of the
+ *  EXIF tags the plugin can import data from to apply to a record's metadata
+ *  fields. The array is indexed by EXIF tag, the value for each tag is an
+ *  array with the index "Label" for the tag's label.
+ *  @return Array indexed on EXIF tags, (eg: "EXIF.ImageUniqueID"), the value
+ *  for each tag is the tag's label.
+ */
+function setupTagsForHtmlOptionList(): array
+{
+    $Plugin = ExifTags::getInstance();
+    $ExifTags = $Plugin->getConfigSetting("ExifTags");
+    $TagsWithLabel = [];
+    foreach ($ExifTags as $Tag => $TagInfo) {
+        $AvailableTags[$Tag] = $TagInfo["Label"];
+    }
+    return $AvailableTags ?? [];
+}
+
+/**
+ * Output table rows that show mappings configured for a schema from EXIF tags
+ * to the schema's metadata fields. The EXIF tags and metadata fields are both
+ * shown in editable drop-downs.
+ * @param MetadataSchema $Schema Metadata schema the table rows show configured
+ *          mappings for.
+ * @param array $MappableFieldsForSchema Metadata fields in a schema which have
+ *         types which are able to have values assigned from EXIF tags, indexed
+ *         on metadata field ID. Values have the metadata field's type and name.
+ * @param int $Index Number indicates where a mapping from an EXIF tag to a
+ *         schema's metadata field sits in the ordered list of mappings for the
+ *         schema.
+ * @param array $Mapping Array represents a mapping from an EXIF tag to one of
+ *         the schema's metadata fields with the ID of the metadata field
+ *         the tag is mapped to and the EXIF tag that is mapped to the field
+ *         under the keys "FieldId" and "Tag".
+ */
+function printTableRowsForSchemaMappings(
+    MetadataSchema $Schema,
+    array $MappableFieldsForSchema,
+    int $Index,
+    array $Mapping
+): void {
+    $Tag = $Mapping["Tag"];
+    $CurrentValue = $Mapping["FieldId"];
+
+    $FieldOptionsHtml = getOptionListHtmlForMappedField(
+        $Schema,
+        $MappableFieldsForSchema,
+        $Index,
+        $CurrentValue
+    );
+    $TagListHtml = getOptionListHtmlForMappedTag(
+        $Schema,
+        $Index,
+        $Tag
+    );
+    $DeletedFlagFieldName =
+        implode("-", ["F_Deleted", $Schema->Id(), $Index]);
+    ?>
+    <tr data-schemaid="<?= $Schema->Id() ?>">
+      <td style="vertical-align: middle;">
+        <input type="hidden"
+               name="<?= $DeletedFlagFieldName ?>"
+             value="false">
+        <input type="button" name="Delete" value="X" />
+      </td>
+      <td style="vertical-align: middle;"> <?= $TagListHtml ?> </td>
+      <td> <?= $FieldOptionsHtml ?> </td>
+    </tr>
+    <?PHP
+}
+
+
+
+# ----- SETUP ----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+$AF->requireUIFile("ExifTags.js");
+
+# verify that required incoming variables are set
+if (!isset($H_PotentialFields)) {
+    throw new Exception("Variable \$H_PotentialFields not set.");
+}
+
+$Plugin = ExifTags::getInstance();
+$FieldMappings = $Plugin->getConfigSetting("FieldMappings");
+$ExifTags = $Plugin->getConfigSetting("ExifTags");
+
+# ----- DISPLAY -----------------------------------------------------------------
+
+PageTitle("EXIF Tags - Configure Mappings");
+?>
+<div class="container">
+  <div class="row">
+    <div class="col">
+      <h1>
+        <a href="https://en.wikipedia.org/wiki/Exif">
+        <abbr title="What are EXIF tags?">EXIF</abbr>
+        </a>
+        Tags - Configure Mappings
+      </h1>
+    </div>
+  </div>
+</div>
+
+<?PHP if (!empty($H_ErrorMessages)) { ?>
+<ul class="alert alert-danger">
+    <?PHP foreach ($H_ErrorMessages as $Msg) { ?>
+    <li><?= $Msg; ?></li>
+    <?PHP } ?>
+</ul>
+    <?PHP
+}
+?>
+
+<?PHP if (!empty($H_WarningMessages)) { ?>
+<ul class="alert alert-warning" role="alert">
+    <?PHP foreach ($H_WarningMessages as $Msg) { ?>
+    <li><?= $Msg; ?></li>
+    <?PHP } ?>
+</ul>
+    <?PHP
+}
+?>
+
+ <form method="post" enctype="multipart/form-data"
+       action="index.php?P=P_ExifTags_ConfigureMappings">
+ <table class="table table-striped">
+   <tbody>
+       <tr>
+         <th> </th>
+         <th>EXIF Tags</th>
+         <th>Metadata Fields</th>
+       </tr>
+   <?PHP
+    foreach (MetadataSchema::GetAllSchemas() as $Schema) { ?>
+    <tr>
+      <th colspan="5"> <h2>Schema: <?= $Schema->Name() ?></h2>
+      </th>
+    </tr>
+        <?PHP
+        $MappingsForSchema = $FieldMappings[$Schema->Id()] ?? [];
+        $MappableFieldsForSchema = $H_PotentialFields[$Schema->Id()];
+        foreach ($MappingsForSchema as $Index => $Mapping) {
+                printTableRowsForSchemaMappings(
+                    $Schema,
+                    $MappableFieldsForSchema,
+                    $Index,
+                    $Mapping
+                );
+        }
+        # blank row to add mappings, below existing mappings for each schema
+        $FieldOptionsHtml =
+               getOptionListHtmlForMappedField($Schema, $MappableFieldsForSchema, null, 0);
+        $TagListHtml =
+                getOptionListHtmlForMappedTag($Schema, null, null);
+        ?>
+        <tr data-schemaid="<?= $Schema->Id() ?>" class="mv-new_mapping_template">
+         <td>
+             <input type="button" name="Delete" value="X" />
+             <input type="hidden"
+                    name="F_Deleted-<?= $Schema->Id()?>"
+                    value="false"/>
+         </td>
+         <td> <?= $TagListHtml ?> </td>
+         <td> <?= $FieldOptionsHtml ?> </td>
+        <?PHP
+    } ?>
+</tbody>
+</table>
+  <input type="submit" name="Submit" value="Save Changes" />
+  <input type="submit" name="Submit" value="Cancel" />
+</form>
+
+<!-- the variable defined below is used by ExifTags.js -->
+<script type="text/javascript">
+  var ValidTagTypes = <?= json_encode($ExifTags) ?>;
+</script>

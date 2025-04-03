@@ -6,19 +6,22 @@
 #   Copyright 2006-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\User;
 use Metavus\UserFactory;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Extract a provided parameter, looking in _GET for an abbreviated name and
  * then _POST for a longer name.
  * @param string $ShortName Abbreviated name to look for.
  * @param string $LongName Full name to look for.
- * @return Extracted value or NULL if none found.
+ * @return ?string Extracted value or NULL if none found.
  */
-function getParameter(string $ShortName, string $LongName)
+function getParameter(string $ShortName, string $LongName) : ?string
 {
     if (isset($_GET[$ShortName])) {
         return trim($_GET[$ShortName]);

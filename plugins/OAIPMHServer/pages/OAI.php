@@ -3,23 +3,25 @@
 #   FILE:  OAI.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\File;
+use Metavus\Plugins\OAIPMHServer;
 use Metavus\Plugins\OAIPMHServer\OAIServer;
-use ScoutLib\PluginManager;
+use ScoutLib\ApplicationFramework;
 
 header("Content-type: text/xml");
 
-$Plugin = PluginManager::getInstance()
-    ->getPlugin("OAIPMHServer");
+$AF = ApplicationFramework::getInstance();
+$OAIPMHServerPlugin = OAIPMHServer::getInstance();
 $Server = new OAIServer(
-    $Plugin->ConfigSetting("RepositoryDescr"),
-    $Plugin->ConfigSetting("Formats"),
+    $OAIPMHServerPlugin->getConfigSetting("RepositoryDescr"),
+    $OAIPMHServerPlugin->getConfigSetting("Formats"),
     null,
-    $Plugin->ConfigSetting("SQEnabled")
+    $OAIPMHServerPlugin->getConfigSetting("SQEnabled")
 );
 
 # find query data (see OAIServer::LoadArguments)
@@ -50,12 +52,12 @@ if (isset($_GET["metadataPrefix"]) || isset($_POST["metadataPrefix"])) {
         $_GET["resumptionToken"] :
         $_POST["resumptionToken"] ;
     $Pieces = preg_split("/-_-/", $ResumptionToken);
-    if (count($Pieces) == 5 && strlen($Pieces[2]) > 0) {
+    if ($Pieces !== false && count($Pieces) == 5 && strlen($Pieces[2]) > 0) {
         $SelectedFormat = $Pieces[2];
     }
 }
 
-$Formats = $Plugin->ConfigSetting("Formats");
+$Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
 
 if (isset($SelectedFormat)
         && isset($Formats[$SelectedFormat])

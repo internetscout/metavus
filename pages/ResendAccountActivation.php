@@ -6,6 +6,7 @@
 #   Copyright 2006-2021 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
 
@@ -17,7 +18,7 @@ $H_EMailAddress = StdLib::getFormValue("F_EMailAddress", StdLib::getFormValue("E
 
 # values intended for use in HTML
 $H_EMailAddressUsed = false;
-$H_UserFound = false;
+$H_NumUsersFound = 0;
 $H_EMailSent = false;
 $H_AccountAlreadyActivated = false;
 
@@ -27,13 +28,18 @@ if (strlen($H_UserName) && (new UserFactory())->userNameExists($H_UserName)) {
     # attempt to find user with specified name
     $H_UserName = User::NormalizeUserName($H_UserName);
     $TargetUser = new User($H_UserName);
+    $H_NumUsersFound = 1;
 } elseif (strlen($H_EMailAddress)) {
 # else if e-mail address was supplied
 
     # attempt to find user with specified e-mail address
     $Factory = new UserFactory();
     $H_EMailAddress = User::NormalizeEMailAddress($H_EMailAddress);
-    $TargetUser = $Factory->GetMatchingUsers($H_EMailAddress, "EMail");
+    $MatchingUsers = $Factory->GetMatchingUsers($H_EMailAddress, "EMail");
+    $H_NumUsersFound = count($MatchingUsers);
+    if ($H_NumUsersFound == 1) {
+        $TargetUser = new User(reset($MatchingUsers)["UserName"]);
+    }
 
     # set flag indicating that we used e-mail address
     $H_EMailAddressUsed = true;

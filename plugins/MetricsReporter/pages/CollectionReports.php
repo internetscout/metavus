@@ -3,11 +3,13 @@
 #   FILE:  CollectionReports.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\InterfaceConfiguration;
+use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
@@ -17,6 +19,7 @@ use Metavus\RecordFactory;
 use Metavus\SearchParameterSet;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -36,33 +39,33 @@ function CreateOrIncrement(&$Array, $Key) : void
 
 /**
 * Summarize view counts after a specified date
-* @param string $StartTS Starting date
+* @param string|int $StartTS Starting date
 * @return array View count summary
 */
 function GetViewCountData($StartTS)
 {
-    $Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-    $Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+    $Recorder = MetricsRecorder::getInstance();
+    $Reporter = MetricsReporter::getInstance();
 
-    $StartDate = date('Y-m-d', $StartTS);
+    $StartDate = date('Y-m-d', (int)$StartTS);
 
-    $Data = $Reporter->CacheGet("ViewCounts".$StartDate);
+    $Data = $Reporter->cacheGet("ViewCounts".$StartDate);
     if (is_null($Data)) {
         $RFactory = new RecordFactory();
-        $AllResourceIds = $RFactory->GetItemIds();
+        $AllResourceIds = $RFactory->getItemIds();
 
-        $Data = $Recorder->GetFullRecordViewCounts(
+        $Data = $Recorder->getFullRecordViewCounts(
             MetadataSchema::SCHEMAID_DEFAULT,
             $StartDate,
             null,
             0,
             15,
-            $Reporter->ConfigSetting("PrivsToExcludeFromCounts")
+            $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
         );
         $Data["StartDate"] = $StartDate;
         $Data["EndDate"]   = date('Y-m-d');
 
-        $Data["Total"] = $Recorder->GetEventCounts(
+        $Data["Total"] = $Recorder->getEventCounts(
             "MetricsRecorder",
             MetricsRecorder::ET_FULLRECORDVIEW,
             null,
@@ -71,10 +74,10 @@ function GetViewCountData($StartTS)
             null,
             $AllResourceIds,
             null,
-            $Reporter->ConfigSetting("PrivsToExcludeFromCounts")
+            $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
         );
 
-        $Reporter->CachePut("ViewCounts".$StartDate, $Data);
+        $Reporter->cachePut("ViewCounts".$StartDate, $Data);
     }
 
     return $Data;
@@ -82,32 +85,32 @@ function GetViewCountData($StartTS)
 
 /**
 * Summarize URL clicks after a specified date
-* @param string $StartTS Starting date
+* @param string|int $StartTS Starting date
 * @param MetadataField $Field MetadataField of interest
 * @return array View count summary
 */
 function GetClickCountData($StartTS, $Field)
 {
-    $Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-    $Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+    $Recorder = MetricsRecorder::getInstance();
+    $Reporter = MetricsReporter::getInstance();
 
-    $StartDate = date('Y-m-d', $StartTS);
+    $StartDate = date('Y-m-d', (int)$StartTS);
 
-    $Data = $Reporter->CacheGet("ClickCounts".$StartDate);
+    $Data = $Reporter->cacheGet("ClickCounts".$StartDate);
 
     if (is_null($Data)) {
-        $Data = $Recorder->GetUrlFieldClickCounts(
-            $Field->Id(),
+        $Data = $Recorder->getUrlFieldClickCounts(
+            $Field->id(),
             $StartDate,
             null,
             0,
             15,
-            $Reporter->ConfigSetting("PrivsToExcludeFromCounts")
+            $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
         );
         $Data["StartDate"] = $StartDate;
         $Data["EndDate"]   = date('Y-m-d');
 
-        $Data["Total"] = $Recorder->GetEventCounts(
+        $Data["Total"] = $Recorder->getEventCounts(
             "MetricsRecorder",
             MetricsRecorder::ET_URLFIELDCLICK,
             null,
@@ -115,11 +118,11 @@ function GetClickCountData($StartTS, $Field)
             null,
             null,
             null,
-            $Field->Id(),
-            $Reporter->ConfigSetting("PrivsToExcludeFromCounts")
+            $Field->id(),
+            $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
         );
 
-        $Reporter->CachePut("ClickCounts".$StartDate, $Data);
+        $Reporter->cachePut("ClickCounts".$StartDate, $Data);
     }
 
     return $Data;
@@ -129,15 +132,16 @@ function GetClickCountData($StartTS, $Field)
  * Generator function to retrieve event data from MetricsRecorder
  * in chunks to avoid excessive memory usage
  * @param string $Owner owner of events to get data for
- * @param int|string $Type Type of event to get search data for
+ * @param int|string|array $Type Type of event to get search data for
  * @param string|null $StartDate (OPTIONAL) Beginning of date of range
  *     to search (inclusive), in SQL date format
  * @param array|PrivilegeSet $PrivsToExclude (OPTIONAL) Users with these
  *     privileges will be excluded from the results.
+ * @return Generator|array
  */
 function getChunkOfData($Owner, $Type, $StartDate = null, $PrivsToExclude = [])
 {
-    $Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
+    $Recorder = MetricsRecorder::getInstance();
     $Count = (int)(($Recorder->getEventCounts(
         $Owner,
         $Type,
@@ -181,14 +185,15 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
 }
 
 $AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
 
 # Grab ahold of the relevant metrics objects:
-$Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-$Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+$Recorder = MetricsRecorder::getInstance();
+$Reporter = MetricsReporter::getInstance();
 
 if (isset($_GET["US"]) && $_GET["US"] == 1) {
-    $Reporter->CacheClear();
-    $AF->SetJumpToPage("P_MetricsReporter_CollectionReports");
+    $Reporter->cacheClear();
+    $AF->setJumpToPage("P_MetricsReporter_CollectionReports");
     return;
 }
 
@@ -207,7 +212,14 @@ $H_YearlyViewCountData  = GetViewCountData($Past["Year"]);
 
 # url click counts (weekly, monthly, yearly)
 $Schema = new MetadataSchema();
-$H_UrlField = $Schema->GetFieldByMappedName("Url");
+$H_UrlField = $Schema->getFieldByMappedName("Url");
+
+# initialize the variables with a default value
+$H_WeeklyClickCountData = null;
+$H_MonthlyClickCountData = null;
+$H_YearlyClickCountData = null;
+
+# if $H_UrlField is set, then update these variables
 if (isset($H_UrlField)) {
     $H_WeeklyClickCountData  = GetClickCountData($Past["Week"], $H_UrlField);
     $H_MonthlyClickCountData = GetClickCountData($Past["Month"], $H_UrlField);
@@ -216,7 +228,7 @@ if (isset($H_UrlField)) {
 
 # total resources vs time
 $H_TotalResourceCountData = [];
-foreach ($Recorder->GetSampleData(
+foreach ($Recorder->getSampleData(
     MetricsRecorder::ST_RESOURCECOUNT
 ) as $SampleDate => $SampleValue) {
     $H_TotalResourceCountData[strtotime($SampleDate)] = $SampleValue;
@@ -235,10 +247,10 @@ foreach ($H_TotalResourceCountData as $TS => $Count) {
 }
 
 # url clicks per day
-$H_UrlClickData = $Reporter->CacheGet("UrlClickData");
+$H_UrlClickData = $Reporter->cacheGet("UrlClickData");
 if (is_null($H_UrlClickData)) {
     $H_UrlClickData = [];
-    foreach ($Recorder->GetEventCounts(
+    foreach ($Recorder->getEventCounts(
         "MetricsRecorder",
         MetricsRecorder::ET_URLFIELDCLICK,
         "DAY",
@@ -247,7 +259,7 @@ if (is_null($H_UrlClickData)) {
         null,
         null,
         null,
-        $Reporter->ConfigSetting("PrivsToExcludeFromCounts")
+        $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
     ) as $TS => $Count) {
         if (!isset($H_UrlClickData[$TS])) {
             $H_UrlClickData[$TS] = 0;
@@ -255,11 +267,11 @@ if (is_null($H_UrlClickData)) {
 
         $H_UrlClickData[$TS] += $Count ;
     }
-    $Reporter->CachePut("UrlClickData", $H_UrlClickData);
+    $Reporter->cachePut("UrlClickData", $H_UrlClickData);
 }
 
 # analysis of search data
-$Data = $Reporter->CacheGet("SearchData");
+$Data = $Reporter->cacheGet("SearchData");
 if (is_null($Data)) {
     $UserCache = [];
 
@@ -273,7 +285,7 @@ if (is_null($Data)) {
     $H_SearchDataMonthUnpriv = [];
 
     # pull out privs that should be excluded from metrics
-    $ExcludedPrivs = $Reporter->ConfigSetting("PrivsToExcludeFromCounts");
+    $ExcludedPrivs = $Reporter->getConfigSetting("PrivsToExcludeFromCounts");
     if ($ExcludedPrivs instanceof PrivilegeSet) {
         $ExcludedPrivs = $ExcludedPrivs->getPrivileges();
     }
@@ -287,14 +299,14 @@ if (is_null($Data)) {
             #   and the cause for that has not yet been determined...)
             if (strlen($Row["DataOne"])) {
                 # if we had a logged in user
-                if (strlen($Row["UserId"])) {
+                if (!is_null($Row["UserId"]) && strlen($Row["UserId"])) {
                     # determine if we've already checked their permissions against the
                     #  list of exclusions from the Metrics Reporter.
                     if (!isset($UserCache[$Row["UserId"]])) {
                         # if we haven't check their perms and cache the result
                         $ThisUser = new User($Row["UserId"]);
 
-                        $UserCache[$Row["UserId"]] = $ThisUser->HasPriv(
+                        $UserCache[$Row["UserId"]] = $ThisUser->hasPriv(
                             $ExcludedPrivs
                         );
                     }
@@ -308,7 +320,7 @@ if (is_null($Data)) {
 
                 $TS = strtotime($Row["EventDate"]);
                 $SearchParams = new SearchParameterSet($Row["DataOne"]);
-                $SearchUrl = $SearchParams->UrlParameterString();
+                $SearchUrl = $SearchParams->urlParameterString();
                 if ($Privileged) {
                     if ($Past["Month"] < $TS) {
                         CreateOrIncrement($H_SearchDataMonthPriv, $SearchUrl);
@@ -354,7 +366,7 @@ if (is_null($Data)) {
         $$Summary = $Data;
     }
 
-    $Reporter->CachePut(
+    $Reporter->cachePut(
         "SearchData",
         [
             "H_SearchDataDayPriv" => $H_SearchDataDayPriv,
@@ -375,17 +387,17 @@ if (is_null($Data)) {
 }
 
 # daily summary of search counts
-$H_SearchDataByDay = $Reporter->CacheGet("SearchDataByDay");
+$H_SearchDataByDay = $Reporter->cacheGet("SearchDataByDay");
 if (is_null($H_SearchDataByDay)) {
     # pull out totals for regular + advanced searches
-    $AllSearches = $Recorder->GetEventCounts(
+    $AllSearches = $Recorder->getEventCounts(
         "MetricsRecorder",
         [MetricsRecorder::ET_SEARCH, MetricsRecorder::ET_ADVANCEDSEARCH],
         "DAY"
     );
 
     # pull out the searches by unprivileged users
-    $UnprivSearches = $Recorder->GetEventCounts(
+    $UnprivSearches = $Recorder->getEventCounts(
         "MetricsRecorder",
         [MetricsRecorder::ET_SEARCH, MetricsRecorder::ET_ADVANCEDSEARCH],
         "DAY",
@@ -394,7 +406,7 @@ if (is_null($H_SearchDataByDay)) {
         null,
         null,
         null,
-        $Reporter->ConfigSetting("PrivsToExcludeFromCounts")
+        $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
     );
 
     # massage the data into the format that the Graph object wants
@@ -407,11 +419,11 @@ if (is_null($H_SearchDataByDay)) {
             [$ThisUnpriv, $Count - $ThisUnpriv];
     }
 
-    $Reporter->CachePut("SearchDataByDay", $H_SearchDataByDay);
+    $Reporter->cachePut("SearchDataByDay", $H_SearchDataByDay);
 }
 
 # OAI data
-$H_OaiDataByDay = $Reporter->CacheGet("OaiDataByDay");
+$H_OaiDataByDay = $Reporter->cacheGet("OaiDataByDay");
 if (is_null($H_OaiDataByDay)) {
     $H_OaiDataByDay = [];
     foreach (getChunkOfData("MetricsRecorder", MetricsRecorder::ET_OAIREQUEST) as $Rows) {
@@ -425,15 +437,18 @@ if (is_null($H_OaiDataByDay)) {
         }
     }
 
-    $Reporter->CachePut("OaiDataByDay", $H_OaiDataByDay);
+    $Reporter->cachePut("OaiDataByDay", $H_OaiDataByDay);
 }
 
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("SocialMedia")) {
+if ($PluginMgr->pluginReady("SocialMedia")) {
     # resource shares
-    $H_SharesByDay = $Reporter->CacheGet("Shares");
+    $H_SharesByDay = $Reporter->cacheGet("Shares");
     # we must have access to the SocialMedia plugin to gather sharing data
     if (is_null($H_SharesByDay)) {
         $H_SharesByDay = [];
+        /**
+         * @var array<string, array> $H_TopShares
+         */
         $H_TopShares = [];
 
         $ShareTypeMap = [
@@ -452,9 +467,7 @@ if ($GLOBALS["G_PluginManager"]->PluginEnabled("SocialMedia")) {
             "SocialMedia",
             "ShareResource",
             null,
-            $Reporter->ConfigSetting(
-                "PrivsToExcludeFromCounts"
-            )
+            $Reporter->getConfigSetting("PrivsToExcludeFromCounts")
         ) as $Events) {
             foreach ($Events as $Event) {
                 if (in_array($Event["DataTwo"], $ValidDataTwoValues)) {
@@ -495,10 +508,10 @@ if ($GLOBALS["G_PluginManager"]->PluginEnabled("SocialMedia")) {
             $H_TopShares[$Period]["Total"] = $Total;
         }
 
-        $Reporter->CachePut("Shares", $H_SharesByDay);
-        $Reporter->CachePut("TopShares", $H_TopShares);
+        $Reporter->cachePut("Shares", $H_SharesByDay);
+        $Reporter->cachePut("TopShares", $H_TopShares);
     } else {
-        $H_TopShares = $Reporter->CacheGet("TopShares");
+        $H_TopShares = $Reporter->cacheGet("TopShares");
     }
 } else {
     $H_SharesByDay = [];
@@ -507,7 +520,7 @@ if ($GLOBALS["G_PluginManager"]->PluginEnabled("SocialMedia")) {
 
 # if the user requested JSON data, provide it and cease processing
 if (isset($_GET["JSON"])) {
-    $AF->SuppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     header("Content-Type: application/json; charset="
            .InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet"), true);
 
@@ -536,12 +549,12 @@ if (isset($_GET["JSON"])) {
                 "Unpriv" => $H_SearchDataMonthUnpriv
             ]
         ],
-        "ResourceCount" => MetricsReporter::FormatDateKeys($H_TotalResourceCountData),
-        "NewResources" => MetricsReporter::FormatDateKeys($H_NewResourceCountData),
-        "UrlClicks" => MetricsReporter::FormatDateKeys($H_UrlClickData),
-        "SearchData" => MetricsReporter::FormatDateKeys($H_SearchDataByDay),
-        "OaiData" => MetricsReporter::FormatDateKeys($H_OaiDataByDay),
-        "SharesData" => MetricsReporter::FormatDateKeys($H_SharesByDay),
+        "ResourceCount" => MetricsReporter::formatDateKeys($H_TotalResourceCountData),
+        "NewResources" => MetricsReporter::formatDateKeys($H_NewResourceCountData),
+        "UrlClicks" => MetricsReporter::formatDateKeys($H_UrlClickData),
+        "SearchData" => MetricsReporter::formatDateKeys($H_SearchDataByDay),
+        "OaiData" => MetricsReporter::formatDateKeys($H_OaiDataByDay),
+        "SharesData" => MetricsReporter::formatDateKeys($H_SharesByDay),
     ]);
     return;
 }

@@ -3,7 +3,7 @@
 #   RSS.php
 #   An Object to Support RSS 0.92 (Rich Site Summary) Output
 #
-#   Copyright 2002-2019 Axis Data
+#   Copyright 2002-2025 Axis Data
 #   This code is free software that can be used or redistributed under the
 #   terms of Version 2 of the GNU General Public License, as published by the
 #   Free Software Foundation (http://www.fsf.org).
@@ -28,7 +28,7 @@ class RSS
     }
 
     # required channel values
-    public function addChannel($Title, $Link, $Description, $RssLink)
+    public function addChannel($Title, $Link, $Description, $RssLink): void
     {
         $this->ChannelCount++;
         $this->ItemCounts[$this->ChannelCount] = -1;
@@ -39,8 +39,12 @@ class RSS
         $this->Channels[$this->ChannelCount]["CategoryCount"] = 0;
     }
 
-    public function setImage($Url, $Height = null, $Width = null, $Description = null)
-    {
+    public function setImage(
+        $Url,
+        $Height = null,
+        $Width = null,
+        $Description = null
+    ): void {
         $this->Channels[$this->ChannelCount]["ImageUrl"] = $Url;
         $this->Channels[$this->ChannelCount]["ImageHeight"] = $Height;
         $this->Channels[$this->ChannelCount]["ImageWidth"] = $Width;
@@ -48,106 +52,115 @@ class RSS
     }
 
     # optional channel values
-    public function setEncoding($Value)
+    public function setEncoding($Value): void
     {
         $this->Encoding = $Value;
     }
 
-    public function setLanguage($Value)
+    public function setLanguage($Value): void
     {
         $this->Channels[$this->ChannelCount]["Language"] = $Value;
     }
 
-    public function setCopyright($Value)
+    public function setCopyright($Value): void
     {
         $this->Channels[$this->ChannelCount]["Copyright"] = $Value;
     }
 
-    public function setManagingEditor($Value)
+    public function setManagingEditor($Value): void
     {
         $this->Channels[$this->ChannelCount]["ManagingEditor"] = $Value;
     }
 
-    public function setWebmaster($Value)
+    public function setWebmaster($Value): void
     {
         $this->Channels[$this->ChannelCount]["Webmaster"] = $Value;
     }
 
-    public function addCategory($Value)
+    public function addCategory($Value): void
     {
         $this->Channels[$this->ChannelCount]["Category"][] = $Value;
     }
 
-    public function setPicsRating($Value)
+    public function setPicsRating($Value): void
     {
         $this->Channels[$this->ChannelCount]["PicsRating"] = $Value;
     }
 
-    public function setPublicationDate($Value)
+    public function setPublicationDate($Value): void
     {
         $this->Channels[$this->ChannelCount]["PublicationDate"] = $this->formatDate($Value);
     }
 
-    public function setLastChangeDate($Value)
+    public function setLastChangeDate($Value): void
     {
         $this->Channels[$this->ChannelCount]["LastChangeDate"] = $this->formatDate($Value);
     }
 
-    public function setTextInput($Title, $Description, $Name)
+    public function setTextInput($Title, $Description, $Name): void
     {
         $this->Channels[$this->ChannelCount]["TextInputTitle"] = $Title;
         $this->Channels[$this->ChannelCount]["TextInputDescription"] = $Description;
         $this->Channels[$this->ChannelCount]["TextInputName"] = $Name;
     }
 
-    public function setSkipTimes($Days, $Hours)
+    public function setSkipTimes($Days, $Hours): void
     {
         # ???
     }
 
-    public function setCloud($Domain, $Port, $Path, $Procedure, $Protocol)
+    public function setCloud($Domain, $Port, $Path, $Procedure, $Protocol): void
     {
         # ???
     }
 
     # add item to channel
-    public function addItem($Title = null, $Link = null, $Description = null, $Date = null)
+    public function addItem($Title = null, $Link = null, $Description = null, $Date = null): void
     {
         $this->ItemCounts[$this->ChannelCount]++;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Title"] = $Title;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Link"] = $Link;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Description"] = $Description;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Date"] = $this->formatDate($Date);
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Title"] = $Title;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Link"] = $Link;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Description"] = $Description;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Date"] = $this->formatDate($Date);
     }
 
-    public function addItemAuthor($Email)
+    public function addItemAuthor($Email): void
     {
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Author"] = $Email;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Author"] = $Email;
     }
 
-    public function addItemCategory($Category, $Url = null)
+    public function addItemCategory($Category, $Url = null): void
     {
         $this->CategoryCount++;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Category"][$this->CategoryCount]
-                = $Category;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["CategoryUrl"][$this->CategoryCount]
-                = $Url;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Category"][$this->CategoryCount] = $Category;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["CategoryUrl"][$this->CategoryCount] = $Url;
     }
 
-    public function addItemComments($Url)
+    public function addItemComments($Url): void
     {
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["Comments"] = $Url;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["Comments"] = $Url;
     }
 
-    public function addItemEnclosure($Url, $Length, $Type)
+    public function addItemEnclosure($Url, $Length, $Type): void
     {
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["EnclosureUrl"] = $Url;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["EnclosureLength"] = $Length;
-        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]["EnclosureType"] = $Type;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["EnclosureUrl"] = $Url;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["EnclosureLength"] = $Length;
+        $this->Items[$this->ChannelCount][$this->ItemCounts[$this->ChannelCount]]
+                ["EnclosureType"] = $Type;
     }
 
     # write out and RSS page
-    public function printRSS()
+    public function printRSS(): void
     {
         # print opening elements
         header("Content-type: application/rss+xml; charset=".$this->Encoding, true);
@@ -155,7 +168,9 @@ class RSS
         $this->fTOut("<rss version='2.0' xmlns:atom='http://www.w3.org/2005/Atom'>", 0);
 
         # for each channel
-        for ($this->ChannelIndex = 0; $this->ChannelIndex <= $this->ChannelCount; $this->ChannelIndex++) {
+        for ($this->ChannelIndex = 0;
+                $this->ChannelIndex <= $this->ChannelCount;
+                $this->ChannelIndex++) {
             # open channel element
             $this->fTOut("<channel>");
 
@@ -195,7 +210,9 @@ class RSS
             $this->fTOut("<docs>http://www.rssboard.org/rss-2-0-1</docs>");
 
             # for each item in this channel
-            for ($this->ItemIndex = 0; $this->ItemIndex <= $this->ItemCounts[$this->ChannelCount]; $this->ItemIndex++) {
+            for ($this->ItemIndex = 0;
+                    $this->ItemIndex <= $this->ItemCounts[$this->ChannelCount];
+                    $this->ItemIndex++) {
                 # open item element
                 $this->fTOut("<item>");
 
@@ -205,37 +222,38 @@ class RSS
                 $this->printItemElement("Link", "guid");
                 $this->printItemElement("Description", "description");
                 $this->printItemElement("Date", "pubDate");
-                if (isset($this->Items[$this->ChannelIndex][$this->ItemIndex]["Author"])
-                        && ($this->Items[$this->ChannelIndex][$this->ItemIndex]["Author"] != null)) {
+                $ItemInfo = $this->Items[$this->ChannelIndex][$this->ItemIndex];
+                if (isset($ItemInfo["Author"])
+                        && ($ItemInfo["Author"] != null)) {
                     $this->fTOut("<author>"
-                            .$this->Items[$this->ChannelIndex][$this->ItemIndex]["Author"]
+                            .$ItemInfo["Author"]
                             ."</author>");
                 }
-                if (isset($this->Items[$this->ChannelIndex][$this->ItemIndex]["Category"])) {
-                    foreach ($this->Items[$this->ChannelIndex][$this->ItemIndex]["Category"] as $Count => $Category) {
-                        if (isset($this->Items[$this->ChannelIndex][$this->ItemIndex]["CategoryUrl"][$Count])
-                                && ($this->Items[$this->ChannelIndex][$this->ItemIndex]["CategoryUrl"][$Count])
+                if (isset($ItemInfo["Category"])) {
+                    foreach ($ItemInfo["Category"] as $Count => $Category) {
+                        if (isset($ItemInfo["CategoryUrl"][$Count])
+                                && ($ItemInfo["CategoryUrl"][$Count])
                                 != null) {
                             $this->fTOut("<category domain='"
-                                    .$this->Items[$this->ChannelIndex][$this->ItemIndex]["CategoryUrl"][$Count]
+                                    .$ItemInfo["CategoryUrl"][$Count]
                                     ."'>".$Category."</category>");
                         } else {
                             $this->fTOut("<category>".$Category."</category>");
                         }
                     }
                 }
-                if (isset($this->Items[$this->ChannelIndex][$this->ItemIndex]["Comments"])
-                        && ($this->Items[$this->ChannelIndex][$this->ItemIndex]["Comments"] != null)) {
+                if (isset($ItemInfo["Comments"])
+                        && ($ItemInfo["Comments"] != null)) {
                     $this->fTOut("<comments>"
-                            .$this->Items[$this->ChannelIndex][$this->ItemIndex]["Comments"]
+                            .$ItemInfo["Comments"]
                             ."</comments>");
                 }
-                if (isset($this->Items[$this->ChannelIndex][$this->ItemIndex]["EnclosureUrl"])
-                        && ($this->Items[$this->ChannelIndex][$this->ItemIndex]["EnclosureUrl"] != null)) {
+                if (isset($ItemInfo["EnclosureUrl"])
+                        && ($ItemInfo["EnclosureUrl"] != null)) {
                     $this->fTOut("<enclosure "
-                            ."url='".$this->Items[$this->ChannelIndex][$this->ItemIndex]["EnclosureUrl"]."' "
-                            ."length='".$this->Items[$this->ChannelIndex][$this->ItemIndex]["EnclosureLength"]."' "
-                            ."type='".$this->Items[$this->ChannelIndex][$this->ItemIndex]["EnclosureType"]."' />");
+                            ."url='".$ItemInfo["EnclosureUrl"]."' "
+                            ."length='".$ItemInfo["EnclosureLength"]."' "
+                            ."type='".$ItemInfo["EnclosureType"]."' />");
                 }
 
                 # close item element
@@ -290,7 +308,7 @@ class RSS
      * @param string $VarName item element name
      * @param string $TagName item tag name
      */
-    private function printChannelElement(string $VarName, string $TagName)
+    private function printChannelElement(string $VarName, string $TagName): void
     {
         # only print channel elements if set
         if (!$this->isChannelElementSet($VarName)) {
@@ -301,13 +319,13 @@ class RSS
             $this->Channels[$this->ChannelIndex][$VarName]
         );
 
-        $this->fTOut("<${TagName}>".$InnerText."</${TagName}>");
+        $this->fTOut("<".$TagName.">".$InnerText."</".$TagName.">");
     }
 
     /**
      * Print the categories for a channel.
      */
-    private function printChannelCategories()
+    private function printChannelCategories(): void
     {
         # only print categories if there is at least one
         if (!isset($this->Channels[$this->ChannelIndex]["Category"])) {
@@ -325,7 +343,7 @@ class RSS
      * @param string $VarName item element name
      * @param string $TagName item tag name
      */
-    private function printItemElement(string $VarName, string $TagName)
+    private function printItemElement(string $VarName, string $TagName): void
     {
         # only print elements that are set
         if (!$this->isItemElementSet($VarName)) {
@@ -341,7 +359,7 @@ class RSS
             );
         }
 
-        $this->fTOut("<${TagName}>".$InnerText."</${TagName}>");
+        $this->fTOut("<".$TagName.">".$InnerText."</".$TagName.">");
     }
 
     /**
@@ -386,12 +404,12 @@ class RSS
 
         # map named entities to their hex references
         $Replacements = array(
-                "&amp;" => "&#x26;",
-                "&lt;" => "&#x3C;",
-                "&gt;" => "&#x3E;",
-                "&quot;" => "&#x22;",
-                "&rsquo;" => "&#x2019;",
-                "&#039;" => "&#x27;"
+            "&amp;" => "&#x26;",
+            "&lt;" => "&#x3C;",
+            "&gt;" => "&#x3E;",
+            "&quot;" => "&#x22;",
+            "&rsquo;" => "&#x2019;",
+            "&#039;" => "&#x27;"
         );
 
         # replace named entities with hex references for compatibility as
@@ -406,7 +424,7 @@ class RSS
     }
 
     # (FTOut == Formatted Tag Output)
-    private function fTOut($String, $NewIndent = null)
+    private function fTOut($String, $NewIndent = null): void
     {
         static $Indent = 0;
 

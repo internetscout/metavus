@@ -3,7 +3,7 @@
 #   FILE: Redirect.php (CleanURLs plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -11,7 +11,9 @@ global $H_CleanUrl;
 
 use ScoutLib\ApplicationFramework;
 
-$GLOBALS["AF"]->SuppressHTMLOutput();
+$AF = ApplicationFramework::getInstance();
+
+$AF->SuppressHTMLOutput();
 
 header($_SERVER["SERVER_PROTOCOL"]." 301 Moved Permanently");
 

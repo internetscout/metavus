@@ -3,9 +3,10 @@
 #   FILE:  PieChart.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
@@ -22,7 +23,7 @@ class PieChart extends Chart_Base
      * Set the precision used to display percentages.
      * @param int $Prec Number of digits to display after the decimal.
      */
-    public function percentPrecision($Prec)
+    public function percentPrecision($Prec): void
     {
         $this->Precision = $Prec;
     }
@@ -34,7 +35,7 @@ class PieChart extends Chart_Base
      *   display slice names, and LABEL_RAW will display the raw data.
      * @throws Exception If an invalid slice label type is supplied.
      */
-    public function sliceLabelType($LabelType)
+    public function sliceLabelType($LabelType): void
     {
         if (!in_array(
             $LabelType,
@@ -53,7 +54,7 @@ class PieChart extends Chart_Base
     * will display raw values, and TOOLTIP_BOTH shows both.
     * @throws Exception If an invalid tooltip label type is supplied.
     */
-    public function tooltipType($LabelType)
+    public function tooltipType($LabelType): void
     {
         if (!in_array(
             $LabelType,
@@ -69,7 +70,7 @@ class PieChart extends Chart_Base
      * Output chart HTML.
      * @param string $ContainerId HTML Id for the chart container.
      */
-    public function display(string $ContainerId)
+    public function display(string $ContainerId): void
     {
         ob_start();
         // @codingStandardsIgnoreStart
@@ -117,7 +118,7 @@ class PieChart extends Chart_Base
     /**
     * Prepare data for display. @see ChartBase::prepareData().
     */
-    protected function prepareData()
+    protected function prepareData(): void
     {
         # see http://c3js.org/reference.html#data-columns for format of 'columns' element.
         # since C3 always uses the label in 'columns' for the legend,

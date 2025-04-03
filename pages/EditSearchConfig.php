@@ -6,15 +6,18 @@
 #   Copyright 2006-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\SearchEngine;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 
+$AF = ApplicationFramework::getInstance();
 
 if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
@@ -60,11 +63,10 @@ switch ($ButtonPushed) {
         # get synonym list using form value
         $SynonymList = $ConfigValues["Synonyms"];
 
-        # convert synonym list into array of lines
-        $SynonymList = explode("\n", $SynonymList);
+        if (strlen(trim($SynonymList)) > 0) {
+            # convert synonym list into array of lines
+            $SynonymList = explode("\n", $SynonymList);
 
-        # if there are synonym entries (possibly unnecessary requirement of at least one synonym)
-        if (count($SynonymList)) {
             # update synonym list
             $SearchEngine = new SearchEngine();
             try {
@@ -75,12 +77,13 @@ switch ($ButtonPushed) {
             }
             $SearchEngine->setAllSynonyms($SynonymList);
         }
+
         # set page to administration
-        $GLOBALS["AF"]->SetJumpToPage("SysAdmin");
+        $AF->SetJumpToPage("SysAdmin");
         break;
 
     case "Cancel":
         # don't save anything and set page to administration.
-        $GLOBALS["AF"]->SetJumpToPage("SysAdmin");
+        $AF->SetJumpToPage("SysAdmin");
         break;
 }

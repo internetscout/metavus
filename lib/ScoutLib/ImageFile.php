@@ -3,13 +3,12 @@
 #   FILE: ImageFile.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use InvalidArgumentException;
 
 /**
@@ -31,13 +30,15 @@ abstract class ImageFile
 
     /**
      * Class constructor.
-     * @param string $SourceFileName Name of image file.
+     * @param string $SourceFileName Name of (or URL to) image file.
      */
     public function __construct(string $SourceFileName)
     {
         $this->SourceFileName = trim($SourceFileName);
 
-        if (!is_readable($this->SourceFileName)) {
+        # if source file appears to be local, check to make sure it is readable
+        if (!filter_var($SourceFileName, FILTER_VALIDATE_URL)
+                && !is_readable($this->SourceFileName)) {
             throw new InvalidArgumentException(
                 $this->SourceFileName." is not readable."
             );
@@ -49,7 +50,7 @@ abstract class ImageFile
      * @param string $FileName New name for image file.
      * @param int $NewImageType New type for image.  (OPTIONAL)
      */
-    abstract public function saveAs(string $FileName, int $NewImageType = null);
+    abstract public function saveAs(string $FileName, ?int $NewImageType = null): void;
 
     /**
      * Get the image type.

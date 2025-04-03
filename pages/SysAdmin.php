@@ -9,6 +9,7 @@
 # @scout:phpstan
 
 namespace Metavus;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -18,4 +19,4 @@ if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
 }
 
 # make sure information for current user is up-to-date
-User::getCurrentUser()->LastLocation($GLOBALS["AF"]->getPageName());
+User::getCurrentUser()->LastLocation(ApplicationFramework::getInstance()->getPageName());

@@ -6,8 +6,12 @@
 #   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();

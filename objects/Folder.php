@@ -3,13 +3,12 @@
 #   FILE:  Folder.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\Database;
 use ScoutLib\Item;
@@ -56,13 +55,7 @@ class Folder
             throw new Exception("Unknown Folder ID (".$FolderId.").");
         }
 
-        # save folder info
-        $this->OwnerId          = $Record["OwnerId"];
-        $this->FolderName       = $Record["FolderName"];
-        $this->NormalizedName   = $Record["NormalizedName"];
-        $this->FolderNote       = $Record["FolderNote"];
-        $this->IsShared         = $Record["IsShared"];
-        $this->ContentType      = $Record["ContentType"];
+        $this->ContentType = $Record["ContentType"];
 
         # load list of resources in folder from database
         $this->DB->query("SELECT ItemId, ItemTypeId, ItemNote FROM FolderItemInts"
@@ -115,7 +108,7 @@ class Folder
      *      contain only one type.  (OPTIONAL, defaults to mixed content folder)
      * @return static New folder.
      */
-    public static function create(int $OwnerId = null, string $ItemType = null)
+    public static function create(?int $OwnerId = null, ?string $ItemType = null)
     {
         # get item type
         $ItemTypeId = ($ItemType !== null)
@@ -139,8 +132,9 @@ class Folder
 
     /**
      * Delete folder.  (Object is no longer usable after calling this method.)
+     * @return void
      */
-    public function delete()
+    public function delete(): void
     {
         # take folder out of global folder order
         $Factory = new FolderFactory();
@@ -172,7 +166,7 @@ class Folder
      * @param string $NewValue New name.  (OPTIONAL)
      * @return String containing folder name.
      */
-    public function name(string $NewValue = null): string
+    public function name(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->normalizedName(self::normalizeFolderName($NewValue));
@@ -187,7 +181,7 @@ class Folder
      * @param string $NewValue New normalized version of folder name.  (OPTIONAL)
      * @return string Current normalized version of folder name.
      */
-    public function normalizedName(string $NewValue = null): string
+    public function normalizedName(?string $NewValue = null): string
     {
         $Name = $this->DB->updateValue("NormalizedName", $NewValue);
         # attempt to generate and set new normalized name if none found
@@ -216,7 +210,7 @@ class Folder
      * @param bool $NewValue Boolean value.  (OPTIONAL)
      * @return bool Boolean flag indicating whether or not folder is publically-viewable
      */
-    public function isShared(bool $NewValue = null): bool
+    public function isShared(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("IsShared", $NewValue);
     }
@@ -226,11 +220,8 @@ class Folder
      * @param int $NewValue Numerical user ID.  (OPTIONAL)
      * @return int ID of current folder owner.
      */
-    public function ownerId(int $NewValue = null): int
+    public function ownerId(?int $NewValue = null): int
     {
-        if ($NewValue !== null) {
-            unset($this->OwnerId);
-        }
         return intval($this->DB->updateIntValue("OwnerId", $NewValue));
     }
 
@@ -239,7 +230,7 @@ class Folder
      * @param string $NewValue New note text.  (OPTIONAL)
      * @return String containing current note for folder.
      */
-    public function note(string $NewValue = null): string
+    public function note(?string $NewValue = null): string
     {
         return $this->DB->updateValue("FolderNote", $NewValue);
     }
@@ -254,6 +245,24 @@ class Folder
         return ($this->ContentType == self::MIXEDCONTENT)
                 ? $this->ContentType
                 : $this->getItemTypeName($this->ContentType);
+    }
+
+    /**
+     * Get cover image ID for this folder.
+     * @return int|false ID of cover image or FALSE when there is none.
+     */
+    public function getCoverImageId()
+    {
+        return $this->DB->updateIntValue("CoverImageId");
+    }
+
+    /**
+     * Set cover image ID for this folder.
+     * @param int|false $NewValue New value or FALSE to clear the value.
+     */
+    public function setCoverImageId($NewValue) : void
+    {
+        $this->DB->updateIntValue("CoverImageId", $NewValue);
     }
 
     /*@)*/ /* Attribute Setting/Retrieval */
@@ -271,13 +280,14 @@ class Folder
      *       for mixed-item-type folders)
      * @param mixed $NewItemType Type of item to insert.  (OPTIONAL, for
      *       mixed-item-type folders)
+     * @return void
      */
     public function insertItemBefore(
         $TargetItemOrItemId,
         $NewItemOrItemId,
         $TargetItemType = null,
         $NewItemType = null
-    ) {
+    ): void {
 
         $this->addItem($NewItemOrItemId, $NewItemType);
         $this->OrderList->insertBefore(
@@ -298,13 +308,14 @@ class Folder
      *       mixed-item-type folders)
      * @param mixed $NewItemType Type of item to insert.  (OPTIONAL, for
      *       mixed-item-type folders)
+     * @return void
      */
     public function insertItemAfter(
         $TargetItemOrItemId,
         $NewItemOrItemId,
         $TargetItemType = null,
         $NewItemType = null
-    ) {
+    ): void {
 
         $this->addItem($NewItemOrItemId, $NewItemType);
         $this->OrderList->insertAfter(
@@ -321,8 +332,9 @@ class Folder
      * @param mixed $ItemOrItemId Item to add.
      * @param mixed $ItemType Type of item to add.  (OPTIONAL, for
      *       mixed-item-type folders)
+     * @return void
      */
-    public function prependItem($ItemOrItemId, $ItemType = null)
+    public function prependItem($ItemOrItemId, $ItemType = null): void
     {
         $this->addItem($ItemOrItemId, $ItemType);
         $this->OrderList->prepend($ItemOrItemId, self::getItemTypeId($ItemType));
@@ -334,8 +346,9 @@ class Folder
      * @param mixed $ItemOrItemId Item to add.
      * @param mixed $ItemType Type of item to add.  (OPTIONAL, for mixed-item-type
      *       folders)
+     * @return void
      */
-    public function appendItem($ItemOrItemId, $ItemType = null)
+    public function appendItem($ItemOrItemId, $ItemType = null): void
     {
         $this->addItem($ItemOrItemId, $ItemType);
         $this->OrderList->append($ItemOrItemId, self::getItemTypeId($ItemType));
@@ -346,8 +359,9 @@ class Folder
      * @param array $ItemsOrItemIds ItemIds or Item objects to add.
      * @param array|int $ItemTypes Item types corresponding to the Items,
      *    or a single item type that applies to all Items.
+     * @return void
      */
-    public function appendItems($ItemsOrItemIds, $ItemTypes = null)
+    public function appendItems($ItemsOrItemIds, $ItemTypes = null): void
     {
         # convert ItemTypes to an array if it wasn't one
         if (!is_array($ItemTypes)) {
@@ -386,8 +400,9 @@ class Folder
      *       2 items to compare and returns a value that is
      *       > 0 if first item > the second; == 0 if equal;
      *       < 0 if first item < the second
+     * @return void
      */
-    public function sort(callable $CompareCallback)
+    public function sort(callable $CompareCallback): void
     {
         # get resources in current ordering
         $Items = self::getItemIds();
@@ -430,7 +445,7 @@ class Folder
      *       When returning IDs and types, each element in the returned array is
      *       an associative array, with the indexes "ID" and "Type".
      */
-    public function getItemIds(int $Offset = null, int $Length = null): array
+    public function getItemIds(?int $Offset = null, ?int $Length = null): array
     {
         # retrieve item ordered list of type IDs
         $ItemIds = $this->OrderList->getIds();
@@ -462,6 +477,19 @@ class Folder
     }
 
     /**
+     * Get the Item IDs in a folder that are visible to a specified user.
+     * @param User $User User for visibility checks.
+     * @return array Item IDs for visible records.
+     */
+    public function getVisibleItemIds(User $User) : array
+    {
+        return RecordFactory::multiSchemaFilterNonViewableRecords(
+            $this->getItemIds(),
+            $User
+        );
+    }
+
+    /**
      * Get number of items in folder.  This does not included nested items,
      * so if a folder contains another folder that contains items, the inner
      * folder is counted as only one item.
@@ -473,12 +501,23 @@ class Folder
     }
 
     /**
+     * Get the number of items a folder that are visible to a specified user.
+     * @param User $User User for visibility checks.
+     * @return int Count of visible records.
+     */
+    public function getVisibleItemCount(User $User) : int
+    {
+        return count($this->getVisibleItemIds($User));
+    }
+
+    /**
      * Remove item from folder, if present.
      * @param int $ItemId ID of item to remove.
      * @param mixed $ItemType Type of item to be removed.  (OPTIONAL, for
      *       mixed-item-type folders)
+     * @return void
      */
-    public function removeItem(int $ItemId, $ItemType = null)
+    public function removeItem(int $ItemId, $ItemType = null): void
     {
         # if resource is in folder
         if ($this->containsItem($ItemId, $ItemType)) {
@@ -508,7 +547,7 @@ class Folder
      */
     public function noteForItem(
         int $ItemId,
-        string $NewValue = null,
+        ?string $NewValue = null,
         $ItemType = null
     ) {
         $ItemTypeId = self::getItemTypeId($ItemType);
@@ -594,12 +633,6 @@ class Folder
     protected $DB;
     protected $Id;
 
-    # folder attributes - these much match field names in Folders DB table
-    private $OwnerId;
-    private $FolderName;
-    private $NormalizedName;
-    private $FolderNote;
-    private $IsShared;
     private $ContentType;
 
     private $ItemNoteCache;
@@ -680,8 +713,9 @@ class Folder
     /**
      * Load item type map (self::$ItemTypeIds) from database.  May be called
      * repeatedly with no additional significant overhead.
+     * @return void
      */
-    private static function loadItemTypeMap()
+    private static function loadItemTypeMap(): void
     {
         # if name-to-number item type map not already loaded
         if (!isset(self::$ItemTypeIds)) {
@@ -701,8 +735,9 @@ class Folder
      * Add resource to folder (does not add to ordered list).
      * @param object|int $ItemOrItemId Item object or item ID.
      * @param string $ItemType Item type name.
+     * @return void
      */
-    private function addItem($ItemOrItemId, $ItemType)
+    private function addItem($ItemOrItemId, $ItemType): void
     {
         # convert item to ID if necessary
         if (is_object($ItemOrItemId)) {

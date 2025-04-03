@@ -3,15 +3,16 @@
 #   FILE:  REFormatTSV.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\ResourceExporter;
 use Metavus\Record;
 use ScoutLib\Plugin;
 
@@ -25,18 +26,19 @@ class REFormatTsv extends Plugin
 
     /**
      * Set plugin attributes.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Resource Export Format: TSV";
         $this->Version = "1.0.0";
         $this->Description = "Add support to Resource Exporter for exporting "
             ."resources in Tab Separated Value (TSV) format.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "ResourceExporter" => "1.0.0"
         ];
         $this->EnabledByDefault = true;
@@ -49,7 +51,7 @@ class REFormatTsv extends Plugin
      * @return NULL if initialization was successful, otherwise a string containing
      *       an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $ExportedDataTypes = [
             MetadataSchema::MDFTYPE_TEXT,
@@ -92,8 +94,8 @@ class REFormatTsv extends Plugin
                 ."puts the values on the same row, separated by the given delimiter"
         ];
 
-        $GLOBALS["G_PluginManager"]->GetPlugin("ResourceExporter")->
-            RegisterFormat(
+        ResourceExporter::getInstance()->
+            registerFormat(
                 "TSV",
                 "tsv",
                 [$this, "Export"],
@@ -122,13 +124,16 @@ class REFormatTsv extends Plugin
      * @param array $ParamSettings Settings for any export parameters, with
      *       parameter names for the array index and parameter settings for
      *       the array values.
-     * @return int Number of resources exported, or NULL if export failed.
+     * @return int|null Number of resources exported, or NULL if export failed.
      */
-    public function export($ResourceIds, $FieldIds, $FileName, $ParamSettings)
+    public function export($ResourceIds, $FieldIds, $FileName, $ParamSettings): ?int
     {
         # create file and open a filehandle
         touch($FileName);
         $fp = fopen($FileName, "w");
+        if ($fp === false) {
+            return null;
+        }
 
         # iterate over the resources, extracting data on which schemas they belong to
         $Schemas = [];
@@ -149,7 +154,7 @@ class REFormatTsv extends Plugin
             if (isset($ParamSettings["UniqueFields".$Id]) &&
                 count($ParamSettings["UniqueFields".$Id])) {
                 foreach ($ParamSettings["UniqueFields".$Id] as $FieldId) {
-                    $Field = new MetadataField($FieldId);
+                    $Field = MetadataField::getField($FieldId);
                     if ($Field->enabled()) {
                         $UniqueFields[$FieldId] = true;
                     }
@@ -158,10 +163,10 @@ class REFormatTsv extends Plugin
                 # if no unique fields were configured, use all configured
                 # mapped fields for this schema
                 foreach (["Title", "Url", "Description"] as $MappedName) {
-                    $Field = $Schema->GetFieldByMappedName($MappedName);
+                    $Field = $Schema->getFieldByMappedName($MappedName);
 
                     if (!is_null($Field)) {
-                        $UniqueFields[$Field->Id()] = true;
+                        $UniqueFields[$Field->id()] = true;
                     }
                 }
             }
@@ -171,7 +176,7 @@ class REFormatTsv extends Plugin
         # enabled and apply to resources we are exporting
         $Fields = [];
         foreach ($FieldIds as $FieldId) {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
             if ($Field->enabled() && isset($Schemas[$Field->schemaId()])) {
                 $Fields[$FieldId] = $Field;
             }
@@ -181,7 +186,7 @@ class REFormatTsv extends Plugin
         # exporting those as well
         foreach ($UniqueFields as $FieldId => $Flag) {
             if (!isset($Fields[$FieldId])) {
-                $Fields[$FieldId] = new MetadataField((int)$FieldId);
+                $Fields[$FieldId] = MetadataField::getField((int)$FieldId);
             }
         }
 
@@ -190,8 +195,8 @@ class REFormatTsv extends Plugin
         $OutputData = [];
         foreach ($Fields as $FieldId => $Field) {
             $OutputData[] = (count($Schemas) > 1 ?
-                    $Schemas[$Field->schemaId()]->Name().": " : "").
-                    $Field->Name();
+                    $Schemas[$Field->schemaId()]->name().": " : "").
+                    $Field->name();
         }
 
         # output a header line giving the field names
@@ -218,7 +223,7 @@ class REFormatTsv extends Plugin
                     if ((is_array($Value) && count($Value))
                         || (!is_array($Value) && ($Value !== null))) {
                         # handle output of field based on field type
-                        switch ($Field->Type()) {
+                        switch ($Field->type()) {
                             case MetadataSchema::MDFTYPE_TEXT:
                             case MetadataSchema::MDFTYPE_PARAGRAPH:
                             case MetadataSchema::MDFTYPE_NUMBER:
@@ -279,7 +284,7 @@ class REFormatTsv extends Plugin
                                 throw new Exception(
                                     "Export of unsupported metadata field type ("
                                     .MetadataSchema::getConstantName(
-                                        $Field->Type(),
+                                        $Field->type(),
                                         "MDFTYPE"
                                     )
                                     .") requested."
@@ -301,9 +306,9 @@ class REFormatTsv extends Plugin
 
                     # add the value(s) to our OutputData
                     if (is_array($OutputValue)) {
-                        $OutputData[$Field->Id()] = $OutputValue;
+                        $OutputData[$Field->id()] = $OutputValue;
                     } else {
-                        $OutputData[$Field->Id()][] = $OutputValue;
+                        $OutputData[$Field->id()][] = $OutputValue;
                     }
                 }
             }

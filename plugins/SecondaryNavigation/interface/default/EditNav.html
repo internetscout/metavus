@@ -3,14 +3,15 @@
 #   FILE:  EditNav.html (SecondaryNavigation plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-use Metavus\Plugins\SecondaryNavigation\NavItem;
-use Metavus\Plugins\SecondaryNavigation\NavMenu;
 use Metavus\FormUI;
-use Metavus\SystemConfiguration;
+use Metavus\HtmlButton;
+use Metavus\Plugins\SecondaryNavigation\NavMenu;
+use Metavus\Plugins\SecondaryNavigation\NavItem;
+use Metavus\Plugins\SecondaryNavigation;
 use ScoutLib\ApplicationFramework;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
@@ -19,7 +20,7 @@ use ScoutLib\ApplicationFramework;
  * Print all items in order using passed NavMenu object
  * @param NavMenu $NavMenu containing items in order to print them
  */
-function printNavOrder(NavMenu $NavMenu)
+function printNavOrder(NavMenu $NavMenu): void
 {
     $AF = ApplicationFramework::getInstance();
 
@@ -28,7 +29,7 @@ function printNavOrder(NavMenu $NavMenu)
     $AF->requireUIFile("EditNav.js");
 
     # get plugin
-    $SecondaryNavPlugin = $GLOBALS["G_PluginManager"]->getPluginForCurrentPage();
+    $SecondaryNavPlugin = SecondaryNavigation::getInstance();
 
     # get tree
     $ToPrint = $SecondaryNavPlugin->getTree($NavMenu);
@@ -48,7 +49,7 @@ function printNavOrder(NavMenu $NavMenu)
  * Print items in an unordered list for nestedsortable sorting
  * @param array $Items to print, in tree structure
  */
-function printItems(array $Items)
+function printItems(array $Items): void
 {
     print "<ul>";
     foreach ($Items as $Info) {
@@ -66,30 +67,35 @@ function printItems(array $Items)
  * @param int $NavItemId ID of NavItem to print buttons for
  * @return string html buttons to print
  */
-function getItemButtons(int $NavItemId)
+function getItemButtons(int $NavItemId): string
 {
-    $AF = ApplicationFramework::getInstance();
+    $EditButton = new HtmlButton("Edit");
+    $EditButton->setIcon("Pencil.svg");
+    $EditButton->setSize(HtmlButton::SIZE_SMALL);
+    $EditButton->addClass("mv-menu-sort-button");
+    $EditButton->setLink("index.php?P=P_SecondaryNavigation_EditItem&NI=$NavItemId");
 
-    return "<a class='mv-menu-sort-button btn btn-primary btn-sm mv-button-iconed'".
-        "type='button'".
-        "href='index.php?P=P_SecondaryNavigation_EditItem&NI=".$NavItemId."'>".
-        "<img class='mv-button-icon' src='".$AF->gUIFile("Pencil.svg")."' alt='' />".
-        " Edit</a>&nbsp;".
-        "<button class='mv-menu-sort-button btn btn-danger btn-sm mv-button-iconed'".
-        "type='submit' name='Submit' ".
-        "value='DeleteItem,".$NavItemId."' ".
-        "title='Delete this link'>".
-        "<img class='mv-button-icon' src='".($AF->GUIFile("Delete.svg"))."' alt='' />".
-        " Delete</button>";
+    $DeleteButton = new HtmlButton("Delete");
+    $DeleteButton->setIcon("Delete.svg");
+    $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+    $DeleteButton->addClass("mv-menu-sort-button");
+    $DeleteButton->addSemanticClass("btn-danger");
+    $DeleteButton->setValue("DeleteItem,$NavItemId");
+    $DeleteButton->setTitle("Delete this link");
+
+    # render the edit button if this is not a system generated item
+    # (i.e., it's created by a user)
+    $NavItem = new NavItem($NavItemId);
+
+    return ($NavItem->createdByUser() ? $EditButton->getHtml() : "") . $DeleteButton->getHtml();
 }
 
 /**
  * Print the list of offered items
  * @param array $OfferedItems label/link pairs to display (keyed on link)
  */
-function printOfferedItems(array $OfferedItems)
+function printOfferedItems(array $OfferedItems): void
 {
-    $AF = ApplicationFramework::getInstance();
     $TooltipId = 0;
     print "<ul>";
     foreach ($OfferedItems as $Link => $Item) {
@@ -98,33 +104,38 @@ function printOfferedItems(array $OfferedItems)
             FormUI::displayDialogHelp($Item["Label"], $Item["Description"], $TooltipId++) :
             FormUI::displayHoverHelp($Item["Description"]);
         $Description = ob_get_clean();
-        $UrlLink = urlencode($Link);
-        print "<li class='row'><div class='col-5'>".$Description.
-            "<a href='".$Link."'>".$Item["Label"].
-            "</a></div><div class='col-5'>".
-            "<button class='mv-menu-sort-button btn btn-primary btn-sm mv-button-iconed'".
-                "type='submit'
-                name='Submit' "."value='AddOffered,".$Link."' "."title='Add this link'>".
-            "<img class='mv-button-icon' src='".$AF->GUIFile("Plus.svg")."'
-                alt='' />".
-            " Add</button></div></li>";
+
+        $AddButton = new HtmlButton("Add");
+        $AddButton->setIcon("Plus.svg");
+        $AddButton->setSize(HtmlButton::SIZE_SMALL);
+        $AddButton->addClass("mv-menu-sort-button");
+        $AddButton->setValue("AddOffered,$Link");
+        $AddButton->setTitle("Add this link");
+
+        print "<li class='row'>" .
+            "<div class='col-5'>" . $Description .
+            "<a href='".$Link."'>" . $Item["Label"] . "</a>" .
+            "</div>" .
+            "<div class='col-5'>" . $AddButton->getHtml() . "</div>" .
+            "</li>";
     }
     print "</ul>";
 }
 
-# ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Edit Your Menu");
+# ----- SETUP ----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 $AF->requireUIFile("jquery-ui.js");
 $AF->requireUIFile("jquery-ui.css");
 
+$AddButton = new HtmlButton("Add");
+$AddButton->setIcon("Plus.svg");
+$AddButton->setSize(HtmlButton::SIZE_SMALL);
+$AddButton->setValue("Add Item");
 
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Edit Your Menu");
 ?>
 
-<div class="float-right alert alert-primary text-nowrap">
-    <i class="float-right"><b>Tip:</b> drag objects to reorder them.</i>
-</div>
 <div class="container-fluid">
     <?PHP if (count($H_Errors)) { ?>
     <ul class='mv-form-error'>
@@ -149,8 +160,11 @@ $AF->requireUIFile("jquery-ui.css");
     <?PHP } ?>
     <div class="row">
         <div class="col">
-            <div class="row">
-                <div class="col float-left"><h2>Edit Your Menu</h2></div>
+            <div class="row float-start">
+                <div class="col"><h2>Edit Your Menu</h2></div>
+            </div>
+            <div class="float-end alert alert-primary text-nowrap m-0">
+                <i class="float-end"><b>Tip:</b> drag objects to reorder them.</i>
             </div>
         </div>
     </div>
@@ -188,9 +202,7 @@ $AF->requireUIFile("jquery-ui.css");
             <label for="F_Link" class="mv-menu-sort-add-link">Link:</label>
             <input type="text" id="F_Link" name="F_Link" placeholder="Link" required="true" />
 
-            <button class="btn btn-primary btn-sm mv-button-iconed" type="submit"
-                name="Submit" value="Add Item"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
-                alt="" class="mv-button-icon" /> Add</button>
+            <?= $AddButton->getHtml(); ?>
         </form>
     </div>
 </div>

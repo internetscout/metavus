@@ -3,10 +3,11 @@
 #   FILE:  NotifySubscribers.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
@@ -18,7 +19,7 @@ use ScoutLib\StdLib;
 PageTitle("Notify Blog Subscribers");
 
 # get the blog plugin and entry
-$Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+$Blog = Blog::getInstance();
 $Entry = new Entry(StdLib::getArrayValue($_GET, "ID"));
 
 # don't allow unauthorized access
@@ -31,7 +32,7 @@ $AF = ApplicationFramework::getInstance();
 
 # don't notify if the entry is not from the Email Blog
 $EntryBlogId = $Entry->getBlogId();
-if ($Blog->configSetting("EmailNotificationBlog") != $EntryBlogId) {
+if ($Blog->getConfigSetting("EmailNotificationBlog") != $EntryBlogId) {
     $AF->setJumpToPage("index.php?P=P_Blog_Entry&EntryId="
             . $Entry->id()."&Error=ERROR_NOT_EMAIL_BLOG");
     return;

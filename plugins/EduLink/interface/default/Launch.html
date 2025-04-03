@@ -1,0 +1,310 @@
+<?PHP
+#
+#   FILE:  Launch.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Print error message and instructions for when the LTI State could not be
+ * validated.
+ * @param string $DebuggingInfo Additional debugging info to include.
+ * @return void
+ */
+function printLaunchValidateError(
+    string $DebuggingInfo
+) : void {
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $ServiceName = $Plugin->getConfigSetting("ServiceName");
+    $Email = $Plugin->getConfigSetting("AdminEmail");
+    if (strlen($Email) == 0) {
+        $IntConfig = InterfaceConfiguration::getInstance();
+        $Email = $IntConfig->getString("AdminEmail");
+    }
+
+    $MailtoLink = "mailto:".$Email
+        ."?subject=".rawurlencode($ServiceName." error")
+        ."&body=".rawurlencode($DebuggingInfo);
+
+    ?>
+<p><b>ERROR</b>: Could not validate LTI launch.</p>
+
+<p>This most frequently occurs when <?= $ServiceName ?>
+  could not set a browser cookie to identify itself to your LMS.</p>
+
+<p>If you are using Firefox and you have enabled enhanced tracking
+   protection, that can cause the issue.  Please add an exception for
+   this site by clicking the shield icon in your address bar and toggling
+   the <i>Enhanced Tracking Protection</i> setting:<br>
+   <?= $AF->gUIFileTagAbs("LTIState_FirefoxTracking.jpg") ?>
+
+<p>Otherwise, it may be the case that your browser has revoked
+   permission to embed content and now requires an additional
+   confirmation to embed content again. Reloading this page should
+   prompt you for permission.</p>
+
+<p>If reloading does not resolve the issue, please clear your cache and cookies.</p>
+
+<p>In <b>Chrome</b>, select <i>Delete Browsing Data...</i> from
+   the <i>Chrome</i> menu, then check the <i>Cookies and other site
+   data</i> and <i>Cached images and files</i> boxes, then
+   click <i>Delete data</i>:<br>
+   <?= $AF->gUIFileTagAbs("LTIState_ChromeClear.jpg") ?></p>
+
+<p>In <b>Firefox</b>, select <i>Clear Recent History...</i> from
+   the <i>History</i> menu, check the <i>Cookies and site data</i>
+   and <i>Temporary cached files and pages</i> boxes, then
+   press <i>Clear</i>:<br>
+   <?= $AF->gUIFileTagAbs("LTIState_FirefoxClear.jpg") ?></p>
+
+<p>In <b>Safari</b>, select <i>Clear History...</i> from
+   the <i>History</i> menu, then press the <i>Clear History</i>
+   button:<br>
+   <?= $AF->gUIFileTagAbs("LTIState_SafariClear.jpg") ?></p>
+
+<p>Ifthe above steps do not resolve the error, please contact
+  <a href='<?= $MailtoLink ?>'><?= $Email ?></a> and provide the
+  following debugging information.</p>
+
+<p>Debugging information:</p>
+<pre><?= $DebuggingInfo ?></pre>
+    <?PHP
+}
+
+
+/**
+ * Print HTML for a record.
+ * @param \Metavus\Plugins\EduLink $Plugin Plugin for current page.
+ * @param Record $Record Record to display.
+ * @return void
+ */
+function printRecord(
+    \Metavus\Plugins\EduLink $Plugin,
+    Record $Record
+) : void {
+    static $AF = null;
+    if (is_null($AF)) {
+        $AF = ApplicationFramework::getInstance();
+    }
+
+    $PreferredFileField = $Plugin->getConfigSetting("PreferredFileField");
+
+    $Files = [];
+    if (!is_null($PreferredFileField) && strlen($PreferredFileField) > 0) {
+        $Files = $Record->get($PreferredFileField, true);
+    }
+    if (count($Files) == 0) {
+        $Files = $Record->getMapped("File", true);
+    }
+
+    # if no attached files, embed the site in an iframe
+    if (count($Files) == 0) {
+        $PreferredUrlField = $Plugin->getConfigSetting("PreferredUrlField");
+
+        $Url = "";
+        if (!is_null($PreferredUrlField) && strlen($PreferredUrlField) > 0) {
+            $Url = $Record->get($PreferredUrlField) ?? "";
+        }
+        if (strlen($Url) == 0) {
+            $Url = $Record->getMapped("Url");
+        }
+
+        # if this is a youtube URL, use their embed code to display it
+        if (preg_match("%^https://www\.youtube\.com/watch\?v=([A-Za-z0-9_-]+)%", $Url, $Matches)) {
+            print '<iframe width="560" height="315" '
+                .' src="https://www.youtube.com/embed/'.$Matches[1].'"'
+                .' title="YouTube video player" frameborder="0"'
+                .' allow="accelerometer; autoplay; clipboard-write; encrypted-media;'
+                .' gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+            return;
+        }
+
+        if ($Plugin->canEmbedUrl($Url)) {
+            print "<iframe class='mv-embed-autoheight' style='width: 100%' "
+                ."src='".$Url."'></iframe>";
+        } else {
+            $Screenshot = $Record->getMapped("Screenshot", true);
+            if (count($Screenshot) > 0) {
+                $Screenshot = reset($Screenshot);
+
+                print "<div class='mv-p-edulink-record-container'>"
+                    .$Screenshot->getHtml("mv-image-screenshot")
+                    ."<div class='mv-p-edulink-record-summary'>"
+                    ."<h2>".$Record->getMapped("Title")."</h2>"
+                    ."<p><a href='".$Url."' target='_blank'>".$Url."</a></p>"
+                    ."<div>".$Record->getMapped("Description")."</div>"
+                    ."</div>"
+                    ."</div>";
+            } else {
+                print "<div class='mv-p-edulink-record-container'>"
+                    ."<div class='mv-p-edulink-record-summary'>"
+                    ."<h2>".$Record->getMapped("Title")."</h2>"
+                    ."<p><a href='".$Url."' target='_blank'>".$Url."</a></p>"
+                    ."<div>".$Record->getMapped("Description")."</div>"
+                    ."</div>"
+                    ."</div>";
+            }
+        }
+
+        return;
+    }
+
+    # otherwise, embed each file
+    foreach ($Files as $Id => $File) {
+        $MimeType = $File->getMimeType();
+        $FileUrl = $AF->baseUrl().$File->getLink();
+
+        switch ($MimeType) {
+            # use img tags for commonly supported formats
+            # see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Image_types
+            case "image/apng":
+            case "image/avif":
+            case "image/gif":
+            case "image/jpeg":
+            case "image/png":
+            case "image/xvg+xml":
+            case "image/webp":
+                print "<img src='".$FileUrl."' style='max-width: 100%' />";
+                break;
+
+            # object tags for PDF
+            case "application/pdf":
+                print "<object class='mv-embed-autoheight' "
+                    ."type='".$MimeType."' data='".$FileUrl."'>"
+                    ."<a href='".$FileUrl."'>".$File->name()."</a>"
+                    ."</object>";
+                break;
+
+            # video tags for video files
+            case "video/webm":
+            case "video/mp4":
+                print "<video controls style='max-width: 100%'>"
+                    ."<source src='".$FileUrl."' type='".$MimeType."'/>"
+                    ."</video>";
+                break;
+
+            # audio tags for audio files
+            case "audio/mpeg":
+                print "<audio controls src='".$FileUrl."'></audio>";
+                break;
+
+            # otherwise provide a download link for things we do not know how to embed
+            default:
+                print "<a href='".$FileUrl."'>".$File->name()."</a>";
+                break;
+        }
+    }
+}
+
+/**
+ * Output the HTML footer to load the CSS and JS.
+ */
+function printHtmlFooter() : void
+{
+    $AF = ApplicationFramework::getInstance();
+    # css manually included because StdPageStart/End is not loaded by this page
+    # (disable phpcs whitespace checks so that we don't have to make our
+    # markup ugly and confusing to please them)
+    // phpcs:disable Generic.WhiteSpace.ScopeIndent.IncorrectExact
+    // phpcs:disable Generic.WhiteSpace.ScopeIndent.Incorrect
+?>
+<style type="text/css">
+     @import url("<?= $AF->baseUrl().$AF->gUIFile('bootstrap.css') ?>");
+
+    .mv-image-screenshot-container {
+        display: inline-block;
+        text-align: center;
+        vertical-align: top;
+        width: 30%;
+    }
+
+    .mv-image-screenshot-container + .mv-p-edulink-record-summary {
+        display: inline-block;
+        width: 65%;
+    }
+
+    .mv-p-edulink-record-container {
+        margin-top: 2rem;
+    }
+</style>
+<script src='<?= $AF->baseUrl().$AF->gUIFile('jQuery.js') ?>'></script>
+<script>
+// iterate over embedded items that have requested automatic height
+// adjustment and perform the height adjustment they want
+$('object.mv-embed-autoheight').each(function(index, element){
+    var width = $(element).parent().width() - 20,
+        height = Math.floor(1.3 * width);
+    $(element).prop('width', width);
+    $(element).prop('height', height);
+});
+
+$('iframe.mv-embed-autoheight').each(function(index, element) {
+    var width = $(element).width(),
+        height = Math.floor(1.3 * width);
+    $(element).css('height', height);
+});
+</script>
+<?PHP
+      // phpcs:enable
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (isset($H_Error)) {
+    if ($H_Error == "ERROR_VALIDATE_LAUNCH") {
+        if (!isset($H_DebuggingInfo)) {
+            throw new Exception("H_DebuggingInfo not defined.");
+        }
+
+        printLaunchValidateError($H_DebuggingInfo);
+        return;
+    }
+
+    print "<p>".$H_Error."</p>";
+    return;
+}
+
+if (!isset($H_RecordIds)) {
+    throw new Exception("H_RecordIds not defined.");
+}
+if (!isset($H_Plugin)) {
+    throw new Exception("H_Plugin is not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+
+if (count($H_RecordIds) == 0) {
+    print "<p>ERROR: No selected resources are publicly-visible.</p>";
+    return;
+}
+
+$Html = $H_Plugin->getCachedRecordListHtml($H_RecordIds);
+
+if (is_null($Html)) {
+    ob_start();
+    foreach ($H_RecordIds as $RecordId) {
+        $Record = new Record($RecordId);
+        printRecord($H_Plugin, $Record);
+    }
+
+    printHtmlFooter();
+    $Html = ob_get_clean();
+
+    $H_Plugin->cacheRecordListHtml($H_RecordIds, $Html);
+}
+
+print $Html;

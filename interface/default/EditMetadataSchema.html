@@ -3,22 +3,46 @@
 #   FILE: EditMetadataSchema.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+namespace Metavus;
+
+use Exception;
 use ScoutLib\HtmlOptionList;
-use Metavus\MetadataSchema;
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_MappingFormFields)) {
+    throw new Exception("H_MappingFormFields not defined.");
+}
+if (!isset($H_PrivilegesError)) {
+    $H_PrivilegesError = null;
+}
+if (!isset($H_PrivsetUI)) {
+    throw new Exception("H_PrivsetUI not defined.");
+}
+if (!isset($H_Schema)) {
+    throw new Exception("H_Schema not defined.");
+}
 
-# ----- MAIN -----------------------------------------------------------------
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->setName("F_Submit");
+$SaveButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->setName("F_Submit");
+$CancelButton->makeSubmitButton();
 
 # escaped values
 $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 $SafeSchemaName = defaulthtmlentities($H_Schema->Name());
 $SafeSchemaResourceName = defaulthtmlentities($H_Schema->ResourceName());
-$SafeSchemaViewPage = defaulthtmlentities($H_Schema->ViewPage());
+$SafeSchemaViewPage = defaulthtmlentities($H_Schema->getViewPage());
 $SafePrivilegesError = defaulthtmlentities($H_PrivilegesError);
 
 # variable holding available schema field names with their ids
@@ -35,6 +59,7 @@ $DefaultSortFieldOptList = new HtmlOptionList(
     ($DefaultSortField == false ? "R" : $DefaultSortField)
 );
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Edit Metadata Schema</h1>
@@ -78,9 +103,7 @@ $DefaultSortFieldOptList = new HtmlOptionList(
                 <th><span class="mv-form-pseudolabel"><?= $Params["Label"]; ?></span></th>
                 <td><?= $TableData; ?></td>
             </tr>
-            <?PHP
-        }
-        ?>
+        <?PHP } ?>
       <tr>
         <th><span class="mv-form-pseudolabel">Default Sort Field</span></th>
         <td><?= $DefaultSortFieldOptList->getHTML(); ?></td>
@@ -112,11 +135,6 @@ $DefaultSortFieldOptList = new HtmlOptionList(
       </tr>
     </tbody>
   </table>
-
-  <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
-    value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-    class="mv-button-icon"/> Save Changes</button>
-  <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
-    value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-    class="mv-button-icon"/> Cancel</button>
+    <?= $SaveButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

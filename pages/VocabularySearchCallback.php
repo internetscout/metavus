@@ -3,22 +3,24 @@
 #   FILE:  VocabularySearchCallback.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\MetadataField;
-use Metavus\MetadataSchema;
-use Metavus\QuickSearchHelper;
+namespace Metavus;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
+
 $MinSearchLength = 3;
 $NumberOfResults = 10;
 
 # set headers to control caching
-$GLOBALS["AF"]->beginAjaxResponse();
-$GLOBALS["AF"]->setBrowserCacheExpirationTime(0);
+$AF = ApplicationFramework::getInstance();
+$AF->beginAjaxResponse();
+$AF->setBrowserCacheExpirationTime(0);
 
 $FieldId = StdLib::getFormValue("ID");
 
@@ -38,7 +40,7 @@ if (!MetadataSchema::fieldExistsInAnySchema($FieldId)) {
     return;
 }
 
-$Field = new MetadataField($FieldId);
+$Field = MetadataField::getField($FieldId);
 $ValidTypes = [
     MetadataSchema::MDFTYPE_CONTROLLEDNAME,
     MetadataSchema::MDFTYPE_TREE,

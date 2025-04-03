@@ -3,7 +3,7 @@
 #   FILE:  StdLib.php (deprecated standard library functions)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2006-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2006-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # PLEASE NOTE:  For the most part, the functions in this file are DEPRECATED,
@@ -27,13 +27,14 @@ use ScoutLib\StdLib;
 function CheckAuthorization($AuthFlag = null)
 {
     $User = User::getCurrentUser();
+    $Args = func_get_args();
 
     if ($AuthFlag instanceof PrivilegeSet) {
         if ($AuthFlag->MeetsRequirements($User)) {
             return true;
         }
     } else {
-        $Privileges = is_array($AuthFlag) ? $AuthFlag : func_get_args();
+        $Privileges = is_array($AuthFlag) ? $AuthFlag : $Args;
 
         # if the user is logged in and no privileges were given or the user has at
         # least one of the specified privileges
@@ -56,7 +57,7 @@ function CheckAuthorization($AuthFlag = null)
 */
 function DisplayUnauthorizedAccessPage(): void
 {
-    $GLOBALS["AF"]->HookEvent(
+    ApplicationFramework::getInstance()->HookEvent(
         "EVENT_HTML_FILE_LOAD",
         "DisplayUnauthorizedAccessPage_SignalHook"
     );
@@ -107,12 +108,13 @@ function PageTitle($NewTitle = null, $IncludePortalName = true)
  */
 function GetFastRatingInterfaceDirectory()
 {
+    $AF = ApplicationFramework::getInstance();
     if (preg_match(
         '/(.*)\/images\/StarRating--1_0\.[.A-Z0-9]*gif$/',
-        $GLOBALS["AF"]->GUIFile("StarRating--1_0.gif"),
+        $AF->GUIFile("StarRating--1_0.gif"),
         $Matches
     )) {
-        return $GLOBALS['AF']->ActiveUserInterface();
+        return $AF->ActiveUserInterface();
     } else {
         return "default";
     }
@@ -384,147 +386,6 @@ function defaulthtmlspecialchars($String)
     return htmlspecialchars($String ?? "", ENT_QUOTES, $CharacterSet, false);
 }
 
-
-
-/**
- * Converts a simpleXML element into an array. Preserves attributes and
- * everything. You can choose to get your elements either flattened, or stored
- * in a custom index that you define.
- * For example, for a given element
- * <field name="someName" type="someType"/>
- * if you choose to flatten attributes, you would get:
- * $array['field']['name'] = 'someName';
- * $array['field']['type'] = 'someType';
- * If you choose not to flatten, you get:
- * $array['field']['@attributes']['name'] = 'someName';
- * _____________________________________
- * Repeating fields are stored in indexed arrays. so for a markup such as:
- * <parent>
- * <child>a</child>
- * <child>b</child>
- * <child>c</child>
- * </parent>
- * you array would be:
- * $array['parent']['child'][0] = 'a';
- * $array['parent']['child'][1] = 'b';
- * ...And so on.
- * _____________________________________
- * @param SimpleXMLElement $Xml XML to convert
- * @param boolean $FlattenValues Whether to flatten values
- *       or to set them under a particular index.  Defaults to TRUE;
- * @param boolean $FlattenAttributes Whether to flatten attributes
- *       or to set them under a particular index. Defaults to TRUE;
- * @param boolean $FlattenChildren Whether to flatten children
- *       or to set them under a particular index. Defaults to TRUE;
- * @param string $ValueKey Index for values, in case $FlattenValues was
- *       set to FALSE. Defaults to "@value"
- * @param string $AttributesKey Index for attributes, in case
- *       $FlattenAttributes was set to FALSE. Defaults to "@attributes"
- * @param string $ChildrenKey Index for children, in case $FlattenChildren
- *       was set to FALSE. Defaults to "@children"
- * @return array The resulting array.
- */
-function SimpleXMLToArray(
-    $Xml,
-    $FlattenValues = true,
-    $FlattenAttributes = true,
-    $FlattenChildren = true,
-    $ValueKey = "@values",
-    $AttributesKey = "@attributes",
-    $ChildrenKey = "@children"
-) {
-    $Array = [];
-    $XMLClassName = "SimpleXMLElement";
-    if (!($Xml instanceof $XMLClassName)) {
-        return $Array;
-    }
-
-    $Name = $Xml->getName();
-    $Value = trim((string)$Xml);
-    if (!strlen($Value)) {
-        $Value = null;
-    }
-
-    if ($Value !== null) {
-        if ($FlattenValues) {
-            $Array = $Value;
-        } else {
-            $Array[$ValueKey] = $Value;
-        }
-    }
-
-    $Children = [];
-    foreach ($Xml->children() as $ElementName => $Child) {
-        $Value = SimpleXMLToArray(
-            $Child,
-            $FlattenValues,
-            $FlattenAttributes,
-            $FlattenChildren,
-            $ValueKey,
-            $AttributesKey,
-            $ChildrenKey
-        );
-
-        if (isset($Children[$ElementName])) {
-            if (!isset($MultipleMembers[$ElementName])) {
-                $Temp = $Children[$ElementName];
-                unset($Children[$ElementName]);
-                $Children[$ElementName][] = $Temp;
-                $MultipleMembers[$ElementName] = true;
-            }
-            $Children[$ElementName][] = $Value;
-        } else {
-            $Children[$ElementName] = $Value;
-        }
-    }
-    if (count($Children)) {
-        if ($FlattenChildren) {
-            $Array = array_merge($Array, $Children);
-        } else {
-            $Array[$ChildrenKey] = $Children;
-        }
-    }
-
-    $Attribs = [];
-    foreach ($Xml->attributes() as $Name => $Value) {
-        $Attribs[$Name] = trim($Value);
-    }
-    if (count($Attribs)) {
-        if (!$FlattenAttributes) {
-            $Array[$AttributesKey] = $Attribs;
-        } else {
-            $Array = array_merge($Array, $Attribs);
-        }
-    }
-
-    return $Array;
-}
-
-/**
- * Remove the file or directory with the given path. Recursively removes
- * directories.
- * @param string $Path Path of the file or directory to remove
- * @return bool TRUE if successful or FALSE otherwise
- */
-function RemoveFromFilesystem($Path)
-{
-    # the path is a directory
-    if (is_dir($Path)) {
-        # recursively delete directories
-        foreach (glob($Path."/*") as $Item) {
-            if (!RemoveFromFilesystem($Item)) {
-                return false;
-            }
-        }
-
-        # and then remove this directory
-        return @rmdir($Path);
-    # the path is a file
-    } else {
-        return @unlink($Path);
-    }
-}
-
 /**
 * Convert a date range into a user-friendly printable format.
 * @param string $StartDate Starting date, in any format parseable by strtotime().
@@ -581,36 +442,6 @@ function GetPrettyDateRange($StartDate, $EndDate, $Verbose = true, $BadDateStrin
 
     # return pretty date range to caller
     return $Range;
-}
-
-/**
-* Convert a date range into a user-friendly printable format broken into pieces,
-* useful when adding a date to a page with semantic markup.
-* @param string $StartDate Starting date, in any format parseable by strtotime().
-* @param string $EndDate Ending date, in any format parseable by strtotime().
-* @param bool $Verbose Whether to be verbose about dates.  (OPTIONAL, defaults to
-*       TRUE)
-* @return array|null Returns an associative array with "Start" and "End" elements,
-*       each portions of a string containing a nicely-formatted date value, or
-*       NULL if the date range was invalid.
-*/
-function GetPrettyDateRangeInParts($StartDate, $EndDate, $Verbose = true)
-{
-    # generate pretty date range string
-    $RangeString = GetPrettyDateRange($StartDate, $EndDate, $Verbose, null);
-
-    # return NULL if date was not valid
-    if ($RangeString === null) {
-        return null;
-    }
-
-    # break range string into pieces
-    $Pieces = explode("-", $RangeString, 2);
-    $RangeParts["Start"] = trim($Pieces[0]);
-    $RangeParts["End"] = (count($Pieces) > 1) ? trim($Pieces[1]) : "";
-
-    # return pieces to caller
-    return $RangeParts;
 }
 
 /**

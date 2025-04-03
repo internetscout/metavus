@@ -3,7 +3,7 @@
 #   FILE:  iCalendarFeed.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -31,7 +31,7 @@ class iCalendarFeed
      * of events for this feed.
      * @param iCalendarEvent $Event  Event to add to this feed.
      */
-    public function addEvent(iCalendarEvent $Event)
+    public function addEvent(iCalendarEvent $Event): void
     {
         $this->Events[] = $Event;
     }
@@ -41,7 +41,7 @@ class iCalendarFeed
      * Add the events from an array of one or more iCalendarEvents to this feed.
      * @param iCalendarEvent[] $Events  Events to add to this feed.
      */
-    public function addEvents(array $Events)
+    public function addEvents(array $Events): void
     {
         foreach ($Events as $Event) {
             $this->addEvent($Event);
@@ -54,7 +54,7 @@ class iCalendarFeed
      * in the experimental iCalendar property 'X-WR-CALNAME'.
      * @param string $Title  Title to add to this feed.
      */
-    public function addTitle(string $Title)
+    public function addTitle(string $Title): void
     {
         $this->Title = $Title;
     }

@@ -1,0 +1,46 @@
+<?PHP
+#
+#   FILE:  DeleteRegistration.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink\LMSRegistration;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Id)) {
+    throw new Exception("H_Id not set.");
+}
+
+$DeleteButton = new HtmlButton("Delete");
+$DeleteButton->addSemanticClass("btn-outline-primary");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->addSemanticClass("btn-outline-primary");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+$Registration = new LMSRegistration($H_Id);
+
+?>
+<h1>Delete LTI Registration</h1>
+
+<?PHP
+if (isset($H_Error)) {
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+    return;
+}
+?>
+<form method="post" enctype="multipart/form-data"
+      action="index.php?P=P_EduLink_DeleteRegistration&amp;ID=<?= $H_Id ?>">
+  <p>Delete registration for Issuer <i><?= $Registration->getIssuer() ?></i>
+    with ClientId <i><?= $Registration->getClientId() ?></i> ?</p>
+  <?= $DeleteButton->getHtml(); ?>
+  <?= $CancelButton->getHtml(); ?>
+</form>

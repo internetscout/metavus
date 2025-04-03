@@ -6,16 +6,20 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
-
-# ----- MAIN -----------------------------------------------------------------
+# @scout:phpstan
 
 use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
 use Metavus\User;
+
+# ----- MAIN -----------------------------------------------------------------
 
 PageTitle("Confirm Remove User");
 
 # check if current user is authorized
 CheckAuthorization(PRIV_USERADMIN, PRIV_SYSADMIN);
+
+$AF = ApplicationFramework::getInstance();
 
 # get the list of users to remove
 $H_UsersToRemove = StdLib::getArrayValue($_SESSION, "UserRemoveArray", []);

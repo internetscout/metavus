@@ -3,15 +3,16 @@
 #   FILE:  InlineEdit.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\Plugins\Pages;
 use Metavus\Plugins\Pages\Page;
 use Metavus\Plugins\Pages\PageFactory;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
@@ -21,7 +22,11 @@ $PageId = (isset($_GET["ID"]) ? $_GET["ID"] : null);
 
 $AF->beginAjaxResponse();
 
-$Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$Plugin = Pages::getInstance();
+
+if (!($Plugin instanceof \Metavus\Plugins\Pages)) {
+    throw new Exception("Retrieved plugin is not Pages (should be impossible).");
+}
 
 # make sure provided page is valid
 $PFactory = new PageFactory();
@@ -69,18 +74,12 @@ if ($_POST["Content"] != $PageContent) {
     # save new content
     $Page->set("Content", $_POST["Content"]);
     $Page->set("Summary", $Page->getSummary(
-        $Plugin->configSetting("SummaryLength")
+        $Plugin->getConfigSetting("SummaryLength")
     ));
 
     # update page modification times
     $Page->set("Last Modified By Id", $User->id());
     $Page->set("Date Last Modified", date("Y-m-d H:i:s"));
-
-    # signal resource modification event
-    $AF->signalEvent(
-        "EVENT_RESOURCE_MODIFY",
-        ["Resource" => $Page]
-    );
 
     # generate updated HTML for display
     $PageContent = $Page->get("Content");

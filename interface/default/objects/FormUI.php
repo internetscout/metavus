@@ -3,13 +3,12 @@
 #   FILE:  FormUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
@@ -138,6 +137,7 @@ use ScoutLib\StdLib;
 */
 class FormUI extends FormUI_Base
 {
+    const OPTION_LIST_MAX_DEFAULT_DISPLAY_SIZE = 15;
 
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
@@ -146,12 +146,13 @@ class FormUI extends FormUI_Base
     * @param string $TableId CSS ID for table element.  (OPTIONAL)
     * @param string $TableStyle CSS styles for table element.  (OPTIONAL)
     * @param string $TableCssClass Additional CSS class for table element. (OPTIONAL)
+    * @return void
     */
     public function displayFormTable(
-        string $TableId = null,
-        string $TableStyle = null,
-        string $TableCssClass = null
-    ) {
+        ?string $TableId = null,
+        ?string $TableStyle = null,
+        ?string $TableCssClass = null
+    ) : void {
         # display nothing if there are no fields
         if (!count($this->FieldParams)) {
             return;
@@ -227,7 +228,7 @@ class FormUI extends FormUI_Base
                 $GroupNumber++;
 
                 # split table section and display heading
-                $CssClass = "thead-dark mv-form-group-head";
+                $CssClass = "table-dark mv-form-group-head";
                 if ($Params["Collapsible"]) {
                     $CssClass .= " mv-form-collapsible";
                     $IsOpen = intval(
@@ -344,7 +345,8 @@ $Params["Parameters"]
                 if (isset(self::$ErrorMessages[$this->UniqueKey][$Name])) {
                     $LabelClass .= " mv-form-error";
                 }
-                if ($Params["Required"] && !$Params["ReadOnly"]) {
+                $ReadOnly = $this->isReadOnlyField($Name);
+                if ($Params["Required"] && !$ReadOnly) {
                     $LabelClass .= " mv-form-requiredfield";
                 }
 
@@ -414,22 +416,23 @@ $Params["Parameters"]
         # add any hidden form fields
         print $this->getHiddenFieldsHtml();
 
-        # add any needed JavaScript for toggled fields
-        $this->printFieldHidingJavascript();
+        # add any needed JavaScript
+        $this->printSupportingJavascript($TableId);
 
         # pull in WYSIWYG editor setup if needed
         if ($this->UsingWysiwygEditor) {
-            require_once($AF->GUIFile("CKEditorSetup.php"));
+            require_once($AF->gUIFile("CKEditorSetup.php"));
         }
     }
     // @codingStandardsIgnoreEnd
 
     /**
-    * Display HTML block with error messages (if any).
+     * Display HTML block with error messages (if any).
      * @param string|null $UniqueKey key for errors,
      *     when one page has multiple FormUI/children instances (OPTIONAL).
-    */
-    public static function displayErrorBlock($UniqueKey = null)
+     * @return void
+     */
+    public static function displayErrorBlock($UniqueKey = null): void
     {
         $ErrorText = "";
         if (count(self::$ErrorMessages)) {
@@ -464,8 +467,8 @@ $Params["Parameters"]
      */
     public function getSubmitButtonHtml(
         string $Label,
-        string $IconFile = null,
-        string $Classes = null
+        ?string $IconFile = null,
+        ?string $Classes = null
     ): string {
         # if no icon file name supplied
         if ($IconFile === null) {
@@ -501,13 +504,14 @@ $Params["Parameters"]
     /**
      * Display the image for field's tooltip with help text
      * @param string $Help text to display on hover
+     * @return void
      */
-    public static function displayHoverHelp(string $Help)
+    public static function displayHoverHelp(string $Help): void
     {
         $AF = ApplicationFramework::getInstance();
         ?>
         <img class="mv-form-instructions"
-        src="<?PHP $AF->PUIFile("help.png"); ?>"
+        src="<?PHP $AF->pUIFile("help.png"); ?>"
         alt="?" title="<?= htmlspecialchars($Help, ENT_COMPAT) ?>"/>
         <?PHP
     }
@@ -517,14 +521,15 @@ $Params["Parameters"]
      * @param string $Name name of field (to be displayed in popup)
      * @param string $Help text to display on popup
      * @param string $DialogId ID JavaScript uses to show/hide popup
+     * @return void
      */
-    public static function displayDialogHelp(string $Name, string $Help, string $DialogId)
+    public static function displayDialogHelp(string $Name, string $Help, string $DialogId): void
     {
         $AF = ApplicationFramework::getInstance();
         $AF->requireUIFile("CW-Tooltips.js");
         ?>
         <img class="mv-form-instructions"
-            src="<?PHP $AF->PUIFile("help.png"); ?>"
+            src="<?PHP $AF->pUIFile("help.png"); ?>"
             alt="?" data-fieldid="<?= $DialogId ?>"/>
         <div id="<?= 'mv-dialog-'.$DialogId ?>" class="tooltip-dialog"
             style="display: none;" title="<?= htmlspecialchars($Name, ENT_COMPAT) ?>">
@@ -536,8 +541,9 @@ $Params["Parameters"]
     /**
     * Handle image deletion, removing deleted images from text fields
     * where they may have been inserted.
+    * @return void
     */
-    public function handleDeletes()
+    public function handleDeletes(): void
     {
         parent::handleDeletes();
 
@@ -596,7 +602,7 @@ $Params["Parameters"]
             # for each deleted file
             foreach ($this->DeletedFiles as $FileId) {
                 # strip out any tags we inserted that reference that file
-                $FileLink = $Files[$FileId]->GetLink();
+                $FileLink = $Files[$FileId]->getLink();
                 $_POST[$FormFieldName] = preg_replace(
                     "%<a [^>]*href=\""
                                 .preg_quote(htmlspecialchars($FileLink), '%')
@@ -612,8 +618,9 @@ $Params["Parameters"]
      * Set default value for threshold at or below which FTYPE_OPTION fields
      * display as radio buttons or checkboxes, rather than dropdown lists.
      * @param int $NewValue New threshold.
+     * @return void
      */
-    public function setDefaultOptionDisplayThreshold(int $NewValue)
+    public function setDefaultOptionDisplayThreshold(int $NewValue): void
     {
         $this->OptionDisplayThreshold = $NewValue;
     }
@@ -642,308 +649,58 @@ $Params["Parameters"]
     * @param string $Name Field name.
     * @param mixed $Value Current value for field.
     * @param array $Params Field parameters.
+    * @return void
     */
-    protected function displayFormField(string $Name, $Value, array $Params)
+    protected function displayFormField(string $Name, $Value, array $Params): void
     {
-        $AF = ApplicationFramework::getInstance();
-        $FieldName = $this->getFormFieldName(
-            $Name,
-            ($Params["Type"] != self::FTYPE_PRIVILEGES)
-        );
-
-        $AF = ApplicationFramework::getInstance();
         switch ($Params["Type"]) {
             case self::FTYPE_TEXT:
             case self::FTYPE_DATETIME:
             case self::FTYPE_NUMBER:
             case self::FTYPE_URL:
             case self::FTYPE_PASSWORD:
-                $DefaultSize = ($Params["Type"] == self::FTYPE_NUMBER) ? 6 : 40;
-                $DefaultMaxLen = ($Params["Type"] == self::FTYPE_NUMBER) ? 12 : 80;
-                $Size = isset($Params["Size"]) ? $Params["Size"]
-                        : (isset($Params["MaxVal"])
-                            ? (strlen((string)(intval($Params["MaxVal"]) + 1)))
-                            : $DefaultSize);
-                $MaxLen = isset($Params["MaxLength"]) ? $Params["MaxLength"]
-                        : (isset($Params["MaxVal"])
-                            ? (strlen((string)(intval($Params["MaxVal"]) + 3)))
-                            : $DefaultMaxLen);
-                $Placeholder = isset($Params["Placeholder"])
-                        ? $Params["Placeholder"]
-                        : "(".strtolower($Params["Label"]).")";
-                $InputType = ($Params["Type"] == self::FTYPE_PASSWORD)
-                        ? "password" : "text";
-                $EscapedValue = htmlspecialchars(
-                    $AF->escapeInsertionKeywords($Value ?? "")
-                );
-                print('<input type="'.$InputType.'" size="'.$Size.'" maxlength="'
-                        .$MaxLen.'" id="'.$FieldName.'" name="'.$FieldName.'"'
-                        .' value="'.$EscapedValue.'"'
-                        .' placeholder=" '.htmlspecialchars($Placeholder).'"'
-                        .($Params["ReadOnly"] ? " readonly" : "").' />');
-                if ($Params["Type"] == self::FTYPE_DATETIME &&
-                    !$Params["ReadOnly"] && $Params["UpdateButton"]) {
-                    print('<button type="button" class="btn btn-primary mv-timestamp-update '
-                          .'mv-button-iconed" '
-                          .'title="Update this field to the current time" '
-                          .'onclick=\'$("#'.$FieldName.'").val('
-                          .'(new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000))'
-                          .'.toISOString()'
-                          .'.replace("T"," ").replace(/\.\d{3}Z/,"")));\'/>'
-                          .'<img src="'.$AF->GUIFile('RefreshArrow.svg').'"'
-                          .'alt="" class="mv-button-icon" /> Update</button>');
-                }
+                $this->displayTextField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_PARAGRAPH:
-                $Rows = isset($Params["Rows"]) ? $Params["Rows"]
-                        : (isset($Params["Height"]) ? $Params["Height"] : 4);
-                $Columns = isset($Params["Columns"]) ? $Params["Columns"]
-                        : (isset($Params["Width"]) ? $Params["Width"] : 40);
-                $MaxLen = isset($Params["MaxLength"]) ? $Params["MaxLength"] : "";
-                # ENT_SUBSTITUTE, to supersede htmlspecialchars's default flags.
-                $EscapedValue = htmlspecialchars(
-                    $AF->escapeInsertionKeywords($Value ?? ""),
-                    ENT_SUBSTITUTE
-                );
-                print('<textarea rows="'.$Rows.'" cols="'.$Columns
-                        .'" id="'.$FieldName.'" name="'.$FieldName.'" maxlength="'.$MaxLen.'"'
-                        .($Params["ReadOnly"] ? " readonly" : "")
-                        .($Params["UseWYSIWYG"] ? ' class="ckeditor"' : "").'>'
-                .$EscapedValue
-                        .'</textarea>');
-                if ($Params["UseWYSIWYG"]) {
-                    $this->UsingWysiwygEditor = true;
-                }
+                $this->displayParagraphField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_FLAG:
-                if (array_key_exists("OnLabel", $Params)
-                        && array_key_exists("OffLabel", $Params)) {
-                    print('<input type="radio" id="'.$FieldName.'On" name="'
-                            .$FieldName.'" value="1"'
-                            .($Value ? ' checked' : '')
-                            .($Params["ReadOnly"] ? ' disabled' : '')
-                            .' /> <label for="'.$FieldName.'On">'.$Params["OnLabel"]
-                            ."</label>\n");
-                    print('<input type="radio" id="'.$FieldName.'Off" name="'
-                            .$FieldName.'" value="0"'
-                            .($Value ? '' : ' checked')
-                            .($Params["ReadOnly"] ? ' disabled' : '')
-                            .' /> <label for="'.$FieldName.'Off">'.$Params["OffLabel"]
-                            ."</label>\n");
-                } else {
-                    print('<input type="checkbox" id="'.$FieldName.'" name="'
-                            .$FieldName.'" '
-                            .($Value ? ' checked' : '')
-                            .($Params["ReadOnly"] ? ' disabled' : '')
-                            ." />\n");
-                }
+                $this->displayFlagField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_OPTION:
-                if (count($Params["Options"]) == 0) {
-                    print "<i>(no values defined for this field)</i>";
-                    break;
-                }
-
-                if ($this->isRadioButtonField($Name)) {
-                    $OptList = new HtmlRadioButtonSet(
-                        $FieldName,
-                        $Params["Options"],
-                        $Value
-                    );
-                } elseif ($this->isCheckboxField($Name)) {
-                    $OptList = new HtmlCheckboxSet(
-                        $FieldName,
-                        $Params["Options"],
-                        $Value
-                    );
-                } else {
-                    if ($Params["AllowMultiple"] && (!isset($Params["OptionType"]) ||
-                        $Params["OptionType"] == self::OTYPE_LISTSET)) {
-                        $OptList = new HtmlOptionListSet(
-                            $FieldName,
-                            $Params["Options"],
-                            $Value
-                        );
-                    } else {
-                        $OptList = new HtmlOptionList(
-                            $FieldName,
-                            $Params["Options"],
-                            $Value
-                        );
-                        $OptList->multipleAllowed($Params["AllowMultiple"]);
-                        $OptList->size(isset($Params["Rows"]) ? $Params["Rows"] : 1);
-                    }
-                }
-                $OptList->disabled($Params["ReadOnly"]);
-                print '<div class="mv-form-optlist">';
-                $OptList->printHtml();
-                print '</div>';
+                $this->displayOptionField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_METADATAFIELD:
-                $FieldTypes = StdLib::getArrayValue($Params, "FieldTypes");
-                $SchemaId = StdLib::getArrayValue(
-                    $Params,
-                    "SchemaId",
-                    MetadataSchema::SCHEMAID_DEFAULT
-                );
-                $Schema = new MetadataSchema($SchemaId);
-                print $Schema->getFieldsAsOptionList(
-                    $FieldName,
-                    $FieldTypes,
-                    $Value,
-                    !$Params["AllowMultiple"] && !$Params["Required"],
-                    null,
-                    $Params["AllowMultiple"],
-                    $Params["ReadOnly"]
-                );
+                $this->displayMetadataFieldField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_PRIVILEGES:
-                # (convert legacy previously-stored values if necessary)
-                if (is_array($Value)) {
-                    $PrivSet = new PrivilegeSet();
-                    $PrivSet->addPrivilege($Value);
-                    $Value = $PrivSet;
-                }
-
-                $Schemas = StdLib::getArrayValue($Params, "Schemas");
-                $MFields = StdLib::getArrayValue($Params, "MetadataFields", []);
-                $PEditor = new PrivilegeEditingUI($Schemas, $MFields);
-                $PEditor->displaySet($FieldName, $Value);
+                $this->displayPrivilegesField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_POINT:
-                print(
-                    '<input type="text" '
-                    .' id="'.$FieldName.'" name="'.$FieldName.'_X"'
-                    .' value="'.htmlspecialchars($Value["X"] ?? "").'"'
-                    .' size="'.$Params["Size"].'" '
-                    .($Params["ReadOnly"] ? " readonly" : "").' />'
-                    .'<input type="text" '
-                    .' id="'.$FieldName.'" name="'.$FieldName.'_Y"'
-                    .' value="'.htmlspecialchars($Value["Y"] ?? "").'"'
-                    .' size="'.$Params["Size"].'" '
-                    .($Params["ReadOnly"] ? " readonly" : "").' />'
-                );
+                $this->displayPointField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_SEARCHPARAMS:
-                $SPEditor = new SearchParameterSetEditingUI($FieldName, $Value);
-
-                if (isset($Params["MaxFieldLabelLength"])) {
-                    $SPEditor->maxFieldLabelLength($Params["MaxFieldLabelLength"]);
-                }
-                if (isset($Params["MaxValueLabelLength"])) {
-                    $SPEditor->maxValueLabelLength($Params["MaxValueLabelLength"]);
-                }
-
-                $SPEditor->displayAsTable(null, "mv-table-nostripes table-borderless");
+                $this->displaySearchParamsField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_USER:
             case self::FTYPE_QUICKSEARCH:
-                if (is_null($Value)) {
-                    $Value = [];
-                }
-
-                if (!$Params["ReadOnly"]) {
-                    print "<div class='mv-quicksearchset mv-mutable-widget'>";
-                }
-
-                # set up some helpers that abstract over the
-                # differences between a USER and a QUICKSEARCH field
-                if ($Params["Type"] == self::FTYPE_USER) {
-                    if (isset($Params["Field"])) {
-                        $MField = new MetadataField($Params["Field"]);
-                        $Search = $Params["Field"];
-                        $AllowMultiple = $MField->allowMultiple();
-                    } else {
-                        $Search = QuickSearchHelper::USER_SEARCH;
-                        $AllowMultiple = $Params["AllowMultiple"];
-                    }
-                    $UFactory = new UserFactory();
-                    $NameFn = function ($Key, $Val) use ($UFactory) {
-                        return $UFactory->userExists($Val) ?
-                                (new User($Val))->name() : "" ;
-                    };
-                    $IdFn = function ($Key, $Val) {
-                        return $Val;
-                    };
-                } else {
-                    $MField = new MetadataField($Params["Field"]);
-                    $Search = $Params["Field"];
-                    $AllowMultiple = $MField->allowMultiple();
-                    $NameFn = function ($Key, $Val) use ($MField) {
-                        if ($MField->type() == MetadataSchema::MDFTYPE_REFERENCE) {
-                            $Resource = new Record($Key);
-                            return $Resource->getMapped("Title");
-                        } else {
-                            return $Val;
-                        }
-                    };
-                    $IdFn = function ($Key, $Val) {
-                        return $Key;
-                    };
-                }
-
-                # filter out empty incoming values
-                $Value = array_filter(
-                    $Value,
-                    function ($x) {
-                        return strlen($x) > 0;
-                    }
-                );
-
-                if (count($Value)) {
-                    # iterate over incoming values
-                    foreach ($Value as $Key => $Val) {
-                        # pull out the corresponding name/id
-                        $VName = $NameFn($Key, $Val);
-                        $VId = $IdFn($Key, $Val);
-
-                        # print UI elements
-                        if ($Params["ReadOnly"]) {
-                            print "<p>".defaulthtmlentities($VName)."</p>";
-                        } else {
-                            QuickSearchHelper::printQuickSearchField(
-                                $Search,
-                                $VId,
-                                defaulthtmlentities($VName),
-                                false,
-                                $FieldName
-                            );
-                        }
-                    }
-                }
-
-                if (!$Params["ReadOnly"]) {
-                    # display a blank row for adding more values
-                    # when we have no values or when we allow more
-                    if (isset($MField) && $MField->getCountOfPossibleValues() == 0) {
-                        print "(<i>no values defined for this field</i>)";
-                    } elseif (count($Value) == 0 || $AllowMultiple) {
-                        QuickSearchHelper::printQuickSearchField(
-                            $Search,
-                            "",
-                            "",
-                            $AllowMultiple,
-                            $FieldName
-                        );
-                    }
-                    print "</div>";
-                }
+                $this->displayQuicksearchField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_FILE:
-                $this->displayFileField($FieldName, $Value, $Params);
+                $this->displayFileField($Name, $Value, $Params);
                 break;
 
             case self::FTYPE_IMAGE:
-                $this->displayImageField($FieldName, $Value, $Params);
+                $this->displayImageField($Name, $Value, $Params);
                 break;
         }
 
@@ -959,18 +716,420 @@ $Params["Parameters"]
     }
 
     /**
-    * Display image form field for specified field.
-    * @param string $FieldName Field name.
+    * Display HTML form field for Text, DateTime, Number, Url, and Password fields.
+    * @param string $Name Field name.
     * @param mixed $Value Current value for field.
     * @param array $Params Field parameters.
     */
-    protected function displayImageField(string $FieldName, $Value, array $Params)
+    protected function displayTextField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $AF = ApplicationFramework::getInstance();
+        $ReadOnly = $this->isReadOnlyField($Name);
+        $FieldName = $this->getFormFieldName($Name);
+
+        $DefaultSize = ($Params["Type"] == self::FTYPE_NUMBER) ? 6 : 40;
+        $DefaultMaxLen = ($Params["Type"] == self::FTYPE_NUMBER) ? 12 : 80;
+        $Size = $Params["Size"] ?? (isset($Params["MaxVal"])
+                ? (strlen((string)(intval($Params["MaxVal"]) + 1)))
+                : $DefaultSize);
+        $MaxLen = $Params["MaxLength"] ?? (isset($Params["MaxVal"])
+                ? (strlen((string)(intval($Params["MaxVal"]) + 3)))
+                : $DefaultMaxLen);
+        $Placeholder = $Params["Placeholder"] ?? "(".strtolower($Params["Label"]).")";
+        $InputType = ($Params["Type"] == self::FTYPE_PASSWORD)
+                ? "password" : "text";
+        $EscapedValue = htmlspecialchars(
+            $AF->escapeInsertionKeywords($Value ?? "")
+        );
+        print('<input type="'.$InputType.'" dir="auto" size="'.$Size.'" maxlength="'
+                .$MaxLen.'" id="'.$FieldName.'" name="'.$FieldName.'"'
+                .' value="'.$EscapedValue.'"'
+                .' placeholder=" '.htmlspecialchars($Placeholder).'"'
+                .($ReadOnly ? " readonly" : "").' />');
+        if (($Params["Type"] == self::FTYPE_DATETIME)
+                && !$ReadOnly
+                && $Params["UpdateButton"]) {
+            print('<button type="button" class="btn btn-primary mv-timestamp-update '
+                  .'mv-button-iconed" '
+                  .'title="Update this field to the current time" '
+                  .'onclick=\'$("#'.$FieldName.'").val('
+                  .'(new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000))'
+                  .'.toISOString()'
+                  .'.replace("T"," ").replace(/\.\d{3}Z/,"")));\'/>'
+                  .'<img src="'.$AF->gUIFile('RefreshArrow.svg').'"'
+                  .'alt="" class="mv-button-icon" /> Update</button>');
+        }
+    }
+
+    /**
+    * Display HTML form field for Paragraph field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayParagraphField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $AF = ApplicationFramework::getInstance();
+        $ReadOnly = $this->isReadOnlyField($Name);
+        $FieldName = $this->getFormFieldName($Name);
+
+        $Rows = isset($Params["Rows"]) ? $Params["Rows"]
+                : (isset($Params["Height"]) ? $Params["Height"] : 4);
+        $Columns = isset($Params["Columns"]) ? $Params["Columns"]
+                : (isset($Params["Width"]) ? $Params["Width"] : 40);
+        $MaxLen = isset($Params["MaxLength"]) ? $Params["MaxLength"] : "";
+        # ENT_SUBSTITUTE, to supersede htmlspecialchars's default flags.
+        $EscapedValue = htmlspecialchars(
+            $AF->escapeInsertionKeywords($Value ?? ""),
+            ENT_SUBSTITUTE
+        );
+        print('<textarea rows="'.$Rows.'" cols="'.$Columns
+                .'" id="'.$FieldName.'" name="'.$FieldName.'" maxlength="'.$MaxLen.'"'
+                .($ReadOnly ? " readonly" : "")
+                .($Params["UseWYSIWYG"] ? ' class="ckeditor"' : "").'>'
+        .$EscapedValue
+                .'</textarea>');
+        if ($Params["UseWYSIWYG"]) {
+            $this->UsingWysiwygEditor = true;
+        }
+    }
+
+    /**
+    * Display HTML form field for Flag field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayFlagField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $ReadOnly = $this->isReadOnlyField($Name);
+        $FieldName = $this->getFormFieldName($Name);
+
+        if (array_key_exists("OnLabel", $Params)
+                && array_key_exists("OffLabel", $Params)) {
+            print('<input type="radio" id="'.$FieldName.'On" name="'
+                    .$FieldName.'" value="1"'
+                    .($Value ? ' checked' : '')
+                    .($ReadOnly ? ' disabled' : '')
+                    .' /> <label for="'.$FieldName.'On">'.$Params["OnLabel"]
+                    ."</label>\n");
+            print('<input type="radio" id="'.$FieldName.'Off" name="'
+                    .$FieldName.'" value="0"'
+                    .($Value ? '' : ' checked')
+                    .($ReadOnly ? ' disabled' : '')
+                    .' /> <label for="'.$FieldName.'Off">'.$Params["OffLabel"]
+                    ."</label>\n");
+        } else {
+            print('<input type="checkbox" id="'.$FieldName.'" name="'
+                    .$FieldName.'" '
+                    .($Value ? ' checked' : '')
+                    .($ReadOnly ? ' disabled' : '')
+                    ." />\n");
+        }
+    }
+
+    /**
+    * Display HTML form field for Option field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayOptionField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        if (count($Params["Options"]) == 0) {
+            print "<i>(no values defined for this field)</i>";
+            return;
+        }
+
+        $FieldName = $this->getFormFieldName($Name);
+        if ($this->isRadioButtonField($Name)) {
+            $OptList = new HtmlRadioButtonSet(
+                $FieldName,
+                $Params["Options"],
+                $Value
+            );
+        } elseif ($this->isCheckboxField($Name)) {
+            $OptList = new HtmlCheckboxSet(
+                $FieldName,
+                $Params["Options"],
+                $Value
+            );
+        } else {
+            if (isset($Params["OptionType"])
+                    && ($Params["OptionType"] == self::OTYPE_LISTSET)) {
+                $OptList = new HtmlOptionListSet(
+                    $FieldName,
+                    $Params["Options"],
+                    $Value
+                );
+            } else {
+                $OptList = new HtmlOptionList(
+                    $FieldName,
+                    $Params["Options"],
+                    $Value
+                );
+                $OptList->multipleAllowed($Params["AllowMultiple"]);
+                $OptList->size(isset($Params["Rows"]) ? $Params["Rows"] : 1);
+                if (isset($Params["Rows"])) {
+                    $OptListSize = $Params["Rows"];
+                } else {
+                    if ($Params["AllowMultiple"]) {
+                        $OptListSize = min(
+                            count($Params["Options"]),
+                            self::OPTION_LIST_MAX_DEFAULT_DISPLAY_SIZE
+                        );
+                    } else {
+                        $OptListSize = 1;
+                    }
+                }
+                $OptList->size($OptListSize);
+            }
+        }
+        if ($this->isReadOnlyField($Name)) {
+            $OptList->disabled(true);
+        }
+        print '<div class="mv-form-optlist">';
+        $OptList->printHtml();
+        print '</div>';
+    }
+
+    /**
+    * Display HTML form field for Option field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayMetadataFieldField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $FieldName = $this->getFormFieldName($Name);
+        $FieldTypes = StdLib::getArrayValue($Params, "FieldTypes");
+        $SchemaId = StdLib::getArrayValue(
+            $Params,
+            "SchemaId",
+            MetadataSchema::SCHEMAID_DEFAULT
+        );
+        $Schema = new MetadataSchema($SchemaId);
+        print $Schema->getFieldsAsOptionList(
+            $FieldName,
+            $FieldTypes,
+            $Value,
+            !$Params["AllowMultiple"] && !$Params["Required"],
+            null,
+            $Params["AllowMultiple"],
+            $this->isReadOnlyField($Name)
+        );
+    }
+
+    /**
+    * Display HTML form field for Option field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayPrivilegesField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        # (convert legacy previously-stored values if necessary)
+        if (is_array($Value)) {
+            $PrivSet = new PrivilegeSet();
+            $PrivSet->addPrivilege($Value);
+            $Value = $PrivSet;
+        }
+
+        $Schemas = StdLib::getArrayValue($Params, "Schemas");
+        $MFields = StdLib::getArrayValue($Params, "MetadataFields", []);
+        $PEditor = new PrivilegeEditingUI($Schemas, $MFields);
+        $FieldName = $this->getFormFieldName($Name, false);
+        $PEditor->displaySet($FieldName, $Value);
+    }
+
+    /**
+    * Display HTML form field for Option field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayPointField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $FieldName = $this->getFormFieldName($Name);
+        $ReadOnlyAttrib = $this->isReadOnlyField($Name) ? " readonly" : "";
+        print '<input type="text" '
+                .' id="'.$FieldName.'" name="'.$FieldName.'_X"'
+                .' value="'.htmlspecialchars($Value["X"] ?? "").'"'
+                .' size="'.$Params["Size"].'" '
+                .$ReadOnlyAttrib.' />'
+                .'<input type="text" '
+                .' id="'.$FieldName.'" name="'.$FieldName.'_Y"'
+                .' value="'.htmlspecialchars($Value["Y"] ?? "").'"'
+                .' size="'.$Params["Size"].'" '
+                .$ReadOnlyAttrib.' />';
+    }
+
+    /**
+    * Display HTML form field for Option field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displaySearchParamsField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $FieldName = $this->getFormFieldName($Name);
+        $SPEditor = new SearchParameterSetEditingUI($FieldName, $Value);
+
+        if (isset($Params["MaxFieldLabelLength"])) {
+            $SPEditor->maxFieldLabelLength($Params["MaxFieldLabelLength"]);
+        }
+        if (isset($Params["MaxValueLabelLength"])) {
+            $SPEditor->maxValueLabelLength($Params["MaxValueLabelLength"]);
+        }
+
+        $SPEditor->displayAsTable(null, "mv-table-nostripes table-borderless");
+    }
+
+    /**
+    * Display HTML form field for Option field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayQuicksearchField(
+        string $Name,
+        $Value,
+        array $Params
+    ): void {
+        $FieldName = $this->getFormFieldName($Name);
+        $ReadOnly = $this->isReadOnlyField($Name);
+
+        if (is_null($Value)) {
+            $Value = [];
+        }
+
+        if (!$ReadOnly) {
+            print "<div class='mv-quicksearchset mv-mutable-widget'>";
+        }
+
+        # set up some helpers that abstract over the
+        # differences between a USER and a QUICKSEARCH field
+        if ($Params["Type"] == self::FTYPE_USER) {
+            if (isset($Params["Field"])) {
+                $MField = MetadataField::getField($Params["Field"]);
+                $Search = $Params["Field"];
+                $AllowMultiple = $MField->allowMultiple();
+            } else {
+                $Search = QuickSearchHelper::USER_SEARCH;
+                $AllowMultiple = $Params["AllowMultiple"];
+            }
+            $UFactory = new UserFactory();
+            $NameFn = function ($Key, $Val) use ($UFactory) {
+                return $UFactory->userExists($Val) ?
+                        (new User($Val))->name() : "" ;
+            };
+            $IdFn = function ($Key, $Val) {
+                return $Val;
+            };
+        } else {
+            $MField = MetadataField::getField($Params["Field"]);
+            $Search = $Params["Field"];
+            $AllowMultiple = $MField->allowMultiple();
+            $NameFn = function ($Key, $Val) use ($MField) {
+                if ($MField->type() == MetadataSchema::MDFTYPE_REFERENCE) {
+                    $Resource = new Record($Key);
+                    return $Resource->getMapped("Title");
+                } else {
+                    return $Val;
+                }
+            };
+            $IdFn = function ($Key, $Val) {
+                return $Key;
+            };
+        }
+
+        # filter out empty incoming values
+        $Value = array_filter(
+            $Value,
+            function ($x) {
+                return strlen($x) > 0;
+            }
+        );
+
+        if (count($Value)) {
+            # iterate over incoming values
+            foreach ($Value as $Key => $Val) {
+                # pull out the corresponding name/id
+                $VName = $NameFn($Key, $Val);
+                $VId = $IdFn($Key, $Val);
+
+                # print UI elements
+                if ($ReadOnly) {
+                    print "<p>".defaulthtmlentities($VName)."</p>";
+                } else {
+                    QuickSearchHelper::printQuickSearchField(
+                        $Search,
+                        $VId,
+                        defaulthtmlentities($VName),
+                        false,
+                        $FieldName
+                    );
+                }
+            }
+        }
+
+        if (!$ReadOnly) {
+            # display a blank row for adding more values
+            # when we have no values or when we allow more
+            if (isset($MField) && $MField->getCountOfPossibleValues() == 0) {
+                print "(<i>no values defined for this field</i>)";
+            } elseif (count($Value) == 0 || $AllowMultiple) {
+                QuickSearchHelper::printQuickSearchField(
+                    $Search,
+                    "",
+                    "",
+                    $AllowMultiple,
+                    $FieldName
+                );
+            }
+            print "</div>";
+        }
+    }
+
+    /**
+    * Display HTML image form field for specified field.
+    * @param string $Name Field name.
+    * @param mixed $Value Current value for field.
+    * @param array $Params Field parameters.
+    */
+    protected function displayImageField(string $Name, $Value, array $Params): void
     {
         $AF = ApplicationFramework::getInstance();
+        $FieldName = $this->getFormFieldName($Name);
 
         # normalize incoming value
         $Images = is_array($Value) ? $Value
                 : (($Value === null) ? [] : [$Value]);
+        $ReadOnly = $this->isReadOnlyField($Name, $Params);
 
         # begin value table
         print '<table class="mv-form-image-table">';
@@ -1013,7 +1172,7 @@ $Params["Parameters"]
             ?><tr>
                 <td><a href="<?= $ImageUrlSource ?>" target="_blank"
                        ><?= $Image->getHtml("mv-image-thumbnail") ?></a></td>
-                <?PHP if (!$Params["ReadOnly"]) { ?>
+                <?PHP if (!$ReadOnly) { ?>
                   <td style="white-space: nowrap;"><label for="<?=
                         $ImageAltTextFieldName ?>" class="mv-form-pseudolabel">
                         Alt Text:</label><input type="text" size="20"
@@ -1024,7 +1183,7 @@ $Params["Parameters"]
                         name="<?= $this->getButtonName() ?>"
                         class="btn btn-danger mv-button-iconed"
                         onclick="$('#<?= $DeleteFieldName ?>').val('<?= $ImageId
-                        ?>');" value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                        ?>');" value="Delete"><img src="<?= $AF->gUIFile('Delete.svg'); ?>" alt=""
                                                 class="mv-button-icon" /> Delete</button></td>
                 <?PHP } ?>
             </tr><?PHP
@@ -1046,8 +1205,7 @@ $Params["Parameters"]
         }
 
         # add table row for new image upload
-        if (!$Params["ReadOnly"] &&
-            ($Params["AllowMultiple"] || ($ImagesDisplayed == 0))) {
+        if (!$ReadOnly && ($Params["AllowMultiple"] || ($ImagesDisplayed == 0))) {
             $ImageAltTextFieldName = $FieldName."_AltText_NEW";
             ?><tr>
                 <td><input type="file" name="<?= $FieldName ?>" /></td>
@@ -1058,7 +1216,7 @@ $Params["Parameters"]
                         placeholder=" (alternate text for image)"></td>
                 <td><button type="submit" name="<?= $this->getButtonName() ?>"
                         class="btn btn-primary mv-button-iconed" value="Upload"><img
-                        src="<?= $AF->GUIFile('Upload.svg'); ?>" alt=""
+                        src="<?= $AF->gUIFile('Upload.svg'); ?>" alt=""
                         class="mv-button-icon" /> Upload</button></td>
             </tr><?PHP
         }
@@ -1068,21 +1226,25 @@ $Params["Parameters"]
     }
 
     /**
-    * Display file form field for specified field.
-    * @param string $FieldName Field name.
+    * Display HTML file form field for specified field.
+    * @param string $Name Field name.
     * @param mixed $Value Current value for field.
     * @param array $Params Field parameters.
+    * @return void
     */
-    protected function displayFileField(string $FieldName, $Value, array $Params)
+    protected function displayFileField(string $Name, $Value, array $Params): void
     {
         $AF = ApplicationFramework::getInstance();
+        $FieldName = $this->getFormFieldName($Name);
 
         # normalize incoming value
         $Files = is_array($Value) ? $Value
                 : (($Value === null) ? [] : [$Value]);
+        $ReadOnly = $this->isReadOnlyField($Name, $Params);
 
         # begin value table
-        print '<table class="mv-form-file-table">';
+        print '<table class="mv-form-filefield-table"'
+            .' data-fieldname="'.defaulthtmlentities($Name).'">';
 
         # for each incoming value
         $FilesDisplayed = 0;
@@ -1107,11 +1269,15 @@ $Params["Parameters"]
             $FileId = $File->Id();
             $FileUrl = $File->GetLink();
             $FileName = $File->Name();
+            $FileType = $File->getMimeType();
             $SafeFileName = htmlspecialchars(
                 str_replace("'", "\\'", $FileName)
             );
-            $FileLinkTag = "<a href=\"".htmlspecialchars($FileUrl)
-                        ."\" target=\"_blank\">"
+            $FileLinkTag = "<a href=\"".htmlspecialchars($FileUrl)."\""
+                        ." class=\"mv-form-filefield-value\""
+                        ." data-fileid=\"".$FileId."\""
+                        ." data-filetype=\"".htmlspecialchars($FileType)."\""
+                        ." target=\"_blank\">"
                         .$SafeFileName."</a>";
             $DeleteFieldName = $this->getFormFieldName("FileToDelete");
 
@@ -1129,12 +1295,12 @@ $Params["Parameters"]
             # add table row for file
             ?><tr>
                 <td><?= $FileLinkTag ?></td>
-                <?PHP if (!$Params["ReadOnly"]) { ?>
+                <?PHP if (!$ReadOnly) { ?>
                   <td><?= $InsertButtonHtml ?><button type="submit"
                         name="<?= $this->getButtonName() ?>"
-                        class="btn btn-danger mv-button-iconed"
+                        class="btn btn-danger mv-button-iconed mv-button-delete-file"
                         onclick="$('#<?= $DeleteFieldName ?>').val('<?= $FileId
-                        ?>');" value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                        ?>');" value="Delete"><img src="<?= $AF->gUIFile('Delete.svg'); ?>" alt=""
                                 class="mv-button-icon" /> Delete</button></td>
                 <?PHP } ?>
             </tr><?PHP
@@ -1161,7 +1327,7 @@ $Params["Parameters"]
                 <td><input type="file" name="<?= $FieldName ?>" /></td>
                 <td><button type="submit" name="<?= $this->getButtonName() ?>"
                      class="btn btn-primary mv-button-iconed" value="Upload"><img
-                     src="<?= $AF->GUIFile('Upload.svg'); ?>" alt=""
+                     src="<?= $AF->gUIFile('Upload.svg'); ?>" alt=""
                      class="mv-button-icon" /> Upload</button></td>
             </tr><?PHP
         }
@@ -1171,10 +1337,22 @@ $Params["Parameters"]
     }
 
     /**
-    * Print any JavaScript required to support toggling display of fields
-    * or sections.
-    */
-    protected function printFieldHidingJavascript()
+     * Print any javascript necessary for this form.
+     * @param string $FormTableId ID of the table containing our form
+     */
+    protected function printSupportingJavascript(string $FormTableId): void
+    {
+        parent::printSupportingJavascript($FormTableId);
+
+        $this->printFieldHidingJavascript();
+    }
+
+    /**
+     * Print any JavaScript required to support toggling display of fields
+     * or sections.
+     * @return void
+     */
+    protected function printFieldHidingJavascript(): void
     {
         # for each form field
         foreach ($this->FieldParams as $ToggledField => $Params) {
@@ -1317,14 +1495,16 @@ $Params["Parameters"]
         return $ConditionString;
     }
 
+
+
     /**
     * Check whether specified field should be displayed as radio buttons.
-    * @param string $FieldName Name of field.
+    * @param string $Name Name of field.
     * @return bool TRUE if field should use radio buttons, otherwise FALSE.
     */
-    private function isRadioButtonField(string $FieldName): bool
+    private function isRadioButtonField(string $Name): bool
     {
-        $Params = $this->FieldParams[$FieldName];
+        $Params = $this->FieldParams[$Name];
         if ($Params["Type"] == self::FTYPE_OPTION && !$Params["AllowMultiple"]) {
             if (isset($Params["OptionType"]) && $Params["OptionType"] == self::OTYPE_INPUTSET) {
                 return true;
@@ -1339,12 +1519,12 @@ $Params["Parameters"]
 
     /**
     * Check whether specified field should be displayed as checkboxes.
-    * @param string $FieldName Name of field.
+    * @param string $Name Name of field.
     * @return bool TRUE if field should use radio buttons, otherwise FALSE.
     */
-    private function isCheckboxField(string $FieldName): bool
+    private function isCheckboxField(string $Name): bool
     {
-        $Params = $this->FieldParams[$FieldName];
+        $Params = $this->FieldParams[$Name];
         if ($Params["Type"] == self::FTYPE_OPTION && $Params["AllowMultiple"]) {
             if (isset($Params["OptionType"]) &&
                 $Params["OptionType"] == self::OTYPE_INPUTSET) {
@@ -1356,6 +1536,23 @@ $Params["Parameters"]
         }
 
         return false;
+    }
+
+    /**
+    * Check whether specified field should be displayed as checkboxes.
+    * @param string $Name Name of field.
+    * @param ?array $Params Field parameters array.  [OPTIONAL, if not
+    *       supplied, $this->FieldParams will be used]
+    * @return bool TRUE if field should use radio buttons, otherwise FALSE.
+    */
+    private function isReadOnlyField(string $Name, ?array $Params = null): bool
+    {
+        if ($Params === null) {
+            $Params = $this->FieldParams[$Name];
+        }
+        return isset($Params["ReadOnlyFunction"])
+                ? $Params["ReadOnlyFunction"]($Name)
+                : ($Params["ReadOnly"] ?? false);
     }
 
     /**
@@ -1384,12 +1581,13 @@ $Params["Parameters"]
      * @param string $Name Field name.
      * @param string $FormFieldName HTML form field name.
      * @param array $Params Field parameters.
+     * @return void
      */
     private function displayCaptchaField(
         string $Name,
         string $FormFieldName,
         array $Params
-    ) {
+    ) : void {
         $AF = ApplicationFramework::getInstance();
         $PlugManager = PluginManager::getInstance();
         if (!$PlugManager->pluginEnabled("Captcha")) {
@@ -1415,7 +1613,7 @@ $Params["Parameters"]
         <tr id="row-<?= $FormFieldName ?>" class="mv-content-tallrow mv-form-fieldtype-captcha">
           <th class="mv-content-tallrow-th" valign="top">
             <img class="mv-form-instructions"
-                 src="<?PHP $AF->PUIFile("help.png"); ?>"
+                 src="<?PHP $AF->pUIFile("help.png"); ?>"
                  alt="?" title="Enter the verification code to prove you are not a spam robot."/>
             <label class="<?= $LabelClass ?>"><?= $Params["Label"] ?></label>
           </th>
@@ -1428,8 +1626,9 @@ $Params["Parameters"]
      * Helper function for displaying hover/dialog tooltips
      * @param string $Name name of field to be displayed in dialog header
      * @param array $Params tooltip contents
+     * @return void
      */
-    private function displayHelp($Name, $Params)
+    private function displayHelp($Name, $Params): void
     {
         if (!isset($Params["Help"])) {
             return;
@@ -1460,7 +1659,7 @@ $Params["Parameters"]
      * @param Image $Image Image to add buttons for
      * @return string Generated html
      */
-    private function getHtmlForImageInsertionButtons(Image $Image) : string
+    private function getHtmlForImageInsertionButtons(Image $Image): string
     {
         if (is_null($this->FirstWYSIWYGParagraphField)) {
             return "";
@@ -1468,12 +1667,12 @@ $Params["Parameters"]
 
         $InsertField = $this->getFormFieldName($this->FirstWYSIWYGParagraphField);
         $ImageUrl = $Image->url("mv-image-preview");
-        $SafeAltText = htmlspecialchars($Image->AltText(), ENT_QUOTES |  ENT_HTML5);
+        $SafeAltText = htmlspecialchars($Image->altText(), ENT_QUOTES |  ENT_HTML5);
 
         # note: the insertion commands below for onclick have to match those in
         # RecordEditingUI.js for CKEDITOR's instanceReady event
         $InsertLeftCommand = defaulthtmlentities(
-            "mvInsertImage("
+            "mv_insertImage("
             ."CKEDITOR.instances['".$InsertField."'],"
             ."'left',"
             ."'".$ImageUrl."',"
@@ -1482,7 +1681,7 @@ $Params["Parameters"]
             .");"
         );
         $InsertRightCommand = defaulthtmlentities(
-            "mvInsertImage("
+            "mv_insertImage("
             ."CKEDITOR.instances['".$InsertField."'],"
             ."'right',"
             ."'".$ImageUrl."',"
@@ -1491,7 +1690,7 @@ $Params["Parameters"]
             .");"
         );
         $InsertLeftCaptionedCommand = defaulthtmlentities(
-            "mvInsertImage("
+            "mv_insertImage("
             ."CKEDITOR.instances['".$InsertField."'],"
             ."'left',"
             ."'".$ImageUrl."',"
@@ -1500,12 +1699,19 @@ $Params["Parameters"]
             .");"
         );
         $InsertRightCaptionedCommand = defaulthtmlentities(
-            "mvInsertImage("
+            "mv_insertImage("
             ."CKEDITOR.instances['".$InsertField."'],"
             ."'right',"
             ."'".$ImageUrl."',"
             ."'".$SafeAltText."',"
             ."true"
+            .");"
+        );
+
+        $RemoveCommand =  defaulthtmlentities(
+            "mv_removeImage("
+            ."CKEDITOR.instances['".$InsertField."'],"
+            ."'".$ImageUrl."'"
             .");"
         );
 
@@ -1521,7 +1727,11 @@ $Params["Parameters"]
             .$ButtonOpenTag.' onclick="'.$InsertLeftCaptionedCommand.'" '
             .'title="Insert left-aligned image with caption">Insert-L-C</button>'
             .$ButtonOpenTag.' onclick="'.$InsertRightCaptionedCommand.'" '
-            .'title="Insert right-aligned image with caption">Insert-R-C</button>';
+            .'title="Insert right-aligned image with caption">Insert-R-C</button>'
+            .'<br/>'
+            .$ButtonOpenTag.' onclick="'.$RemoveCommand.'" '
+            .'title="Remove image inserts from text '
+            .'(does not delete the image)">Remove</button>';
 
         return $InsertButtonHtml;
     }

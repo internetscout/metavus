@@ -3,17 +3,20 @@
 #   FILE:  SearchLog.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\InterfaceConfiguration;
 use Metavus\Plugins\MetricsRecorder;
+use Metavus\Plugins\MetricsReporter;
 use Metavus\PrivilegeSet;
 use Metavus\SearchParameterSet;
 use Metavus\TransportControlsUI;
 use Metavus\User;
 use Metavus\UserFactory;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
@@ -155,7 +158,8 @@ function getSearchDescription($SearchData)
  *   processed to conserve memory.
  * @param array $SearchKeys Array keyed by compact search identifier with
  *   values giving the corresponding opaque search data that can be passed to
- *   'new SarchParamterSet()'.
+ *   'new SearchParameterSet()'.
+ * @return void
  */
 function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys)
 {
@@ -193,7 +197,7 @@ function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys)
                 $H_ListData[$Key."_".$Index] = [
                     "Date" => $Item["Timestamp"],
                     "NumSearches" => 1,
-                    "UserId" => strlen($Item["UserId"]) ? [$Item["UserId"]] : [],
+                    "UserId" => strlen((string)$Item["UserId"]) ? [$Item["UserId"]] : [],
                     "SearchParameters" => $SearchKeys[$Key],
                     "Results" => $Item["Results"],
                 ];
@@ -209,6 +213,7 @@ function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys)
  * @param string $Key Compact search identifier from getSearchKey().
  * @param string $Search Opaque search identifier from metrics data.
  * @param array $SearchDataRow Summary information for search.
+ * @return void
  */
 function addSearchToFrequencyData(
     array &$H_ListData,
@@ -250,9 +255,11 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
+$AF = ApplicationFramework::getInstance();
+
 # grab ahold of the relevant metrics objects
-$Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-$Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+$Recorder = MetricsRecorder::getInstance();
+$Reporter = MetricsReporter::getInstance();
 
 # extract page parameters
 $H_SearchType = intval(StdLib::getFormValue("STY", STY_ALL));
@@ -282,7 +289,7 @@ if ($SpamSearch !== null) {
     );
 
     # redirect to our search listing
-    $GLOBALS["AF"]->SetJumpToPage(
+    $AF->setJumpToPage(
         "index.php?P=P_MetricsReporter_SearchLog"
         ."&V=".$H_View
         ."&ST=".$H_StartTime
@@ -416,7 +423,7 @@ $SpamSearches = $DB->fetchColumn("SearchKey");
 $SpamSearches = array_flip($SpamSearches);
 
 # get the list of users considered privileged
-$PrivsToExclude = $Reporter->configSetting("PrivsToExcludeFromCounts") ?? [];
+$PrivsToExclude = $Reporter->getConfigSetting("PrivsToExcludeFromCounts") ?? [];
 if ($PrivsToExclude instanceof PrivilegeSet) {
     $PrivsToExclude = $PrivsToExclude->getPrivileges();
 }
@@ -432,7 +439,7 @@ $EndDate = $CurrentTime;
 do {
     $StartDate = max(strtotime("-6 months", $EndDate), $TimeLUT[$H_StartTime]);
 
-    $AllSearches = $Recorder->GetEventData(
+    $AllSearches = $Recorder->getEventData(
         "MetricsRecorder",
         [MetricsRecorder::ET_SEARCH, MetricsRecorder::ET_ADVANCEDSEARCH],
         date(StdLib::SQL_DATE_FORMAT, $StartDate),
@@ -524,7 +531,7 @@ $H_ListFields = $ListFields[$H_View];
 
 # if the user requested JSON data, produce that as output
 if (isset($_GET["JSON"])) {
-    $GLOBALS["AF"]->SuppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     header("Content-Type: application/json; charset="
            .InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet"), true);
 

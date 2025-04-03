@@ -3,13 +3,12 @@
 #   FILE:  FollowupTasks.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 
 /**
@@ -22,8 +21,9 @@ class FollowupTasks
     /**
      * Perform any follow-up tasks after a new installation.  Tasks that go here are
      *   typically those that can be performed after the site is in use.
+     * @return void
      */
-    public static function performNewInstallFollowUp()
+    public static function performNewInstallFollowUp(): void
     {
         # load default search synonym list
         $SearchEngine = new SearchEngine();
@@ -42,7 +42,7 @@ class FollowupTasks
                 ApplicationFramework::PRIORITY_BACKGROUND
             );
         }
-        $GLOBALS["AF"]->queueUniqueTask(
+        ApplicationFramework::getInstance()->queueUniqueTask(
             [$Recommender, "PruneCorrelations"],
             [],
             ApplicationFramework::PRIORITY_BACKGROUND
@@ -56,13 +56,14 @@ class FollowupTasks
      * Perform any follow-up tasks after an upgrade.  Tasks that go here are
      *   typically those that can be performed after the site is in use.
      * @param string $OldVersion Version being upgraded from.
+     * @return void
      */
-    public static function performUpgradeFollowUp(string $OldVersion)
+    public static function performUpgradeFollowUp(string $OldVersion): void
     {
         # queue complete recommender DB rebuild
         $Recommender = new Recommender();
         $RFactory = new RecordFactory();
-        $Ids = $RFactory->GetItemIds();
+        $Ids = $RFactory->getItemIds();
         foreach ($Ids as $Id) {
             $Recommender->queueUpdateForItem(
                 (int)$Id,
@@ -70,7 +71,7 @@ class FollowupTasks
             );
         }
 
-        $GLOBALS["AF"]->QueueUniqueTask(
+        ApplicationFramework::getInstance()->queueUniqueTask(
             [$Recommender, "PruneCorrelations"],
             [],
             ApplicationFramework::PRIORITY_BACKGROUND
@@ -78,7 +79,7 @@ class FollowupTasks
 
         # recalculate all resource counts
         $ClassificationFactory = new ClassificationFactory();
-        $ClassificationFactory->RecalculateAllResourceCounts();
+        $ClassificationFactory->recalculateAllResourceCounts();
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------

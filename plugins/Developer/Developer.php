@@ -3,16 +3,16 @@
 #   FILE:  Developer.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use InvalidArgumentException;
 use Metavus\FormUI;
+use Metavus\Image;
 use Metavus\Plugin;
 use Metavus\PrivilegeSet;
 use Metavus\SystemConfiguration;
@@ -60,18 +60,19 @@ class Developer extends Plugin
 
     /**
      * Set plugin attributes.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Developer Support";
-        $this->Version = "1.2.3";
+        $this->Version = "1.2.4";
         $this->Description = "Provides various conveniences useful during"
                 ." software development.";
         $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/metavus/";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
         ];
         $this->InitializeBefore = [ "MetavusCore" ];
         $this->EnabledByDefault = false;
@@ -322,16 +323,25 @@ class Developer extends Plugin
         ];
 
         # (disable until DB integrity check is updated to actually do some checking)
-        # $this->addAdminMenuEntry("DBIssues", "Check Database Integrity", [ PRIV_SYSADMIN ]);
+        # $this->addAdminMenuEntry(
+        #     "DBIssues",
+        #     "Check Database Integrity",
+        #     [ PRIV_SYSADMIN ]
+        # );
+        $this->addAdminMenuEntry(
+            "PageCacheStats",
+            "Page Cache Statistics",
+            [ PRIV_SYSADMIN ]
+        );
     }
 
     /**
      * Perform any work needed when the plugin is first installed (for example,
      * creating database tables).
-     * @return NULL if installation succeeded, otherwise a string containing
-     *       an error message indicating why installation failed.
+     * @return string|null NULL if installation succeeded, otherwise a string
+     *      containing an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
         # calculate and store upgrade file checksums
         $this->updateUpgradeFileCheckdata(self::DBUPGRADE_FILEPATTERN);
@@ -342,60 +352,19 @@ class Developer extends Plugin
     }
 
     /**
-     * Perform any work needed when the plugin is upgraded to a new version
-     * (for example, adding fields to database tables).
-     * @param string $PreviousVersion The version number of this plugin that was
-     *       previously installed.
-     * @return NULL if upgrade succeeded, otherwise a string containing
-     *       an error message indicating why upgrade failed.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        # if previously-installed version is earlier than 1.1.6
-        if (version_compare($PreviousVersion, "1.1.6", "<")) {
-            # if privileges are not a PrivilegeSet, make them one
-            if (!($this->configSetting("VariableMonitorPrivilege"))) {
-                $VariableMonitorPrivs = new PrivilegeSet();
-                $VariableMonitorPrivs->addPrivilege(
-                    $this->configSetting("VariableMonitorPrivilege")
-                );
-                $this->configSetting("VariableMonitorPrivilege", $VariableMonitorPrivs);
-            }
-
-            if (!($this->configSetting("PageLoadInfoPrivilege")) instanceof PrivilegeSet) {
-                $PageLoadInfoPrivs = new PrivilegeSet();
-                $PageLoadInfoPrivs->addPrivilege(
-                    $this->configSetting("PageLoadInfoPrivilege")
-                );
-                $this->configSetting("PageLoadInfoPrivilege", $PageLoadInfoPrivs);
-            }
-        }
-
-        # if previously-installed version is earlier than 1.2.3
-        if (version_compare($PreviousVersion, "1.2.3", "<")) {
-            # clear out old upgrade file checksum data
-            $this->setConfigSetting("DBUpgradeFileChecksums", null);
-            $this->setConfigSetting("SiteUpgradeFileChecksums", null);
-        }
-
-        # report successful execution
-        return null;
-    }
-
-    /**
      * Initialize the plugin.This is called after all plugins have been loaded
      * but before any methods for this plugin (other than Register() or Initialize())
      * have been called.
-     * @return NULL if initialization was successful, otherwise a string containing
-     *       an error message indicating why initialization failed.
+     * @return string|null NULL if initialization was successful, otherwise a
+     *      string containing an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         # load local developer settings if available
         $this->loadLocalSettings();
 
         # set the PHP error reporting level
-        $ErrorFlags = $this->configSetting("ErrorReportingFlags");
+        $ErrorFlags = $this->getConfigSetting("ErrorReportingFlags");
         if (count($ErrorFlags)) {
             $CurrentFlags = error_reporting();
             foreach ($ErrorFlags as $Flag) {
@@ -418,14 +387,14 @@ class Developer extends Plugin
         }
 
         # if email whitelisting is turned on
-        if ($this->configSetting("UseEmailWhitelist")) {
+        if ($this->getConfigSetting("UseEmailWhitelist")) {
             $DB = new Database();
 
             # set whitelist addresses if any
             $Whitelist = explode("\n", str_replace(
                 "X-DBUSER-X",
                 $DB->DBUserName(),
-                $this->configSetting("EmailWhitelist")
+                $this->getConfigSetting("EmailWhitelist")
             ));
             Email::toWhitelist($Whitelist);
 
@@ -436,19 +405,19 @@ class Developer extends Plugin
         # register insertion keyword callbacks
         if (!ApplicationFramework::reachedViaAjax()) {
             $AF = ApplicationFramework::getInstance();
-            if ($this->configSetting("VariableMonitorEnabled")) {
+            if ($this->getConfigSetting("VariableMonitorEnabled")) {
                 $AF->registerInsertionKeywordCallback(
                     "P-DEVELOPER-VARIABLEMONITOR",
                     [$this, "getVariableMonitorHtml"]
                 );
             }
-            if ($this->configSetting("PageLoadInfoEnabled")) {
+            if ($this->getConfigSetting("PageLoadInfoEnabled")) {
                 $AF->registerInsertionKeywordCallback(
                     "P-DEVELOPER-PAGELOADINFO",
                     [$this, "getPageLoadInfoHtml"]
                 );
             }
-            if ($this->configSetting("WatermarkEnabled")) {
+            if ($this->getConfigSetting("WatermarkEnabled")) {
                 $AF->registerInsertionKeywordCallback(
                     "P-DEVELOPER-WATERMARK",
                     [$this, "getWatermarkHtml"]
@@ -471,6 +440,14 @@ class Developer extends Plugin
             );
         }
 
+        # set up file path fallback for images (if appropriate)
+        if ($this->getConfigSetting("UseFileUrlFallbacks")) {
+            $Prefix = $this->getConfigSetting("FileUrlFallbackPrefix");
+            if (strlen($Prefix)) {
+                Image::setFilePathFallbackPrefix($Prefix);
+            }
+        }
+
         # report that initialization was successful
         return null;
     }
@@ -482,18 +459,18 @@ class Developer extends Plugin
      * @return array Method names to hook indexed by the event constants
      *       or names to hook them to.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         $Hooks = [];
-        if ($this->configSetting("AutoUpgradeDatabase") ||
-            $this->configSetting("AutoUpgradeSite")) {
+        if ($this->getConfigSetting("AutoUpgradeDatabase") ||
+            $this->getConfigSetting("AutoUpgradeSite")) {
             $Hooks["EVENT_PERIODIC"][] = "checkForUpgrades";
         }
-        if ($this->configSetting("UseFileUrlFallbacks")) {
+        if ($this->getConfigSetting("UseFileUrlFallbacks")) {
             $Hooks["EVENT_PAGE_OUTPUT_FILTER"][] = "insertImageUrlFallbackPrefixes";
         }
         if (!ApplicationFramework::reachedViaAjax()) {
-            if ($this->configSetting("VariableMonitorEnabled")) {
+            if ($this->getConfigSetting("VariableMonitorEnabled")) {
                 $Hooks["EVENT_IN_HTML_HEADER"] = "addVariableMonitorStyles";
             }
         }
@@ -518,13 +495,13 @@ class Developer extends Plugin
         }
 
         # tell caller how many minutes to wait before calling us again
-        return $this->configSetting("AutoUpgradeInterval");
+        return $this->getConfigSetting("AutoUpgradeInterval");
     }
 
     /**
      * HOOKED METHOD:  Add CSS styles used by Variable Monitor to page header.
      */
-    public function addVariableMonitorStyles()
+    public function addVariableMonitorStyles(): void
     {
         ?><style type="text/css">
         .VariableMonitor {
@@ -576,10 +553,10 @@ class Developer extends Plugin
      * HOOKED METHOD:  Generate and return HTML for Variable Monitor.
      * @return string Generated HTML.
      */
-    public function getVariableMonitorHtml()
+    public function getVariableMonitorHtml(): string
     {
         # return nothing if current user does not have needed privilege
-        $VMPrivs = $this->configSetting("VariableMonitorPrivilege");
+        $VMPrivs = $this->getConfigSetting("VariableMonitorPrivilege");
         if (!$VMPrivs->MeetsRequirements(User::getCurrentUser())) {
             return "";
         }
@@ -669,17 +646,17 @@ class Developer extends Plugin
      * HOOKED METHOD:  Generate and return HTML for page load info line.
      * @return string Generated HTML.
      */
-    public function getPageLoadInfoHtml()
+    public function getPageLoadInfoHtml(): string
     {
         # return nothing if current user does not have needed privilege
-        $PLIPrivs = $this->configSetting("PageLoadInfoPrivilege");
+        $PLIPrivs = $this->getConfigSetting("PageLoadInfoPrivilege");
         if (!$PLIPrivs->MeetsRequirements(User::getCurrentUser())) {
             return "";
         }
 
         # retrieve values to be printed
         $AF = ApplicationFramework::getInstance();
-        $GenTime = sprintf("%.2f", $AF->GetElapsedExecutionTime());
+        $GenTime = sprintf("%.2f", $AF->getElapsedExecutionTime());
         $Version = METAVUS_VERSION;
         $DB = new Database();
         $DBName = $DB->DBName();
@@ -689,7 +666,7 @@ class Developer extends Plugin
             $DB->numCacheHits(),
             $DB->numQueries()
         );
-        $MemUsed = memory_get_peak_usage(true);
+        $MemUsed = memory_get_peak_usage();
         $MemLimit = StdLib::getPhpMemoryLimit();
         $MemPercent = round(($MemUsed * 100) / $MemLimit);
         $MemUsage = sprintf(
@@ -748,7 +725,7 @@ class Developer extends Plugin
 
         # see if we should open the profiling panel by default
         $GenTime = ApplicationFramework::getInstance()->getElapsedExecutionTime();
-        $ProfileCSS = ($GenTime <= $this->configSetting("AutoOpenThreshold")) ?
+        $ProfileCSS = ($GenTime <= $this->getConfigSetting("AutoOpenThreshold")) ?
             "display: none;" : "";
 
         $BaseDir = dirname($_SERVER["SCRIPT_FILENAME"])."/";
@@ -756,7 +733,7 @@ class Developer extends Plugin
 
         # get the slowest queries
         $SlowQueries = Database::getMostTimeConsumingQueries(
-            $this->configSetting("ProfileQueryCount")
+            $this->getConfigSetting("ProfileQueryCount")
         );
 
         # and disable timing of further queries
@@ -830,7 +807,7 @@ class Developer extends Plugin
                     strpos($QueryString, " WHERE ") !== false &&
                     count($ExplainResults) == 1 &&
                     strlen($ExplainResults[0]["key"] ?? "") == 0) {
-                    $CssClass = "font-italic font-weight-bold";
+                    $CssClass = "fst-italic font-weight-bold";
                 }
             } else {
                 $ExplainResults = [];
@@ -941,12 +918,12 @@ class Developer extends Plugin
         $ProfileData = array_slice(
             $ProfileData,
             0,
-            $this->configSetting("ProfileCallCount"),
+            $this->getConfigSetting("ProfileCallCount"),
             true
         );
 
         $GenTime = ApplicationFramework::getInstance()->getElapsedExecutionTime();
-        $ProfileCSS = ($GenTime <= $this->configSetting("AutoOpenThreshold")) ?
+        $ProfileCSS = ($GenTime <= $this->getConfigSetting("AutoOpenThreshold")) ?
             "display: none;" : "";
 
         $Result = '<div id="mv-content-executionstats" class="container-fluid">'
@@ -1028,7 +1005,7 @@ class Developer extends Plugin
         $ProfileData = array_slice(
             $ProfileData,
             0,
-            $this->configSetting("ProfileCallCount"),
+            $this->getConfigSetting("ProfileCallCount"),
             true
         );
 
@@ -1117,7 +1094,7 @@ class Developer extends Plugin
     public static function autoUpgradeShouldRun(): bool
     {
         # run upgrade if user is logged in with Sys Admin privileges
-        if (User::getCurrentUser()->HasPriv(PRIV_SYSADMIN)) {
+        if (User::getCurrentUser()->hasPriv(PRIV_SYSADMIN)) {
             return true;
         }
 
@@ -1221,8 +1198,9 @@ class Developer extends Plugin
 
     /**
      * Check for and run upgrades via CLI.
+     * @return void
      */
-    public function commandUpgrade()
+    public function commandUpgrade(): void
     {
         $DbErrorDisplayState = Database::displayQueryErrors();
         Database::displayQueryErrors(false);
@@ -1243,7 +1221,7 @@ class Developer extends Plugin
      * Get any settings set and error messages as HTML for display.
      * @return string HTML for display.
      */
-    public function getSettingsInfoHtml()
+    public function getSettingsInfoHtml(): string
     {
         return $this->SettingsInfoHtml;
     }
@@ -1252,7 +1230,7 @@ class Developer extends Plugin
      * Generate and return HTML for watermark.
      * @return string Generated HTML.
      */
-    public function getWatermarkHtml()
+    public function getWatermarkHtml(): string
     {
         # retrieve base directory owner
         $Owner = "(unknown)";
@@ -1268,13 +1246,13 @@ class Developer extends Plugin
         }
 
         # perform substitutions in watermark text
-        $WatermarkText = $this->configSetting("WatermarkText");
+        $WatermarkText = $this->getConfigSetting("WatermarkText");
         $WatermarkText = str_replace("{{OWNER}}", $Owner, $WatermarkText);
 
         # get color for text
         $TextColor = "#FFFFFF";
         $TextOpacity = "0.7";
-        switch ($this->configSetting("WatermarkColor")) {
+        switch ($this->getConfigSetting("WatermarkColor")) {
             case self::WATERMARKCOLOR_TEXT:
                 $Hue = crc32($WatermarkText) % 360;
                 break;
@@ -1319,8 +1297,9 @@ class Developer extends Plugin
     /**
      * Function to print a notice about the email whitelist.
      * @param array $Whitelist Email whitelist.
+     * @return void
      */
-    public function printWhitelistNotice(array $Whitelist)
+    public function printWhitelistNotice(array $Whitelist): void
     {
         array_walk(
             $Whitelist,
@@ -1359,7 +1338,7 @@ class Developer extends Plugin
      * Check for and remove duplicate database indexes.
      * @return array Progress and error messages.
      */
-    private static function cleanOutDuplicateDatabaseIndexes()
+    private static function cleanOutDuplicateDatabaseIndexes(): array
     {
         $DB = new Database();
         $Messages = [];
@@ -1419,8 +1398,9 @@ class Developer extends Plugin
     /**
      * Check for any site upgrade PHP files that have changed and perform
      * upgrades as needed.
+     * @return array Messages from upgrade files.
      */
-    private function checkForSiteUpgrades()
+    private function checkForSiteUpgrades(): array
     {
         $Messages = [];
 
@@ -1472,8 +1452,9 @@ class Developer extends Plugin
      * Message logging function for use during site upgrades.
      * @param int $VerbosityLevel Minimum verbosity level required to display message.
      * @param string $Message Message string.
+     * @return void
      */
-    public static function msg($VerbosityLevel, $Message)
+    public static function msg($VerbosityLevel, $Message): void
     {
         # if running from command line
         if (php_sapi_name() == "cli") {
@@ -1521,8 +1502,8 @@ class Developer extends Plugin
             static $FileUrlFallbackPrefix;
             if (!isset($UrlFingerprintingEnabled)) {
                 $AF = ApplicationFramework::getInstance();
-                $UrlFingerprintingEnabled = $AF->UrlFingerprintingEnabled();
-                $FileUrlFallbackPrefix = $this->configSetting("FileUrlFallbackPrefix");
+                $UrlFingerprintingEnabled = $AF->urlFingerprintingEnabled();
+                $FileUrlFallbackPrefix = $this->getConfigSetting("FileUrlFallbackPrefix");
             }
 
             # strip any URL fingerprinting out of file name before looking for local copy
@@ -1545,8 +1526,9 @@ class Developer extends Plugin
      * @param string $VarName Name of variable.
      * @param mixed $VarValue Current value of variable.
      * @param int $VarIndex Numerical index into list of variables.
+     * @return void
      */
-    private function displayVariable(string $VarName, $VarValue, int $VarIndex)
+    private function displayVariable(string $VarName, $VarValue, int $VarIndex): void
     {
         print "<span onclick=\"$('#VMVal".$VarIndex."').toggle()\" class=\"VarMonName\">"
                 .$VarName."</span><br/>\n"
@@ -1556,7 +1538,7 @@ class Developer extends Plugin
         $VarDump = (string)ob_get_clean();
         # (strip out any file/line info added by Xdebug)
         $VarDump = str_replace(__FILE__.":".(__LINE__ - 3).":", "", $VarDump);
-        if (strlen($VarDump) < $this->configSetting("VariableDisplayThreshold")) {
+        if (strlen($VarDump) < $this->getConfigSetting("VariableDisplayThreshold")) {
             print $VarDump;
         } else {
             if (is_object($VarValue)) {
@@ -1577,8 +1559,9 @@ class Developer extends Plugin
      * In addition to checking for files matching the supplied pattern, the pattern
      * with "local/" prepended to it will be checked for files.
      * @param string $FilePattern File pattern to pass to glob() to find upgrade files.
+     * @return void
      */
-    private static function updateUpgradeFileCheckdata(string $FilePattern)
+    private static function updateUpgradeFileCheckdata(string $FilePattern): void
     {
         # retrieve list of upgrade files
         $Files = glob($FilePattern);
@@ -1653,9 +1636,10 @@ class Developer extends Plugin
      * Update saved data (checksum and modification time) used to check
      * whether specified upgrade file has changed.
      * @param string $FileName Name of upgrade file.
+     * @return void
      * @see checkForChangedUpgradeFiles()
      */
-    private static function updateCheckdataForUpgradeFile(string $FileName)
+    private static function updateCheckdataForUpgradeFile(string $FileName): void
     {
         $Checksums = self::getConfigSetting("UpgradeFileChecksums");
         $Checksums[$FileName] = md5_file($FileName);
@@ -1687,8 +1671,9 @@ class Developer extends Plugin
 
     /**
      * Load settings from local file if available.
+     * @return void
      */
-    private function loadLocalSettings()
+    private function loadLocalSettings(): void
     {
         # for each settings file
         $SetMsgs = [];
@@ -1807,7 +1792,7 @@ class Developer extends Plugin
      * @return string|null Setting message if value was set, or NULL if error
      *      encountered.
      */
-    private function setNonPluginSetting(string $SectionName, string $Param, $Value)
+    private function setNonPluginSetting(string $SectionName, string $Param, $Value): ?string
     {
         $Msg = null;
         $FullParam = $SectionName.":".$Param;
@@ -1882,7 +1867,7 @@ class Developer extends Plugin
      * @return string|null Setting message if value was set, or NULL if error
      *      encountered.
      */
-    private function setPluginSetting(string $PluginName, string $Param, $Value)
+    private function setPluginSetting(string $PluginName, string $Param, $Value): ?string
     {
         $Msg = null;
         $FullParam = $PluginName.":".$Param;
@@ -1934,7 +1919,7 @@ class Developer extends Plugin
         }
 
         # handle other settings based on type
-        switch ($Plugin->GetConfigSettingType($Param)) {
+        switch ($Plugin->getConfigSettingType($Param)) {
             case FormUI::FTYPE_FLAG:
                 $Msg = $DefaultMsg;
                 $Plugin->ConfigSettingOverride($Param, $Value);
@@ -1944,7 +1929,6 @@ class Developer extends Plugin
             case FormUI::FTYPE_URL:
             case FormUI::FTYPE_NUMBER:
             case FormUI::FTYPE_PARAGRAPH:
-                $FileSetMsgs[$FullParam] =
                 $Msg = $DefaultMsg;
                 $Plugin->ConfigSettingOverride($Param, $Value);
                 break;
@@ -2023,7 +2007,7 @@ class Developer extends Plugin
 
             case "interface":
                 $AF = ApplicationFramework::getInstance();
-                $Interface = $AF->ActiveUserInterface();
+                $Interface = $AF->activeUserInterface();
                 if ((($ConditionOperator == "=") && in_array($Interface, $ConditionValues)) ||
                     (($ConditionOperator == "!=") && !in_array($Interface, $ConditionValues))) {
                     return true;
@@ -2062,8 +2046,9 @@ class Developer extends Plugin
      *      for the inner index.
      * @param array $SetBy Array with full parameter names for the index
      *      and what file set them for the value.
+     * @return void
      */
-    private function buildSettingsInfoHtml(array $SetMsgs, array $SetBy)
+    private function buildSettingsInfoHtml(array $SetMsgs, array $SetBy): void
     {
         # bail out if there is nothing to add
         if (!count($this->SettingsErrorMsgs) && !count($SetMsgs)) {
@@ -2092,7 +2077,7 @@ class Developer extends Plugin
                     }
                 }
                 if ($NoSetFound) {
-                    $this->SettingsInfoHtml .= "(none – all settings overridden)\n";
+                    $this->SettingsInfoHtml .= "(none - all settings overridden)\n";
                 }
                 $this->SettingsInfoHtml .= "</ul>\n";
             }
@@ -2147,7 +2132,7 @@ class Developer extends Plugin
     private static function legacyVersionCompare(
         string $VersionOne,
         string $VersionTwo,
-        string $Operator = null
+        ?string $Operator = null
     ) {
         $AdjustFunc = function (string $Version): string {
             if (version_compare($Version, self::OLDEST_UPGRADABLE_VERSION, "<")) {

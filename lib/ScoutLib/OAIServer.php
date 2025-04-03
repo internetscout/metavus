@@ -75,7 +75,7 @@ class OAIServer
         $ElementList,
         $QualifierList,
         $DefaultMap
-    ) {
+    ): void {
 
         # find highest current format ID
         $HighestFormatId = 0;
@@ -160,7 +160,7 @@ class OAIServer
      * @param string $LocalFieldName Local field to map.
      * @param string $OAIFieldName Mapped value to set.
      */
-    public function setFieldMapping($FormatName, $LocalFieldName, $OAIFieldName)
+    public function setFieldMapping($FormatName, $LocalFieldName, $OAIFieldName): void
     {
         $this->FieldMappings[$FormatName][$LocalFieldName][] = $OAIFieldName;
     }
@@ -191,7 +191,7 @@ class OAIServer
         $FormatName,
         $LocalQualifierName,
         $OAIQualifierName
-    ) {
+    ): void {
 
         $this->QualifierMappings[$FormatName][$LocalQualifierName] =
             $OAIQualifierName;
@@ -873,7 +873,8 @@ class OAIServer
                 $this->FormatDescrs[$MetadataFormat]["SchemaNamespace"] . " \n"
                 . $this->FormatDescrs[$MetadataFormat]["SchemaDefinition"];
             $MFAttribs["xmlns"] = $this->FormatDescrs[$MetadataFormat]["SchemaNamespace"];
-            if (strlen($this->FormatDescrs[$MetadataFormat]["SchemaVersion"]) > 0) {
+            if (isset($this->FormatDescrs[$MetadataFormat]["SchemaVersion"]) &&
+                strlen($this->FormatDescrs[$MetadataFormat]["SchemaVersion"]) > 0) {
                 $MFAttribs["schemaVersion"] =
                     $this->FormatDescrs[$MetadataFormat]["SchemaVersion"];
             }
@@ -998,7 +999,8 @@ class OAIServer
      * @param string $EndingDate Ending date to encode.
      * @param string $MetadataFormat Metadata format to encode.
      * @param string $SetSpec OAI Set to encode.
-     * @param string $ListStartPoint Offset into results.
+     * @param int $ListStartPoint Offset into results.
+     * @return string Encoded token.
      */
     private function encodeResumptionToken(
         $StartingDate,
@@ -1006,7 +1008,7 @@ class OAIServer
         $MetadataFormat,
         $SetSpec,
         $ListStartPoint
-    ) {
+    ): string {
 
         # concatenate values to create token
         $Token = $StartingDate . "-_-" . $EndingDate . "-_-" . $MetadataFormat . "-_-"
@@ -1032,6 +1034,7 @@ class OAIServer
             $Args = null;
         } else {
             # assign component pieces to list parameters
+            $Args = [];
             if (strlen($Pieces[0]) > 0) {
                 $Args["from"] = $Pieces[0];
             }
@@ -1084,7 +1087,7 @@ class OAIServer
         $Content = null,
         $Attributes = null,
         $NewIndentLevel = null
-    ) {
+    ): string {
 
         static $IndentLevel = 1;
         static $OpenTagStack = array();
@@ -1156,7 +1159,7 @@ class OAIServer
      * @param string $MetadataFormat OAI Schema to use.
      * @param string $LocalFieldName Local field to output.
      * @param string $OAIFieldName Field name to use in output.
-     * return string XML formatted content
+     * @return string XML formatted content
      */
     private function formatItemContent(
         $Item,
@@ -1177,7 +1180,7 @@ class OAIServer
             array();
 
         # get defaults, if any exist for our format
-        $DefaultMaps = isset($this->FormatDescrs[$MetadataFormat]["DefaultMap"]) ?
+        $DefaultMap = isset($this->FormatDescrs[$MetadataFormat]["DefaultMap"]) ?
             $this->FormatDescrs[$MetadataFormat]["DefaultMap"] :
             array();
 
@@ -1213,8 +1216,9 @@ class OAIServer
             }
         } else {
             # check for a default value, fill it in if there was one
-            if (is_string($Content) && strlen($Content) == 0 &&
-                isset($DefaultMap[$OAIFieldName])) {
+            if (is_string($Content)
+                    && strlen($Content) == 0
+                    && isset($DefaultMap[$OAIFieldName])) {
                 $Content = $DefaultMap[$OAIFieldName];
             }
 
@@ -1249,7 +1253,7 @@ class OAIServer
     /**
      * Load internal Args array from _POST or _GET parameters.
      */
-    private function loadArguments()
+    private function loadArguments(): void
     {
         # if request type available via POST variables
         if (isset($_POST["verb"])) {

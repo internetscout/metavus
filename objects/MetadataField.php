@@ -3,13 +3,12 @@
 #   FILE:  MetadataField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -45,7 +44,7 @@ class MetadataField
 
     # events that can be monitored via registerObserver()
     # (TO DO: push down into ObserverSupportTrait once our minimum
-    #   supported PHP version allows constants in traits)
+    #   supported PHP version allows constants in traits (PHP 8.2))
     const EVENT_SET = 1;
     const EVENT_CLEAR = 2;
     const EVENT_ADD = 4;
@@ -81,6 +80,80 @@ class MetadataField
 
         # return type to caller
         return self::$FieldTypePHPEnums[$FTFieldName];
+    }
+
+    /**
+     * Check if a type conversion will modify data, and provide warnings if so.
+     * Cases include:
+     * When converting from a timestamp to a date field, the time data
+     * will be lost, so a warning is needed if there are nonzero dates.
+     * When converting from a date to a timestamp,
+     * 1) If the precision is not YYYY-MM-DD, we are either adding information,
+     * e.g. only the year is known and we're adding an artificial month and day, or we're
+     * removing additional information, e.g. the decade and/or century.
+     * 2) All end dates will be lost.
+     * @param int $NewType New type.
+     * @return array An array of warnings as strings. Empty if there are no warnings.
+     */
+    public function checkIfTypeChangeWillModifyData(int $NewType): array
+    {
+        $DB = $this->DB;
+        $OldType = $this->type();
+        $OldDBFieldName = $this->dBFieldName();
+        $Warnings = [];
+        switch ($NewType) {
+            case MetadataSchema::MDFTYPE_DATE:
+                if ($OldType == MetadataSchema::MDFTYPE_TIMESTAMP) {
+                    # check if there are nonzero time values
+                    $NonEmptyTimeCount = (int)$DB->queryValue(
+                        "SELECT COUNT(*) "
+                        ."AS NonEmptyTimeCount "
+                        ."FROM Records WHERE `"
+                        .$OldDBFieldName."` IS NOT NULL AND "
+                        ."CAST(`".$OldDBFieldName."` AS TIME) != '00:00:00'",
+                        "NonEmptyTimeCount"
+                    );
+                    if ($NonEmptyTimeCount > 0) {
+                        $Warnings[] = "Converting this Timestamp field to a Date "
+                            ."field will discard time information currently "
+                            ."stored in the field.";
+                    }
+                }
+                break;
+            case MetadataSchema::MDFTYPE_TIMESTAMP:
+                if ($OldType == MetadataSchema::MDFTYPE_DATE) {
+                    # check if precision doesn't match YYYY-MM-DD
+                    $YMDPrecision = Date::PRE_BEGINYEAR | Date::PRE_BEGINMONTH | Date::PRE_BEGINDAY;
+                    $WrongPrecisionCount = (int)$DB->queryValue(
+                        "SELECT COUNT(*) "
+                        ."AS WrongPrecisionCount "
+                        ."FROM Records WHERE `"
+                        .$OldDBFieldName."Precision` IS NOT NULL AND `"
+                        .$OldDBFieldName."Precision` != ".$YMDPrecision,
+                        "WrongPrecisionCount"
+                    );
+                    if ($WrongPrecisionCount > 0) {
+                        $Warnings[] = "This date field has different precision values "
+                            ."than YYYY-MM-DD, and converting it to a timestamp will "
+                            ."produce inaccurate date information.";
+                    }
+
+                    # check if there's an end date
+                    $EndDateCount = (int)$DB->queryValue(
+                        "SELECT COUNT(*) "
+                        ."AS EndDateCount "
+                        ."FROM Records WHERE `"
+                        .$OldDBFieldName."End` IS NOT NULL",
+                        "EndDateCount"
+                    );
+                    if ($EndDateCount > 0) {
+                        $Warnings[] = "This date field contains entries that include "
+                            ."end dates, which will be lost if converted to a Timestamp "
+                            ."field.";
+                    }
+                }
+        }
+        return $Warnings;
     }
 
     /**
@@ -140,46 +213,79 @@ class MetadataField
      * @param string $NewName New field name.  (OPTIONAL)
      * @return string Current field name.
      */
-    public function name(string $NewName = null): string
+    public function name(?string $NewName = null): string
     {
         $DB = $this->DB;
         # if new name specified
         if (($NewName !== null) && (trim($NewName) != $DB->updateValue("FieldName"))) {
             $NewName = trim($NewName);
-            $NormalizedName = $this->normalizeFieldNameForDB(strtolower($NewName));
-
+            $NormalizedName = self::normalizeFieldNameForDB(
+                strtolower($NewName),
+                $this->schemaId()
+            );
             # if field name is invalid
             if (!preg_match("/^[[:alnum:] \(\)]+$/", $NewName)) {
                 # set error status to indicate illegal name
                 $this->ErrorStatus = MetadataSchema::MDFSTAT_ILLEGALNAME;
-            # if the new name is a reserved word
             } elseif ($NormalizedName == "resourceid" || $NormalizedName == "schemaid") {
+                # if the new name is a reserved word
                 # set error status to indicate illegal name
                 $this->ErrorStatus = MetadataSchema::MDFSTAT_ILLEGALNAME;
-            # the name is okay but might be a duplicate
             } else {
-                # check for duplicate name
-                $DuplicateCount = $this->DB->queryValue(
-                    "SELECT COUNT(*) AS RecordCount FROM MetadataFields"
-                            ." WHERE FieldName = '" .addslashes($NewName) ."'"
-                            ." AND SchemaId = " .intval($DB->updateValue("SchemaId")),
-                    "RecordCount"
-                );
-
-                # if field name is duplicate
-                if ($DuplicateCount > 0) {
+                if (!$this->newNameForFieldIsValid($NewName)) {
                     # set error status to indicate duplicate name
                     $this->ErrorStatus = MetadataSchema::MDFSTAT_DUPLICATENAME;
                 } else {
+                    # collapse repeated whitespace
+                    $NewName = preg_replace('/\s+/', " ", $NewName);
+
                     # modify database declaration to reflect new field name
                     $this->ErrorStatus = MetadataSchema::MDFSTAT_OK;
+
                     $this->modifyField($NewName);
                 }
             }
         }
-
         # return value to caller
         return $DB->updateValue("FieldName");
+    }
+
+    /**
+     * Determine if a new name for a field is valid.
+     * A new name is valid if, when normalized to the name of a database column
+     * it will not be the same as the name of the database column for an
+     * existing field.
+     * @param string $NewName Proposed name to change the name of this field to.
+     * @return bool Returns TRUE if the name to change this field's name to
+     *         is valid, otherwise returns FALSE.
+     */
+    public function newNameForFieldIsValid(string $NewName): bool
+    {
+        $NewName = trim($NewName);
+        $Schema = new MetadataSchema($this->schemaId());
+
+        $NormalizedFieldName = MetadataField::normalizeFieldNameForDB(
+            $NewName,
+            $this->schemaId()
+        );
+
+        $FieldId = $Schema->getFieldIdByDbName($NormalizedFieldName);
+
+        if (is_null($FieldId)) {
+            # no names of fields in this schema normalize to the same
+            # column name as the new name
+            return true;
+        }
+
+        if ($FieldId == $this->id()) {
+             # the field with a name that normalizes to the same column name as
+             # this field's name *is* this field; which indicates that
+             # this field's name is being changed by capitalization, spaces
+             # or parentheses
+             return true;
+        }
+
+        return false;
     }
 
     /**
@@ -187,7 +293,7 @@ class MetadataField
      * @param string $NewLabel New label for field.  (OPTIONAL)
      * @return string|null Current label for field or NULL if no label.
      */
-    public function label(string $NewLabel = null)
+    public function label(?string $NewLabel = null)
     {
         $ValidValueExp = '/^[[:alnum:] ]*$/';
         $Value = $this->DB->updateValue("Label");
@@ -248,6 +354,7 @@ class MetadataField
                 $AllowedTypes = [
                     MetadataSchema::MDFTYPE_TEXT  => "Text",
                     MetadataSchema::MDFTYPE_DATE  => "Date",
+                    MetadataSchema::MDFTYPE_TIMESTAMP => "Timestamp",
                 ];
                 break;
 
@@ -267,6 +374,12 @@ class MetadataField
                 break;
 
             case MetadataSchema::MDFTYPE_TIMESTAMP:
+                $AllowedTypes = [
+                    MetadataSchema::MDFTYPE_DATE => "Date",
+                    MetadataSchema::MDFTYPE_TIMESTAMP => "Timestamp",
+                ];
+                break;
+
             case MetadataSchema::MDFTYPE_USER:
             case MetadataSchema::MDFTYPE_FILE:
             case MetadataSchema::MDFTYPE_POINT:
@@ -288,7 +401,7 @@ class MetadataField
      * @return bool If TRUE, field is a temporary instance, or
      *       if FALSE, field is non-temporary.
      */
-    public function isTempItem(bool $IsTempField = null): bool
+    public function isTempItem(?bool $IsTempField = null): bool
     {
         $Schema = new MetadataSchema($this->schemaId());
         $ItemTableName = "MetadataFields";
@@ -303,7 +416,11 @@ class MetadataField
             if (($this->Id < 0 && $IsTempField == false) ||
                 ($this->Id >= 0 && $IsTempField == true)) {
                 # if field name is invalid
-                if (strlen($this->normalizeFieldNameForDB($this->name())) < 1) {
+                $PossibleFieldName = self::normalizeFieldNameForDB(
+                    $this->name(),
+                    $this->schemaId()
+                );
+                if (strlen($PossibleFieldName) < 1) {
                     # set error status to indicate illegal name
                     $this->ErrorStatus = MetadataSchema::MDFSTAT_ILLEGALNAME;
                 } else {
@@ -320,9 +437,9 @@ class MetadataField
                     $OldItemId = $this->Id;
                     $Factory = new $ItemFactoryObjectName();
                     if ($IsTempField == true) {
-                        $NewId = $Factory->GetNextTempItemId();
+                        $NewId = $Factory->getNextTempItemId();
                     } else {
-                        $NewId = $Factory->GetNextItemId();
+                        $NewId = $Factory->getNextItemId();
                     }
 
                     # update metadata field id
@@ -353,7 +470,7 @@ class MetadataField
                         $this->addDatabaseFields();
 
                         # Signal that a new (real) field was added:
-                        ApplicationFramework::getInstance()->SignalEvent(
+                        ApplicationFramework::getInstance()->signalEvent(
                             "EVENT_FIELD_ADDED",
                             ["FieldId" => $NewId]
                         );
@@ -378,7 +495,7 @@ class MetadataField
      * @param PrivilegeSet $NewValue New PrivilegeSet value.  (OPTIONAL)
      * @return PrivilegeSet PrivilegeSet that allows authoring.
      */
-    public function authoringPrivileges(PrivilegeSet $NewValue = null): PrivilegeSet
+    public function authoringPrivileges(?PrivilegeSet $NewValue = null): PrivilegeSet
     {
         # if new privileges supplied
         if ($NewValue !== null) {
@@ -396,7 +513,7 @@ class MetadataField
      * @param PrivilegeSet $NewValue New PrivilegeSet value.  (OPTIONAL)
      * @return PrivilegeSet PrivilegeSet that allows editing.
      */
-    public function editingPrivileges(PrivilegeSet $NewValue = null): PrivilegeSet
+    public function editingPrivileges(?PrivilegeSet $NewValue = null): PrivilegeSet
     {
         # if new privileges supplied
         if ($NewValue !== null) {
@@ -414,7 +531,7 @@ class MetadataField
      * @param PrivilegeSet $NewValue New PrivilegeSet value.  (OPTIONAL)
      * @return PrivilegeSet PrivilegeSet that allows viewing.
      */
-    public function viewingPrivileges(PrivilegeSet $NewValue = null): PrivilegeSet
+    public function viewingPrivileges(?PrivilegeSet $NewValue = null): PrivilegeSet
     {
         # if new privileges supplied
         if ($NewValue !== null) {
@@ -443,7 +560,10 @@ class MetadataField
      */
     public function dBFieldName(): string
     {
-        return $this->normalizeFieldNameForDB($this->DB->updateValue("FieldName"));
+        return self::normalizeFieldNameForDB(
+            $this->DB->updateValue("FieldName"),
+            $this->schemaId()
+        );
     }
 
     /**
@@ -451,7 +571,7 @@ class MetadataField
      * @param string $NewValue Updated description.  (OPTIONAL)
      * @return string Current field description.
      */
-    public function description(string $NewValue = null): string
+    public function description(?string $NewValue = null): string
     {
         return $this->DB->updateValue("Description", $NewValue);
     }
@@ -461,7 +581,7 @@ class MetadataField
      * @param string $NewValue Updated instructions.  (OPTIONAL)
      * @return string Current field instructions.
      */
-    public function instructions(string $NewValue = null): string
+    public function instructions(?string $NewValue = null): string
     {
         $NewValue = ($NewValue === "" ? false : $NewValue);
         return $this->DB->updateValue("Instructions", $NewValue);
@@ -472,7 +592,7 @@ class MetadataField
      * @param string $NewValue Updated owner.  (OPTIONAL)
      * @return string Current owner.
      */
-    public function owner(string $NewValue = null): string
+    public function owner(?string $NewValue = null): string
     {
         return $this->DB->updateValue("Owner", $NewValue);
     }
@@ -483,7 +603,7 @@ class MetadataField
      *       (OPTIONAL)
      * @return bool TRUE if field is enabled, otherwise FALSE.
      */
-    public function enabled(bool $NewValue = null): bool
+    public function enabled(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("Enabled", $NewValue);
     }
@@ -496,7 +616,7 @@ class MetadataField
      * @return bool Current setting.
      * @see MetadataSchema::normalizeOwnedFields()
      */
-    public function enableOnOwnerReturn(bool $NewValue = null)
+    public function enableOnOwnerReturn(?bool $NewValue = null)
     {
         return $this->DB->updateBoolValue("EnableOnOwnerReturn", $NewValue);
     }
@@ -507,7 +627,7 @@ class MetadataField
      *       entering a value optional.  (OPTIONAL)
      * @return bool TRUE if a value is required, otherwise FALSE.
      */
-    public function optional(bool $NewValue = null): bool
+    public function optional(?bool $NewValue = null): bool
     {
         static $WarningsLogged = [];
 
@@ -545,9 +665,22 @@ class MetadataField
      *       or FALSE to indicate it non-editable.  (OPTIONAL)
      * @return bool TRUE if field is editable, otherwise FALSE.
      */
-    public function editable(bool $NewValue = null): bool
+    public function editable(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("Editable", $NewValue);
+    }
+
+    /**
+     * Get/set whether changes to this field trigger automatic updates of
+     *     other metadata field values associated with
+     *     UPDATEMETHOD_ONRECORDCHANGE.
+     * @param bool $NewValue TRUE to indicate that field triggers updates,
+     *     or FALSE to indicate does not.  (OPTIONAL)
+     * @return bool TRUE if field triggers updates, otherwise FALSE.
+     */
+    public function triggersAutoUpdates(?bool $NewValue = null): bool
+    {
+        return $this->DB->updateBoolValue("TriggersAutoUpdates", $NewValue);
     }
 
     /**
@@ -556,7 +689,7 @@ class MetadataField
      *       only one value may be set.  (OPTIONAL)
      * @return bool TRUE if field allows multiple values, otherwise FALSE.
      */
-    public function allowMultiple(bool $NewValue = null): bool
+    public function allowMultiple(?bool $NewValue = null): bool
     {
         static $WarningsLogged = [];
 
@@ -611,7 +744,7 @@ class MetadataField
      *       not be included.  (OPTIONAL)
      * @return bool TRUE if field should be included, otherwise FALSE.
      */
-    public function includeInKeywordSearch(bool $NewValue = null): bool
+    public function includeInKeywordSearch(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("IncludeInKeywordSearch", $NewValue);
     }
@@ -622,7 +755,7 @@ class MetadataField
      *       not be included.  (OPTIONAL)
      * @return bool TRUE if field should be included, otherwise FALSE.
      */
-    public function includeInAdvancedSearch(bool $NewValue = null): bool
+    public function includeInAdvancedSearch(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("IncludeInAdvancedSearch", $NewValue);
     }
@@ -633,7 +766,7 @@ class MetadataField
      *       not be included.  (OPTIONAL)
      * @return bool TRUE if field should be included, otherwise FALSE.
      */
-    public function includeInFacetedSearch(bool $NewValue = null): bool
+    public function includeInFacetedSearch(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("IncludeInFacetedSearch", $NewValue);
     }
@@ -645,7 +778,7 @@ class MetadataField
      * @param int $NewValue One of the SearchEngine::LOGIC_* consts
      * @return int Current SearchGroupLogic setting
      */
-    public function searchGroupLogic(int $NewValue = null): int
+    public function searchGroupLogic(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             # if a new value was passed, verify that it's a legal value
@@ -668,7 +801,7 @@ class MetadataField
      *   current result set, FALSE to show all terms.
      * @return bool Current FacetsShowOnlyTermsUsedInResults setting.
      */
-    public function facetsShowOnlyTermsUsedInResults(bool $NewValue = null): bool
+    public function facetsShowOnlyTermsUsedInResults(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("FacetsShowOnlyTermsUsedInResults", $NewValue);
     }
@@ -679,7 +812,7 @@ class MetadataField
      *       not be included.  (OPTIONAL)
      * @return bool TRUE if field should be included, otherwise FALSE.
      */
-    public function includeInSortOptions(bool $NewValue = null): bool
+    public function includeInSortOptions(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("IncludeInSortOptions", $NewValue);
     }
@@ -690,7 +823,7 @@ class MetadataField
      *       not be included.  (OPTIONAL)
      * @return bool TRUE if field should be included, otherwise FALSE.
      */
-    public function includeInRecommender(bool $NewValue = null): bool
+    public function includeInRecommender(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("IncludeInRecommender", $NewValue);
     }
@@ -700,7 +833,7 @@ class MetadataField
      * @param bool $NewValue Update setting.
      * @return bool Current setting.
      */
-    public function copyOnResourceDuplication(bool $NewValue = null): bool
+    public function copyOnResourceDuplication(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("CopyOnResourceDuplication", $NewValue);
     }
@@ -710,7 +843,7 @@ class MetadataField
      * @param int $NewValue Updated value.
      * @return int Current setting.
      */
-    public function maxLength(int $NewValue = null): int
+    public function maxLength(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("MaxLength", $NewValue);
     }
@@ -722,7 +855,7 @@ class MetadataField
      * @param float $NewValue Updated value.
      * @return float Current Setting.
      */
-    public function minValue(float $NewValue = null): float
+    public function minValue(?float $NewValue = null): float
     {
         if ($NewValue !== null && !$this->CanHaveMinValue) {
             throw new InvalidArgumentException(
@@ -737,7 +870,7 @@ class MetadataField
      * @param float $NewValue Updated value (OPTIONAL).
      * @return float Current setting.
      */
-    public function maxValue(float $NewValue = null): float
+    public function maxValue(?float $NewValue = null): float
     {
         if ($NewValue !== null && !$this->CanHaveMaxValue) {
             throw new InvalidArgumentException(
@@ -752,7 +885,7 @@ class MetadataField
      * @param string $NewValue Updated value (OPTIONAL).
      * @return string Current setting.
      */
-    public function flagOnLabel(string $NewValue = null): string
+    public function flagOnLabel(?string $NewValue = null): string
     {
         if ($NewValue !== null && $this->type() != MetadataSchema::MDFTYPE_FLAG) {
             throw new InvalidArgumentException(
@@ -767,7 +900,7 @@ class MetadataField
      * @param string $NewValue Updated value (OPTIONAL).
      * @return string Current setting.
      */
-    public function flagOffLabel(string $NewValue = null): string
+    public function flagOffLabel(?string $NewValue = null): string
     {
         if ($NewValue !== null && $this->type() != MetadataSchema::MDFTYPE_FLAG) {
             throw new InvalidArgumentException(
@@ -782,7 +915,7 @@ class MetadataField
      * @param string $NewValue Updated value (OPTIONAL).
      * @return string Current setting.
      */
-    public function dateFormat(string $NewValue = null): string
+    public function dateFormat(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             if ($this->type() != MetadataSchema::MDFTYPE_DATE &&
@@ -801,7 +934,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function searchWeight(int $NewValue = null): int
+    public function searchWeight(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("SearchWeight", $NewValue);
     }
@@ -812,7 +945,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function recommenderWeight(int $NewValue = null): int
+    public function recommenderWeight(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("RecommenderWeight", $NewValue);
     }
@@ -822,7 +955,7 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function usesQualifiers(bool $NewValue = null): bool
+    public function usesQualifiers(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("UsesQualifiers", $NewValue);
     }
@@ -832,7 +965,7 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function showQualifiers(bool $NewValue = null): bool
+    public function showQualifiers(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("ShowQualifiers", $NewValue);
     }
@@ -858,11 +991,11 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function allowHTML(bool $NewValue = null): bool
+    public function allowHtml(?bool $NewValue = null): bool
     {
         if ($NewValue !== null && $this->type() != MetadataSchema::MDFTYPE_PARAGRAPH) {
             throw new InvalidArgumentException(
-                "Attempt to set allowHTML() for non-Paragraph field."
+                "Attempt to set allowHtml() for non-Paragraph field."
             );
         }
         return $this->DB->updateBoolValue("AllowHTML", $NewValue);
@@ -873,7 +1006,7 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function useForOaiSets(bool $NewValue = null): bool
+    public function useForOaiSets(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("UseForOaiSets", $NewValue);
     }
@@ -883,7 +1016,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function pointPrecision(int $NewValue = null): int
+    public function pointPrecision(?int $NewValue = null): int
     {
         if ($NewValue !== null && $this->type() != MetadataSchema::MDFTYPE_POINT) {
             throw new InvalidArgumentException(
@@ -917,7 +1050,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function pointDecimalDigits(int $NewValue = null): int
+    public function pointDecimalDigits(?int $NewValue = null): int
     {
         if ($NewValue !== null && $this->type() != MetadataSchema::MDFTYPE_POINT) {
             throw new InvalidArgumentException(
@@ -1005,7 +1138,7 @@ class MetadataField
      * @param string $NewValue New update method.
      * @return string Existing update method.
      */
-    public function updateMethod(string $NewValue = null): string
+    public function updateMethod(?string $NewValue = null): string
     {
         return $this->DB->updateValue("UpdateMethod", $NewValue);
     }
@@ -1136,6 +1269,79 @@ class MetadataField
 
         # return count of possible values to caller
         return $Count;
+    }
+
+    /**
+     * Get used values (meaningful for Trees, Controlled Names, Options,
+     * Flags, and Users),
+     * @param ?int $MaxNumberOfValues Maximum number of values to get.
+     * @param int $Offset Offset into the list of values.
+     * @return array ItemIds => Values
+     */
+    public function getValuesInUse(
+        ?int $MaxNumberOfValues = null,
+        int $Offset = 0
+    ): array {
+
+        # retrieve values based on field type
+        switch ($this->type()) {
+            case MetadataSchema::MDFTYPE_FLAG:
+                $Result = [];
+                $PossibleValues = [
+                    0 => $this->flagOffLabel(),
+                    1 => $this->flagOnLabel(),
+                ];
+                foreach ($PossibleValues as $Id => $Name) {
+                    $this->DB->query(
+                        "SELECT RecordId FROM Records WHERE "
+                        .$this->dBFieldName()."=".$Id." LIMIT 1"
+                    );
+                    if ($this->DB->numRowsSelected() > 0) {
+                        $Result[$Id] = $Name;
+                    }
+                }
+                return $Result;
+
+            case MetadataSchema::MDFTYPE_TREE:
+                $Query = "SELECT DISTINCT"
+                    ." C.ClassificationId AS Id, C.ClassificationName AS Name"
+                    ." FROM Classifications C INNER JOIN RecordClassInts RC"
+                    ." ON (C.ClassificationId = RC.ClassificationId)"
+                    ." WHERE C.FieldId = " .$this->id()
+                    ." ORDER BY C.ClassificationName";
+                break;
+
+            case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
+            case MetadataSchema::MDFTYPE_OPTION:
+                $Query = "SELECT DISTINCT"
+                    ." N.ControlledNameId AS Id, N.ControlledName AS Name"
+                    ." FROM ControlledNames N INNER JOIN RecordNameInts AS RN"
+                    ." ON (N.ControlledNameId = RN.ControlledNameId)"
+                    ." WHERE N.FieldId = " .$this->id()
+                    ." ORDER BY ControlledName";
+                break;
+
+            case MetadataSchema::MDFTYPE_USER:
+                $Query = "SELECT DISTINCT"
+                    ." U.UserId AS Id, U.UserName AS Name"
+                    ." FROM APUsers U INNER JOIN RecordUserInts RU "
+                    ." ON (U.UserId = RU.UserId)"
+                    ." WHERE RU.FieldId = ".$this->id()
+                    ." ORDER BY UserName";
+                break;
+
+            default:
+                throw new Exception(
+                    __METHOD__." does not support ".$this->typeAsName()." fields."
+                );
+        }
+
+        if (!is_null($MaxNumberOfValues)) {
+            $Query .= " LIMIT ".$MaxNumberOfValues." OFFSET ".$Offset;
+        }
+
+        $this->DB->query($Query);
+        return $this->DB->fetchColumn("Name", "Id");
     }
 
     /**
@@ -1435,7 +1641,7 @@ class MetadataField
      * @return bool TRUE if this field users item-lvel qualifiers,
      *     FALSE otherwise.
      */
-    public function hasItemLevelQualifiers(bool $NewValue = null): bool
+    public function hasItemLevelQualifiers(?bool $NewValue = null): bool
     {
         $DB = $this->DB;
         # if value provided different from present value
@@ -1510,9 +1716,10 @@ class MetadataField
     /**
      * Associate qualifier with field.
      * @param mixed $Qualifier Qualifer ID, name, or object.
+     * @return void
      * @throws InvalidArgumentException If unknown name supplied.
      */
-    public function addQualifier($Qualifier)
+    public function addQualifier($Qualifier): void
     {
         # if qualifier object passed in
         if ($Qualifier instanceof Qualifier) {
@@ -1549,8 +1756,9 @@ class MetadataField
     /**
      * Delete a qualifier association.
      * @param mixed $QualifierIdOrObject Qualifier to remove from this field.
+     * @return void
      */
-    public function unassociateWithQualifier($QualifierIdOrObject)
+    public function unassociateWithQualifier($QualifierIdOrObject): void
     {
         # if qualifier object passed in
         if ($QualifierIdOrObject instanceof Qualifier) {
@@ -1624,7 +1832,7 @@ class MetadataField
 
                 # and optionally
                 if ($AllowHooksToModify) {
-                    $SignalResult = (ApplicationFramework::getInstance())->SignalEvent(
+                    $SignalResult = (ApplicationFramework::getInstance())->signalEvent(
                         "EVENT_FIELD_VIEW_PERMISSION_CHECK",
                         [
                             "Field" => $this,
@@ -1672,7 +1880,7 @@ class MetadataField
      * @param array $NewValue List of privilege Ids to require.
      * @return array Current setting
      */
-    public function userPrivilegeRestrictions(array $NewValue = null)
+    public function userPrivilegeRestrictions(?array $NewValue = null)
     {
         # new value
         if ($NewValue !== null) {
@@ -1739,7 +1947,7 @@ class MetadataField
      * @param int $NewValue Updated value.
      * @return int Current setting.
      */
-    public function textFieldSize(int $NewValue = null): int
+    public function textFieldSize(?int $NewValue = null): int
     {
         if ($NewValue !== null && $this->UsesMultiLineTextEditing) {
             throw new InvalidArgumentException(
@@ -1755,7 +1963,7 @@ class MetadataField
      * @param int $NewValue Updated value.
      * @return int Current setting.
      */
-    public function paragraphRows(int $NewValue = null): int
+    public function paragraphRows(?int $NewValue = null): int
     {
         if ($NewValue !== null && !$this->UsesMultiLineTextEditing) {
             throw new InvalidArgumentException(
@@ -1771,7 +1979,7 @@ class MetadataField
      * @param int $NewValue Updated value.
      * @return int Current setting.
      */
-    public function paragraphCols(int $NewValue = null): int
+    public function paragraphCols(?int $NewValue = null): int
     {
         if ($NewValue !== null && !$this->UsesMultiLineTextEditing) {
             throw new InvalidArgumentException(
@@ -1787,7 +1995,7 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function useWysiwygEditor(bool $NewValue = null): bool
+    public function useWysiwygEditor(?bool $NewValue = null): bool
     {
         if ($NewValue !== null && !$this->UsesMultiLineTextEditing) {
             throw new InvalidArgumentException(
@@ -1804,7 +2012,7 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function displayAsListForAdvancedSearch(bool $NewValue = null): bool
+    public function displayAsListForAdvancedSearch(?bool $NewValue = null): bool
     {
         if ($NewValue !== null && !$this->CanDisplayAsList) {
             throw new InvalidArgumentException(
@@ -1822,7 +2030,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function maxDepthForAdvancedSearch(int $NewValue = null): int
+    public function maxDepthForAdvancedSearch(?int $NewValue = null): int
     {
         if ($NewValue !== null && $this->type() != MetadataSchema::MDFTYPE_TREE) {
             throw new InvalidArgumentException(
@@ -1840,7 +2048,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function optionListThreshold(int $NewValue = null): int
+    public function optionListThreshold(?int $NewValue = null): int
     {
         if ($NewValue !== null && !$this->CanBeEditedWithDynamicOptionLists) {
             throw new InvalidArgumentException(
@@ -1859,7 +2067,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function ajaxThreshold(int $NewValue = null): int
+    public function ajaxThreshold(?int $NewValue = null): int
     {
         if ($NewValue !== null && !$this->CanBeEditedWithIncrementalSearch) {
             throw new InvalidArgumentException(
@@ -1877,7 +2085,7 @@ class MetadataField
      * @param int $NewValue Updated value (OPTIONAL).
      * @return int Current setting.
      */
-    public function numAjaxResults(int $NewValue = null): int
+    public function numAjaxResults(?int $NewValue = null): int
     {
         if ($NewValue !== null && !$this->CanBeEditedWithIncrementalSearch) {
             throw new InvalidArgumentException(
@@ -1894,7 +2102,7 @@ class MetadataField
      * @param bool $NewValue Updated value (OPTIONAL).
      * @return bool Current setting.
      */
-    public function obfuscateValueForAnonymousUsers(bool $NewValue = null): bool
+    public function obfuscateValueForAnonymousUsers(?bool $NewValue = null): bool
     {
         if ($NewValue !== null && !$this->CanBeObfuscated) {
             throw new InvalidArgumentException(
@@ -1953,8 +2161,13 @@ class MetadataField
             }
         }
 
+        $Result = $XOut->flush();
+        if (is_int($Result)) {
+            throw new Exception("XOut->flush() returned int (should be impossible).");
+        }
+
         # return generated XML to caller
-        return $XOut->flush();
+        return $Result;
     }
 
     /**
@@ -2419,7 +2632,7 @@ class MetadataField
         int $SchemaId,
         int $FieldType,
         string $FieldName,
-        bool $Optional = null,
+        ?bool $Optional = null,
         $DefaultValue = null
     ): self {
         # error out if field type is bad
@@ -2441,7 +2654,7 @@ class MetadataField
         }
 
         # grab current user ID
-        $UserId = User::getCurrentUser()->Get("UserId");
+        $UserId = User::getCurrentUser()->get("UserId");
 
         # normalize schema ID
         $Schema = new MetadataSchema($SchemaId);
@@ -2477,7 +2690,7 @@ class MetadataField
         self::$FieldCache = null;
 
         # load field object
-        $Field = new MetadataField($FieldId);
+        $Field = static::getField($FieldId);
 
         # set field defaults
         $Field->setDefaults();
@@ -2526,7 +2739,17 @@ class MetadataField
         MetadataSchema::clearStaticCaches();
 
         # reload new field and return to caller
-        return new MetadataField($NewField->id());
+        return static::getField($NewField->id());
+    }
+
+    /**
+     * Retrieve metadata field with the specified ID.
+     * @param int $Id Field ID.
+     * @return MetadataField Instance of appropriate field.
+     */
+    public static function getField(int $Id)
+    {
+        return new static($Id);
     }
 
     /**
@@ -2535,7 +2758,7 @@ class MetadataField
      * @param int $FieldId ID of metadata field to load.
      * @return object New MetadataField object.
      */
-    public function __construct(int $FieldId)
+    protected function __construct(int $FieldId)
     {
         # assume everything will be okay
         $this->ErrorStatus = MetadataSchema::MDFSTAT_OK;
@@ -2744,8 +2967,9 @@ class MetadataField
 
     /**
      * Set defaults values for the field.
+     * @return void
      */
-    public function setDefaults()
+    public function setDefaults(): void
     {
         # set defaults that are the same for every field and not overridden by
         # a type-specific version
@@ -2791,8 +3015,9 @@ class MetadataField
 
     /**
      *  Remove field from database (only for use by MetadataSchema object).
+     * @return void
      */
-    public function drop()
+    public function drop(): void
     {
         StdLib::checkMyCaller(
             "Metavus\\MetadataSchema",
@@ -2915,8 +3140,9 @@ class MetadataField
      *     the current name alone.
      * @param mixed $NewType New field type that this field should be
      *     converted into or NULL when no type conversion is desired.
+     * @return void
      */
-    private function modifyField($NewName = null, $NewType = null)
+    private function modifyField($NewName = null, $NewType = null): void
     {
         $DB = $this->DB;
         # grab old DB field name
@@ -3148,19 +3374,23 @@ class MetadataField
     /**
      * Normalize field name for use as database field name.
      * @param string $Name Metadata field name to normalize.
+     * @param int $SchemaId ID of schema to normalize field name for.
      * @return string DB-safe name.
      */
-    private function normalizeFieldNameForDB(string $Name): string
-    {
+    public static function normalizeFieldNameForDB(
+        string $Name,
+        int $SchemaId
+    ): string {
         return preg_replace("/[^a-z0-9]/i", "", $Name)
-                .(($this->schemaId() != MetadataSchema::SCHEMAID_DEFAULT)
-                        ? $this->schemaId() : "");
+                .(($SchemaId != MetadataSchema::SCHEMAID_DEFAULT)
+                        ? $SchemaId : "");
     }
 
     /**
      * Add any necessary database fields and/or entries.
+     * @return void
      */
-    private function addDatabaseFields()
+    private function addDatabaseFields(): void
     {
         $DB = $this->DB;
         $BaseColName = $this->dBFieldName();
@@ -3255,7 +3485,7 @@ class MetadataField
      * @param Qualifier $Qualifier Qualifier for newly added terms.
      * @return int Number of terms added.
      */
-    private function addTerms(array $TermNames, Qualifier $Qualifier = null): int
+    private function addTerms(array $TermNames, ?Qualifier $Qualifier = null): int
     {
         $Factory = $this->getFactory();
 
@@ -3297,8 +3527,9 @@ class MetadataField
      *     ControlledName/Option fields.
      * @param int $NewType New field type that this field should be
      *     converted into.
+     * @return void
      */
-    private function convertTreesAndControlledNames($NewType)
+    private function convertTreesAndControlledNames($NewType): void
     {
         if ($NewType == MetadataSchema::MDFTYPE_TREE) {
             $OldType = "ControlledName";
@@ -3494,8 +3725,9 @@ class MetadataField
 
     /**
      * Set internal variables that convey characteristics of this field type.
+     * @return void
      */
-    private function setFieldAttributes()
+    private function setFieldAttributes(): void
     {
         # reset all field limitation attributes to false (the default)
         $FieldAttributes = [

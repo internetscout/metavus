@@ -3,29 +3,32 @@
 #   FILE:  EditRule.php (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\ChangeSetEditingUI;
 use Metavus\FormUI;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\Mailer;
 use Metavus\Plugins\Rules\Rule;
 use Metavus\PrivilegeSet;
 use Metavus\SearchParameterSet;
 use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Check that a PrivilegeSet includes user-related components.
  * @param string $FieldName Name of form field for which value is being validated.
- * @param array $FieldValues Form field value(s).
- * @return string NULL if value is okay or error message if not.
+ * @param PrivilegeSet $PrivSet The privilege set to check.
+ * @return string|null NULL if value is okay or error message if not.
  */
-function CheckThatPrivilegesHaveUserComponents($FieldName, $FieldValues)
+function CheckThatPrivilegesHaveUserComponents(string $FieldName, PrivilegeSet $PrivSet)
 {
-    $PrivSet = $FieldValues;
     return (count($PrivSet->GetPossibleNecessaryPrivileges())
             || count($PrivSet->FieldsWithUserComparisons())) ? null
             : "The conditions for <i>Email Recipients</i> must include at"
@@ -38,7 +41,7 @@ function CheckThatPrivilegesHaveUserComponents($FieldName, $FieldValues)
  * Construct the list of fields that we want included in our privsets.
  * @return array of fields to include.
  */
-function GetFieldsForPrivset()
+function GetFieldsForPrivset(): array
 {
     $PrivFields = [];
     foreach (MetadataSchema::GetAllSchemas() as $SchemaId => $Schema) {
@@ -83,8 +86,7 @@ function GetFieldsForPrivset()
 }
 
 /**
- * Get the list of fields that can be edited by the UPDATEFIELDVALUES
- * action type.
+ * Get the list of fields that can be edited by the UPDATEFIELDVALUES action type.
  * @return array Editable fields [SchemaId => [FieldIds], ... ]
  */
 function FieldsToEdit()
@@ -99,6 +101,8 @@ function FieldsToEdit()
 
         $AllSchemas = MetadataSchema::GetAllSchemas();
         foreach ($AllSchemas as $SchemaId => $Schema) {
+            # force the schema id to be of type int for subsequent usage
+            $SchemaId = (int)$SchemaId;
             $FieldsToEdit[$SchemaId] = [];
 
             foreach ($Schema->GetFields($TypesToEdit) as $Field) {
@@ -118,13 +122,17 @@ function FieldsToEdit()
  * @param ChangeSetEditingUI $Editor Editor to generate output for.
  * @return string HTML for a field editor.
  */
-function GetHtmlForFieldEditor($SchemaId, $Editor)
+function GetHtmlForFieldEditor($SchemaId, $Editor): string
 {
     ob_start();
     print "<b>".(new MetadataSchema($SchemaId))->Name()."</b>";
     $Editor->DisplayAsTable();
     $Result = ob_get_contents();
     ob_end_clean();
+
+    if ($Result === false) {
+        throw new Exception("Failed to get the HTML for field editor.");
+    }
 
     return $Result;
 }
@@ -133,6 +141,9 @@ function GetHtmlForFieldEditor($SchemaId, $Editor)
 
 # check permissions
 CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+
+$AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
 
 # retrieve rule ID
 $H_RuleId = StdLib::getFormValue("ID");
@@ -222,6 +233,8 @@ if ($H_IsNewRule) {
 
 $FormFields["Action"]["Options"][Rule::ACTION_UPDATEFIELDVALUES] =
     "Update Field Values";
+# set as default action
+$FormFields["Action"]["Default"] = Rule::ACTION_UPDATEFIELDVALUES;
 
 # create ChangeSetEditingUIs for each schema containing editable fields
 $H_FieldEditors = [];
@@ -235,12 +248,12 @@ foreach (FieldsToEdit() as $SchemaId => $FieldIds) {
 }
 
 # if support for "Send Email" action is available
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) {
+if ($PluginMgr->PluginEnabled("Mailer")) {
     # add additional action option
     $FormFields["Action"]["Options"][Rule::ACTION_SENDEMAIL] = "Send Email";
 
     # add additional settings for action
-    $MailerPlugin = $GLOBALS["G_PluginManager"]->GetPlugin("Mailer");
+    $MailerPlugin = Mailer::getInstance();
     $FormFields["SendEmail_Template"] = [
         "Type" => FormUI::FTYPE_OPTION,
         "Label" => "Email Template",
@@ -272,16 +285,18 @@ if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) {
         $FormValues["SendEmail_Privileges"] = new PrivilegeSet();
     }
 
-    # set default action if one not already set
-    if (!isset($FormFields["Action"]["Default"])) {
-        $FormFields["Action"]["Default"] = Rule::ACTION_SENDEMAIL;
-    }
+    # update the default action
+    $FormFields["Action"]["Default"] = Rule::ACTION_SENDEMAIL;
 }
 
 # get action params from form
-if (!$H_IsNewRule) {
+if (!$H_IsNewRule && isset($H_Rule)) {
     # retrieve and set existing settings for form
     $ActionParams = $H_Rule->ActionParameters();
+
+    if (!isset($FormValues["Action"])) {
+        throw new Exception("No rule action specified (should be impossible).");
+    }
 
     switch ($FormValues["Action"]) {
         case Rule::ACTION_UPDATEFIELDVALUES:
@@ -304,8 +319,7 @@ if (!$H_IsNewRule) {
             break;
 
         default:
-            throw new Exception("Unsupport rule action type");
-            break;
+            throw new Exception("Unsupported rule action type");
     }
 }
 
@@ -314,11 +328,6 @@ foreach (FieldsToEdit() as $SchemaId => $FieldIds) {
     if (count($FieldIds)) {
         $H_FieldEditors[$SchemaId]->AddFieldButton("Add field", $FieldIds);
     }
-}
-
-# set default action if one not already set
-if (!isset($FormFields["Action"]["Default"])) {
-    $FormFields["Action"]["Default"] = Rule::ACTION_UPDATEFIELDVALUES;
 }
 
 $FormFields["FieldUpdates"] = [
@@ -370,6 +379,9 @@ switch ($ButtonPushed) {
 
                 $ActionParams = ["EditParams" => $EditParams];
                 break;
+
+            default:
+                throw new Exception("Unsupported rule action type");
         }
 
         # if adding new rule
@@ -398,11 +410,11 @@ switch ($ButtonPushed) {
         $H_Rule->CheckFrequency($NewSettings["Frequency"]);
 
         # return to rule list
-        $GLOBALS["AF"]->SetJumpToPage("P_Rules_ListRules");
+        $AF->SetJumpToPage("P_Rules_ListRules");
         break;
 
     case "Cancel":
         # return to rule list
-        $GLOBALS["AF"]->SetJumpToPage("P_Rules_ListRules");
+        $AF->SetJumpToPage("P_Rules_ListRules");
         break;
 }

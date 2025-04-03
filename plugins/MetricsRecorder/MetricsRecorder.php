@@ -3,17 +3,17 @@
 #   FILE:  MetricsRecorder.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use InvalidArgumentException;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\MetricsReporter;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\RecordFactory;
@@ -26,6 +26,7 @@ use ScoutLib\Database;
 use ScoutLib\Email;
 use ScoutLib\Plugin;
 use ScoutLib\StdLib;
+use ScoutLib\PluginManager;
 
 /**
  * Plugin for recording usage and system metrics data.
@@ -37,17 +38,18 @@ class MetricsRecorder extends Plugin
     /**
      * Set the plugin attributes.At minimum this method MUST set $this->Name
      * and $this->Version.This is called when the plugin is initially loaded.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Metrics Recorder";
-        $this->Version = "1.2.15";
+        $this->Version = "1.2.16";
         $this->Description = "Plugin for recording usage and web metrics data.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "BotDetector" => "1.0.0",
         ];
         $this->EnabledByDefault = true;
@@ -60,7 +62,7 @@ class MetricsRecorder extends Plugin
      * @return null|string NULL if initialization was successful, otherwise
      *      a string containing an error message indicating why it failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         # register email logging function
         Email::registerLoggingFunction(
@@ -80,7 +82,7 @@ class MetricsRecorder extends Plugin
      * @return null|string NULL if installation succeeded, otherwise a string
      *      containing an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
         $Result = $this->createTables($this->SqlTables);
         if (!is_null($Result)) {
@@ -111,265 +113,9 @@ class MetricsRecorder extends Plugin
      * @return null|string NULL if uninstall succeeded, otherwise a string
      *       containing an error message indicating why uninstall failed.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         return $this->dropTables($this->SqlTables);
-    }
-
-    /**
-     * Perform any work needed when the plugin is upgraded to a new version
-     * (for example, adding fields to database tables).
-     * @param string $PreviousVersion The version number of this plugin that was
-     *       previously installed.
-     * @return NULL if upgrade succeeded, otherwise a string containing
-     *       an error message indicating why upgrade failed.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        # if previously-installed version is earlier than 1.1.4
-        if (version_compare($PreviousVersion, "1.1.4", "<")) {
-            # replace old Type/User index with Type/User/Date index for event data
-            $DB = new Database();
-            $DB->setQueryErrorsToIgnore([
-                '/DROP\s+INDEX\s+[^\s]+\s+\([^)]+\)/i'
-                    => '/Can\'t\s+DROP\s+[^\s]+\s+check\s+that/i'
-            ]);
-            $DB->query("DROP INDEX EventType_2 ON MetricsRecorder_EventData");
-            $DB->query("CREATE INDEX Index_TUD ON MetricsRecorder_EventData"
-                    ." (EventType,UserId,EventDate)");
-        }
-
-        # if previously-installed version is earlier than 1.2.0
-        if (version_compare($PreviousVersion, "1.2.0", "<")) {
-            # add table for tracking custom event types
-            $DB = new Database();
-            $DB->query("CREATE TABLE IF NOT EXISTS MetricsRecorder_EventTypeIds (
-                    OwnerName       TEXT,
-                    TypeName        TEXT,
-                    TypeId          SMALLINT NOT NULL,
-                    INDEX           (TypeId));");
-        }
-
-        # if previously-installed version is earlier than 1.2.1
-        if (version_compare($PreviousVersion, "1.2.1", "<")) {
-            # set the errors that can be safely ignord
-            $DB = new Database();
-            $DB->setQueryErrorsToIgnore([
-                '/^RENAME\s+TABLE/i' => '/already\s+exists/i'
-            ]);
-
-            # fix the custom event type ID mapping table name
-            $DB->query("RENAME TABLE MetricsRecorder_EventTypes
-                    TO MetricsRecorder_EventTypeIds");
-
-            # remove full record views and resource URL clicks for resources
-            # that don't use the default schema
-            $DB->query("DELETE ED FROM MetricsRecorder_EventData ED
-                    LEFT JOIN Records R ON ED.DataOne = R.RecordId
-                    WHERE (EventType = '".intval(self::ET_FULLRECORDVIEW)."'
-                    OR EventType = '".intval(self::ET_URLFIELDCLICK)."')
-                    AND R.SchemaId != '".intval(MetadataSchema::SCHEMAID_DEFAULT)."'");
-        }
-
-        # if previously-installed version is earlier than 1.2.3
-        if (version_compare($PreviousVersion, "1.2.3", "<")) {
-            # set the errors that can be safely ignord
-            $DB = new Database();
-            $DB->setQueryErrorsToIgnore([
-                "/ALTER TABLE [a-z]+ ADD INDEX/i" => "/Duplicate key name/i"
-            ]);
-
-            # add indexes to speed view and click count retrieval
-            $DB->query("ALTER TABLE MetricsRecorder_EventData"
-                    ." ADD INDEX Index_TO (EventType,DataOne(8))");
-            $DB->query("ALTER TABLE MetricsRecorder_EventData"
-                    ." ADD INDEX Index_TOW (EventType,DataOne(8),DataTwo(8))");
-        }
-
-        # if previously-installed version is earlier than 1.2.5
-        if (version_compare($PreviousVersion, "1.2.5", "<")) {
-            # update ownership of count metadata fields if they exist
-            $Schema = new MetadataSchema();
-            if ($Schema->fieldExists("Full Record View Count")) {
-                $Field = $Schema->getField("Full Record View Count");
-                $Field->owner("MetricsRecorder");
-                $Field->description(str_replace(
-                    "Reporter",
-                    "Recorder",
-                    $Field->description()
-                ));
-            }
-            if ($Schema->fieldExists("URL Field Click Count")) {
-                $Field = $Schema->getField("URL Field Click Count");
-                $Field->owner("MetricsRecorder");
-                $Field->description(str_replace(
-                    "Reporter",
-                    "Recorder",
-                    $Field->description()
-                ));
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.2.6", "<")) {
-            # this may take a while, avoid timing out
-            set_time_limit(3600);
-
-            # find all the places where we might have stored legacy format search URLs
-            # load them into SearchParameterSets, then stuff in the Data() from them
-            $DB = new Database();
-            $DB->caching(false);
-
-            # this is less than ideal, but the LIKE clauses below are meant to
-            #  prevent already-updated rows that don't contain SearchParameter data
-            # from being re-updated if two requests try to run the
-            # migration one after another
-
-            # Note, it's necessary to specify an explicit
-            # EvnetDate to avoid mysql's "helpful" behavior of
-            # auto-updateing the first TIMESTAMP column in a table
-
-            # get the event IDs that use the old format (not pulling the data to avoid
-            #   potentially running out of memory)
-            $DB->query("SELECT EventId FROM MetricsRecorder_EventData WHERE "
-                    ."EventType IN (".self::ET_SEARCH.",".self::ET_ADVANCEDSEARCH.") "
-                    ."AND DataOne IS NOT NULL "
-                    ."AND LENGTH(DataOne)>0 "
-                    ."AND DataOne NOT LIKE 'a:%'");
-            $EventIds = $DB->fetchColumn("EventId");
-
-            foreach ($EventIds as $EventId) {
-                $DB->query("SELECT DataOne, EventDate FROM "
-                           ."MetricsRecorder_EventData WHERE "
-                           ."EventId=".$EventId);
-                $Row = $DB->fetchRow();
-                if ($Row === false) {
-                    throw new Exception("Unable to retrieve data for event ID "
-                            .$EventId.".");
-                }
-
-                # if this event has already been converted, don't try to re-convert it
-                if (StdLib::isSerializedData($Row["DataOne"])) {
-                    continue;
-                }
-
-                # attempt to convert to the new format, saving if we succeed
-                try {
-                    $SearchParams = new SearchParameterSet();
-                    $SearchParams->setFromLegacyUrl($Row["DataOne"]);
-
-                    $DB->query("UPDATE MetricsRecorder_EventData "
-                               ."SET DataOne='".addslashes($SearchParams->data())."', "
-                               ."EventDate='".$Row["EventDate"]."' "
-                               ."WHERE EventId=".$EventId);
-                } catch (Exception $e) {
-                    ; # continue in the case of invalid metadata fields
-                }
-            }
-
-            # pull out Full Record views that have search data
-            $DB->query("SELECT EventId FROM MetricsRecorder_EventData WHERE "
-                    ."EventType=".self::ET_FULLRECORDVIEW." "
-                    ."AND DataTwo IS NOT NULL "
-                    ."AND LENGTH(DataTwo)>0 "
-                    ."AND DataTwo NOT LIKE 'a:%'");
-            $EventIds = $DB->fetchColumn("EventId");
-
-            # iterate over them, converting each to a
-            # SearchParameterSet and updating the DB
-            foreach ($EventIds as $EventId) {
-                $DB->query("SELECT DataTwo, EventDate FROM "
-                           ."MetricsRecorder_EventData WHERE "
-                           ."EventId=".$EventId);
-                $Row = $DB->fetchRow();
-                if ($Row === false) {
-                    throw new Exception("Unable to retrieve data for event ID "
-                            .$EventId.".");
-                }
-
-                # if this event has already been converted, don't try to re-convert it
-                if (StdLib::isSerializedData($Row["DataTwo"])) {
-                    continue;
-                }
-
-                try {
-                    $SearchParams = new SearchParameterSet();
-                    $SearchParams->setFromLegacyUrl($Row["DataTwo"]);
-
-                    $DB->query("UPDATE MetricsRecorder_EventData "
-                               ."SET DataTwo='".addslashes($SearchParams->data())."', "
-                               ."EventDate='".$Row["EventDate"]."' "
-                               ."WHERE EventId=".$EventId);
-                } catch (Exception $e) {
-                    ; # continue in the case of invalid metadata fields
-                }
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.2.9", "<")) {
-            $DB = new Database();
-            $DB->query(
-                "CREATE TABLE IF NOT EXISTS MetricsRecorder_SentEmails (
-                    FromAddr        TEXT,
-                    ToAddr          TEXT,
-                    Subject         TEXT,
-                    LogData         BLOB,
-                    DateSent        DATETIME);"
-            );
-        }
-
-        if (version_compare($PreviousVersion, "1.2.10", "<")) {
-            $DB = new Database();
-            $DB->query(
-                "ALTER TABLE MetricsRecorder_EventData "
-                ."ADD INDEX Index_IpD (IPAddress,EventDate)"
-            );
-        }
-
-        # clean out full record view data that is incorrect because no data
-        # was recorded on cache hits (2015-05-20 is when page caching support
-        # was checked in)
-        if (version_compare($PreviousVersion, "1.2.11", "<") &&
-            $GLOBALS["AF"]->pageCacheEnabled()) {
-            $DB = new Database();
-            $DB->query(
-                "DELETE FROM MetricsRecorder_EventData WHERE"
-                ." EventType=".self::ET_FULLRECORDVIEW
-                ." AND EventDate >= '2015-05-20 09:25:00'"
-            );
-        }
-
-        if (version_compare($PreviousVersion, "1.2.13", "<")) {
-            ApplicationFramework::getInstance()
-                ->queueUniqueTask(
-                    "\\Metavus\\Plugins\\MetricsRecorder::runDatabaseUpdates",
-                    [$PreviousVersion],
-                    \ScoutLib\ApplicationFramework::PRIORITY_LOW,
-                    "Perform database updates for MetricsRecorder upgrade."
-                );
-        }
-
-        if (version_compare($PreviousVersion, "1.2.14", "<")) {
-            ApplicationFramework::getInstance()
-                ->queueUniqueTask(
-                    "\\Metavus\\Plugins\\MetricsRecorder::runDatabaseUpdates",
-                    [$PreviousVersion],
-                    \ScoutLib\ApplicationFramework::PRIORITY_LOW,
-                    "Perform database updates for MetricsRecorder upgrade."
-                );
-        }
-
-        if (version_compare($PreviousVersion, "1.2.15", "<")) {
-            ApplicationFramework::getInstance()
-                ->queueUniqueTask(
-                    "\\Metavus\\Plugins\\MetricsRecorder::runDatabaseUpdates",
-                    [$PreviousVersion],
-                    \ScoutLib\ApplicationFramework::PRIORITY_LOW,
-                    "Perform database updates for MetricsRecorder upgrade."
-                );
-        }
-
-        # report successful upgrade to caller
-        return null;
     }
 
     /**
@@ -379,7 +125,7 @@ class MetricsRecorder extends Plugin
      * in all caps (for example "MyPlugin_EVENT_MY_EVENT").
      * @return array Event names for the index and event types for the values.
      */
-    public function declareEvents()
+    public function declareEvents(): array
     {
         return ["MetricsRecorder_EVENT_RECORD_EVENT" => ApplicationFramework::EVENTTYPE_NAMED];
     }
@@ -389,10 +135,14 @@ class MetricsRecorder extends Plugin
      * @return array Returns an array of events to be hooked into the
      *      application framework.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [
-            "EVENT_DAILY" => ["recordDailySampleData", "dailyPruning"],
+            "EVENT_DAILY" => [
+                "dailyPruning",
+                "updateCountFields",
+                "recordDailySampleData",
+            ],
             "EVENT_USER_LOGIN" => "recordUserLogin",
             "EVENT_USER_ADDED" => "recordNewUserAdded",
             "EVENT_USER_VERIFIED" => "recordNewUserVerified",
@@ -464,11 +214,83 @@ class MetricsRecorder extends Plugin
 
     # ---- HOOKED METHODS ----------------------------------------------------
 
+
+    /**
+     * Update view and click counts.
+     * @param string $LastRunAt Timestamp when method was last called.
+     * @return void
+     */
+    public function updateCountFields($LastRunAt): void
+    {
+        # if no last run time available assume it was 24 hours ago
+        if ($LastRunAt == '') {
+            $LastRunAt = date(StdLib::SQL_DATE_FORMAT, strtotime("24 hours ago"));
+        }
+
+        # get records where we have a view since the last run
+        $LastRunAt = $this->DB->escapeString($LastRunAt);
+        $this->DB->query(
+            "SELECT DISTINCT DataOne AS RecordId FROM MetricsRecorder_EventData"
+                ." WHERE EventType = ".self::ET_FULLRECORDVIEW
+                ." AND EventDate >= '".$LastRunAt."'"
+        );
+        $RecordIds = $this->DB->fetchColumn("RecordId");
+
+        foreach ($RecordIds as $RecordId) {
+            # skip records that were deleted
+            if (!Record::itemExists($RecordId)) {
+                continue;
+            }
+
+            $Record = Record::getRecord($RecordId);
+            # if record has a count field
+            if ($Record->getSchema()->fieldExists("Full Record View Count")) {
+                # update current view count for resource
+                $CurrentCount = $this->getFullRecordViewCount(
+                    $Record->id(),
+                    $this->getPrivilegesToExclude()
+                );
+                $Record->set("Full Record View Count", $CurrentCount);
+            }
+        }
+
+        # get records where we have a url click since the last run
+        $this->DB->query(
+            "SELECT DISTINCT DataOne AS RecordId FROM MetricsRecorder_EventData"
+                ." WHERE EventType = ".self::ET_URLFIELDCLICK
+                ." AND EventDate >= '".$LastRunAt."'"
+        );
+        $RecordIds = $this->DB->fetchColumn("RecordId");
+
+        foreach ($RecordIds as $RecordId) {
+            # skip records that were deleted
+            if (!Record::itemExists($RecordId)) {
+                continue;
+            }
+
+            $Record = Record::getRecord($RecordId);
+            # if record has a URL field and a count field
+            if ($Record->getSchema()->fieldExists("URL Field Click Count")) {
+                # update current click count for resource
+                $FieldId = $Record->getSchema()->stdNameToFieldMapping("Url");
+                if ($FieldId !== null) {
+                    $CurrentCount = $this->getUrlFieldClickCount(
+                        $Record->id(),
+                        $FieldId,
+                        $this->getPrivilegesToExclude()
+                    );
+                    $Record->set("URL Field Click Count", $CurrentCount);
+                }
+            }
+        }
+    }
+
     /**
      * Record periodically-sampled data.
      * @param string $LastRunAt Timestamp when method was last called.
+     * @return void
      */
-    public function recordDailySampleData($LastRunAt)
+    public function recordDailySampleData($LastRunAt): void
     {
         # if no last run time available assume it was 24 hours ago
         if ($LastRunAt == '') {
@@ -545,8 +367,9 @@ class MetricsRecorder extends Plugin
      * Daily pruning of IPs that generated too much load to plausibly be
      * humans.
      * @param string $LastRunAt Timestamp when method was last called.
+     * @return void
      */
-    public function dailyPruning($LastRunAt)
+    public function dailyPruning($LastRunAt): void
     {
         # if provided LastRunAt wasn't an SQL date
         if (!preg_match(StdLib::SQL_DATE_REGEX, (string)$LastRunAt)) {
@@ -596,8 +419,9 @@ class MetricsRecorder extends Plugin
      * Record user logging in.
      * @param int $UserId ID of user that logged in.
      * @param string $Password Password entered by user.
+     * @return void
      */
-    public function recordUserLogin($UserId, $Password)
+    public function recordUserLogin($UserId, $Password): void
     {
         $this->recordEventData(self::ET_USERLOGIN, null, null, $UserId);
     }
@@ -606,8 +430,9 @@ class MetricsRecorder extends Plugin
      * Record new user being added.
      * @param int $UserId ID of user that was added.
      * @param string $Password Password entered by user.
+     * @return void
      */
-    public function recordNewUserAdded($UserId, $Password)
+    public function recordNewUserAdded($UserId, $Password): void
     {
         $this->recordEventData(self::ET_NEWUSERADDED, null, null, $UserId);
     }
@@ -615,8 +440,9 @@ class MetricsRecorder extends Plugin
     /**
      * Record new user account being verified.
      * @param int $UserId ID of user that was verified.
+     * @return void
      */
-    public function recordNewUserVerified($UserId)
+    public function recordNewUserVerified($UserId): void
     {
         $this->recordEventData(self::ET_NEWUSERVERIFIED, null, null, $UserId);
     }
@@ -628,11 +454,12 @@ class MetricsRecorder extends Plugin
      *       SchemaId with inner arrays containing search results, with
      *       search scores for the values and resource IDs for the
      *       indexes.
+     * @return void
      */
     public function recordSearch(
         SearchParameterSet $SearchParameters,
         array $SearchResults
-    ) {
+    ): void {
         # searches are 'advanced' when they contain more than just Keywords
         # (i.e., they have values specified for specific fields and/or they
         #  contain subgroups)
@@ -656,8 +483,9 @@ class MetricsRecorder extends Plugin
      * Record OAI-PMH harvest request.
      * @param string $RequesterIP IP address of requester.
      * @param string $QueryString GET string for query.
+     * @return void
      */
-    public function recordOAIRequest($RequesterIP, $QueryString)
+    public function recordOAIRequest($RequesterIP, $QueryString): void
     {
         $this->recordEventData(
             self::ET_OAIREQUEST,
@@ -672,11 +500,11 @@ class MetricsRecorder extends Plugin
      * Record user viewing full resource record page served from the static
      *   page cache.
      * @param int $ResourceId ID of resource.
+     * @return void
      */
-    public static function recordFullRecordViewOnCacheHit($ResourceId)
+    public static function recordFullRecordViewOnCacheHit($ResourceId): void
     {
-        $GLOBALS["G_PluginManager"]
-            ->getPlugin("MetricsRecorder")
+        MetricsRecorder::getInstance()
             ->recordFullRecordView($ResourceId);
     }
 
@@ -684,12 +512,14 @@ class MetricsRecorder extends Plugin
      * Record user viewing full resource record page for cache misses,
      *   registering a callback to also record data on cache hits.
      * @param int $ResourceId ID of resource.
+     * @return void
      */
-    public function recordFullRecordViewOnCacheMiss($ResourceId)
+    public function recordFullRecordViewOnCacheMiss($ResourceId): void
     {
+        $AF = ApplicationFramework::getInstance();
         $this->recordFullRecordView($ResourceId);
 
-        $GLOBALS["AF"]->registerCallbackForPageCacheHit(
+        $AF->registerCallbackForPageCacheHit(
             [__CLASS__, "recordFullRecordViewOnCacheHit"],
             [$ResourceId]
         );
@@ -698,11 +528,10 @@ class MetricsRecorder extends Plugin
     /**
      * Record user viewing full resource record page.
      * @param int $ResourceId ID of resource.
+     * @return void
      */
-    public function recordFullRecordView($ResourceId)
+    public function recordFullRecordView($ResourceId): void
     {
-        $Resource = new Record($ResourceId);
-
         # if referring URL is available
         $SearchData = null;
         if (isset($_SERVER["HTTP_REFERER"])) {
@@ -726,40 +555,17 @@ class MetricsRecorder extends Plugin
             $ResourceId,
             $SearchData
         );
-
-        if ($Resource->getSchema()->fieldExists("Full Record View Count")) {
-            # update current view count for resource
-            $CurrentCount = $this->getFullRecordViewCount(
-                $Resource->id(),
-                $this->getPrivilegesToExclude()
-            );
-            $Resource->set("Full Record View Count", $CurrentCount);
-        }
     }
 
     /**
      * Record user clicking on a Url metadata field value.
      * @param int $ResourceId ID of resource.
      * @param int $FieldId ID of metadata field.
+     * @return void
      */
-    public function recordUrlFieldClick($ResourceId, $FieldId)
+    public function recordUrlFieldClick($ResourceId, $FieldId): void
     {
-        $Resource = new Record($ResourceId);
-
         $this->recordEventData(self::ET_URLFIELDCLICK, $ResourceId, $FieldId);
-
-        # update current click count for resource
-        if ($Resource->getSchema()->fieldExists("URL Field Click Count")) {
-            $FieldId = $Resource->getSchema()->stdNameToFieldMapping("Url");
-            if ($FieldId !== null) {
-                $CurrentCount = $this->getUrlFieldClickCount(
-                    $Resource->id(),
-                    $FieldId,
-                    $this->getPrivilegesToExclude()
-                );
-                $Resource->set("URL Field Click Count", $CurrentCount);
-            }
-        }
     }
 
 
@@ -770,8 +576,9 @@ class MetricsRecorder extends Plugin
      * an owner and/or type that has not been registered will cause an exception.
      * @param string $Owner Name of event data owner (caller-defined string).
      * @param string $Type Type of event (caller-defined string).
+     * @return void
      */
-    public function registerEventType($Owner, $Type)
+    public function registerEventType($Owner, $Type): void
     {
         # add type to list
         $this->CustomEventTypes[] = $Owner.$Type;
@@ -779,7 +586,7 @@ class MetricsRecorder extends Plugin
 
     /**
      * Remove events recorded with a specified IP address.The starting and/or
-     * ending date can be specified in any format parseable by strtotime().
+     * ending date can be specified in any format parsable by strtotime().
      * @param string $IPAddress Address to remove for, in dotted-quad format.
      * @param string $StartDate Starting date/time of period (inclusive) for
      *       which to remove events.(OPTIONAL, defaults to NULL, which imposes
@@ -787,12 +594,13 @@ class MetricsRecorder extends Plugin
      * @param string $EndDate Ending date/time of period (inclusive) for
      *       which to remove events.(OPTIONAL, defaults to NULL, which imposes
      *       no ending date)
+     * @return void
      */
     public function removeEventsForIPAddress(
         $IPAddress,
         $StartDate = null,
         $EndDate = null
-    ) {
+    ): void {
         $Query = "DELETE FROM MetricsRecorder_EventData"
                 ." WHERE IPAddress = INET_ATON('"
                 .addslashes($IPAddress)."')";
@@ -845,7 +653,7 @@ class MetricsRecorder extends Plugin
         $UserId = null,
         $DedupeTime = 10,
         $CheckForBot = true
-    ) {
+    ): bool {
         # map owner and type names to numerical event type
         $EventTypeId = $this->getEventTypeId($Owner, $Type);
 
@@ -864,8 +672,9 @@ class MetricsRecorder extends Plugin
      * Log when an email message has been sent.
      * @param Email $Email Email that was just sent.
      * @param array $LogData Additional log data.
+     * @return void
      */
-    public static function logSentMessage(Email $Email, array $LogData)
+    public static function logSentMessage(Email $Email, array $LogData): void
     {
         $From = $Email->from();
         $To = implode(", ", $Email->to());
@@ -926,7 +735,7 @@ class MetricsRecorder extends Plugin
         $PrivsToExclude = [],
         $Offset = 0,
         $Count = null
-    ) {
+    ): array {
         # normalize privilege exclusion info if necessary
         if ($PrivsToExclude instanceof PrivilegeSet) {
             $PrivsToExclude = $PrivsToExclude->getPrivileges();
@@ -1056,7 +865,7 @@ class MetricsRecorder extends Plugin
         $DataOne = null,
         $DataTwo = null,
         $PrivsToExclude = []
-    ) {
+    ): array {
         # normalize privilege exclusion info if necessary
         if ($PrivsToExclude instanceof PrivilegeSet) {
             $PrivsToExclude = $PrivsToExclude->getPrivileges();
@@ -1217,7 +1026,7 @@ class MetricsRecorder extends Plugin
         $EndDate = null,
         $Offset = 0,
         $Count = null
-    ) {
+    ): array {
         # construct database query to retrieve data
         $Query = "SELECT * FROM MetricsRecorder_SampleData"
                 ." WHERE SampleType = ".intval($Type)
@@ -1254,7 +1063,7 @@ class MetricsRecorder extends Plugin
         $Count = 10,
         $Offset = 0,
         $NoDupes = true
-    ) {
+    ): array {
         # do while we need more views and there are records left in DB
         $Views = [];
         do {
@@ -1296,7 +1105,7 @@ class MetricsRecorder extends Plugin
      *       excluded from the results.(OPTIONAL, defaults to empty array)
      * @return int Record view count.
      */
-    public function getFullRecordViewCount($ResourceId, $PrivsToExclude = [])
+    public function getFullRecordViewCount($ResourceId, $PrivsToExclude = []): int
     {
         $Counts = $this->getEventCounts(
             "MetricsRecorder",
@@ -1324,7 +1133,7 @@ class MetricsRecorder extends Plugin
         $ResourceId,
         $FieldId,
         $PrivsToExclude = []
-    ) {
+    ): int {
         $Counts = $this->getEventCounts(
             "MetricsRecorder",
             self::ET_URLFIELDCLICK,
@@ -1341,12 +1150,12 @@ class MetricsRecorder extends Plugin
 
     /**
      * Retrieve count of clicks on specified URL field for each resource.Date
-     * parameters may be in any format parseable by strtotime().
+     * parameters may be in any format parsable by strtotime().
      * @param int $FieldId ID of URL metadata field.
      * @param string $StartDate Beginning of date range (in any format
-     *       parseable by strtotime()), or NULL for no lower bound to range.
+     *       parsable by strtotime()), or NULL for no lower bound to range.
      * @param string $EndDate Beginning of date range (in any format
-     *       parseable by strtotime()), or NULL for no upper bound to range.
+     *       parsable by strtotime()), or NULL for no upper bound to range.
      * @param int $Offset Zero-based offset into results array.(OPTIONAL,
      *       defaults to 0)
      * @param int $Count Number of results to return, or 0 to retrieve all.
@@ -1366,8 +1175,8 @@ class MetricsRecorder extends Plugin
         $Offset = 0,
         $Count = 0,
         $PrivsToExclude = []
-    ) {
-        $Field = new MetadataField($FieldId);
+    ): array {
+        $Field = MetadataField::getField($FieldId);
         $AddedClause = "ED.DataTwo = ".intval($FieldId)
                 ." AND (ED.DataOne = R.RecordId AND R.SchemaId = "
                         .intval($Field->schemaId()).")";
@@ -1389,9 +1198,9 @@ class MetricsRecorder extends Plugin
      * @param int $SchemaId Metadata schema ID for resource records.(OPTIONAL,
      *       defaults to SCHEMAID_DEFAULT)
      * @param string $StartDate Beginning of date range (in any format
-     *       parseable by strtotime()), or NULL for no lower bound to range.
+     *       parsable by strtotime()), or NULL for no lower bound to range.
      * @param string $EndDate Beginning of date range (in any format
-     *       parseable by strtotime()), or NULL for no upper bound to range.
+     *       parsable by strtotime()), or NULL for no upper bound to range.
      * @param int $Offset Zero-based offset into results array.(OPTIONAL,
      *       defaults to 0)
      * @param int $Count Number of results to return, or 0 to retrieve all.
@@ -1411,7 +1220,7 @@ class MetricsRecorder extends Plugin
         $Offset = 0,
         $Count = 0,
         $PrivsToExclude = []
-    ) {
+    ): array {
         $AddedClause = "(ED.DataOne = R.RecordId AND R.SchemaId = "
                         .intval($SchemaId).")";
         $AddedTable = "Records AS R";
@@ -1463,11 +1272,13 @@ class MetricsRecorder extends Plugin
      * Utility method to record sample data to database.
      * @param int $SampleType Type of sample.
      * @param int $SampleValue Data for sample.
+     * @return void
      */
-    private function recordSample($SampleType, $SampleValue)
+    private function recordSample($SampleType, $SampleValue): void
     {
         $this->DB->query("INSERT INTO MetricsRecorder_SampleData SET"
-                ." SampleType = ".intval($SampleType).", "
+                ." SampleDate = NOW(),"
+                ." SampleType = ".intval($SampleType).","
                 ." SampleValue = ".intval($SampleValue));
     }
 
@@ -1496,11 +1307,13 @@ class MetricsRecorder extends Plugin
         $UserId = null,
         $DedupeTime = 10,
         $CheckForBot = true
-    ) {
+    ): bool {
+        $AF = ApplicationFramework::getInstance();
+
         # if we should check if the event was triggered by a bot
         if ($CheckForBot) {
             # exit if event appears to be triggered by a bot
-            $SignalResult = $GLOBALS["AF"]->SignalEvent(
+            $SignalResult = $AF->signalEvent(
                 "BotDetector_EVENT_CHECK_FOR_BOT"
             );
             if ($SignalResult === true) {
@@ -1530,7 +1343,7 @@ class MetricsRecorder extends Plugin
                 $Query .= " AND DataTwo = '".addslashes($DataTwo)."'";
             }
             if ($UserId !== null) {
-                $Query .= " AND UserId = ".intval($User->Id());
+                $Query .= " AND UserId = ".intval($User->id());
             }
             if (isset($_SERVER["REMOTE_ADDR"]) && ($_SERVER["REMOTE_ADDR"] != "::1")) {
                 $Query .= " AND IPAddress = INET_ATON('"
@@ -1553,7 +1366,7 @@ class MetricsRecorder extends Plugin
             $Query .= ", DataTwo = '".addslashes($DataTwo)."'";
         }
         if ($UserId !== null) {
-            $Query .= ", UserId = ".intval($User->Id());
+            $Query .= ", UserId = ".intval($User->id());
         }
         if (isset($_SERVER["REMOTE_ADDR"]) && ($_SERVER["REMOTE_ADDR"] != "::1")) {
             $Query .= ", IPAddress = INET_ATON('"
@@ -1565,7 +1378,7 @@ class MetricsRecorder extends Plugin
         $EventId = $this->DB->getLastInsertId();
 
         # signal to give other code a chance add event annotations
-        $SignalResults = $GLOBALS["AF"]->SignalEvent(
+        $SignalResults = $AF->signalEvent(
             "MetricsRecorder_EVENT_RECORD_EVENT",
             [
                 "EventType" => $EventTypeId,
@@ -1615,9 +1428,9 @@ class MetricsRecorder extends Plugin
      * views, etc).
      * @param int $ClickType Event type.
      * @param string $StartDate Beginning of date range (in any format
-     *       parseable by strtotime()), or NULL for no lower bound to range.
+     *       parsable by strtotime()), or NULL for no lower bound to range.
      * @param string $EndDate Beginning of date range (in any format
-     *       parseable by strtotime()), or NULL for no upper bound to range.
+     *       parsable by strtotime()), or NULL for no upper bound to range.
      * @param int $Offset Beginning offset into count data results.
      * @param int $Count Number of count data results to retrieve.(Pass
      *       in NULL to retrieve all results.A count must be specified
@@ -1643,7 +1456,7 @@ class MetricsRecorder extends Plugin
         $PrivsToExclude = [],
         $AddedClause = null,
         $AddedTable = null
-    ) {
+    ): array {
         # normalize privilege exclusion info if necessary
         if ($PrivsToExclude instanceof PrivilegeSet) {
             $PrivsToExclude = $PrivsToExclude->getPrivileges();
@@ -1658,14 +1471,14 @@ class MetricsRecorder extends Plugin
         $QueryConditional = " WHERE ED.EventType = ".$ClickType;
         if ($StartDate) {
             if (strtotime($StartDate) === false) {
-                throw new InvalidArgumentException("Unparseable start date.");
+                throw new InvalidArgumentException("Unparsable start date.");
             }
             $StartDate = date("Y-m-d H:i:s", strtotime($StartDate));
             $QueryConditional .= " AND ED.EventDate >= '".addslashes($StartDate)."'";
         }
         if ($EndDate) {
             if (strtotime($EndDate) === false) {
-                throw new InvalidArgumentException("Unparseable end date.");
+                throw new InvalidArgumentException("Unparsable end date.");
             }
             $EndDate = date("Y-m-d H:i:s", strtotime($EndDate));
             $QueryConditional .= " AND ED.EventDate <= '".addslashes($EndDate)."'";
@@ -1719,7 +1532,7 @@ class MetricsRecorder extends Plugin
      * @return int Numerical event type.
      * @throws Exception If event type was not found.
      */
-    private function getEventTypeId($OwnerName, $TypeName)
+    private function getEventTypeId($OwnerName, $TypeName): int
     {
         # if event is native
         if ($OwnerName == "MetricsRecorder") {
@@ -1769,11 +1582,13 @@ class MetricsRecorder extends Plugin
      * ongoing count updates.
      * @return array Privileges to exclude.
      */
-    private function getPrivilegesToExclude()
+    private function getPrivilegesToExclude(): array
     {
-        if ($GLOBALS["G_PluginManager"]->PluginEnabled("MetricsReporter")) {
-            $Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
-            $Privs = $Reporter->ConfigSetting("PrivsToExcludeFromCounts");
+        $PluginManager = PluginManager::getInstance();
+
+        if ($PluginManager->PluginEnabled("MetricsReporter")) {
+            $Reporter = MetricsReporter::getInstance();
+            $Privs = $Reporter->getConfigSetting("PrivsToExcludeFromCounts");
             if ($Privs instanceof PrivilegeSet) {
                 $Privs = $Privs->getPrivileges();
             }

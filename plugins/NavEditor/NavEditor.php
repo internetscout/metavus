@@ -3,13 +3,12 @@
 #   FILE:  NavEditor.php  (NavEditor plugin)
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\Plugin;
 use Metavus\Plugins\NavEditor\Link;
 use Metavus\PrivilegeFactory;
@@ -23,16 +22,17 @@ class NavEditor extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Navigation Editor";
         $this->Version = "1.1.0";
         $this->Description = "Editor for the primary navigation.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
 
         $this->addAdminMenuEntry(
@@ -46,15 +46,15 @@ class NavEditor extends Plugin
      * Register default configuration settings.
      * @return NULL on success, error message on error
      */
-    public function install()
+    public function install(): ?string
     {
-        $this->configSetting(
+        $this->setConfigSetting(
             "PrimaryNav",
             "Home=home\n"
             ."Browse=browse\n"
             ."About=about\n"
         );
-        $this->configSetting("ModifyPrimaryNav", false);
+        $this->setConfigSetting("ModifyPrimaryNav", false);
 
         return null;
     }
@@ -63,7 +63,7 @@ class NavEditor extends Plugin
      * Declare the events this plugin provides to the application framework.
      * @return array an array of the events this plugin provides
      */
-    public function declareEvents()
+    public function declareEvents(): array
     {
         return [
             "NAVEDITOR_GET_CONFIGURATION" => ApplicationFramework::EVENTTYPE_FIRST,
@@ -75,7 +75,7 @@ class NavEditor extends Plugin
      * Return event hooks to the application framework.
      * @return array an array of events to be hooked into the application framework
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [
             "EVENT_MODIFY_PRIMARY_NAV" => "ModifyPrimaryNav",
@@ -88,10 +88,10 @@ class NavEditor extends Plugin
      * Get configuration values.
      * @return array an array of configuration values
      */
-    public function getConfiguration()
+    public function getConfiguration(): array
     {
-        $ModifyPrimaryNav = $this->configSetting("ModifyPrimaryNav");
-        $PrimaryNav = $this->configSetting("PrimaryNav");
+        $ModifyPrimaryNav = $this->getConfigSetting("ModifyPrimaryNav");
+        $PrimaryNav = $this->getConfigSetting("PrimaryNav");
 
         $Configuration = [
             "ModifyPrimaryNav" => $ModifyPrimaryNav,
@@ -105,14 +105,15 @@ class NavEditor extends Plugin
      * Set a configuration value if it is valid.
      * @param string $Key Configuration key.
      * @param mixed $Value New configuration value.
+     * @return void
      */
-    public function setConfiguration($Key, $Value)
+    public function setConfiguration($Key, $Value): void
     {
         if ($Key == "ModifyPrimaryNav") {
             $SaneValue = (bool)$Value;
-            $this->configSetting($Key, $SaneValue);
+            $this->setConfigSetting($Key, $SaneValue);
         } elseif ($Key == "PrimaryNav") {
-            $this->configSetting($Key, $Value);
+            $this->setConfigSetting($Key, $Value);
         }
     }
 
@@ -121,10 +122,10 @@ class NavEditor extends Plugin
      * @param array $NavItems Current primary nav items.
      * @return array The (potentially) updated primary nav items.
      */
-    public function modifyPrimaryNav(array $NavItems)
+    public function modifyPrimaryNav(array $NavItems): array
     {
-        $ModifyPrimaryNav = $this->configSetting("ModifyPrimaryNav");
-        $PrimaryNav = $this->configSetting("PrimaryNav");
+        $ModifyPrimaryNav = $this->getConfigSetting("ModifyPrimaryNav");
+        $PrimaryNav = $this->getConfigSetting("PrimaryNav");
         $OriginalParameters = ["NavItems" => $NavItems];
 
         if (!$ModifyPrimaryNav) {
@@ -148,7 +149,7 @@ class NavEditor extends Plugin
      * @param string $Csv CSV string.
      * @return array|null Array of Links or NULL if there is an error.
      */
-    private function getLinks($Csv)
+    private function getLinks($Csv): ?array
     {
         $Records = $this->parseCsv($Csv);
 
@@ -169,7 +170,7 @@ class NavEditor extends Plugin
      * @param array $Links An array of Links.
      * @return array An array of pages, with the label as the key.
      */
-    private function getNavItems(array $Links)
+    private function getNavItems(array $Links): array
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -212,7 +213,7 @@ class NavEditor extends Plugin
      * @param string $Csv CSV string.
      * @return array|null Array of CSV records or NULL on error.
      */
-    private function parseCsv($Csv)
+    private function parseCsv($Csv): ?array
     {
         # since str_parsecsv() and php://memory aren't always available, a temp
         # file containing the CSV needs to be created so that fgetcsv() can be
@@ -240,7 +241,7 @@ class NavEditor extends Plugin
 
         $Records = [];
 
-        while (false !== ($Record = fgetcsv($Handle, 0, "="))) {
+        while (false !== ($Record = fgetcsv($Handle, 0, "=", "\"", "\\"))) {
             $Records[] = $Record;
         }
 
@@ -255,7 +256,7 @@ class NavEditor extends Plugin
      * @param array $Records CSV records.
      * @return array Link objects containing valid links.
      */
-    private function transformCsv(array $Records)
+    private function transformCsv(array $Records): array
     {
         $Links = [];
 
@@ -304,7 +305,7 @@ class NavEditor extends Plugin
      * @param string $PrivilegeString Privilege names in the specified format.
      * @return array|null An array of the privilege names or NULL on error.
      */
-    private function parsePrivileges($PrivilegeString)
+    private function parsePrivileges($PrivilegeString): ?array
     {
         $PrivilegeString = trim($PrivilegeString);
 
@@ -324,7 +325,7 @@ class NavEditor extends Plugin
      * @param array $Privileges An array of privilege names.
      * @return array An array of valid privileges, with the name as the key.
      */
-    private function transformPrivileges(array $Privileges)
+    private function transformPrivileges(array $Privileges): array
     {
         $PrivilegeFactory = new PrivilegeFactory();
         $AllPrivileges = $PrivilegeFactory->getPrivileges(true, false);

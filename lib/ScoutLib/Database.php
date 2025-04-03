@@ -2,25 +2,25 @@
 #
 #   Database.php
 #
-#   Copyright 1999-2022 Axis Data
+#   Copyright 1999-2025 Axis Data
 #   This code is free software that can be used or redistributed under the
 #   terms of Version 2 of the GNU General Public License, as published by the
 #   Free Software Foundation (http://www.fsf.org).
 #
 #   Author:  Edward Almasy (ealmasy@axisdata.com)
-#
 #   Part of the AxisPHP library v1.2.5
 #   For more information see http://www.axisdata.com/AxisPHP/
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use handle;
 use InvalidArgumentException;
 use mysqli;
 use mysqli_result;
+use PDO;
+use PDOException;
 use ScoutLib\StdLib;
 
 /**
@@ -29,7 +29,6 @@ use ScoutLib\StdLib;
  */
 class Database
 {
-
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /** @name Setup/Initialization */ /*@(*/
@@ -49,10 +48,10 @@ class Database
      * @see Database::setGlobalDatabaseName()
      */
     public function __construct(
-        string $UserName = null,
-        string $Password = null,
-        string $DatabaseName = null,
-        string $HostName = null
+        ?string $UserName = null,
+        ?string $Password = null,
+        ?string $DatabaseName = null,
+        ?string $HostName = null
     ) {
         # save DB access parameter values
         $this->DBUserName = $UserName ?? self::$GlobalDBUserName;
@@ -146,7 +145,7 @@ class Database
         string $UserName,
         string $Password,
         string $HostName = "localhost"
-    ) {
+    ): void {
         # save default DB access parameters
         self::$GlobalDBUserName = $UserName;
         self::$GlobalDBPassword = $Password;
@@ -160,7 +159,7 @@ class Database
      * Set default database name.
      * @param string $DatabaseName Name of database to use once logged in.
      */
-    public static function setGlobalDatabaseName(string $DatabaseName)
+    public static function setGlobalDatabaseName(string $DatabaseName): void
     {
         # save new default DB name
         self::$GlobalDBName = $DatabaseName;
@@ -173,7 +172,7 @@ class Database
      * Set default database storage engine.
      * @param string $Engine New default storage engine.
      */
-    public function setDefaultStorageEngine(string $Engine)
+    public function setDefaultStorageEngine(string $Engine): void
     {
         # choose config variable to use based on server version number
         $ConfigVar = version_compare($this->getServerVersion(), "5.5", "<")
@@ -265,7 +264,7 @@ class Database
      * @param bool $NewSetting TRUE to enable caching or FALSE to disable.  (OPTIONAL)
      * @return bool Current caching setting.
      */
-    public static function caching(bool $NewSetting = null): bool
+    public static function caching(?bool $NewSetting = null): bool
     {
         # if cache setting has changed, save new setting and clear caches
         if (($NewSetting !== null) && ($NewSetting != self::$CachingFlag)) {
@@ -280,7 +279,7 @@ class Database
     /**
      * Clear all data from internal class caches.
      */
-    public static function clearCaches()
+    public static function clearCaches(): void
     {
         self::$QueryResultCache = [];
         self::$VUCache = [];
@@ -296,12 +295,23 @@ class Database
      *       disable.  (OPTIONAL)
      * @return bool Current advanced caching setting.
      */
-    public static function advancedCaching(bool $NewSetting = null): bool
+    public static function advancedCaching(?bool $NewSetting = null): bool
     {
         if ($NewSetting !== null) {
             self::$AdvancedCachingFlag = $NewSetting;
         }
         return self::$AdvancedCachingFlag;
+    }
+
+    /**
+     * Get the memory threshold (in bytes) used to determine when DB caches
+     * should be cleared. (Caches will be cleared when free memory drops below
+     * this threshold.)
+     * @return int Cache memory threshold in bytes.
+     */
+    public static function getThresholdForCacheClearing(): int
+    {
+        return self::$CacheMemoryThreshold;
     }
 
     /**
@@ -326,7 +336,7 @@ class Database
     public function setQueryErrorsToIgnore(
         $ErrorsToIgnore,
         bool $NormalizeWhitespace = true
-    ) {
+    ): void {
         if ($NormalizeWhitespace && ($ErrorsToIgnore !== null)) {
             $RevisedErrorsToIgnore = [];
             foreach ($ErrorsToIgnore as $SqlPattern => $ErrMsgPattern) {
@@ -361,7 +371,7 @@ class Database
      * @return mysqli_result|bool|string|null Query handle, FALSE on error, or (if
      *      field name supplied) retrieved value or NULL if no value available.
      */
-    public function query(string $QueryString, string $FieldName = null)
+    public function query(string $QueryString, ?string $FieldName = null)
     {
         # clear flag that indicates whether query error was ignored
         $this->ErrorIgnored = false;
@@ -411,16 +421,8 @@ class Database
                         $this->GetResultsFromCache = false;
                     } else {
                         # if we are low on memory
-                        if (self::getFreeMemory() < self::$CacheMemoryThreshold) {
-                            # clear out all but last few rows from caches
-                            self::$QueryResultCache = array_slice(
-                                self::$QueryResultCache,
-                                (0 - self::$CacheRowsToLeave)
-                            );
-                            self::$VUCache = array_slice(
-                                self::$VUCache,
-                                (0 - self::$CacheRowsToLeave)
-                            );
+                        if (StdLib::getFreeMemory() < self::$CacheMemoryThreshold) {
+                            $this->pruneQueryResultsCache();
                         }
 
                         # if advanced caching is enabled
@@ -629,7 +631,7 @@ class Database
      * @param bool $NewValue TRUE to display errors or FALSE to not display.  (OPTIONAL)
      * @return bool Current value of whether query() errors will be displayed.
      */
-    public static function displayQueryErrors(bool $NewValue = null): bool
+    public static function displayQueryErrors(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             self::$DisplayErrors = $NewValue;
@@ -718,7 +720,7 @@ class Database
      * @return array Array of rows.  Each row is an associative array indexed
      *       by field name.
      */
-    public function fetchRows(int $NumberOfRows = null): array
+    public function fetchRows(?int $NumberOfRows = null): array
     {
         # assume no rows will be returned
         $Result = [];
@@ -752,7 +754,7 @@ class Database
      *       IndexFieldName is supplied then array will be indexed by
      *       corresponding values from that field.
      */
-    public function fetchColumn(string $FieldName, string $IndexFieldName = null): array
+    public function fetchColumn(string $FieldName, ?string $IndexFieldName = null): array
     {
         $Array = [];
         while ($Record = $this->fetchRow()) {
@@ -884,7 +886,7 @@ class Database
      * @param bool $NewValue New value to set.  (OPTIONAL)
      * @return bool Requested value.
      */
-    public function updateBoolValue(string $FieldName, bool $NewValue = null)
+    public function updateBoolValue(string $FieldName, ?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $CurrentValue = $this->updateValueForColumn(
@@ -933,8 +935,8 @@ class Database
     public function setValueUpdateParameters(
         string $TableName,
         string $Condition = "",
-        array $Values = null
-    ) {
+        ?array $Values = null
+    ): void {
         $this->VUTableName = $TableName;
         $this->VUCondition = "";
         if (strlen($Condition)) {
@@ -966,7 +968,7 @@ class Database
         string $SrcId,
         $DstId,
         $ColumnsToExclude = []
-    ) {
+    ): void {
         # retrieve names of all columns in table
         $AllColumns = $this->getColumns($TableName);
 
@@ -1015,9 +1017,9 @@ class Database
         string $Table,
         string $ValueField,
         $Values,
-        string $KeyField = null,
+        ?string $KeyField = null,
         int $AvgDataLength = 20
-    ) {
+    ): void {
         # pick some ballpark values
         $ChunkSizeAssumedSafe = 100;
         $QueryLengthAssumedSafe = 10486576;  # (1 MB)
@@ -1113,7 +1115,7 @@ class Database
      * the query stream.
      * @param string $String Debug string.
      */
-    public function logComment(string $String)
+    public function logComment(string $String): void
     {
         $this->query("-- " . $String);
     }
@@ -1348,7 +1350,7 @@ class Database
      */
     public static function getMaxQueryLength(): int
     {
-        return (int)self::serverSystemVariable("max_allowed_packet");
+        return (int)self::getServerVariable("max_allowed_packet");
     }
 
     /**
@@ -1357,7 +1359,7 @@ class Database
      */
     public static function getFullTextSearchMinWordLength(): int
     {
-        return (int)self::serverSystemVariable("ft_min_word_len");
+        return (int)self::getServerVariable("ft_min_word_len");
     }
 
     /**
@@ -1366,7 +1368,7 @@ class Database
      */
     public static function getFullTextSearchMaxWordLength(): int
     {
-        return (int)self::serverSystemVariable("ft_max_word_len");
+        return (int)self::getServerVariable("ft_max_word_len");
     }
 
     /**
@@ -1377,7 +1379,7 @@ class Database
     {
         static $StopWordList;
         if (!isset($StopWordList)) {
-            $StopWordFile = self::serverSystemVariable("ft_stopword_file");
+            $StopWordFile = self::getServerVariable("ft_stopword_file");
             if (is_readable($StopWordFile)) {
                 $FileContents = file_get_contents($StopWordFile);
                 if ($FileContents !== false) {
@@ -1430,7 +1432,7 @@ class Database
      * This setting applies to <b>all</b> instances of the Database class.
      * @param bool $NewSetting TRUE to enable output or FALSE to disable output.
      */
-    public static function queryDebugOutput(bool $NewSetting)
+    public static function queryDebugOutput(bool $NewSetting): void
     {
         self::$QueryDebugOutputFlag = $NewSetting;
     }
@@ -1441,7 +1443,7 @@ class Database
      * @param int $NewSetting New setting (OPTIONAL).
      * @eturn int Current value.
      */
-    public static function cacheRowsThreshold(int $NewSetting = null) : int
+    public static function cacheRowsThreshold(?int $NewSetting = null) : int
     {
         if (!is_null($NewSetting)) {
             self::$CacheRowsThreshold = $NewSetting;
@@ -1458,7 +1460,7 @@ class Database
      * @param int $NewSetting New setting (OPTIONAL).
      * @eturn int Current value.
      */
-    public static function cacheSizeThreshold(int $NewSetting = null) : int
+    public static function cacheSizeThreshold(?int $NewSetting = null) : int
     {
         if (!is_null($NewSetting)) {
             self::$CacheSizeThreshold = $NewSetting;
@@ -1471,7 +1473,7 @@ class Database
      * Enable/disable query timing. Disabled by default.
      * @param bool $NewSetting TRUE to enable.
      */
-    public static function queryTimeRecordingIsEnabled(bool $NewSetting = null) : bool
+    public static function queryTimeRecordingIsEnabled(?bool $NewSetting = null) : bool
     {
         if (!is_null($NewSetting)) {
             self::$RecordQueryTiming = $NewSetting;
@@ -1521,14 +1523,14 @@ class Database
      * @param int $NewValue New threshold time, in seconds.  (OPTIONAL)
      * @return int Current threshold time.
      */
-    public static function slowQueryThreshold(int $NewValue = null): int
+    public static function slowQueryThreshold(?int $NewValue = null): int
     {
         if (!is_null($NewValue)) {
             self::$LongQueryTime = (int)$NewValue;
-            return (int) self::serverSystemVariable("long_query_time", (int)$NewValue);
+            self::setServerVariable("long_query_time", $NewValue);
         }
 
-        return (int) self::serverSystemVariable("long_query_time");
+        return (int) self::getServerVariable("long_query_time");
     }
 
     /**
@@ -1536,7 +1538,7 @@ class Database
      * @param Callable $NewValue Query logging function. The first parameter
      * will be the query string, the second will be the elapsed time.
      */
-    public static function setSlowQueryLoggingFn(callable $NewValue)
+    public static function setSlowQueryLoggingFn(callable $NewValue): void
     {
         if (!is_callable($NewValue)) {
             throw new InvalidArgumentException(
@@ -1545,6 +1547,24 @@ class Database
         }
 
         self::$SlowQueryLoggingFn = $NewValue;
+    }
+
+    /**
+     * Set a cache prune logging function.
+     * @param Callable $NewValue Query cache prune logging function. Called
+     *   immediately before the query cache is pruned, first parameter gives
+     *   the call site of the query that prompted pruning, second parameter is
+     *   the query result cache before pruning.
+     */
+    public static function setCachePruneLoggingFn(callable $NewValue): void
+    {
+        if (!is_callable($NewValue)) {
+            throw new InvalidArgumentException(
+                "Cache prune log function not callable."
+            );
+        }
+
+        self::$CachePruneLoggingFn = $NewValue;
     }
 
     /**
@@ -1579,7 +1599,7 @@ class Database
      *   Locations (call stack that executed the query). Values are sorted
      *   in descending order of total time.
      */
-    public static function getMostTimeConsumingQueries(int $NumQueries = null)
+    public static function getMostTimeConsumingQueries(?int $NumQueries = null)
     {
         # sort in descending order of total time
         uasort(
@@ -1594,6 +1614,90 @@ class Database
         }
 
         return array_slice(self::$QueryTimingStats, 0, $NumQueries, true);
+    }
+
+    /**
+     * Convenience method for creating database tables.
+     * @param array $Tables Array of table creation SQL, with table names for
+     *      the index.
+     * @return string|null Error message or NULL if creation succeeded.
+     */
+    public function createTables(array $Tables): ?string
+    {
+        # check that all supplied commands appear to create tables
+        foreach ($Tables as $TableName => $TableSql) {
+            if (!preg_match('/^\s*CREATE\s+TABLE/i', $TableSql)) {
+                return "Table creation SQL command does not appear to create"
+                        ." a table. (COMMAND: \"".$TableSql."\")";
+            }
+        }
+
+        # create tables
+        foreach ($Tables as $TableName => $TableSql) {
+            $Result = $this->query($TableSql);
+            if ($Result === false) {
+                return "Unable to create ".$TableName." database table."
+                    ."  (ERROR: ".$this->queryErrMsg().")";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Convenience method for creating missing database tables.  This will not
+     * error out if the table creation SQL includes tables that already exist.
+     * @param array $Tables Array of table creation SQL, with table names for
+     *      the index.
+     * @return string|null Error message or NULL if creation succeeded.
+     */
+    public function createMissingTables(array $Tables): ?string
+    {
+        $SqlErrorsWeCanIgnore = [
+            "/CREATE TABLE /i" => "/Table '[a-z0-9_]+' already exists/i"
+        ];
+        $this->setQueryErrorsToIgnore($SqlErrorsWeCanIgnore);
+        return $this->createTables($Tables);
+    }
+
+    /**
+     * Convenience method for dropping database tables, using tables specified
+     * in the same format as createTables().  (This method as implemented here
+     * currently will not return an error message, but callers should still
+     * check for and potentially handle an error message because child classes
+     * or future updates to this method may do so.)
+     * @param array $Tables Array of table creation SQL, with table names for
+     *      the index.
+     * @return string|null Error message or NULL if table drops succeeded.
+     */
+    public function dropTables(array $Tables): ?string
+    {
+        foreach ($Tables as $TableName => $TableSql) {
+            $this->query("DROP TABLE IF EXISTS " . $TableName);
+        }
+        return null;
+    }
+
+    /**
+     * Get PDO (PHP Data Object) instance for database.
+     * @return PDO PDO instance connected to database.
+     */
+    public static function getPDO(): PDO
+    {
+        $DataSourceName = "mysql:"
+                ."dbname=".self::$GlobalDBName.";"
+                ."host=".self::$GlobalDBHostName;
+        try {
+            $PDO = new PDO(
+                $DataSourceName,
+                self::$GlobalDBUserName,
+                self::$GlobalDBPassword
+            );
+        } catch (PDOException $Ex) {
+            throw new Exception("Could not open PDO connection for database: "
+                .$Ex->getMessage()
+                ." (code: ".mysqli_connect_errno().")");
+        }
+        return $PDO;
     }
 
     /*@)*/ /* Miscellaneous */
@@ -1634,6 +1738,8 @@ class Database
     private static $SlowQueryLoggingFn = null;
     private static $LongQueryTime = 10;
 
+    private static $CachePruneLoggingFn = null;
+
     # debug output flag
     private static $QueryDebugOutputFlag = false;
     # flag for whether caching is turned on
@@ -1659,6 +1765,7 @@ class Database
     private static $ConnectRetryAttempts = 3;
     # number of seconds to wait between connection retry attempts
     private static $ConnectRetryInterval = 5;
+    private static $ServerVariableCache;
 
     /**
      * Default stop word list for full-text searches.
@@ -1842,7 +1949,8 @@ class Database
         # throw exception if connection attempts failed
         if ($Handle === false) {
             throw new Exception("Could not connect to database: "
-                . mysqli_connect_error() . " (errno: " . mysqli_connect_errno() . ")");
+                    .mysqli_connect_error()
+                    ." (errno: ".mysqli_connect_errno().")");
         }
 
         # return new connection to caller
@@ -2053,9 +2161,13 @@ class Database
         if (!is_null(self::$SlowQueryLoggingFn) && $QueryDuration > self::$LongQueryTime) {
             $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
 
+            # go back the right number of frames to find the function that called
+            # Database::query()
+            $CallingFrame = $Trace[2];
+
             call_user_func_array(
                 self::$SlowQueryLoggingFn,
-                [$QueryString, $Trace[2], $QueryDuration]
+                [$QueryString, $CallingFrame, $QueryDuration]
             );
         }
 
@@ -2101,7 +2213,7 @@ class Database
                     .htmlspecialchars($QueryString)."</i><br/>\n";
 
                 # retrieve execution trace that got us to this point
-                $Trace = debug_backtrace();
+                $Trace = debug_backtrace();     // phpcs:ignore
 
                 # remove current context from trace
                 array_shift($Trace);
@@ -2227,6 +2339,55 @@ class Database
     }
 
     /**
+     * Prune the query results cache.
+     */
+    private function pruneQueryResultsCache(): void
+    {
+        # prevent recursion (can come up if CachePruneLoggingFn is set to
+        # something that issues DB queries)
+        static $CurrentlyPruning = false;
+        if ($CurrentlyPruning) {
+            return;
+        }
+
+        $CurrentlyPruning = true;
+
+        # log that we had to prune the cache
+        if (!is_null(self::$CachePruneLoggingFn)) {
+            $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+
+            # go back the right number of frames to find the caller of
+            # Database::query()
+            $CallingFrame = $Trace[2];
+
+            call_user_func_array(
+                self::$CachePruneLoggingFn,
+                [$CallingFrame, &self::$QueryResultCache]
+            );
+        }
+
+        # clear out all but last few rows from caches
+        self::$QueryResultCache = array_slice(
+            self::$QueryResultCache,
+            (0 - self::$CacheRowsToLeave)
+        );
+        self::$VUCache = array_slice(
+            self::$VUCache,
+            (0 - self::$CacheRowsToLeave)
+        );
+        gc_collect_cycles();
+
+        # if we are still low on memory, just nuke the caches entirely
+        if (StdLib::getFreeMemory() < self::$CacheMemoryThreshold) {
+            self::$QueryResultCache = [];
+            self::$VUCache = [];
+            gc_collect_cycles();
+        }
+
+        $CurrentlyPruning = false;
+    }
+
+    /**
      * Get/set value for specified column.
      * @param string $ColName Name of database column.
      * @param string|null $NewValue New value to set.  (OPTIONAL)
@@ -2307,7 +2468,7 @@ class Database
     private function recordTimingStatsForQuery(
         string $QueryString,
         float $Elapsed
-    ) {
+    ): void {
         # don't bother recording anything if query was fast
         if ($Elapsed < self::$QueryTimingMinimum) {
             return;
@@ -2355,12 +2516,21 @@ class Database
     }
 
     /**
-     * Get current amount of free memory.
-     * @return int Memory available in bytes.
+     * Get database server system variable.
+     * @param string $VarName Server system variable name.
+     * @return string Current value for variable.
      */
-    private static function getFreeMemory(): int
+    private static function getServerVariable(string $VarName): string
     {
-        return StdLib::getPhpMemoryLimit() - memory_get_usage();
+        if (!isset(self::$ServerVariableCache[$VarName])) {
+            static $DB;
+            if (!isset($DB)) {
+                $DB = new self();
+            }
+            $Query = "SHOW VARIABLES LIKE '".addslashes($VarName)."'";
+            self::$ServerVariableCache[$VarName] = $DB->queryValue($Query, "Value");
+        }
+        return self::$ServerVariableCache[$VarName];
     }
 
     /**
@@ -2370,23 +2540,17 @@ class Database
      * @param string $VarName System variable name.
      * @param mixed|null $NewValue New value for system variable.  (OPTIONAL,
      *       or use NULL to not set a new value)
-     * @return string Current value for system variable.
      */
-    private static function serverSystemVariable(string $VarName, $NewValue = null): string
+    private static function setServerVariable(string $VarName, $NewValue): void
     {
         static $DB;
-
         if (!isset($DB)) {
             $DB = new self();
         }
-
-        if ($NewValue !== null) {
-            if (is_string($NewValue)) {
-                $NewValue = "'" . addslashes($NewValue) . "'";
-            }
-            $DB->query("SET " . $VarName . " = " . $NewValue);
+        if (is_string($NewValue)) {
+            $NewValue = "'".addslashes($NewValue)."'";
         }
-
-        return $DB->query("SHOW VARIABLES LIKE '" . addslashes($VarName) . "'", "Value");
+        self::$ServerVariableCache[$VarName] = $NewValue;
+        $DB->query("SET ".$VarName." = ".$NewValue);
     }
 }

@@ -3,16 +3,14 @@
 #   FILE:  RecordEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\Database;
 use ScoutLib\Date;
 use ScoutLib\StdLib;
 
@@ -43,8 +41,9 @@ class RecordEditingUI extends FormUI
 
     /**
      * Set all fields ReadOnly.
+     * @return void
      */
-    public function setAllFieldsReadOnly()
+    public function setAllFieldsReadOnly(): void
     {
         foreach ($this->FieldParams as $FieldName => $Params) {
             $this->FieldParams[$FieldName]["ReadOnly"] = true;
@@ -63,8 +62,9 @@ class RecordEditingUI extends FormUI
     /**
      * Save changes to underlying record.
      * @throws \Exception if field input was not validated before saving.
+     * @return void
      */
-    public function saveChanges()
+    public function saveChanges(): void
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -85,8 +85,6 @@ class RecordEditingUI extends FormUI
                 $Field
             );
         }
-
-        $WasPublic = $this->Record->userCanView(User::getAnonymousUser());
 
         # make sure all fields provided are actually valid fields before
         # continuing
@@ -141,55 +139,21 @@ class RecordEditingUI extends FormUI
                 $Image->destroy();
             }
         }
-
-        $this->Record->updateAutoupdateFields(
-            MetadataField::UPDATEMETHOD_ONRECORDCHANGE,
-            $User
-        );
-
-        $IsPublic = $this->Record->userCanView(User::getAnonymousUser());
-        if ($WasPublic != $IsPublic) {
-            $this->Record->updateAutoupdateFields(
-                MetadataField::UPDATEMETHOD_ONRECORDRELEASE,
-                $User
-            );
-        }
-
-        # update search and recommender DBs if configured to do so
-        $this->Record->queueSearchAndRecommenderUpdate();
-
-        # signal the modified event if the resource isn't a temp one
-        if (!$this->Record->isTempRecord()) {
-            $GLOBALS["AF"]->signalEvent("EVENT_RESOURCE_MODIFY", ["Resource" => $this->Record]);
-        }
-    }
-
-    /**
-     * Delete uploaded files and images, to be used when editing is canceled
-     * without associating uploads with a record.
-     */
-    public function deleteUploads()
-    {
-        foreach ($this->AddedFiles as $FileId) {
-            (new File($FileId))->destroy();
-        }
-
-        foreach ($this->AddedImages as $ImageId) {
-            (new Image($ImageId))->destroy();
-        }
     }
 
     /**
      * Display editing form.
-     * @param string $TableId CSS ID for table element.(OPTIONAL)
-     * @param string $TableStyle CSS styles for table element.(OPTIONAL)
-     * @param string $TableCssClass Additional CSS class for table element.(OPTIONAL)
+     * @param string $TableId CSS ID for table element. (OPTIONAL)
+     * @param string $TableStyle CSS styles for table element. (OPTIONAL)
+     * @param string $TableCssClass Additional CSS class for table element. (OPTIONAL)
+     * @return void
      */
     public function displayFormTable(
-        string $TableId = null,
-        string $TableStyle = null,
-        string $TableCssClass = null
-    ) {
+        ?string $TableId = null,
+        ?string $TableStyle = null,
+        ?string $TableCssClass = null
+    ): void {
+        $AF = ApplicationFramework::getInstance();
         # add checksums for initial values to determine if record has been updated on submission
         $MFields = $this->Record->getSchema()->getFields();
         foreach ($MFields as $MField) {
@@ -199,11 +163,15 @@ class RecordEditingUI extends FormUI
                 $this->addHiddenField($ChecksumFormFieldName, $EncodedValue);
             }
         }
-        parent::displayFormTable($TableId, $TableStyle, $TableCssClass);
+        parent::displayFormTable(
+            $TableId,
+            $TableStyle,
+            "mv-reui-form ".($TableCssClass ?? "")
+        );
 
-        $GLOBALS["AF"]->requireUIFile("RecordEditingUI.js");
+        $AF->requireUIFile("RecordEditingUI.js");
 
-        $LoadingImg = $GLOBALS["AF"]->GUIFile(self::LOADING_IMG_FILE_NAME);
+        $LoadingImg = $AF->gUIFile(self::LOADING_IMG_FILE_NAME);
 
         print <<<END
 <div id="mv-vocabsearchpopup">
@@ -502,7 +470,6 @@ END;
             return null;
         }
 
-        # values that strtotime cannot parse are invalid
         if (Date::isValidDate($FieldValues) == false) {
             return "<i>".$FieldName."</i>: Invalid date format.";
         }
@@ -515,7 +482,7 @@ END;
      * @param bool $NewSetting New setting (OPTIONAL)
      * @return bool TRUE when groups will be open by default
      */
-    public static function groupsOpenByDefault(bool $NewSetting = null)
+    public static function groupsOpenByDefault(?bool $NewSetting = null)
     {
         if (!is_null($NewSetting)) {
             self::$GroupsOpenByDefault = $NewSetting;
@@ -591,7 +558,9 @@ END;
                 break;
             case MetadataSchema::MDFTYPE_DATE:
                 $FormValue = trim($FormValue);
-                $Value = ($FormValue == "") ? false : new Date($FormValue);
+                $Value = ($FormValue == "" || !Date::isValidDate($FormValue))
+                    ? false
+                    : new Date($FormValue);
                 break;
             case MetadataSchema::MDFTYPE_FLAG:
                 $FormValue = trim($FormValue);
@@ -599,7 +568,7 @@ END;
                 break;
             case MetadataSchema::MDFTYPE_PARAGRAPH:
                 # in fields that allow html and use rich text editing
-                if ($MField->allowHTML() && $MField->useWysiwygEditor()) {
+                if ($MField->allowHtml() && $MField->useWysiwygEditor()) {
                     # strip trailing whitespace in the formats that CKEditor
                     # often inserts (0xC2A0 is a UTF-8 non-breaking space
                     # character)
@@ -660,8 +629,9 @@ END;
 
     /**
      * Set up form fields for editing.
+     * @return array Form field configuration.
      */
-    protected function getFormFieldConfiguration()
+    protected function getFormFieldConfiguration(): array
     {
         $OrderItems = $this->Record
             ->getSchema()
@@ -836,13 +806,14 @@ END;
         if (!isset($FieldOptions["AdditionalHtml"])) {
             $FieldOptions["AdditionalHtml"] = "";
         }
-        $FieldOptions["AdditionalHtml"] .= $GLOBALS["AF"]->formatInsertionKeyword(
-            "FIELDEDIT",
-            [
-                "FieldId" => $MField->id(),
-                "RecordId" => $Record->id(),
-            ]
-        );
+        $FieldOptions["AdditionalHtml"] .=
+            ApplicationFramework::getInstance()->formatInsertionKeyword(
+                "FIELDEDIT",
+                [
+                    "FieldId" => $MField->id(),
+                    "RecordId" => $Record->id(),
+                ]
+            );
 
         return $FieldOptions;
     }
@@ -886,7 +857,7 @@ END;
                     $Options["AdditionalHtml"] = "<button type='button' "
                         ."class='mv-reui-clear btn btn-primary mv-button-iconed' "
                         ."data-fieldname='".htmlspecialchars($MField->name())."' "
-                        ."><img src='".$AF->GUIFile("Broom.svg")
+                        ."><img src='".$AF->gUIFile("Broom.svg")
                         ."' alt='' class='mv-button-icon' /> Clear</button>";
                 }
                 break;
@@ -939,7 +910,7 @@ END;
                     $Options["AdditionalHtml"] = "<button type='button' "
                         ."class='mv-reui-clear btn btn-primary mv-button-iconed' "
                         ."data-fieldname='".htmlspecialchars($MField->name())."' "
-                        ."><img src='".$AF->GUIFile('Broom.svg')
+                        ."><img src='".$AF->gUIFile('Broom.svg')
                         ."' alt='' class='mv-button-icon' /> Clear</button>";
                 }
 
@@ -1073,7 +1044,7 @@ END;
         $Values = self::convertFormValueToMFieldValue($MField, $Values);
 
         # signal POST_FIELD_EDIT_FILTER
-        $SignalResult = $GLOBALS["AF"]->signalEvent(
+        $SignalResult = ApplicationFramework::getInstance()->signalEvent(
             "EVENT_POST_FIELD_EDIT_FILTER",
             [
                 "Field" => $MField,

@@ -3,13 +3,15 @@
 #   FILE:  GetMarker.php (GoogleMaps plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
+
+use Metavus\Plugins\GoogleMaps;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -31,7 +33,7 @@ $BgHex = strtolower(StdLib::getArrayValue($_GET, "BG", "000000"));
 $Text = StdLib::getArrayValue($_GET, "T", "");
 
 $AF = ApplicationFramework::getInstance();
-$Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$Plugin = GoogleMaps::getInstance();
 
 # if we have a cached copy of this marker, serve the request from cache
 $CachedFile = $Plugin->getMarkerFilePath($Text, $BgHex, $FgHex);
@@ -54,18 +56,33 @@ $AF->urlFingerprintingEnabled(false);
 $Canvas = imagecreatefrompng(
     getcwd()."/".$AF->gUIFile("marker-shadow.png")
 );
+if ($Canvas === false) {
+    throw new Exception(
+        "Failed to retrieve an image resource identifier for the file marker-shadow.png"
+    );
+}
+
 imagesavealpha($Canvas, true);
 
 # load the the template marker
 $Img = imagecreatefrompng(
     getcwd()."/".$AF->gUIFile("marker-black.png")
 );
+if ($Img === false) {
+    throw new Exception(
+        "Failed to retrieve an image resource identifier for the file marker-black.png"
+    );
+}
 
 # colorize it
 imagefilter($Img, IMG_FILTER_COLORIZE, $BG["R"], $BG["G"], $BG["B"]);
 
 # add the text overlay
 $FgColor = imagecolorallocatealpha($Img, $FG["R"], $FG["G"], $FG["B"], 0);
+if ($FgColor === false) {
+    throw new Exception("Failed to retrieve a color identifier for the image marker-black.png");
+}
+
 imagestring($Img, 3, 5, 0, $Text, $FgColor);
 
 # merge our foreground on to the canvas
@@ -84,6 +101,12 @@ imagecopy(
 $Outline = imagecreatefrompng(
     getcwd()."/".$AF->gUIFile("marker-outline.png")
 );
+
+if (!$Outline) {
+    throw new Exception(
+        "Failed to retrieve an image resource identifier for the file marker-outline.png"
+    );
+}
 
 # merge the outline on to our image
 imagecopy(

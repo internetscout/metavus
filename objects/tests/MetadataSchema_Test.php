@@ -3,7 +3,7 @@
 #   FILE:  MetadataSchema_Test.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -122,17 +122,19 @@ class MetadataSchema_Test extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * Verify that viewPage() works correctly.
-     * covers viewPage().
+     * Verify that getViewPage() and setViewPage() work correctly.
+     * covers getViewPage().
+     * covers setViewPage().
      */
     public function testViewPage()
     {
         # create a metadata schema
         $TestSchema = MetadataSchema::create("Test_MetadataSchema");
         # test getting the view page: expected to be empty as no view page was specified
-        $this->assertEmpty($TestSchema->viewPage());
+        $this->assertEmpty($TestSchema->getViewPage());
         # test updating the view page
-        $this->assertEquals($TestSchema->viewPage("Test_Page"), "Test_Page");
+        $TestSchema->setViewPage("Test_Page");
+        $this->assertEquals($TestSchema->getViewPage(), "Test_Page");
         # delete the metadata schema
         $TestSchema->delete();
     }

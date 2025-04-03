@@ -3,14 +3,23 @@
 #   FILE:  ConfirmAutofix.html (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\InterfaceConfiguration;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$NoButton = new HtmlButton("No");
+$NoButton->setIcon("Cross.svg");
+$NoButton->setLink("index.php?P=P_UrlChecker_Results");
 
+$YesButton = new HtmlButton("Yes");
+$YesButton->setIcon("Check.svg");
+$YesButton->setLink("index.php?P=P_UrlChecker_Autofix&Id=$H_Id");
+
+# ----- DISPLAY --------------------------------------------------------------
 if (isset($H_Error)) { ?>
     <ul class="mv-form-error">
         <li><?= $H_Error ?></li>
@@ -51,10 +60,6 @@ if (preg_match("/^(mailto|ftps?|https?):\/\//", $H_InvalidUrl->FinalUrl)) {
 }
 
 ?>
-
-<link type="text/css" rel="stylesheet"
-    href="plugins/UrlChecker/interface/default/include/UrlChecker.css" media="all" />
-
 <h1>Confirm Automatic Fix</h1>
 
 <p>
@@ -73,8 +78,6 @@ Updated:
 <a href="<?= $FinalUrlHref; ?>" target="_blank"><?= $FinalUrl; ?></a>
 </p>
 
-<a class="btn btn-primary mv-button-iconed" href="index.php?P=P_UrlChecker_Results"><img
-    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> No</a>
-<a class="btn btn-primary mv-button-iconed"
-    href="index.php?P=P_UrlChecker_Autofix&amp;Id=<?= $H_Id ?>"><img
-    src="<?= $AF->GUIFile('Check.svg'); ?>" alt="" class="mv-button-icon" /> Yes</a>
+<?= $NoButton->getHtml(); ?>
+
+<?= $YesButton->getHtml(); ?>

@@ -137,20 +137,14 @@
 /* @group Viewing Folders
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
 
-.mv-folders-folder-shareurl {
-  display: none;
-}
-
-.mv-folders-isshared .mv-folders-folder-shareurl {
-  display: block;
-}
 
 p.mv-folders-folder-description {
-  position: relative;
-  bottom: 8px;
-  margin-top: 0;
-
   font-style: italic;
+}
+
+.mv-folders-folder-image {
+    float: left;
+    padding-right: 15px;
 }
 
 .mv-folders-items > .mv-folders-resource {

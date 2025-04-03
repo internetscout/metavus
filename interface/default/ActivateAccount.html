@@ -3,13 +3,30 @@
 #   FILE:  ActivateAccount.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\FormUI;
+namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+if (!isset($H_SuccessMessages)) {
+    throw new Exception("H_SuccessMessages not defined.");
+}
+
+$ActivateButton = new HtmlButton("Activate");
+$ActivateButton->setIcon("Check.svg");
+$ActivateButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
+
 <h1>Activate Account</h1>
 
 <?PHP
@@ -31,7 +48,5 @@ if (count($H_SuccessMessages)) {
 <?PHP } ?>
 <form method="post" action="index.php?P=ActivateAccount">
   <?PHP $H_FormUI->displayFormTable(); ?>
-  <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Save"><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-        class="mv-button-icon" /> Activate</button>
+    <?= $ActivateButton->getHtml() ?>
 </form>

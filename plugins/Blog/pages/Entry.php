@@ -3,10 +3,12 @@
 #   FILE:  Entry.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\Record;
 use Metavus\User;
@@ -17,7 +19,7 @@ use ScoutLib\StdLib;
 # ----- MAIN -----------------------------------------------------------------
 
 $AF = ApplicationFramework::getInstance();
-$H_Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+$H_Blog = Blog::getInstance();
 
 # assume that a generic error will occur
 $H_State = "Error";
@@ -26,18 +28,19 @@ $H_State = "Error";
 $EntryId = StdLib::getArrayValue($_GET, "ID");
 
 # if the entry ID is invalid
-if (!is_numeric($EntryId) || !Record::ItemExists($EntryId)) {
+if (!is_numeric($EntryId) || !Record::ItemExists((int)$EntryId)) {
+    $AF->doNotCacheCurrentPage();
     $H_State = "Invalid ID";
     return;
 }
 
 # if the entry is some other type of resource
-if (Record::getSchemaForRecord($EntryId) != $H_Blog->getSchemaId()) {
+if (Record::getSchemaForRecord((int)$EntryId) != $H_Blog->getSchemaId()) {
     $H_State = "Not Blog Entry";
     return;
 }
 
-$H_Entry = new Entry($EntryId);
+$H_Entry = new Entry((int)$EntryId);
 $H_Blog->SetCurrentBlog($H_Entry->GetBlogId());
 
 # if the entry hasn't been published yet and the user can't view unpublished

@@ -7,6 +7,7 @@
 #   http://metavus.net
 #
 
+use Metavus\Plugins\Blog;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
@@ -19,8 +20,8 @@ PageTitle("Subscribe to Blog Entry Notifications");
 $User = User::getCurrentUser();
 
 # get the blog plugin
-$Blog = PluginManager::getInstance()->getPluginForCurrentPage();
-$Blog->setCurrentBlog($Blog->configSetting("EmailNotificationBlog"));
+$Blog = Blog::getInstance();
+$Blog->setCurrentBlog($Blog->getConfigSetting("EmailNotificationBlog"));
 
 $AF = ApplicationFramework::getInstance();
 
@@ -33,6 +34,6 @@ if ($User->isLoggedIn()) {
     $AF->setJumpToPage($Blog->blogUrl());
 } else {
     # send user to login page with appropriate prompt
-    $_SESSION["LoginPrompt"] = $Blog->configSetting("NotificationLoginPrompt");
+    $_SESSION["LoginPrompt"] = $Blog->getConfigSetting("NotificationLoginPrompt");
     $AF->setJumpToPage("Login");
 }

@@ -3,14 +3,28 @@
 #   FILE:  DeletePage.html (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use ScoutLib\ApplicationFramework;
 
+# ----- SETUP ----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 
+$ReturnButton = new HtmlButton("Return to the list of pages");
+$ReturnButton->setIcon("BackArrow.svg");
+$ReturnButton->setLink("index.php?P=P_Pages_ListPages");
+
+$DeleteButton = new HtmlButton("Delete");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->addSemanticClass("btn-danger");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 # if no page ID available
 if ($H_DisplayMode == "NoPageSpecified") {
     # display error message indicating no ID
@@ -29,9 +43,7 @@ if ($H_DisplayMode == "NoPageSpecified") {
         ?>
         <div class="mv-form-error">
             <h2>Page Deleted</h2>
-            <a href="index.php?P=P_Pages_ListPages" class="btn btn-primary mv-button-iconed"><img
-                src="<?= $AF->GUIFile('BackArrow.svg'); ?>"
-                alt="" class="mv-button-icon" /> Return to the list of pages</a>
+            <?= $ReturnButton->getHtml(); ?>
         </div>
         <?PHP
     } else {
@@ -45,14 +57,8 @@ if ($H_DisplayMode == "NoPageSpecified") {
         <h2>Confirm Page Deletion</h2>
         <p><b>WARNING:</b> Content cannot be recovered after page is
         deleted!</p>
-        <button type="submit" name="Submit" value="Delete"
-            class="btn btn-danger mv-button-iconed"><img
-            src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-            class="mv-button-icon" /> Delete</button>
-        <button type="submit" name="Submit" value="Cancel"
-            class="btn btn-primary mv-button-iconed"><img
-            src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-            class="mv-button-icon" /> Cancel</button>
+        <?= $DeleteButton->getHtml(); ?>
+        <?= $CancelButton->getHtml(); ?>
         </div>
         </form>
         <?PHP

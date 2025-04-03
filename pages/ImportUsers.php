@@ -6,6 +6,7 @@
 #   Copyright 2004-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\File;
 use Metavus\FormUI;

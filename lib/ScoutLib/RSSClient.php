@@ -3,12 +3,12 @@
 #   FILE:  RSSClient.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2002-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu/
 #
+# @scout:phpstan
 
 namespace ScoutLib;
-
 use ScoutLib\Database;
 use Returns;
 use ScoutLib\XMLParser;
@@ -142,7 +142,7 @@ class RSSClient
      * precedence is as follows: encoding declared in the XML file, charset
      * parameter in the Content-Type HTTP response header, then ISO-8859-1.
      */
-    public function autodetectEncoding()
+    public function autodetectEncoding(): void
     {
         # if neither the XML file nor the HTTP response headers specify an
         # encoding, there is an overwhelming chance that it's ISO-8859-1, so
@@ -198,8 +198,10 @@ class RSSClient
      * @param string $ChannelName Channel to retrieve if not the first one.
      * @return array Returns the items from the RSS feed.
      */
-    public function getItems(int $NumberOfItems = null, string $ChannelName = null): array
-    {
+    public function getItems(
+        ?int $NumberOfItems = null,
+        ?string $ChannelName = null
+    ): array {
         # start by assuming no items will be found
         $Items = array();
 
@@ -241,7 +243,9 @@ class RSSClient
     public function isValid(): bool
     {
         $this->loadChannelInfo();
-        return (isset($this->ChannelTitle) && isset($this->ChannelLink) && isset($this->ChannelDescription));
+        return (isset($this->ChannelTitle)
+                && isset($this->ChannelLink)
+                && isset($this->ChannelDescription));
     }
 
     /**
@@ -310,7 +314,7 @@ class RSSClient
      * between 0-9 inclusive.
      * @param int $NewLevel New level of verbosity for debug output.
      */
-    private function setDebugLevel($NewLevel)
+    private function setDebugLevel($NewLevel): void
     {
         $this->DebugLevel = $NewLevel;
     }
@@ -374,7 +378,7 @@ class RSSClient
      * Load the XML of an RSS feed from the cache, if available, or from the
      * server.
      * @param string $ServerUrl URL to the RSS feed.
-     * @param Database $CacheDB Database object to use for storage and retrieval
+     * @param Database|null $CacheDB Database object to use for storage and retrieval
      *      of cached RSS feeds. The default value is NULL.
      * @param int $RefreshTime Time in seconds for how long the cache of an RSS
      *      should remain valid. The default value is 600.
@@ -445,7 +449,7 @@ class RSSClient
      * Load information from the current RSS channel. The information includes
      * the channel title, site URL, and channel description.
      */
-    private function loadChannelInfo()
+    private function loadChannelInfo(): void
     {
         $Parser = $this->Parser;
         $Parser->SeekToRoot();
@@ -458,7 +462,9 @@ class RSSClient
         $this->ChannelLink = $Parser->GetData("link");
         $this->ChannelDescription = $Parser->GetData("description");
         # empty tag returns null, description can be an empty tag
-        if (!isset($this->ChannelDescription) && isset($this->ChannelTitle) && isset($this->ChannelLink)) {
+        if (!isset($this->ChannelDescription)
+                && isset($this->ChannelTitle)
+                && isset($this->ChannelLink)) {
             $this->ChannelDescription = "";
         }
     }

@@ -3,7 +3,7 @@
 #   FILE:  TabbedContentUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -28,8 +28,9 @@ class TabbedContentUI
     * @throws InvalidArgumentException If specified tab name is a duplicate.
     * @throws InvalidArgumentException If tab has already been started with
     *       specified name.
+    * @return void
     */
-    public function beginTab(string $TabLabel)
+    public function beginTab(string $TabLabel): void
     {
         # check to make sure tab label is not a duplicate or already started
         if (isset($this->CurrentTab[$TabLabel])) {
@@ -65,8 +66,9 @@ class TabbedContentUI
     * tabbed content, respectively.  It would normally only be called when
     * there is a need to output other content while building tabbed content.
     * @throws Exception If no tab is currently started.
+    * @return void
     */
-    public function endTab()
+    public function endTab(): void
     {
         # check to make sure tab has been started
         if (!isset($this->CurrentTab)) {
@@ -85,8 +87,9 @@ class TabbedContentUI
     * Get/set tab to be active (i.e. initially displayed).  If this is not
     * called, the first tab will be active by default.
     * @param string $NewValue Name of tab to be made active.  (OPTIONAL)
+    * @return string Current tab name.
     */
-    public function activeTab(string $NewValue = null)
+    public function activeTab(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->ActiveTab = $NewValue;
@@ -98,8 +101,9 @@ class TabbedContentUI
     * Output HTML for tabbed content.
     * @param string $Id CSS ID for tabs.  (OPTIONAL, defaults to "mv-tabs")
     * @throws Exception If the active tab setting does not match any existing tab.
+    * @return void
     */
-    public function display(string $Id = "mv-tabs")
+    public function display(string $Id = "mv-tabs"): void
     {
         print $this->getHtml($Id);
     }

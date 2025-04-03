@@ -259,14 +259,16 @@ function PrintResourceComments()
 */
 function CheckForEdit($PosterId)
 {
+    $User = User::getCurrentUser();
+
     # users cannot edit if not logged in
-    if (!$GLOBALS["G_User"]->IsLoggedIn()) {
+    if (!$User->IsLoggedIn()) {
         return false;
     }
 
-    if (($GLOBALS["G_User"]->Get("UserId") == $PosterId &&
-        $GLOBALS["G_User"]->HasPriv(PRIV_POSTCOMMENTS)) ||
-        $GLOBALS["G_User"]->HasPriv(PRIV_FORUMADMIN)) {
+    if (($User->Get("UserId") == $PosterId &&
+        $User->HasPriv(PRIV_POSTCOMMENTS)) ||
+        $User->HasPriv(PRIV_FORUMADMIN)) {
         return true;
     } else {
         return false;
@@ -301,7 +303,7 @@ function PrintForumMessage(
     $MessageIsComment = false,
     $SpammerLink = null
 ) {
-    $G_User = User::getCurrentUser();
+    $User = User::getCurrentUser();
 
     # if handed a message instead of its values, use the auxiliary function
     if ($Subject instanceof Message) {
@@ -317,7 +319,7 @@ function PrintForumMessage(
         return;
     }
 
-    if ( $G_User->IsLoggedIn() &&
+    if ( $User->IsLoggedIn() &&
          (!$GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") ||
           !$GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForSpamBot()) ) {
         $PEmail = strlen($PosterEmail) > 0 ? "(".MungeEmailAddress($PosterEmail).")" : "";
@@ -348,14 +350,14 @@ function PrintForumMessage(
     </div>
     <?PHP if ($EditOkay) { ?>
     <div class="cw-section-footer">
-        <?PHP if ($G_User->HasPriv(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) { ?>
+        <?PHP if ($User->HasPriv(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) { ?>
         <a class="cw-button cw-button-elegant" href="<?PHP print($EditLink); ?>">Edit Message</a>
         <a class="cw-button cw-button-elegant" href="<?PHP print($DeleteLink); ?>">Delete Message</a>
         <?PHP } ?>
         <?PHP if (strlen($RemovePostPrivLink)) {  ?>
         <a class="cw-button cw-button-elegant" href="<?PHP print($RemovePostPrivLink); ?>">Remove Post Privilege</a>
         <?PHP } ?>
-        <?PHP if (strlen($SpammerLink) && $G_User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) { ?>
+        <?PHP if (strlen($SpammerLink) && $User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) { ?>
         <a class="cw-button cw-button-elegant" href="<?PHP print($SpammerLink);?>">Spammer</a>
         <?PHP } ?>
     </div>
@@ -388,14 +390,14 @@ function PrintForumMessageWithMessage(
     $SpammerLink = null,
     $IncludeReplyButton = false
 ) {
-    $G_User = User::getCurrentUser();
+    $User = User::getCurrentUser();
 
     $DatePosted = $Message->DatePosted();
     $DateEdited = $Message->DateEdited();
     $PosterEmail = $Message->PosterEmail();
     $Edited = strtotime($DateEdited) >= strtotime($DatePosted);
 
-    if ( $G_User->IsLoggedIn() &&
+    if ( $User->IsLoggedIn() &&
          (!$GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") ||
           !$GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForSpamBot()) ) {
         $PEmail = strlen($PosterEmail) > 0 ? "(".MungeEmailAddress($PosterEmail).")" : "";
@@ -412,7 +414,7 @@ function PrintForumMessageWithMessage(
         ));
     }
 
-    $CanPostComments = $G_User->HasPriv(PRIV_POSTCOMMENTS);
+    $CanPostComments = $User->HasPriv(PRIV_POSTCOMMENTS);
 
     # escape variables for HTML
     $SafeTopicId = defaulthtmlentities($Message->ParentId());
@@ -470,14 +472,14 @@ function PrintForumMessageWithMessage(
              >Reply</a>
         <?PHP } ?>
         <?PHP if ($EditOkay) { ?>
-            <?PHP if ($G_User->HasPriv(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) { ?>
+            <?PHP if ($User->HasPriv(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) { ?>
             <a class="cw-button cw-button-elegant" href="<?PHP print($EditLink); ?>">Edit Message</a>
             <a class="cw-button cw-button-elegant" href="<?PHP print($DeleteLink); ?>">Delete Message</a>
             <?PHP } ?>
             <?PHP if (strlen((string)$RemovePostPrivLink)) {  ?>
             <a class="cw-button cw-button-elegant" href="<?PHP print($RemovePostPrivLink); ?>">Remove Post Privilege</a>
             <?PHP } ?>
-            <?PHP if (strlen((string)$SpammerLink) && $G_User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) { ?>
+            <?PHP if (strlen((string)$SpammerLink) && $User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) { ?>
             <a class="cw-button cw-button-elegant" href="<?PHP print($SpammerLink);?>">Spammer</a>
             <?PHP } ?>
         <?PHP } ?>

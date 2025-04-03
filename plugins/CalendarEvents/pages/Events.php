@@ -8,10 +8,10 @@
 #
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
+use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\CalendarEvents\Event;
 use Metavus\Plugins\CalendarEvents\EventFactory;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -21,7 +21,7 @@ use ScoutLib\StdLib;
 */
 function CalendarEvents_PrintEvents(array $Events, $CurrentMonth = null) : void
 {
-    $Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+    $Plugin = CalendarEvents::getInstance();
 
     # if printing events for the current month
     if (date("F Y") == $CurrentMonth) {
@@ -105,7 +105,7 @@ function CalendarEvents_GetSiblingMonth(array $EventCounts, $Month, $Interval)
 # ----- MAIN -----------------------------------------------------------------
 
 # get up some basic values
-$H_Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$H_Plugin = CalendarEvents::getInstance();
 $H_StartingIndex = StdLib::getFormValue("SI", 0);
 $H_Month = StdLib::getFormValue("Month");
 $H_SchemaId = $H_Plugin->GetSchemaId();

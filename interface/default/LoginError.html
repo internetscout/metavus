@@ -3,18 +3,26 @@
 #   FILE:  LoginError.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
+namespace Metavus;
+
+# ----- SETUP ----------------------------------------------------------------
+$LogInButton = new HtmlButton("Log In");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <div class="mv-content-authbox">
     <h1>User Login</h1>
 
-    <p class="alert alert-danger mv-form-error">The user name or password you entered was
-    incorrect, or your account has been disabled.</p>
+    <p class="alert alert-danger mv-form-error">The user name or password you entered
+    was incorrect or not found.  If needed, you can recover or reset your password via
+    <a href="index.php?P=ForgottenPassword">Password Assistance</a>.
+    </p>
 
     <form method="post" action="index.php?P=UserLogin">
         <table class="table table-striped">
@@ -29,8 +37,7 @@
                 </tr>
                 <tr>
                     <th></th>
-                    <td><button class="btn btn-primary" type="submit"
-                        value="Log In">Log In</button></td>
+                    <td><?= $LogInButton->getHtml(); ?></td>
                 </tr>
             </tbody>
         </table>

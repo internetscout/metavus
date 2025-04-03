@@ -3,7 +3,7 @@
 #   FILE:  OAIItem.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2024 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 
@@ -48,10 +48,4 @@ interface OAIItem
      * @return array Search info.
      */
     public function getSearchInfo();
-
-    /**
-     * Get item status.
-     * @return int Item status.
-     */
-    public function status();
 }

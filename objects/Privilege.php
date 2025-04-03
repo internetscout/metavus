@@ -3,26 +3,20 @@
 #   FILE:  Privilege.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2007-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2007-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\Database;
 
 /**
  * User rights management framework allowing custom privege definition
- * \nosubgrouping
  */
 class Privilege
 {
-
     # ---- PUBLIC INTERFACE --------------------------------------------------
-
-    /** @name Constants */
-    /*@{*/
 
     # (these values must correspond to PRIV_ definitions)
     const STD_PRIV_DESCRIPTIONS = [
@@ -48,18 +42,13 @@ class Privilege
         12 => "Personal Resource Administrator (Deprecated)",
     ];
 
-    /*@}*/
-
-    /** @name Setup/Initialization/Destruction */
-    /*@{*/
-
     /**
      * Object Constructor
      * Pass in a value for the name and a NULL id to make a new privilege
      * @param int|null $Id Privilege ID number or NULL to create new entry.
      * @param string $Name Privilege name
      */
-    public function __construct($Id, string $Name = null)
+    public function __construct($Id, ?string $Name = null)
     {
         # if caller requested creation of new entry
         if ($Id === null) {
@@ -96,19 +85,15 @@ class Privilege
     /**
      * Delete this privelege from the DB
      * NOTE: the object should not be used after calling this
+     * @return void
      */
-    public function delete()
+    public function delete(): void
     {
         if (!$this->isPredefined()) {
             $DB = new Database();
-            $DB->query("DELETE FROM CustomPrivileges"." WHERE Id = ".$this->Id);
+            $DB->query("DELETE FROM CustomPrivileges WHERE Id = ".$this->Id);
         }
     }
-
-    /*@}*/
-
-    /** @name Accessors */
-    /*@{*/
 
     /**
      * Get ID.
@@ -124,7 +109,7 @@ class Privilege
      * @param string $NewValue New value (OPTIONAL)
      * @return string Current setting of the name
      */
-    public function name(string $NewValue = null): string
+    public function name(?string $NewValue = null): string
     {
         if (($NewValue !== null) && !$this->isPredefined()) {
             $DB = new Database();
@@ -142,7 +127,7 @@ class Privilege
      * @param int $Id Privilege ID (OPTIONAL)
      * @return bool TRUE for predefined values, FALSE otherwise
      */
-    public function isPredefined(int $Id = null): bool
+    public function isPredefined(?int $Id = null): bool
     {
         if ($Id === null) {
             $Id = $this->Id;
@@ -150,7 +135,36 @@ class Privilege
         return (($Id > 0) && ($Id < 100)) ? true : false;
     }
 
-    /*@}*/
+    /**
+     * Translate given privilege constant ("PRIV_SYSADMIN") or constant
+     * suffix ("SYSADMIN") or description string ("System Administrator")
+     * into corresponding privilege ID.
+     * @param string $Name Privilege name.
+     * @return int|false Privilege ID or FALSE if no privilege found that
+     *      corresponds to the supplied name.
+     */
+    public static function translateNameToId(string $Name)
+    {
+        # if name appears to be privilege constant name return that ID
+        if ((substr($Name, 0, 5) == "PRIV_")
+                && (defined($Name))) {
+            return constant($Name);
+        }
+
+        # if name appears to be privilege constant name suffix return that ID
+        if (defined("PRIV_".$Name)) {
+            return constant("PRIV_".$Name);
+        }
+
+        # if name matches standard privilege description return that ID
+        $Id = array_search($Name, self::STD_PRIV_DESCRIPTIONS);
+        if ($Id !== false) {
+            return $Id;
+        }
+
+        return false;
+    }
+
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 

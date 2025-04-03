@@ -3,21 +3,23 @@
 #   FILE:  EditOptionList.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
-
 /**
 * Print an option list containing metadata schemas.
 * @param MetadataSchema $SchemaInUse Metadata schema in use.
 */
-function PrintSchemaOptionList(MetadataSchema $SchemaInUse)
+function PrintSchemaOptionList(MetadataSchema $SchemaInUse): void
 {
     $Options = [];
 
@@ -35,7 +37,7 @@ function PrintSchemaOptionList(MetadataSchema $SchemaInUse)
 * Print a search URL to find resources associated with a given controlled name.
 * @param ControlledName $CName Target controlled name
 */
-function GetSearchUrl(ControlledName $CName)
+function GetSearchUrl(ControlledName $CName): string
 {
     $SearchParams = new SearchParameterSet();
     $SearchParams->AddParameter("=".$CName->Name(), $CName->FieldId());
@@ -43,10 +45,43 @@ function GetSearchUrl(ControlledName $CName)
     return "index.php?P=SearchResults&" .$SearchParams->UrlParameterString();
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Schema)) {
+    throw new Exception("H_Schema not defined.");
+}
+if (!isset($H_OptionFields)) {
+    $H_OptionFields = null;
+}
+if (isset($G_Field)) {
+    if (!isset($H_OptionNames)) {
+        throw new Exception("H_OptionNames not defined.");
+    }
+    if (!isset($H_Options)) {
+        throw new Exception("H_Options not defined.");
+    }
+}
 
-$SafeSchemaId = defaulthtmlentities($Schema->Id());
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
 
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->makeSubmitButton();
+
+$EditButton = new HtmlButton("Edit");
+$EditButton->setIcon("Pencil.svg");
+$EditButton->setSize(HtmlButton::SIZE_SMALL);
+
+$ExportButton = new HtmlButton("Export");
+$ExportButton->setIcon("FileExport.svg");
+$ExportButton->setSize(HtmlButton::SIZE_SMALL);
+
+$AF = ApplicationFramework::getInstance();
+$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <?PHP if (isset($G_Field)) { ?>
 <form method="post" action="index.php?P=EditOptionList&amp;SC=<?= $SafeSchemaId; ?>">
@@ -56,13 +91,9 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
         <div class="col">
             <h1>Edit Options for <i><?= $G_Field->GetDisplayName(); ?></i></h1>
         </div>
-        <div class="col text-right">
-            <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
-                value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-                class="mv-button-icon"/> Save Changes</button>
-            <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
-                value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-                class="mv-button-icon"/> Cancel</button>
+        <div class="col text-end">
+            <?= $SaveButton->getHtml() ?>
+            <?= $CancelButton->getHtml() ?>
         </div>
     </div>
     </div>
@@ -78,10 +109,10 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
     <table class="table table-striped mv-content-optionoptions">
         <tbody>
         <?PHP
-        $OptionNames = [-1 => "(no change)"] + $G_OptionNames;
+        $OptionNames = [-1 => "(no change)"] + $H_OptionNames;
         $Index = 0;
         $DefaultValue = $G_Field->DefaultValue();
-        foreach ($G_Options as $Id => $CName) {
+        foreach ($H_Options as $Id => $CName) {
             $Qualifier = $CName->Qualifier();
             $QName = $Qualifier ? $Qualifier->Name() : "";
 
@@ -127,7 +158,10 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
                 <td>
                     <input type="checkbox" id="F_ConfirmDelete<?= $Index; ?>"
                         name="F_ConfirmDelete<?= $Index; ?>"
-                        title="Mark option to be deleted on save."/>
+                        title="<?= !$Selected ?
+                            "Mark option to be deleted on save." :
+                            "Cannot delete default values."; ?>"
+                        <?= $Selected ? "disabled" : ""; ?>/>
                     <label for="F_ConfirmDelete<?= $Index; ?>">Delete</label>
                 </td>
             </tr>
@@ -172,13 +206,9 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
                     }
                     ?>
                 </td>
-                <td colspan="2" class="text-right">
-                    <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
-                        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-                        class="mv-button-icon" /> Save Changes</button>
-                    <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
-                        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-                        class="mv-button-icon" /> Cancel</button>
+                <td colspan="2" class="text-end">
+                    <?= $SaveButton->getHtml() ?>
+                    <?= $CancelButton->getHtml() ?>
                 </td>
             </tr>
         </tbody>
@@ -192,10 +222,10 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
     <div class="col">
       <h1>Edit Option List</h1>
     </div>
-    <div class="col text-right">
+    <div class="col text-end">
       <form method="get" action="index.php">
         <input type="hidden" name="P" value="EditOptionList" />
-        <?PHP PrintSchemaOptionList($Schema); ?>
+        <?PHP PrintSchemaOptionList($H_Schema); ?>
       </form>
     </div>
   </div>
@@ -204,7 +234,7 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
     <?PHP
 
     # if we do not have option fields available
-    if (!count($G_OptionFields)) {
+    if (!count($H_OptionFields)) {
         ?>
         <p>No Option fields were found for editing.</p><?PHP
     } else { # else display a list of option fields to edit
@@ -226,10 +256,10 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
         <?PHP
         $RFactory = new RecordFactory();
         $ResourceCount = $RFactory->GetItemCount();
-        # get width of longest button text, add 4 to tune button width
-        $Width = strlen("Export") + 4;
-        foreach ($G_OptionFields as $Field) {
+        foreach ($H_OptionFields as $Field) {
             $CNFactory = new ControlledNameFactory($Field->Id());
+            $EditButton->setLink("index.php?P=EditOptionList&FI=" . $Field->Id());
+            $ExportButton->setLink("index.php?P=DBExportField&Id=" . $Field->Id());
             if ($ResourceCount) {
                 $UsageCount = $CNFactory->GetUsageCount();
                 $UsagePercentage = round(($UsageCount * 100) / $ResourceCount);
@@ -246,12 +276,8 @@ $SafeSchemaId = defaulthtmlentities($Schema->Id());
             </td>
             <td>(<?= count($Field->GetPossibleValues()); ?>&nbsp;values)</td>
             <td>
-                <a style="width: <?= $Width ?>ex;" class="btn btn-primary btn-sm mv-button-iconed"
-                href="index.php?P=EditOptionList&amp;FI=<?=$Field->Id(); ?>"><img
-                src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
-                <a style="width: <?= $Width ?>ex;" class="btn btn-primary btn-sm mv-button-iconed"
-                   href="index.php?P=DBExportField&amp;Id=<?= $Field->id(); ?>"><img
-                   src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt="" class="mv-button-icon"/> Export</a>
+                <?= $EditButton->getHtml(); ?>
+                <?= $ExportButton->getHtml(); ?>
             </td>
             <td width="65%"><?= $Field->Description();  ?></td>
             <td>

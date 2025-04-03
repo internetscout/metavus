@@ -3,20 +3,21 @@
 #   FILE:  EditPage.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\File;
 use Metavus\Image;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\Pages;
 use Metavus\Plugins\Pages\Page;
 use Metavus\Plugins\Pages\PageFactory;
 use Metavus\PrivilegeEditingUI;
 use Metavus\PrivilegeSet;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
@@ -26,27 +27,25 @@ $PageId = isset($_POST["F_Id"]) ? $_POST["F_Id"]
         : (isset($_GET["ID"]) ? $_GET["ID"] : null);
 
 # make sure user has needed privileges
-$Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
-$H_SchemaId = $Plugin->configSetting("MetadataSchemaId");
+$Plugin = Pages::getInstance();
+$H_SchemaId = $Plugin->getConfigSetting("MetadataSchemaId");
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
-if (is_null($PageId)) {
-    DisplayUnauthorizedAccessPage();
-    return;
-} elseif ($PageId == "NEW") {
+$PFactory = new PageFactory();
+$H_Page = null;
+if ($PageId == "NEW") {
     $Schema = new MetadataSchema($H_SchemaId);
     if (!$Schema->userCanAuthor($User)) {
-        DisplayUnauthorizedAccessPage();
+        $AF->setJumpToPage("UnauthorizedAccess");
         return;
     }
 } else {
-    $PFactory = new PageFactory();
-    if ($PFactory->itemExists($PageId)) {
+    if ($PageId !== null && $PFactory->itemExists($PageId)) {
         $H_Page = new Page($PageId);
         if (!$H_Page->userCanEdit($User)) {
-            DisplayUnauthorizedAccessPage();
+            $AF->setJumpToPage("UnauthorizedAccess");
             return;
         }
     }
@@ -186,7 +185,7 @@ switch ($Action) {
             $FileName = $_FILES["F_File"]["name"];
             $File = File::create($TempFile, $FileName);
 
-            # if file save was succeessful
+            # if file save was successful
             if (is_object($File)) {
                 # set additional file attributes
                 $File->resourceId($H_Page->id());
@@ -246,11 +245,11 @@ switch ($Action) {
             # if summary was not edited or is empty
             if (!strlen(trim($_POST["F_Summary"])) ||
                 ($_POST["F_Summary"]
-                == $H_Page->getSummary($Plugin->configSetting("SummaryLength")))) {
+                == $H_Page->getSummary($Plugin->getConfigSetting("SummaryLength")))) {
                 # update content and regenerate summary from content
                 $H_Page->set("Content", $_POST["F_Content"]);
                 $H_Page->set("Summary", $H_Page->getSummary(
-                    $Plugin->configSetting("SummaryLength")
+                    $Plugin->getConfigSetting("SummaryLength")
                 ));
             } else {
                 # save edited summary
@@ -284,12 +283,6 @@ switch ($Action) {
                 # set author and mark page no longer temporary
                 $H_Page->set("Added By Id", $User->id());
                 $H_Page->isTempRecord(false);
-            } else {
-                # signal modified page
-                $AF->signalEvent(
-                    "EVENT_RESOURCE_MODIFY",
-                    ["Resource" => $H_Page]
-                );
             }
 
             # go to display saved page
@@ -300,9 +293,6 @@ switch ($Action) {
                     "index.php?P=P_Pages_DisplayPage&ID=".$H_Page->id()
                 );
             }
-
-            # update search indices
-            $H_Page->queueSearchAndRecommenderUpdate();
         }
         break;
 

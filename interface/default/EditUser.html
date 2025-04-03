@@ -3,16 +3,50 @@
 #   FILE:  EditUser.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\UserEditingUI;
+namespace Metavus;
 
-# ----- MAIN -----------------------------------------------------------------
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# checks to see if required incoming variables are set
+if (!isset($H_Error)) {
+    # ($H_Error is set to NULL here to keep PHPStan from erroneously
+    #   complaining later in this file about the variables being checked
+    #   within this block being potentially undefined
+    $H_Error = null;
+    if (!isset($H_AmEditingMyself)) {
+        throw new Exception("H_AmEditingMyself not defined.");
+    }
+    if (!isset($H_UserEditingUI)) {
+        throw new Exception("H_UserEditingUI not defined.");
+    }
+    if (!isset($H_UserToEdit)) {
+        throw new Exception("H_UserToEdit not defined.");
+    }
+}
 
 PageTitle("Edit User Information");
 
+$SaveButton = new HtmlButton("Save");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+$DeleteButton = new HtmlButton("Delete");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->addSemanticClass("btn-danger");
+$DeleteButton->makeSubmitButton();
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Edit User Information</h1>
@@ -24,28 +58,21 @@ if (isset($H_Error)) {
     <p><?= $H_Error; ?></p>
 
     <p>Please return to the <a href="index.php?P=UserList">user editing
-    page</a> and re-enter the user name.</p>
+    page</a> and re-enter the username.</p>
     </div>
     <?PHP
     return;
 }
-?>
 
-<?PHP UserEditingUI::displayErrorBlock();  ?>
-<?PHP UserEditingUI::displayStatusBlock();  ?>
+UserEditingUI::displayErrorBlock();
+UserEditingUI::displayStatusBlock();
+?>
 <form method="post" enctype="multipart/form-data"
     action="index.php?P=EditUser&ID=<?= $H_UserToEdit->id() ?>">
-  <?PHP $H_UserEditingUI->displayFormTable();  ?>
-
-  <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-    value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-    class="mv-button-icon" /> Save</button>
+    <?PHP $H_UserEditingUI->displayFormTable();  ?>
+    <?= $SaveButton->getHtml() ?>
     <?PHP if (!$H_AmEditingMyself) { ?>
-      <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete</button>
+        <?= $DeleteButton->getHtml() ?>
     <?PHP } ?>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $CancelButton->getHtml() ?>
 </form>

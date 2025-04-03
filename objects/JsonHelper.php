@@ -3,7 +3,7 @@
 #   FILE:  JsonHelper.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -24,7 +24,7 @@ class JsonHelper
      */
     public function __construct()
     {
-        $GLOBALS["AF"]->logMessage(
+        ApplicationFramework::getInstance()->logMessage(
             ApplicationFramework::LOGLVL_WARNING,
             "Deprecated class JsonHelper constructed at "
             .StdLib::getMyCaller().", json_encode instead."
@@ -37,8 +37,9 @@ class JsonHelper
      * Add a datum identified by a key to export in the JSON response.
      * @param string $Key Key used to identify the datum.
      * @param mixed $Value Datum to export.
+     * @return void
      */
-    public function addDatum($Key, $Value)
+    public function addDatum($Key, $Value): void
     {
         $this->Data[$Key] = $Value;
     }
@@ -47,10 +48,11 @@ class JsonHelper
      * Add a warning message to export in the JSON response. Warnings are for
      * issues that might be problematic but won't interrupt execution.
      * @param string $Message Warning message to export.
+     * @return void
      * @see Error()
      * @see Success()
      */
-    public function addWarning($Message)
+    public function addWarning($Message): void
     {
         $this->Warnings[] = strval($Message);
     }
@@ -60,21 +62,23 @@ class JsonHelper
      * response. A possible use of this method is to output and export a message
      * about a missing parameter to a callback.
      * @param string $Message Error message to send.
+     * @return void
      * @see Success()
      */
-    public function error($Message)
+    public function error($Message): void
     {
-        $this->SendResult($this->GenerateResult("ERROR", $Message));
+        $this->sendResult($this->generateResult("ERROR", $Message));
     }
 
     /**
      * Signal that the callback was successful and optionally set a message.
      * @param string $Message Message to export. This parameter is optional.
+     * @return void
      * @see Error()
      */
-    public function success($Message = "")
+    public function success($Message = ""): void
     {
-        $this->SendResult($this->GenerateResult("OK", $Message));
+        $this->sendResult($this->generateResult("OK", $Message));
     }
 
     private $Data;
@@ -84,14 +88,15 @@ class JsonHelper
      * Export the data and messages. This sets the Content-Type header and prints
      * the JSON response.
      * @param array $Result Data to export. The data will be converted to JSON.
+     * @returnvoid
      */
-    private function sendResult(array $Result)
+    private function sendResult(array $Result): void
     {
         $CharSet = InterfaceConfiguration::getInstance()->getString(
             "DefaultCharacterSet"
         );
         header("Content-Type: application/json; charset=".$CharSet, true);
-        $this->PrintArrayToJson($Result);
+        $this->printArrayToJson($Result);
     }
 
     /**
@@ -118,8 +123,9 @@ class JsonHelper
     /**
      * Print an array of data in JSON format.
      * @param array $Array Array to print in JSON format.
+     * @returnvoid
      */
-    private function printArrayToJson(array $Array)
+    private function printArrayToJson(array $Array): void
     {
         # variables needed for printing commas if necessary
         $Offset = 0;

@@ -4,13 +4,12 @@
 #   FILE:  FullRecordHelper.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 
@@ -42,9 +41,14 @@ class FullRecordHelper extends FullRecordHelper_Base
             return;
         }
 
-        $AddedButtons = "";
+        $AddedButtons = ApplicationFramework::getInstance()->formatInsertionKeyword(
+            "FIELDVIEW",
+            [
+                "FieldId" => $Field->id(),
+                "RecordId" => self::$Record->id(),
+            ]
+        );
         if ($Field->updateMethod() == MetadataField::UPDATEMETHOD_BUTTON) {
-            $AF = ApplicationFramework::getInstance();
             $AddedButtons .= $this->getButtonHtml(
                 "Update",
                 $this->getUpdateButtonLink($Field),
@@ -223,8 +227,8 @@ foreach ($Values as $ImageId => $Image) {
         if ($Qual === false) {
             return "";
         }
-        $Url = htmlspecialchars($Qual->Url());
-        $Name = htmlspecialchars($Qual->Name());
+        $Url = htmlspecialchars($Qual->url());
+        $Name = htmlspecialchars($Qual->name());
         return " <small>(<a href=\"" .$Url ."\">" .$Name ."</a>)</small>";
     }
 

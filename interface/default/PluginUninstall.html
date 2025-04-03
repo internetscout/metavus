@@ -3,21 +3,43 @@
 #   FILE:  PluginUninstall.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+namespace Metavus;
 
+use Exception;
+use ScoutLib\ApplicationFramework;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Dependents)) {
+    $H_Dependents = null;
+}
+if (!isset($H_Plugin)) {
+    $H_Plugin = null;
+} else {
+    $Attributes = $H_Plugin->GetAttributes();
+}
+if (!isset($H_UninstallFailed)) {
+    throw new Exception("H_UninstallFailed not defined.");
+}
+if (!isset($H_UninstallResult)) {
+    $H_UninstallResult = null;
+}
 
 $BaseName = (isset($_GET["PN"])) ? $_GET["PN"] : null;
 
-if (!is_null($H_Plugin)) {
-    $Attributes = $H_Plugin->GetAttributes();
-}
+$AF = ApplicationFramework::getInstance();
 
+$UninstallButton = new HtmlButton("Uninstall");
+$UninstallButton->setIcon("Delete.svg");
+$UninstallButton->addSemanticClass("btn-danger");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <?PHP if (is_null($H_Plugin)) { ?>
@@ -61,11 +83,7 @@ if (!is_null($H_Plugin)) {
     <p class="alert alert-danger mv-form-error"><b>WARNING:</b> <i>Plugin configuration settings
     and data created or managed by the </i><?= $BaseName;  ?><i> plugin
     will be deleted and CANNOT be recovered after uninstall!</i></p>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Uninstall"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Uninstall</button>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $UninstallButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 </form>
 <?PHP } ?>

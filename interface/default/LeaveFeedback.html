@@ -3,15 +3,56 @@
 #   FILE:  LeaveFeedback.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_FeedbackSent)) {
+    throw new Exception("H_FeedbackSent not defined.");
+}
+if (!isset($H_InvalidRecord)) {
+    throw new Exception("H_InvalidRecord not defined.");
+}
+if (!isset($H_PageHeader)) {
+    throw new Exception("H_PageHeader not defined.");
+}
+if (!isset($H_ReturnTo)) {
+    throw new Exception("H_ReturnTo not defined.");
+}
+if (!isset($H_SentMessage)) {
+    throw new Exception("H_SentMessage not defined.");
+}
+if (!isset($H_Subheader)) {
+    throw new Exception("H_Subheader not defined.");
+}
+
 # escaped values that are safe for printing
-$SafePageHeader = defaulthtmlentities(GetPageHeader($H_FeedbackType));
+$SafePageHeader = defaulthtmlentities($H_PageHeader);
 $SafeReturnTo = defaulthtmlentities($H_ReturnTo);
+
+$SaveButton = new HtmlButton("Submit Feedback");
+$SaveButton->setIcon("PaperPlane.svg");
+$SaveButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+$ReturnButton = new HtmlButton("Return");
+$ReturnButton->setIcon("BackArrow.svg");
+$ReturnButton->addSemanticClass("btn-primary");
+$ReturnButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
+# set the page title based on the feedback type
+PageTitle($H_PageHeader);
 ?>
 
 <h1><?= $SafePageHeader; ?></h1>
@@ -19,23 +60,24 @@ $SafeReturnTo = defaulthtmlentities($H_ReturnTo);
 <?PHP if ($H_InvalidRecord) { ?>
     <p>Invalid record supplied.</p>
 <?PHP } elseif ($H_FeedbackSent) { ?>
-    <?= getSentMessage($H_FeedbackType); ?>
+    <?= $H_SentMessage; ?>
     <?PHP if ($H_ReturnTo) { ?>
-    <p><a class="btn btn-primary mv-button-iconed"
-        href="<?= $SafeReturnTo; ?>"><img src="<?= $AF->GUIFile('BackArrow.svg'); ?>"
-        alt="" class="mv-button-icon" /> Return</a></p>
+        <form id="ReturnForm" method="post" action="index.php?P=LeaveFeedback">
+            <?= $ReturnButton->getHtml() ?>
+        </form>
     <?PHP } ?>
 <?PHP } else { ?>
-    <?=(getSubheader($H_FeedbackType)); ?>
+    <?=$H_Subheader; ?>
+    <?PHP
+    if (!isset($H_FormUI)) {
+        throw new Exception("H_FormUI not defined.");
+    }
+    ?>
     <?PHP $H_FormUI->displayErrorBlock(); ?>
   <form id="FeedbackForm" method="post" action="index.php?P=LeaveFeedback">
       <?PHP $H_FormUI->displayFormTable(); ?>
-      <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Submit Feedback"><img src="<?= $AF->GUIFile('PaperPlane.svg'); ?>" alt=""
-        class="mv-button-icon" /> Submit Feedback</button>
-      <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+      <?= $SaveButton->getHtml() ?>
+      <?= $CancelButton->getHtml() ?>      
   </form>
 
   <script type="text/javascript">

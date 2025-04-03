@@ -3,17 +3,52 @@
 #   FILE:  MetadataFieldOrdering.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
-use Metavus\MetadataField;
-use Metavus\MetadataFieldOrder;
-use Metavus\MetadataSchema;
-use ScoutLib\HtmlOptionList;
+namespace Metavus;
+
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
+
+const TYPE_GROUP = 0;
+const TYPE_FIELD = 1;
+
+/**
+ * Get Tree with structure to display fields/groups
+ * @param MetadataFieldOrder $Order containing fields and groups to display
+ * @return array representing structure in which to display the fields/groups
+ */
+function getTree(MetadataFieldOrder $Order)
+{
+    $Items = $Order->getItems();
+    $Tree = [];
+    foreach ($Items as $Index => $Item) {
+        if ($Item instanceof MetadataField) {
+            $Tree[$Index]["Id"] = $Item->id();
+            $Tree[$Index]["Label"] = $Item->getDisplayName();
+            $Tree[$Index]["Children"] = [];
+            $Tree[$Index]["Type"] = TYPE_FIELD;
+        } elseif ($Item instanceof MetadataFieldGroup) {
+            $Tree[$Index]["Id"] = $Item->Id();
+            $Tree[$Index]["Label"] = $Item->name();
+            $Tree[$Index]["Children"] = [];
+            foreach ($Item->GetFields() as $Field) {
+                $Tree[$Index]["Children"][] = [
+                    "Label" => $Field->getDisplayName(),
+                    "Type" => TYPE_FIELD,
+                    "Id" => $Field->id()
+                ];
+            }
+            $Tree[$Index]["Type"] = TYPE_GROUP;
+        }
+    }
+    return $Tree;
+}
 
 /**
  * Print all items in order using passed MetadataFieldOrder object
@@ -22,20 +57,28 @@ use ScoutLib\ApplicationFramework;
  * @param int $SchemaId id of schema for printing in inputs
  * @param int $GroupIdOffset offset for group IDs so we know they're groups
  */
-function printOrder(MetadataFieldOrder $Order, string $Type, int $SchemaId, int $GroupIdOffset)
-{
+function printOrder(
+    MetadataFieldOrder $Order,
+    string $Type,
+    int $SchemaId,
+    int $GroupIdOffset
+): void {
     # load the javascript we need
-    $GLOBALS["AF"]->RequireUIFile("jquery-ui.js");
-    $GLOBALS["AF"]->RequireUIFile("jquery-ui-nestedsortable.js");
-    $GLOBALS["AF"]->RequireUIFile("MetadataFieldOrdering.js");
+    $AF = ApplicationFramework::getInstance();
+    $AF->RequireUIFile("jquery-ui.js");
+    $AF->RequireUIFile("jquery-ui-nestedsortable.js");
+    $AF->RequireUIFile("MetadataFieldOrdering.js");
 
     $ToPrint = getTree($Order);
 
     # exclude all disabled fields
-    $ToPrint = array_filter($ToPrint, "fieldOrderFilter");
+    $ToPrint = array_filter($ToPrint, __NAMESPACE__."\\fieldOrderFilter");
     foreach ($ToPrint as $Index => $Item) {
         if ($Item["Type"] == TYPE_GROUP) {
-            $ToPrint[$Index]["Children"] = array_filter($Item["Children"], "fieldOrderFilter");
+            $ToPrint[$Index]["Children"] = array_filter(
+                $Item["Children"],
+                __NAMESPACE__."\\fieldOrderFilter"
+            );
         }
     }
 
@@ -50,7 +93,11 @@ function printOrder(MetadataFieldOrder $Order, string $Type, int $SchemaId, int 
         ."</script>";
 }
 
-function printHiddenInputs(array $Types)
+/**
+ * Print all hidden types
+ * @param array $Types hidden types
+ */
+function printHiddenInputs(array $Types): void
 {
     foreach ($Types as $Type) {
         print "<input type=\"hidden\" name=\"".$Type."Order\">";
@@ -64,8 +111,13 @@ function printHiddenInputs(array $Types)
  * @param int $OrderId id of order, for printing in getGroupButtons() (delete button)
  * @param int $GroupIdOffset offset for group IDs so we know they're groups
  */
-function printItems(array $Items, string $Type, int $SchemaId, int $OrderId, int $GroupIdOffset)
-{
+function printItems(
+    array $Items,
+    string $Type,
+    int $SchemaId,
+    int $OrderId,
+    int $GroupIdOffset
+): void {
     print "<ul>";
     foreach ($Items as $Info) {
         $IsGroup = $Info["Type"] == TYPE_GROUP;
@@ -94,34 +146,36 @@ function printItems(array $Items, string $Type, int $SchemaId, int $OrderId, int
  * put here so printItems() isn't too cluttered
  * @return string html buttons to print
  */
-function getGroupButtons(int $SchemaId, int $GroupId, int $OrderId)
+function getGroupButtons(int $SchemaId, int $GroupId, int $OrderId): string
 {
-    $AF = ApplicationFramework::getInstance();
-    $GroupId = htmlspecialchars($GroupId);
-    $OrderId = htmlspecialchars($OrderId);
-    return "<span class='float-right'><a class='btn btn-primary btn-sm mv-button-iconed' ".
-        "href='index.php?P=RenameMetadataFieldGroup&SchemaId=".defaulthtmlentities($SchemaId).
-        "&GroupId=".defaulthtmlentities($GroupId)."'>".
-        "<img class='mv-button-icon' src='".$AF->GUIFile("Pencil.svg")."' alt='' />".
-        " Rename</a>&nbsp;".
-        "<button class='btn btn-danger btn-sm mv-button-iconed' type='submit' name='Submit' ".
-        "value='DeleteGroup,".$GroupId.",".$OrderId."' ".
-        "title='Delete this metadata field group. ".
-        "The metadata field it contains will take its place.'>".
-        "<img class='mv-button-icon' src='".$AF->GUIFile("Cross.svg")."' alt='' />".
-        " Delete</button></span>";
+    $RenameButton = new HtmlButton("Rename");
+    $RenameButton->setIcon("Pencil.svg");
+    $RenameButton->setSize(HtmlButton::SIZE_SMALL);
+    $RenameButton->setLink("index.php?P=RenameMetadataFieldGroup"
+        . "&SchemaId=" . $SchemaId
+        . "&GroupId=" . $GroupId);
+    $DeleteButton = new HtmlButton("Delete");
+    $DeleteButton->setIcon("Cross.svg");
+    $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+    $DeleteButton->addSemanticClass("btn-danger");
+    $DeleteButton->setValue("DeleteGroup," . $GroupId . "," . $OrderId);
+    $DeleteButton->setTitle("Delete this metadata field group. "
+        . "The metadata field it contains will take its place.");
+
+    return "<span class='float-end'>" . $RenameButton->getHtml() . "&nbsp;"
+        . $DeleteButton->getHtml() . "</span>";
 }
 
 /**
  * Filter callback used to filter fields from display.
- * @param MetadataField|MetadataFieldGroup $Item item to test for exclusion
+ * @param array $Item item to test for exclusion
  * @return bool TRUE if the item should be included or FALSE otherwise
  */
 function fieldOrderFilter($Item): bool
 {
     $Id = $Item["Id"];
     if ($Item["Type"] == TYPE_FIELD) {
-        $Field = new MetadataField($Id);
+        $Field = MetadataField::getField($Id);
         if (!$Field->enabled()) {
             return false;
         }
@@ -133,7 +187,7 @@ function fieldOrderFilter($Item): bool
 * Print an option list containing metadata schemas.
 * @param MetadataSchema $SchemaInUse Metadata schema in use.
 */
-function PrintSchemaOptionList(MetadataSchema $SchemaInUse)
+function PrintSchemaOptionList(MetadataSchema $SchemaInUse): void
 {
     $Options = [];
 
@@ -147,16 +201,35 @@ function PrintSchemaOptionList(MetadataSchema $SchemaInUse)
     $OptList->PrintHtml();
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$AddButton = new HtmlButton("Add");
+$AddButton->setIcon("Plus.svg");
+$AddButton->setSize(HtmlButton::SIZE_SMALL);
+$AddButton->makeSubmitButton();
 
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->makeSubmitButton();
+
+if (!isset($H_Schema)) {
+    throw new \Exception("Variable \$H_Schema not set.");
+}
+if (!isset($H_DisplayOrder)) {
+    throw new \Exception("Variable \$H_DisplayOrder not set.");
+}
+if (!isset($H_GroupIdOffset)) {
+    throw new \Exception("Variable \$H_GroupIdOffset not set.");
+}
+if (!isset($H_EditOrder)) {
+    throw new \Exception("Variable \$H_EditOrder not set.");
+}
 $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
-
-
 <div class="container container-fluid">
-    <?PHP if ($H_ButtonPushed == "Save") { ?>
+    <?PHP if (isset($H_ButtonPushed) && $H_ButtonPushed == "Save") { ?>
     <div class="row">
         <span id="fade-alert" class="alert alert-success">
             Changes to field and group ordering saved
@@ -172,10 +245,10 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
     <?PHP } ?>
     <div class="row">
         <div class="col">
-            <p class="alert alert-primary float-left">
+            <p class="alert alert-primary float-start">
                 <i><b>Tip:</b> drag metadata fields and groups to reorder them.</i>
             </p>
-            <div class="float-right">
+            <div class="float-end">
                 <form method="get" action="index.php">
                     <input type="hidden" name="P" value="MetadataFieldOrdering" />
                     <?PHP PrintSchemaOptionList($H_Schema); ?>
@@ -217,14 +290,12 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
                     required="true" />
 
                 <?PHP printHiddenInputs(["display", "edit"]); ?>
-
-                <button class="btn btn-primary btn-sm mv-button-iconed" type="submit"
-                    name="Submit" value="AddGroup"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
-                    alt="" class="mv-button-icon" /> Add</button>
+                <?= $AddButton->getHtml() ?>
             </form>
             <div class="list-group list-group-flush mv-fieldordering-list">
                 <form action="index.php?P=MetadataFieldOrdering" method="post">
-                    <?PHP printOrder(
+                    <?PHP
+                    printOrder(
                         $H_DisplayOrder,
                         "display",
                         $H_Schema->Id(),
@@ -247,14 +318,13 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 
                 <?PHP printHiddenInputs(["display", "edit"]); ?>
 
-                <button class="btn btn-primary btn-sm mv-button-iconed" type="submit"
-                    name="Submit" value="AddGroup"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
-                    alt="" class="mv-button-icon" /> Add</button>
+                <?= $AddButton->getHtml() ?>
             </form>
             <form method="post" action="index.php?P=MetadataFieldOrdering">
                 <div class="list-group mv-fieldordering-list">
                     <form action="index.php?P=MetadataFieldOrdering" method="post">
-                        <?PHP printOrder(
+                        <?PHP
+                        printOrder(
                             $H_EditOrder,
                             "edit",
                             $H_Schema->Id(),
@@ -271,11 +341,8 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
             <form action="index.php?P=MetadataFieldOrdering" method="post">
                 <?PHP printHiddenInputs(["display", "edit"]); ?>
                 <input type="hidden" name="F_SchemaId" value="<?= $SafeSchemaId; ?>" />
-                <button class="btn btn-primary mv-button-iconed" type="submit" value="Save"
-                    name="Submit"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-                    class="mv-button-icon" /> Save Changes</button>
+                <?= $SaveButton->getHtml() ?>
             </form>
         </div>
     </div>
 </div>
-

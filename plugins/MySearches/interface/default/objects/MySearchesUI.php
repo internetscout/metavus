@@ -3,13 +3,15 @@
 #   FILE:  MySearchesUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\MySearches;
 
+use Exception;
+use Metavus\HtmlButton;
 use ScoutLib\ApplicationFramework;
 
 class MySearchesUI
@@ -19,25 +21,25 @@ class MySearchesUI
      * @param array $Searches array of search arrays to display; Each search
      *      array contains a string SearchURL which is the URL to reach the
      *      search, a string SearchTitle for use in the title field of the a
-     *      tag linking to the seach and a SearchName for use in the a tag for
+     *      tag linking to the search and a SearchName for use in the a tag for
      *      linking to the search.
      * @return string Generated HTML.
+     * @throws Exception
      */
     public static function getHtmlForSavedSearchesBlock(array $Searches): string
     {
         $AF = ApplicationFramework::getInstance();
-        $EditSearchesLink = $AF->baseUrl()
-            ."index.php?P=ListSavedSearches";
-        $PencilImgPath = $AF->baseUrl()
-            .$AF->GUIFile("Pencil.svg");
+        $EditSearchesButton = new HtmlButton("Edit");
+        $EditSearchesButton->setIcon("Pencil.svg");
+        $EditSearchesButton->setSize(HtmlButton::SIZE_SMALL);
+        $EditSearchesButton->addClass("float-end");
+        $EditSearchesButton->setLink($AF->baseUrl() . "index.php?P=ListSavedSearches");
 
         ob_start();
         ?><!-- BEGIN SAVED SEARCHES BLOCK -->
         <div class="mv-section mv-section-simple mv-html5-section cw-mysearches-sidebar-saved">
             <div class="mv-section-header mv-html5-header">
-                <a class="btn btn-primary btn-sm mv-button-iconed float-right"
-                    href="<?= $EditSearchesLink ?>">
-                    <img class="mv-button-icon" src="<?= $PencilImgPath ?>" alt=""> Edit</a>
+                <?= $EditSearchesButton->getHtml(); ?>
                 <img src="<?= $AF->GUIFile("MagnifyingGlass.svg") ?>" alt="">
                 My Searches
             </div>

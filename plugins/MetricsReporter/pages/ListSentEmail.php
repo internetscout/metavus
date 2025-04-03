@@ -3,19 +3,22 @@
 #   FILE:  ListSentEmail.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # check that user should be on this page
+use Metavus\Plugins\Mailer;
 use Metavus\TransportControlsUI;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
-use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
 $DB = new Database();
+$PluginMgr = PluginManager::getInstance();
 
 # construct SQL conditions from provided search string
 $H_SearchString = StdLib::getFormValue("SS", "");
@@ -28,12 +31,12 @@ if (strlen($H_SearchString)) {
 }
 
 # if Mailer is enabled, set up UI stuff for selecting a template
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) {
-    $Mailer = $GLOBALS["G_PluginManager"]->GetPlugin("Mailer");
+if ($PluginMgr->pluginReady("Mailer")) {
+    $Mailer = Mailer::getInstance();
 
     $H_SelectedTemplate = StdLib::getFormValue("TID", -1);
     $H_Templates = [-1 => "(all)"];
-    $H_Templates += $Mailer->GetTemplateList();
+    $H_Templates += $Mailer->getTemplateList();
 }
 
 # get starting index, set items per page
@@ -52,15 +55,15 @@ if (!in_array($SortField, ["Subject", "FromAddr", "ToAddr", "DateSent"])) {
 $SortDir = StdLib::getFormValue(TransportControlsUI::PNAME_REVERSESORT, 0) == 1 ?
     "DESC" : "ASC" ;
 
-$DB->Query(
+$DB->query(
     "SELECT FromAddr, ToAddr, Subject, LogData, DateSent FROM MetricsRecorder_SentEmails"
     .(count($SqlConditions) ? " WHERE ".implode(" OR ", $SqlConditions) : "")
     ." ORDER BY ".$SortField." ".$SortDir
 );
-$H_EmailList = $DB->FetchRows();
+$H_EmailList = $DB->fetchRows();
 
 # if we were supposed to subset the list based on a specific template
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer") &&
+if ($PluginMgr->pluginReady("Mailer") &&
     $H_SelectedTemplate != -1) {
     $NewList = [];
     foreach ($H_EmailList as $Email) {
@@ -91,6 +94,6 @@ $H_EmailList = array_slice($H_EmailList, $StartIndex, $H_ItemsPerPage, true);
 $H_BaseLink = "index.php?P=P_MetricsReporter_ListSentEmail"
     ."&amp;SS=".urlencode($H_SearchString);
 
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) {
+if ($PluginMgr->pluginReady("Mailer")) {
     $H_BaseLink .= "&amp;TID=".urlencode($H_SelectedTemplate);
 }

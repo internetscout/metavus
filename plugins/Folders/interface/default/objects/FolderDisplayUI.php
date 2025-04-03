@@ -3,21 +3,22 @@
 #   FILE:  FolderDisplayUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Folders;
-
+use Metavus\HtmlButton;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
+use Exception;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -30,14 +31,15 @@ class FolderDisplayUI
      * @param Folder|null $Previous previous folder or NULL if at the beginning
      * @param Folder|null $Next next folder or NULL if at the end
      * @param boolean $IsSelected whether or not the folder is selected
+     * @return void
      */
     public static function printFolder(
         int $ResourceFolderId,
         Folder $Folder,
-        Folder $Previous = null,
-        Folder $Next = null,
+        ?Folder $Previous = null,
+        ?Folder $Next = null,
         bool $IsSelected = false
-    ) {
+    ): void {
         $AF = ApplicationFramework::getInstance();
 
         $ItemIds = $Folder->getItemIds();
@@ -60,8 +62,8 @@ class FolderDisplayUI
         ));
         $Offset = isset($_GET["FO".$Folder->id()]) ? intval($_GET["FO".$Folder->id()]) : 0 ;
 
-        $FoldersPlugin = PluginManager::getInstance()->getPlugin("Folders");
-        $CanTransferFolder = ($FoldersPlugin->ConfigSetting("PrivsToTransferFolders"))
+        $FoldersPlugin = Folders::getInstance();
+        $CanTransferFolder = ($FoldersPlugin->getConfigSetting("PrivsToTransferFolders"))
             ->meetsRequirements(User::getCurrentUser());
 
         $ItemsPerPage = 500;
@@ -72,11 +74,71 @@ class FolderDisplayUI
             '',
             $_SERVER["REQUEST_URI"]
         );
+        $NotPublicFolderCssClass = $Folder->isShared() ? "" : "mv-notpublic";
+
+        $FirstPageButton = new HtmlButton("|<");
+        $FirstPageButton->setSize(HtmlButton::SIZE_SMALL);
+        $FirstPageButton->setLink($UrlFiltered);
+        $PageLeftButton = new HtmlButton("<");
+        $PageLeftButton->setSize(HtmlButton::SIZE_SMALL);
+        $PageLeftButton->setLink($UrlFiltered . "&FO" . $Folder->id() . "="
+            . ($Offset - $ItemsPerPage));
+        $PageRightButton = new HtmlButton(">");
+        $PageRightButton->setSize(HtmlButton::SIZE_SMALL);
+        $PageRightButton->setLink($UrlFiltered . "&FO" . $Folder->id() . "="
+            . ($Offset + $ItemsPerPage));
+        $LastPageButton = new HtmlButton(">|");
+        $LastPageButton->setSize(HtmlButton::SIZE_SMALL);
+        $LastPageButton->setLink($UrlFiltered . "&FO" . $Folder->id() . "="
+            . (count($ItemIds) - ($ItemsPerPage + $Overlap)));
+
+        $SelectButton = new HtmlButton("Select");
+        $SelectButton->setSize(HtmlButton::SIZE_SMALL);
+        $SelectButton->setIcon("Check.svg");
+        $SelectButton->setTitle("Select this folder as the current folder");
+        $SelectButton->setLink("index.php?P=P_Folders_SelectFolder&FolderId=$SafeFolderId");
+        $TransferButton = new HtmlButton("Transfer");
+        $TransferButton->setSize(HtmlButton::SIZE_SMALL);
+        $TransferButton->setIcon("Exchange.svg");
+        $TransferButton->setTitle("Transfer this folder to other user");
+        $TransferButton->addClass("cw-folder-transfer-folder-button");
+        $TransferButton->addSemanticClass("btn-danger");
+        $TransferButton->addAttributes(["data-folderid" => $SafeFolderId,
+            "data-foldername" => $SafeFolderName
+        ]);
+        $TransferButton->setLink("index.php?P=P_Folders_ConfirmFolderTransfer&FID=$SafeFolderId");
+        $DuplicateButton = new HtmlButton("Duplicate");
+        $DuplicateButton->setSize(HtmlButton::SIZE_SMALL);
+        $DuplicateButton->setIcon("Copy.svg");
+        $DuplicateButton->setTitle("Create a duplicate of this folder");
+        $DuplicateButton->setLink("index.php?P=P_Folders_DuplicateFolders&FID=$SafeFolderId");
+        $SettingsButton = new HtmlButton("Settings");
+        $SettingsButton->setSize(HtmlButton::SIZE_SMALL);
+        $SettingsButton->setIcon("cog.png");
+        $SettingsButton->setTitle("Edit folder");
+        $SettingsButton->addAttributes(["data-folderid" => $SafeFolderId]);
+        $SettingsButton->setLink("index.php?P=P_Folders_EditFolderSettings&ID=$SafeFolderId");
+        $DeleteButton = new HtmlButton("Delete");
+        $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+        $DeleteButton->setIcon("Delete.svg");
+        $DeleteButton->setTitle("Delete this folder");
+        $DeleteButton->setLink("index.php?P=P_Folders_ConfirmDeleteFolder&FolderId=$SafeFolderId");
+        $ClearButton = new HtmlButton("Clear");
+        $ClearButton->setSize(HtmlButton::SIZE_SMALL);
+        $ClearButton->setIcon("Broom.svg");
+        $ClearButton->setTitle("Remove all resources from this folder");
+        $ClearButton->addClass("mv-folders-clear-confirmlink");
+        $ClearButton->addSemanticClass("btn-danger");
+        $ClearButton->setId("mv-folders-folderlink$SafeFolderId");
+        $ClearButton->addAttributes(["data-parentfolderid" => $SafeFolderId,
+            "data-folderid" => $SafeFolderId
+        ]);
+        $ClearButton->setLink("index.php?P=P_Folders_RemoveAllItems&FolderId=$SafeFolderId");
         // @codingStandardsIgnoreStart
         ?>
 
     <div id="Folders_Errors<?= $SafeFolderId ?>"></div>
-    <div class="border rounded mv-section mv-section-elegant mv-html5-section mv-folders-folder" data-parentfolderid="<?= $SafeResourceFolderId ?>" data-folderid="<?= $SafeFolderId ?>" data-itemid="<?= $SafeFolderId ?>">
+    <div class="border rounded mv-section mv-section-elegant mv-html5-section mv-folders-folder <?= $NotPublicFolderCssClass; ?>" data-parentfolderid="<?= $SafeResourceFolderId ?>" data-folderid="<?= $SafeFolderId ?>" data-itemid="<?= $SafeFolderId ?>">
       <div class="mv-section-header" title="<?= $SafeFolderDescForRollover ?>">
         <div class="container-fluid border p-1 rounded bg-light">
           <div class="row">
@@ -87,77 +149,39 @@ class FolderDisplayUI
               <a id="mv-folders-nametitle<?= $SafeFolderId ?>" class="mv-folders-folder-name" href="index.php?P=P_Folders_ViewFolder&amp;FolderId=<?= $SafeFolderId ?>" data-folderid="<?= $SafeFolderId ?>">
               <?= StdLib::neatlyTruncateString($SafeFolderName, 40) ?>  (<?= count($ItemIds) ?>)<!-- the whitespace adds to the rendered anchor
               --></a>
-              <div class="cw-folder-actions float-right">
+              <div class="cw-folder-actions float-end">
                        <?PHP
                          # Paginate very long folder listings, allowing some overlap from one page to the next
                          #  so that items can be dragged between pages
                          if ($Paginate) {
                            print '<span>';
                            if ($Offset > 0) {
-                                print '<a href="'.$UrlFiltered.'" class="btn btn-primary btn-sm">&#124&lt;</a> ';
-                                print '<a href="'.$UrlFiltered.'&amp;FO'.$Folder->id().'='.($Offset-$ItemsPerPage).
-                                   '" class="btn btn-primary btn-sm"> &lt; </a>';
+                               print $FirstPageButton->getHtml();
+                               print $PageLeftButton->getHtml();
                            }
                            print " ".$Offset."-".($Offset+($ItemsPerPage+$Overlap) )." ";
 
                            if ($Offset + ($ItemsPerPage+$Overlap) < count($ItemIds)) {
-                                print '<a href="'.$UrlFiltered.'&amp;FO'.$Folder->id().'='.($Offset+$ItemsPerPage).
-                                   '" class="btn btn-primary btn-sm">&gt;</a> ';
-                                print '<a href="'.$UrlFiltered.'&amp;FO'.$Folder->id().'='.(count($ItemIds) - ($ItemsPerPage+$Overlap)).
-                                   '" class="btn btn-primary btn-sm">&gt&#124;</a>';
+                               print $PageRightButton->getHtml();
+                               print $LastPageButton->getHtml();
                            }
-                           } ?>
+                         } ?>
                                 <?PHP if ($AF->GetPageName() == "P_Folders_ManageFolders") { ?>
                   <span title="Making this folder public will allow anyone to view it, including users who are not logged in.To share a folder when it's public, click the folder name to view the folder page and share the URL listed beneath the folder name">
                   <input type="checkbox" id="ShareFolder_<?= $SafeFolderId ?>" name="Share" data-folderid="<?= $SafeFolderId; ?>" <?PHP if ($IsShared) print 'checked="true"'; ?> />
                   <label for="ShareFolder_<?= $SafeFolderId ?>">public</label>
                 </span>
                 <?PHP if (!$IsSelected) { ?>
-                  <a class="mv-button-iconed btn btn-primary btn-sm mv-button-iconed"
-                        href="index.php?P=P_Folders_SelectFolder&amp;FolderId=<?= $SafeFolderId ?>"
-                        title="Select this folder as the current folder"><img
-                        src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-                        class="mv-button-icon" /> Select</a>
+                    <?= $SelectButton->getHtml(); ?>
                 <?PHP } ?>
                 <?PHP if ($CanTransferFolder) { ?>
-                  <a class="btn btn-danger btn-sm cw-folder-transfer-folder-button mv-button-iconed"
-                    href="index.php?P=P_Folders_ConfirmFolderTransfer&amp;FID=<?= $SafeFolderId ?>"
-                    title="Transfer this folder to other user"
-                    data-folderid="<?= $SafeFolderId ?>"
-                    data-foldername="<?= $SafeFolderName ?>"><img
-                    src="<?= $AF->GUIFile('Exchange.svg'); ?>" alt=""
-                    class="mv-button-icon" /> Transfer</a>
+                    <?= $TransferButton->getHtml(); ?>
                 <?PHP } ?>
-                <a class="btn btn-primary btn-sm mv-button-iconed"
-                  href="index.php?P=P_Folders_DuplicateFolders&FID=<?= $SafeFolderId ?>"
-                  title="Create a duplicate of this folder"><img
-                  src="<?= $AF->GUIFile('Copy.svg'); ?>" alt=""
-                  class="mv-button-icon" /> Duplicate</a>
-                <a class="mv-button-iconed mv-folders-editnamelink btn btn-primary btn-sm mv-button-iconed"
-                 href="index.php?P=P_Folders_ChangeFolderName&amp;FolderId=<?= $SafeFolderId ?>"
-                 id="mv-folders-foldernamelink<?= $SafeFolderId ?>"
-                 title="Edit the name of this folder"
-                 data-folderid="<?= $SafeFolderId ?>"
-                ><img class="mv-button-icon" src="<?PHP $AF->PUIFile("cog.png"); ?>" alt="" /> Settings</a>
-                <div class="mv-folders-dialog-namechange cw-no-close" id="mv-folders-namechange<?= $SafeFolderId ?>"
-                data-ajaxlink="index.php?P=P_Folders_UpdateFolderName&FolderId=<?= $SafeFolderId ?>&FolderName="
-                data-folderid="<?= $SafeFolderId?>"
-                data-foldername="<?= $SafeTruncatedName; ?>"
-                title="Rename ">
-                <input type="text" name="FolderName" value="<?= $SafeFolderName; ?>" required="true" />
-                </div>
-                <a class="mv-button-iconed btn btn-danger btn-sm mv-button-iconed "
-                    href="index.php?P=P_Folders_ConfirmDeleteFolder&amp;FolderId=<?= $SafeFolderId; ?>"
-                    title="Delete this folder"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
-                    alt="" class="mv-button-icon" /> Delete</a>
+                <?= $DuplicateButton->getHtml(); ?>
+                <?= $SettingsButton->getHtml(); ?>
+                <?= $DeleteButton->getHtml(); ?>
                 <?PHP if ($HasItems) {?>
-                <a class="mv-button-iconed mv-folders-clear-confirmlink btn btn-danger btn-sm mv-button-iconed"
-                 href="index.php?P=P_Folders_RemoveAllItems&amp;FolderId=<?= $SafeFolderId; ?>"
-                 id="mv-folders-folderlink<?= $SafeFolderId; ?>"
-                 title="Remove all resources from this folder"
-                 data-parentfolderid="<?= $SafeFolderId; ?>"
-                 data-folderid="<?= $SafeFolderId?>"><img src="<?= $AF->GUIFile('Broom.svg'); ?>"
-                 alt="" class="mv-button-icon" /> Clear</a>
+                    <?= $ClearButton->getHtml(); ?>
                 <div class="cw-dialog-confirm cw-no-close" id="mv-folders-folderclear<?= $SafeFolderId?>" title="Clear <?= $SafeTruncatedName; ?>">
                 Clear contents of folder <em><?= $SafeFolderName; ?></em>?
                 </div>
@@ -200,36 +224,39 @@ class FolderDisplayUI
 
     /**
      * Display the 'Add All Search Results to the Current Folder' button.
-     * @param boolean $TooManyResources whether the search results exceed the maxium
+     * @param boolean $TooManyResources whether the search results exceed the maximum
      *   number of resources that can be added to the current folder.
-     * @param int $MaxResources the maxium number of resources that can be added
+     * @param int $MaxResources the maximum number of resources that can be added
      *   to the current folder.
      * @param string $AddAllUrl the string URL to add all search results to the current folder.
+     * @return void
      */
     public static function insertAllButtonHTML(
         bool $TooManyResources,
         int $MaxResources,
         string $AddAllUrl
-    ) {
-        $AF = ApplicationFramework::getInstance();
+    ): void {
         $ButtonStyleClasses = "btn btn-primary btn-sm";
-        // @codingStandardsIgnoreStart
+        $AddAllToFolderButton = new HtmlButton("Add All to Folder");
+        $AddAllToFolderButton->setIcon("FolderPlus.svg");
+        $AddAllToFolderButton->setSize(HtmlButton::SIZE_SMALL);
+        if (!$TooManyResources) {
+            $AddAllToFolderButton->addClass("mv-folders-addallsearch mv-button-iconed");
+            $AddAllToFolderButton->setTitle("Add the results of this search to your current"
+                . " folder.");
+            $AddAllToFolderButton->addAttributes(["data-buttonclasses" => $ButtonStyleClasses]);
+            $AddAllToFolderButton->setLink($AddAllUrl);
+        } else {
+            $AddAllToFolderButton->addClass("mv-button-disabled");
+            $AddAllToFolderButton->setTitle("Only " . defaulthtmlentities($MaxResources)
+                . " search results can be added to a folder at a time."
+                . " Refine your search to reduce the amount of search results.");
+        }
         ?>
         <!-- BEGIN FOLDER ALL BUTTON DISPLAY -->
-        <?PHP if (!$TooManyResources) { ?>
-            <a class="btn btn-primary btn-sm mv-folders-addallsearch mv-button-iconed"
-                href="<?= defaulthtmlentities($AddAllUrl)?>"
-                title="Add the results of this search to your current folder."
-                data-buttonclasses="<?= $ButtonStyleClasses; ?>"><img
-                class="mv-button-icon" src="<?= $AF->GUIFile("folder_add.png"); ?>"
-                alt="" /> Add All to Folder</a>
-        <?PHP } else { ?>
-            <button class="btn btn-primary btn-sm mv-button-disabled mv-button-iconed"
-                title="Only <?= defaulthtmlentities($MaxResources); ?> search results can be added to a folder at a time.Refine your search to reduce the amount of search results."><img class="mv-button-icon" src="<?= $AF->GUIFile("folder_add.png"); ?>" alt="" /> Add All to Folder</button>
-        <?PHP } ?>
+        <?= $AddAllToFolderButton->getHtml(); ?>
         <!-- END FOLDER ALL BUTTON DISPLAY -->
         <?PHP
-        // @codingStandardsIgnoreEnd
     }
 
     /**
@@ -237,19 +264,27 @@ class FolderDisplayUI
      * @param string $RemoveAllUrl the string URL to remove all search results
      *     to the current folder.
      * @param bool $ResultsInFolder whether any of the search results are in the folder.
+     * @return void
      */
-    public static function insertRemoveAllButtonHTML(string $RemoveAllUrl, bool $ResultsInFolder)
-    {
-        $AF = ApplicationFramework::getInstance();
-        $ButtonStyleClasses = "btn btn-primary btn-sm mv-folders-removeallsearch ";
-        ?>
-        <a class="<?= $ButtonStyleClasses ?>" href="<?= defaulthtmlentities($RemoveAllUrl)?>"
-           title="Remove the results of this search from your current folder."
-           data-buttonclasses="<?= $ButtonStyleClasses ?>"
-           style="<?= $ResultsInFolder ? "" : "display: none;" ?>">
-           <img class="mv-button-icon" src="<?= $AF->GUIFile("cross.png"); ?>"
-                alt="" /> Remove All From Folder</a>
-           <?PHP
+    public static function insertRemoveAllButtonHTML(
+        string $RemoveAllUrl,
+        bool $ResultsInFolder
+    ): void {
+        $ButtonStyleClasses = "btn btn-primary btn-sm mv-folders-removeallsearch";
+        $RemoveAllFromFolderButton = new HtmlButton("Remove All From Folder");
+        $RemoveAllFromFolderButton->setIcon("FolderMinus.svg");
+        $RemoveAllFromFolderButton->setSize(HtmlButton::SIZE_SMALL);
+        $RemoveAllFromFolderButton->addClass("mv-folders-removeallsearch");
+        $RemoveAllFromFolderButton->setTitle("Remove the results of this search from your current "
+            . "folder.");
+        $RemoveAllFromFolderButton->addAttributes([
+            "data-buttonclasses" => $ButtonStyleClasses
+        ]);
+        if (!$ResultsInFolder) {
+            $RemoveAllFromFolderButton->hide();
+        }
+        $RemoveAllFromFolderButton->setLink($RemoveAllUrl);
+        print $RemoveAllFromFolderButton->getHtml();
     }
 
     /**
@@ -260,6 +295,7 @@ class FolderDisplayUI
      * @param int $FolderId the ID of the currently active folder.
      * @param int $ResourceId the ID of the resource for which we are generating the button.
      * @param string $Location the insertion location of the button -- classes depend on this.
+     * @return void
      */
     public static function insertButtonHTML(
         bool $InFolder,
@@ -268,49 +304,50 @@ class FolderDisplayUI
         int $FolderId,
         int $ResourceId,
         string $Location
-    ) {
+    ): void {
         $AF = ApplicationFramework::getInstance();
-        $ButtonStyleClasses = "mv-button-iconed btn btn-primary";
+
+        $RemoveButton = new HtmlButton("Remove");
+        $RemoveButton->setIcon("FolderMinus.svg");
+        $RemoveButton->addClass("mv-folders-removeresource");
+        $RemoveButton->setTitle("Remove this resource from the currently selected folder");
+        $RemoveButton->addAttributes(["data-itemid" => $ResourceId,
+            "data-folderid" => $FolderId, "data-verb" => "Remove"
+        ]);
+        $RemoveButton->setLink($RemoveActionUrl);
+
+        $AddButton = new HtmlButton("Add");
+        $AddButton->setIcon("FolderPlus.svg");
+        $AddButton->addClass("mv-folders-addresource");
+        $AddButton->setTitle("Add this resource to the currently selected folder");
+        $AddButton->addAttributes(["data-itemid" => $ResourceId,
+            "data-folderid" => $FolderId, "data-verb" => "Add"
+        ]);
+        $AddButton->setLink(defaulthtmlentities($AddActionUrl));
+
         if (($Location == "Resource Summary Buttons") ||
             ($Location == "Resource Display Buttons")) {
-            $ButtonStyleClasses .= " btn-sm";
+            $RemoveButton->setSize(HtmlButton::SIZE_SMALL);
+            $AddButton->setSize(HtmlButton::SIZE_SMALL);
         }
-
-        # get absolute URLs to buttons so that they will work on pages where the
-        # CleanURL contains additional slashes
-        $AddImg = ApplicationFramework::baseUrl()
-            .$AF->gUIFile("FolderPlus.svg");
-        $RemoveImg = ApplicationFramework::baseUrl()
-            . $AF->gUIFile("FolderMinus.svg");
 
         print '<!-- BEGIN FOLDER BUTTON DISPLAY -->';
 
         # some pages output buttons inside a <ul>, so in order to keep our HTML valid,
         # we need to wrap our output in <li> tags
-        $ListContextPages = ["Home", "SearchResults", "P_Folders_ViewFolder", "BrowseResources"];
-        $InList = in_array($AF->GetPageName(), $ListContextPages) ? true : false;
+        $ListContextPages = ["Home", "SearchResults", "P_Folders_ViewFolder",
+            "BrowseResources", "RecommendResources"
+        ];
+        $InList = in_array($AF->GetPageName(), $ListContextPages);
         if ($InList) {
             print '<li class="list-group-item">';
         }
 
-        // @codingStandardsIgnoreStart
-        if ($InFolder) { ?>
-          <a class="<?= $ButtonStyleClasses ?> mv-folders-removeresource"
-             title="Remove this resource from the currently selected folder"
-             href="<?= defaulthtmlentities($RemoveActionUrl); ?>"
-             data-itemid="<?= $ResourceId ?>" data-folderid="<?= $FolderId ?>"
-             data-verb="Remove">
-             <img class="mv-button-icon" src="<?= $RemoveImg ?>" alt=""/> Remove</a>
-        <?PHP } else { ?>
-           <a class="<?= $ButtonStyleClasses ?> mv-folders-addresource"
-              title="Add this resource to the currently selected folder"
-              href="<?= defaulthtmlentities($AddActionUrl); ?>"
-              data-itemid="<?= $ResourceId ?>" data-folderid="<?= $FolderId ?>"
-              data-verb="Add">
-              <img class="mv-button-icon" src="<?= $AddImg ?>" alt="" /> Add</a>
-         <?PHP
+        if ($InFolder) {
+            print $RemoveButton->getHtml();
+        } else {
+            print $AddButton->getHtml();
         }
-        // @codingStandardsIgnoreEnd
 
         if ($InList) {
             print '</li>';
@@ -323,20 +360,27 @@ class FolderDisplayUI
     /**
      * Display the resource note and either edit or add button for the note
      * for the resource in the folder.
-     * @param string $ResourceNote the note for the resource if it exists, if not, empty string
+     * @param ?string $ResourceNote the note for the resource if it exists, if not, empty string
      * @param int $FolderId the ID of the currently active folder
      * @param int $ResourceId the ID of the resource for which we are generating the button
      * @param string $EditResourceNoteUrl the url for editing the resource note.
+     * @return void
      */
     public static function insertResourceNote(
-        string $ResourceNote = null,
+        ?string $ResourceNote,
         int $FolderId,
         int $ResourceId,
         string $EditResourceNoteUrl
-    ) {
-        $AF = ApplicationFramework::getInstance();
+    ): void {
         $Action = (!is_null($ResourceNote) && strlen($ResourceNote) > 0)
             ? "Edit" : "Add";
+
+        $NoteButton = new HtmlButton("$Action Note");
+        $NoteButton->setIcon("note_edit.png");
+        $NoteButton->addClass("mv-folders-editnote");
+        $NoteButton->setSize(HtmlButton::SIZE_SMALL);
+        $NoteButton->setLink($EditResourceNoteUrl);
+
         // @codingStandardsIgnoreStart
         ?>
         <!-- BEGIN FOLDER RESOURCE NOTE DISPLAY -->
@@ -346,10 +390,7 @@ class FolderDisplayUI
         <?PHP if ($ResourceNote) { ?>
                <br />
         <?PHP } ?>
-        <a class="btn btn-primary btn-sm mv-folders-editnote mv-button-iconed"
-           href="<?= defaulthtmlentities($EditResourceNoteUrl); ?>"
-           ><img class="mv-button-icon" src="<?= $AF->GUIFile("note_edit.png"); ?>" alt="" />
-               <?= $Action ?> Note</a>
+        <?= $NoteButton->getHtml(); ?>
       </p>
     <!-- END FOLDER RESOURCE NOTE DISPLAY -->
          <?PHP
@@ -358,15 +399,17 @@ class FolderDisplayUI
 
     /**
      * Display the folders sidebar content html.
+     * @return void
      */
-    public static function printFolderSidebarContent()
+    public static function printFolderSidebarContent(): void
     {
         $AF = ApplicationFramework::getInstance();
 
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
-        $FoldersPlugin = PluginManager::getInstance()->getPlugin("Folders");
+        $FoldersPlugin = Folders::getInstance();
+
         $FolderFactory = new FolderFactory($User->Id());
         $FolderId = $FolderFactory->GetSelectedFolder()->Id();
         $SelectedFolder = $FoldersPlugin->GetSelectedFolder($User);
@@ -378,25 +421,24 @@ class FolderDisplayUI
         # (must be absolute because the HTML generated here can be requested via
         # an ajax call and added to a page with a CleanURL that may contain slashes)
         $BaseUrl = $AF->baseUrl();
-        $ViewFolderLink = $BaseUrl.
-            "index.php?P=P_Folders_ViewFolder&amp;FolderId=".$FolderId;
-        $ManageFolderLink = $BaseUrl
-            ."index.php?P=P_Folders_ManageFolders";
-        $OpenFolderImgPath = $BaseUrl
-            .$AF->gUIFile("OpenFolder.svg");
-        $PencilImgPath = $BaseUrl
-            .$AF->gUIFile("Pencil.svg");
+        $ViewFolderLink = $BaseUrl .
+            "index.php?P=P_Folders_ViewFolder&amp;FolderId=" . $FolderId;
+        $ManageFolderLink = $BaseUrl . "index.php?P=P_Folders_ManageFolders";
+        $OpenFolderImgPath = $BaseUrl . $AF->gUIFile("OpenFolder.svg");
 
         $ItemIds = $SelectedFolder->GetItemIds();
         $ItemCount = count($ItemIds);
         $HasResources = $ItemCount > 0;
-        $NumDisplayedResources = $FoldersPlugin->ConfigSetting("NumDisplayedResources");
+        $NumDisplayedResources = $FoldersPlugin->getConfigSetting("NumDisplayedResources");
         $HasMoreResources = $ItemCount > $NumDisplayedResources;
         $ResourceInfo = [];
 
         foreach ($ItemIds as $ResourceId) {
             $Resource = new Record($ResourceId);
             $Title = Common::GetSafeResourceTitle($Resource);
+            $ResourceCSSClass = $Resource->userCanView(User::getAnonymousUser())
+                ? ""
+                : "mv-notpublic";
 
             # get the schema name associated with this resource
             $Schema = new MetadataSchema($Resource->getSchemaId());
@@ -409,7 +451,8 @@ class FolderDisplayUI
                 "ResourceId" => $Resource->Id(),
                 "ResourceTitle" => StdLib::NeatlyTruncateString($Title, 50),
                 "ResourceSchemaName" => $SchemaName,
-                "ResourceSchemaCSSName" => $SchemaCSSName
+                "ResourceSchemaCSSName" => $SchemaCSSName,
+                "ResourceCSSClass" => $ResourceCSSClass,
             ];
 
             # only display the first $NumDisplayedResources
@@ -418,13 +461,18 @@ class FolderDisplayUI
             }
         }
 
+        $EditButton = new HtmlButton("Edit");
+        $EditButton->setIcon("Pencil.svg");
+        $EditButton->setSize(HtmlButton::SIZE_SMALL);
+        $EditButton->addClass("float-end");
+        $EditButton->setLink($ManageFolderLink);
+
 // @codingStandardsIgnoreStart
 ?>
   <!-- BEGIN FOLDERS SIDEBAR DISPLAY -->
   <div class="mv-section mv-section-simple mv-html5-section mv-folders-sidebar">
     <div class="mv-section-header mv-html5-header">
-    <a class="btn btn-primary btn-sm mv-button-iconed float-right"
-        href="<?= $ManageFolderLink ?>"><img class="mv-button-icon" src="<?= $PencilImgPath ?>" alt=""> Edit</a>
+    <?= $EditButton->getHtml(); ?>
     <a href="<?= defaulthtmlentities($ViewFolderLink) ?>">
         <img src="<?= $OpenFolderImgPath ?>" alt="">
         <?PHP if($FolderName) { ?>
@@ -438,7 +486,7 @@ class FolderDisplayUI
       <?PHP if ($HasResources) { ?>
         <ul class="mv-bullet-list">
           <?PHP foreach ($ResourceInfo as $Info) { ?>
-            <li>
+            <li class="<?= $Info["ResourceCSSClass"] ?>">
               <span class="mv-sidebar-resource-tag <?= $Info["ResourceSchemaCSSName"] ?>"><?= $Info["ResourceSchemaName"] ?></span>
               <a href="index.php?P=FullRecord&amp;ID=<?= $Info["ResourceId"] ?>">
                 <?= $Info["ResourceTitle"]; ?>
@@ -464,10 +512,15 @@ class FolderDisplayUI
      * @param int $FolderId ID of the folder in which the item is
      * @param int $ItemId item ID
      * @param bool $Hidden if the item should be hidden with css
+     * @return void
      */
-    private static function printFolderItem(int $FolderId, int $ItemId, bool $Hidden = false)
-    {
+    private static function printFolderItem(
+        int $FolderId,
+        int $ItemId,
+        bool $Hidden = false
+    ): void {
         $Resource = new Record($ItemId);
+        $PublicResource = $Resource->userCanView(User::getAnonymousUser());
         $SafeFolderId = defaulthtmlentities($FolderId);
         $SafeId = defaulthtmlentities($Resource->id());
         $SafeTitle = Common::getSafeResourceTitle($Resource);
@@ -477,17 +530,20 @@ class FolderDisplayUI
         $SchemaCSSName = "mv-resourcesummary-resourcetype-tag-".
                 str_replace(' ', '', strtolower($Schema->name()));
         $SchemaItemName = $Schema->resourceName();
+        $CssClasses = $PublicResource
+            ? "list-group-item"
+            : "list-group-item mv-notpublic";
 
         // @codingStandardsIgnoreStart
         ?>
-      <li class="list-group-item"
+      <li class="<?= $CssClasses ?>"
         data-parentfolderid="<?= $SafeFolderId ?>"
         data-itemid="<?= $SafeId ?>"
            <?PHP if ($Hidden) { ?> style="display: none;" <?PHP } ?> >
       <a href="index.php?P=FullRecord&amp;ID=<?= $SafeId ?>">
         <?= $SafeTitle ?>
       </a>
-      <span class="<?= $SchemaCSSName ?> mv-resourcesummary-resourcetype-tag float-right"
+      <span class="<?= $SchemaCSSName ?> mv-resourcesummary-resourcetype-tag float-end"
         ><?= $SchemaItemName ?></span>
     </li>
 <?PHP

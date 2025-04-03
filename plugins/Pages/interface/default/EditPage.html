@@ -3,19 +3,46 @@
 #   FILE:  EditPage.html (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\PrivilegeEditingUI;
-use Metavus\User;
+namespace Metavus;
+use Exception;
+use Metavus\Plugins\Pages;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
-# ----- INITIALIZATION -------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
 $AF = ApplicationFramework::getInstance();
+
+# verify that required incoming variables are set
+if (!isset($H_DisplayMode)) {
+    throw new Exception("Variable \$H_DisplayMode not set.");
+}
+if (!isset($H_Page)) {
+    throw new Exception("Variable \$H_Page not set.");
+}
+if (!isset($H_ReturnTo)) {
+    $H_ReturnTo = null;
+}
+if (!isset($H_Content)) {
+    throw new Exception("Variable \$H_Content not set.");
+}
+if (!isset($H_Summary)) {
+    throw new Exception("Variable \$H_Summary not set.");
+}
+if (!isset($H_Keywords)) {
+    throw new Exception("Variable \$H_Keywords not set.");
+}
+if (!isset($H_SchemaId)) {
+    throw new Exception("Variable \$H_SchemaId not set.");
+}
+if (!isset($H_Privileges)) {
+    throw new Exception("Variable \$H_Privileges not set.");
+}
 
 # CKEditor setup
 require_once($AF->gUIFile("CKEditorSetup.php"));
@@ -24,13 +51,40 @@ require_once($AF->gUIFile("CKEditorSetup.php"));
 $Heading = ($H_DisplayMode == "Adding") ? "Add New Page" : "Edit Page";
 PageTitle($Heading);
 
-$AllowedKeywords = PluginManager::getInstance()
-    ->getPluginForCurrentPage()
-    ->getAllowedInsertionKeywords();
+$AllowedKeywords = Pages::getInstance()->getAllowedInsertionKeywords();
+
+$InsertLeftButton = new HtmlButton("← Insert-L");
+
+$InsertRightButton = new HtmlButton("Insert-R →");
+
+$DeleteImageButton = new HtmlButton("Delete");
+$DeleteImageButton->setIcon("Delete.svg");
+$DeleteImageButton->addSemanticClass("btn-danger");
+$DeleteImageButton->makeSubmitButton();
+
+$UploadImageButton = new HtmlButton("Upload");
+$UploadImageButton->setIcon("Upload.svg");
+
+$LinkFileButton = new HtmlButton("Link");
+$LinkFileButton->setIcon("Check.svg");
+
+$DeleteFileButton = new HtmlButton("Delete");
+$DeleteFileButton->setIcon("Delete.svg");
+$DeleteFileButton->addSemanticClass("btn-danger");
+$DeleteFileButton->makeSubmitButton();
+
+$UploadFileButton = new HtmlButton("Upload");
+$UploadFileButton->setIcon("Upload.svg");
+
+$SubmitChangesButton = new HtmlButton($H_DisplayMode == "Adding" ? "Add" : "Save");
+$SubmitChangesButton->setIcon($H_DisplayMode == "Adding" ? "Check.svg" : "Disk.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 
 print "<h1>".$Heading."</h1>\n";
-
-# ----- STATE: ERROR -------------------------------------------------
 
 # display any error messages
 if (isset($H_ErrorMsgs)) {
@@ -41,9 +95,12 @@ foreach ($H_ErrorMsgs as $Msg) {
 ?></ul><?PHP
 }
 
-# ----- STATE: ADDING/EDITING ------------------------------------------------
-
 if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
+    # make sure that we have some required values
+    # (interim fix until page can be refactored to use FormUI)
+    $H_Title = $H_Title ?? "";
+    $H_CleanUrl = $H_CleanUrl ?? "";
+
     ?>
 
     <form method="POST" action="?P=P_Pages_EditPage" enctype="multipart/form-data"
@@ -112,19 +169,29 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                 $Images = $H_Page->get("Images", true);
                 foreach ($Images as $Image) {
                     $Id = $Image->id();
-                    $SafeAltText = defaulthtmlentities($H_AltTexts[$Image->id()]);
-                    $InsertLeftCmd = defaulthtmlentities(
-                        "CKEDITOR.instances['F_Content'].insertHtml("
-                            ."'<img src=\"".$Image->url("mv-image-preview")."\" alt=\""
-                            .htmlspecialchars($Image->altText())
-                        ."\" class=\"cw-pages-image-left\" />');"
+                    $ImageUrl = $Image->url("mv-image-preview");
+                    $SafeAltText = htmlspecialchars($Image->AltText(), ENT_QUOTES |  ENT_HTML5);
+                    $InsertLeftCommand = defaulthtmlentities(
+                        "mv_insertImage("
+                        ."CKEDITOR.instances['F_Content'],"
+                        ."'left',"
+                        ."'".$ImageUrl."',"
+                        ."'".$SafeAltText."',"
+                        ."false"
+                        .");"
                     );
-                    $InsertRightCmd = defaulthtmlentities(
-                        "CKEDITOR.instances['F_Content'].insertHtml("
-                            ."'<img src=\"".$Image->url("mv-image-preview")."\" alt=\""
-                            .htmlspecialchars($Image->altText())
-                        ."\" class=\"cw-pages-image-right\" />');"
+                    $InsertRightCommand = defaulthtmlentities(
+                        "mv_insertImage("
+                        ."CKEDITOR.instances['F_Content'],"
+                        ."'right',"
+                        ."'".$ImageUrl."',"
+                        ."'".$SafeAltText."',"
+                        ."false"
+                        .");"
                     );
+                    $InsertLeftButton->setOnclick($InsertLeftCommand);
+                    $InsertRightButton->setOnclick($InsertRightCommand);
+                    $DeleteImageButton->setOnclick("$('#ImageToDelete').val('" . $Id . "')");
                     ?><tr>
                         <td><img src="<?=
                                 defaulthtmlentities($Image->url("mv-image-thumbnail"))
@@ -133,15 +200,9 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                                 maxlength="120" name="F_ImageAltText_<?= $Id
                                 ?>" value="<?= $SafeAltText ?>"></td>
                         <td>
-                            <button type="button" onclick="<?= $InsertLeftCmd ?>"
-                                class="btn btn-primary">&larr; Insert-L</button>
-                            <button type="button" onclick="<?= $InsertRightCmd ?>"
-                                class="btn btn-primary">Insert-R &rarr;</button>
-                            <button type="submit" name="Submit"
-                                class="btn btn-danger mv-button-iconed"
-                                onclick="$('#ImageToDelete').val('<?= $Id ?>');"
-                                value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
-                                alt="" class="mv-button-icon" /> Delete</button>
+                            <?= $InsertLeftButton->getHtml(); ?>
+                            <?= $InsertRightButton->getHtml(); ?>
+                            <?= $DeleteImageButton->getHtml(); ?>
                         </td>
                     </tr><?PHP
                 }
@@ -150,10 +211,7 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                     <td><input type="file" name="F_Image"/></td>
                     <td>Alt&nbsp;Text:&nbsp;<input type="text" size="30" maxlength="120"
                                 name="F_ImageAltText"></td>
-                    <td><button type="submit" name="Submit" value="Upload"
-                            class="btn btn-primary mv-button-iconed"><img
-                            src="<?= $AF->GUIFile('Upload.svg'); ?>" alt=""
-                            class="mv-button-icon" /> Upload</button></td>
+                    <td><?= $UploadImageButton->getHtml(); ?></td>
                 </tr>
                 </table>
             </td>
@@ -172,6 +230,8 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                             ."+CKEDITOR.instances['F_Content'].getSelection()"
                         .".getSelectedText()+'</a>');"
                     );
+                    $LinkFileButton->setOnclick("$LinkCmd");
+                    $DeleteFileButton->setOnclick("$('#FileToDelete').val('" . $Id . "');");
                     ?><tr>
                         <td>
                             <a src="<?= defaulthtmlentities($File->getLink()); ?>">
@@ -179,25 +239,15 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                             </a>
                         </td>
                         <td>
-                            <button type="button" onclick="<?= $LinkCmd; ?>"
-                                class="btn btn-primary mv-button-iconed"><img
-                                src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-                                class="mv-button-icon" /> Link</button>
-                            <button type="submit" name="Submit"
-                                class="btn btn-danger mv-button-iconed"
-                                onclick="$('#FileToDelete').val('<?= $Id; ?>');
-                                value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
-                                alt="" class="mv-button-icon" /> Delete</button>
+                            <?= $LinkFileButton->getHtml(); ?>
+                            <?= $DeleteFileButton->getHtml(); ?>
                         </td>
                     </tr><?PHP
                 }
                 ?>
                 <tr>
                     <td><input type="file" name="F_File" /></td>
-                    <td><button type="submit" name="Submit" value="Upload"
-                            class="btn btn-primary mv-button-iconed"><img
-                            src="<?= $AF->GUIFile('Upload.svg'); ?>" alt=""
-                            class="mv-button-icon" /> Upload</button></td>
+                    <td><?= $UploadFileButton->getHtml(); ?></td>
                 </tr>
                 </table>
             </td>
@@ -238,30 +288,12 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                 ?>
             </td>
         </tr>
-        <?PHP  }
-        if ($H_DisplayMode == "Adding") {
-            $SubmitChangesButton = [
-                "value" => "Add",
-                "icon" => "Check.svg"
-            ];
-        } else {
-            $SubmitChangesButton = [
-                "value" => "Save",
-                "icon" => "Disk.svg"
-            ];
-        }
-        ?>
+        <?PHP } ?>
         <tr>
             <td></td>
             <td colspan="2">
-                <button type="submit" name="Submit" class="btn btn-primary mv-button-iconed"
-                    value="<?= $SubmitChangesButton["value"]; ?>"><img
-                    src="<?= $AF->GUIFile($SubmitChangesButton["icon"]); ?>" alt=""
-                    class="mv-button-icon" /> <?= $SubmitChangesButton["value"]; ?></button>
-                <button type="submit" name="Submit" value="Cancel"
-                    class="btn btn-danger mv-button-iconed"><img
-                    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-                    class="mv-button-icon" /> Cancel</button>
+                <?= $SubmitChangesButton->getHtml(); ?>
+                <?= $CancelButton->getHtml(); ?>
             </td>
         </tr>
         </tbody>
@@ -284,10 +316,18 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
         CKEDITOR.config.contentsCss.push('<?PHP
                 $AF->pUIFile("Pages_Controls.css");  ?>');
 
+        // add H1 to list of available styles
+        CKEDITOR.config.stylesSet.shift();
+        CKEDITOR.config.stylesSet.unshift( {"name": 'Heading 1', 'element': 'h1' } );
+        CKEDITOR.config.stylesSet.unshift( {"name": 'Paragraph', 'element': 'p' } );
+
+        // add tab header and tab end to list of available styles
         CKEDITOR.config.stylesSet.push(
            {"name": 'Tab Header', 'element': 'h2', 'attributes' : {'class' : 'mv-tab-start'} } );
         CKEDITOR.config.stylesSet.push(
            {"name": 'End Tab Marker', 'element': 'h4', 'attributes' : {'class' : 'mv-tab-end'} } );
+
+        CKEDITOR.config.contentsCss.push('<?= $AF->gUIFile("MV-Theme-CKEditor.css")  ?>');
       });
     </script>
     <?PHP

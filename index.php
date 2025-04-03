@@ -3,7 +3,7 @@
 #   FILE:  index.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -51,7 +51,6 @@ $PluginCfgPages = [
     "PluginConfig",
     "PluginUninstall",
 ];
-
 if (array_key_exists("P", $_GET) && in_array($_GET["P"], $PluginCfgPages)) {
     # ensure that plugin configurations are all loaded
     $GLOBALS["StartUpOpt_FORCE_PLUGIN_CONFIG_LOAD"] = true;
@@ -69,14 +68,14 @@ $Page = "404";
 $BasePathRegex = preg_quote(ApplicationFramework::basePath(), "%");
 $IndexPattern = "%^".$BasePathRegex ."(|index\.php|index\.php\?.+|\?.+)$%";
 
-# if this is a request for the index page
+# if this looks like a request for the index page
 if (preg_match($IndexPattern, $_SERVER["REQUEST_URI"])) {
-    if (count($_GET) == 0) {
-        # when no params provided, use the home page
-        $Page = "Home";
-    } elseif (isset($_GET["P"]) && strlen($_GET["P"])) {
-        # when page is provided as a parameter, use that
+    # if page was provided as a parameter, use that
+    if (isset($_GET["P"]) && strlen($_GET["P"])) {
         $Page = $_GET["P"];
+    # otherwise use the home page
+    } else {
+        $Page = "Home";
     }
 }
 
@@ -91,10 +90,8 @@ if (strlen($SiteKeywords)) {
     ]);
 }
 
-# retrieve user currently logged in
-$User = User::getCurrentUser();
-
 # if we have a user logged in
+$User = User::getCurrentUser();
 $IsLoggedIn = $User->isLoggedIn();
 if ($IsLoggedIn && !ApplicationFramework::reachedViaAjax()) {
     # mark session as in use so that it is not cleaned up prematurely

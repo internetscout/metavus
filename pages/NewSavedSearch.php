@@ -6,14 +6,15 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\Plugins\SavedSearchMailings;
 use Metavus\SavedSearch;
+use Metavus\SearchParameterSet;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -67,6 +68,7 @@ $H_FormUI->AddHiddenField("SearchParams", $SearchParams->Data());
 
 # act on any button press
 $ButtonPushed = StdLib::getFormValue("Submit");
+$AF = ApplicationFramework::getInstance();
 switch ($ButtonPushed) {
     case "Save":
         #check values and bail out if any are invalid
@@ -94,10 +96,10 @@ switch ($ButtonPushed) {
         );
 
         # jump to list saved searches
-        $GLOBALS["AF"]->SetJumpToPage("index.php?P=ListSavedSearches");
+        $AF->SetJumpToPage("index.php?P=ListSavedSearches");
         break;
     case "Cancel":
         # jump to list saved searches
-        $GLOBALS["AF"]->SetJumpToPage("index.php?P=ListSavedSearches");
+        $AF->SetJumpToPage("index.php?P=ListSavedSearches");
         break;
 }

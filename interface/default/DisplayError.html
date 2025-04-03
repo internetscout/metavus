@@ -6,9 +6,15 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
+if (!isset($H_ErrorMessage)) {
+    throw new Exception("H_ErrorMessage not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Error</h1>

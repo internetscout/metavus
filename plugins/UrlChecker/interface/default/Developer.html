@@ -2,14 +2,14 @@
 #
 #   FILE:  Developer.html
 #
-#   Copyright 2011-2021 Internet Scout Research Group
+#   Copyright 2011-2025 Internet Scout Research Group
 #   http://scout.wisc.edu/
 #
 
-use Metavus\MetadataSchema;
+use Metavus\HtmlButton;
+use Metavus\InterfaceConfiguration;
 use Metavus\Plugins\UrlChecker\InvalidUrl;
 use Metavus\Plugins\UrlChecker\Record;
-use Metavus\InterfaceConfiguration;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -24,7 +24,7 @@ function PrintNextResource($ResourceId, $CheckDate)
     $Resource = new Record($ResourceId, $CheckDate);
     $Schema = $Resource->getSchema();
 
-    $TitleField = $Schema->GetFieldByMappedName("Title");
+    $TitleField = $Schema->getFieldByMappedName("Title");
 
     if ($TitleField === null) {
         $Name = "<i>(No title field mapped)</i>";
@@ -33,32 +33,32 @@ function PrintNextResource($ResourceId, $CheckDate)
         # format information for display
         $DefaultCharSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
         $Name = defaulthtmlentities(
-            StdLib::NeatlyTruncateString($Resource->Get($TitleField), 65),
+            StdLib::neatlyTruncateString($Resource->get($TitleField), 65),
             ENT_QUOTES,
             $DefaultCharSet,
             false
         );
         $Title = defaulthtmlentities(
-            $Resource->Get($TitleField),
+            $Resource->get($TitleField),
             ENT_QUOTES,
             $DefaultCharSet,
             false
         );
     }
 
-    $CheckDate = ($Resource->GetCheckDate() == "N/A")  ?
-        $Resource->GetCheckDate() :
-        date("M jS, Y \a\\t g:i A", strtotime($Resource->GetCheckDate()));
+    $CheckDate = ($Resource->getCheckDate() == "N/A")  ?
+        $Resource->getCheckDate() :
+        date("M jS, Y \a\\t g:i A", strtotime($Resource->getCheckDate()));
     ?>
     <tr>
-        <td><?= $Resource->Id(); ?></td>
+        <td><?= $Resource->id(); ?></td>
         <td>
-            <a href="index.php?P=FullRecord&amp;ResourceId=<?= $Resource->Id(); ?>"
+            <a href="index.php?P=FullRecord&amp;Id=<?= $Resource->id(); ?>"
                 title="<?= $Title; ?>"><?= $Name; ?></a>
         </td>
         <td><?= $CheckDate; ?></td>
         <td>
-            <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->Id(); ?>"
+            <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->id(); ?>"
                 title="Validate this URL now. This may take awhile">
                 <img src="plugins/UrlChecker/interface/default/images/check.gif" alt="Check" />
             </a>
@@ -73,20 +73,20 @@ function PrintNextResource($ResourceId, $CheckDate)
  */
 function PrintNextUrl(InvalidUrl $InvalidUrl)
 {
-    $Resource = $InvalidUrl->GetAssociatedResource();
-    $Field = $InvalidUrl->GetAssociatedField();
+    $Resource = $InvalidUrl->getAssociatedResource();
+    $Field = $InvalidUrl->getAssociatedField();
 
-    $TitleField = $Resource->getSchema()->GetFieldByMappedName("Title");
+    $TitleField = $Resource->getSchema()->getFieldByMappedName("Title");
 
     # get the resource name and RFC anchor name
     $DefaultCharSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
     $Name = defaulthtmlentities(
-        StdLib::NeatlyTruncateString($Resource->Get($TitleField), 22),
+        StdLib::neatlyTruncateString($Resource->get($TitleField), 22),
         ENT_QUOTES,
         $DefaultCharSet,
         false
     );
-    $Title = defaulthtmlentities($Resource->Get($TitleField), ENT_QUOTES, $DefaultCharSet, false);
+    $Title = defaulthtmlentities($Resource->get($TitleField), ENT_QUOTES, $DefaultCharSet, false);
     $Url = defaulthtmlentities($InvalidUrl->Url, ENT_QUOTES, $DefaultCharSet, false);
 
     # basic url href sanitization (mainly to reject javascript)
@@ -98,8 +98,8 @@ function PrintNextUrl(InvalidUrl $InvalidUrl)
     ?>
     <!-- invalid url -->
     <tr>
-        <td><?= $Resource->Id(); ?></td>
-        <td><a href="index.php?P=FullRecord&amp;ResourceId=<?= $Resource->Id(); ?>"
+        <td><?= $Resource->id(); ?></td>
+        <td><a href="index.php?P=FullRecord&amp;Id=<?= $Resource->id(); ?>"
             title="<?= $Title; ?>"><?= $Name; ?></a></td>
         <td>
             <?PHP if (strlen($Url) > 65) { ?>
@@ -108,7 +108,7 @@ function PrintNextUrl(InvalidUrl $InvalidUrl)
             <a href="<?= $UrlHref; ?>"><?= $Url; ?></a>
             <?PHP } ?>
         </td>
-        <td><a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->Id(); ?>"
+        <td><a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->id(); ?>"
             title="Validate this URL now. This may take awhile">
             <img src="plugins/UrlChecker/interface/default/images/check.gif" alt="Check" /></a>
         </td>
@@ -116,7 +116,7 @@ function PrintNextUrl(InvalidUrl $InvalidUrl)
     <?PHP
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
 # format the dates in the information
 $LastResourceChecked = ($G_Info["DateLastResourceChecked"]) ?
@@ -124,13 +124,12 @@ $LastResourceChecked = ($G_Info["DateLastResourceChecked"]) ?
 $DateNextCheck = ($G_Info["DateOfNextCheck"]) ?
     date("M jS, Y \a\\t g:i A", strtotime($G_Info["DateOfNextCheck"])) : "N/A";
 
-?>
+$QueueButton = new HtmlButton("Queue Check Tasks Now");
+$QueueButton->setIcon("MagicWand.svg");
+$QueueButton->setLink("index.php?P=P_UrlChecker_Developer&QueueNow=1");
 
-<!-- stylesheets and scripts -->
-<link type="text/css" rel="stylesheet"
-    href="plugins/UrlChecker/interface/default/include/UrlChecker.css" media="all" />
-<script type="text/javascript" src="plugins/UrlChecker/interface/default/include/UrlChecker.js">
-</script>
+# ----- DISPLAY --------------------------------------------------------------
+?>
 
 <div class="cw-content-sectioned">
 
@@ -256,7 +255,4 @@ $DateNextCheck = ($G_Info["DateOfNextCheck"]) ?
 
 </div>
 
-<a class="btn btn-primary mv-button-iconed"
-    href="index.php?P=P_UrlChecker_Developer&amp;QueueNow=1"
-    ><img src="<?= $AF->GUIFile('MagicWand.svg'); ?>"
-    alt="" class="mv-button-icon" /> Queue Check Tasks Now</a>
+<?= $QueueButton->getHtml(); ?>

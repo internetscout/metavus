@@ -3,14 +3,32 @@
 #   FILE:  ImportUsers.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+use Exception;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$BeginImportButton = new HtmlButton("Begin Import");
+$BeginImportButton->setIcon("MagicWand.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle("Import Users");
-
 ?>
 
 <h1>Import Users</h1>
@@ -74,11 +92,7 @@ on that record.</p>
 
     <?PHP $H_FormUI->DisplayFormTable(); ?>
 
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Begin Import"><img src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
-        class="mv-button-icon" /> Begin Import</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $BeginImportButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 
 </form>

@@ -3,17 +3,16 @@
 #   FILE:  EntryFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Blog;
-
 use Metavus\ControlledName;
+use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\RecordFactory;
-use ScoutLib\PluginManager;
 
 /**
  * Factory for BlogEntry objects.
@@ -28,7 +27,7 @@ class EntryFactory extends RecordFactory
     public function __construct(int $BlogId)
     {
         # snag the blog plugin
-        $BlogPlugin = PluginManager::getInstance()->getPlugin("Blog");
+        $BlogPlugin = Blog::getInstance();
 
         # construct a ResourceFactory for the blog schema
         parent::__construct($BlogPlugin->getSchemaId());
@@ -44,9 +43,9 @@ class EntryFactory extends RecordFactory
      * @param bool $SortAscending TRUE to sort ascending (OPTIONAL).
      */
     public function getItemIds(
-        string $Condition = null,
+        ?string $Condition = null,
         bool $IncludeTempItems = false,
-        string $SortField = null,
+        ?string $SortField = null,
         bool $SortAscending = true
     ): array {
         return array_intersect(
@@ -70,7 +69,7 @@ class EntryFactory extends RecordFactory
     public function getRecordIdsSortedBy(
         $FieldName,
         bool $Ascending = true,
-        int $Limit = null
+        ?int $Limit = null
     ): array {
         $Matches = array_intersect(
             parent::getRecordIdsSortedBy($FieldName, $Ascending),

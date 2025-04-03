@@ -3,13 +3,12 @@
 #   FILE:  ItemListUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -27,10 +26,18 @@ class ItemListUI
     /**
      * Constructor for item list UI class.Possible values for the inner
      * index in the $Fields parameter:
+     *   AlignRight - if set and TRUE, heading and content for this field
+     *      will be aligned right if possible,
      *   AllowHTML - if defined, values from the field will not have HTML
-     *      characters escaped before the value is displayed
+     *      characters escaped before the value is displayed,
+     *   CssClassFunction - callback that accepts an item and field ID, and
+     *      returns a CSS class to be added to the table cell in which the
+     *      content is displayed,
+     *   CssClasses - CSS classes to be applied to table cells containing
+     *      values for this field,
      *   DefaultSortField - if defined, will mark field as being the default
-     *      sort field
+     *      sort field (NOTE: does not do any actual sorting of items -- that
+     *      must be done to the data before it is passed in),
      *   DefaultToDescendingSort - if defined, will mark field as defaulting
      *      to descending (as opposed to ascending) sort order
      *   Heading - heading text for field column (if not supplied, the
@@ -43,9 +50,6 @@ class ItemListUI
      *      returns the value to be printed.
      *   LinkFunction - callback that accepts an item, and returns the value
      *      of the link or FALSE, if no url is to be linked.
-     *   ClassFunction - callback that accepts an item and field ID, and
-     *      returns a CSS class to be added to the table cell in which the
-     *      content is displayed.
      * The outer index for the $Fields parameter can be one of three types of
      * values, depending on what is passed for the $Items argument to the
      * display() method:
@@ -69,6 +73,7 @@ class ItemListUI
         array $Fields,
         $TransportUI = null
     ) {
+        $AF = ApplicationFramework::getInstance();
         $this->Fields = $Fields;
 
         if ($TransportUI instanceof TransportControlsUI) {
@@ -86,7 +91,7 @@ class ItemListUI
                 $this->TransportUI->defaultSortField($FieldId);
             }
             if (isset($FieldInfo["NoSorting"]) && !isset($NoSortingWarningGiven)) {
-                $GLOBALS["AF"]->logMessage(
+                $AF->logMessage(
                     ApplicationFramework::LOGLVL_WARNING,
                     "Deprecated 'NoSorting' parameter in use at ".StdLib::getMyCaller()
                             .", should be replaced by 'Sortable'."
@@ -96,7 +101,7 @@ class ItemListUI
         }
 
         # set default base link
-        $this->baseLink("index.php?P=".$GLOBALS["AF"]->GetPageName());
+        $this->baseLink("index.php?P=".$AF->GetPageName());
     }
 
     /**
@@ -106,7 +111,7 @@ class ItemListUI
      *       as entities (&amp;).(OPTIONAL)
      * @return string Current base URL value.
      */
-    public function baseLink(string $NewValue = null): string
+    public function baseLink(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->BaseLink = $NewValue;
@@ -121,7 +126,7 @@ class ItemListUI
      * @param array $NewValue Array of $_GET variable names.(OPTIONAL)
      * @return array Array with names of current $_GET variables to preserve.
      */
-    public function variablesToPreserve(array $NewValue = null): array
+    public function variablesToPreserve(?array $NewValue = null): array
     {
         if ($NewValue !== null) {
             $this->VariablesToPreserve = $NewValue;
@@ -145,16 +150,36 @@ class ItemListUI
     }
 
     /**
+     * Set heading text to be printed above list.
+     * @param string $NewValue New heading text.
+     */
+    public function setHeading(string $NewValue): void
+    {
+        $this->Heading = $NewValue;
+    }
+
+    /**
      * Get/set heading text to be printed above list.
      * @param string $NewValue New heading text.(OPTIONAL)
      * @return string Current heading text.
+     * @deprecated
      */
-    public function heading(string $NewValue = null): string
+    public function heading(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
-            $this->Heading = $NewValue;
+            $this->setHeading($NewValue);
         }
         return $this->Heading;
+    }
+
+    /**
+     * Set subheading text to be printed above list but below heading.
+     * If $NewValue is an empty string, no subheading will be displayed.
+     * @param string $NewValue New subheading text.
+     */
+    public function setSubheading(string $NewValue): void
+    {
+        $this->Subheading = $NewValue;
     }
 
     /**
@@ -162,11 +187,12 @@ class ItemListUI
      * If $NewValue is an empty string, no subheading will be displayed.
      * @param string $NewValue New subheading text.(OPTIONAL)
      * @return string Current subheading text.
+     * @deprecated
      */
-    public function subheading(string $NewValue = null): string
+    public function subheading(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
-            $this->Subheading = $NewValue;
+            $this->setSubheading($NewValue);
         }
         return $this->Subheading;
     }
@@ -177,7 +203,7 @@ class ItemListUI
      * @param string $NewValue Item type name.(OPTIONAL)
      * @return string Current item type name.
      */
-    public function itemTypeName(string $NewValue = null): string
+    public function itemTypeName(?string $NewValue = null): string
     {
         return $this->TransportUI->itemTypeName($NewValue);
     }
@@ -187,7 +213,7 @@ class ItemListUI
      * @param int $NewValue New max number of items per page.(OPTIONAL)
      * @return int Current number of items per page.
      */
-    public function itemsPerPage(int $NewValue = null): int
+    public function itemsPerPage(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->ItemsPerPage = $NewValue;
@@ -204,13 +230,14 @@ class ItemListUI
      *      (OPTIONAL, defaults to no image)
      * @param string $Tooltip Text for "title" attribute, to display when
      *      hovering over checkbox.  (OPTIONAL)
+     * @return void
      */
     public function addTopButton(
         string $Label,
         string $Link,
-        string $Icon = null,
-        string $Tooltip = null
-    ) {
+        ?string $Icon = null,
+        ?string $Tooltip = null
+    ): void {
         $this->Buttons[] = [
             "Label" => $Label,
             "Link" => $Link,
@@ -231,14 +258,15 @@ class ItemListUI
      *      it will be removed.
      * @param string $Tooltip Text for "title" attribute, to display when
      *      hovering over checkbox.  (OPTIONAL)
+     * @return void
      */
     public function addTopCheckbox(
         string $Label,
         bool $Checked,
         string $VarName,
         string $Link,
-        string $Tooltip = null
-    ) {
+        ?string $Tooltip = null
+    ): void {
         if (strpos($Link, $VarName."=") !== false) {
             $Link = preg_replace(
                 "/(&|&amp;)".preg_quote($VarName)."=[^&]*/",
@@ -271,14 +299,15 @@ class ItemListUI
      *      of currently selected form values.  (OPTIONAL)
      * @param string $Tooltip Text for "title" attribute, to display when
      *      hovering over checkbox.  (OPTIONAL)
+     * @return void
      */
     public function addTopOptionList(
         array $Options,
         string $VarName,
         string $Link,
         $Selected = null,
-        string $Tooltip = null
-    ) {
+        ?string $Tooltip = null
+    ): void {
         if (strpos($Link, $VarName."=") !== false) {
             $Link = preg_replace(
                 "/(&|&amp;)".preg_quote($VarName)."=[^&]*/",
@@ -311,14 +340,15 @@ class ItemListUI
      * @param array $AdditionalAttributes Additional attributes to add to
      *       the button, with HTML attribute name for the index and attribute
      *       value for the value.(OPTIONAL)
+     * @return void
      */
     public function addActionButton(
         string $Label,
         $Link,
-        string $Icon = null,
-        callable $DisplayTestFunc = null,
+        ?string $Icon = null,
+        ?callable $DisplayTestFunc = null,
         array $AdditionalAttributes = []
-    ) {
+    ): void {
         $this->Actions[] = [
             "Label" => $Label,
             "Link" => $Link,
@@ -333,7 +363,7 @@ class ItemListUI
      * @param string $NewValue New message.(OPTIONAL)
      * @return string Current "no items" message.
      */
-    public function noItemsMessage(string $NewValue = null): string
+    public function noItemsMessage(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->NoItemsMsg = $NewValue;
@@ -346,7 +376,7 @@ class ItemListUI
      * @param bool $NewValue If TRUE, table will be displayed.(OPTIONAL)
      * @return bool TRUE if table will be displayed when no items.
      */
-    public function willDisplayEmptyTable(bool $NewValue = null): bool
+    public function willDisplayEmptyTable(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->DisplayEmptyTable = $NewValue;
@@ -369,12 +399,131 @@ class ItemListUI
      *      a "Sortable" parameter is set to TRUE in the field info.
      * @return bool If TRUE, fields will be sortable by default.
      */
-    public function fieldsSortableByDefault(bool $NewValue = null): bool
+    public function fieldsSortableByDefault(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
              $this->SortableByDefault = $NewValue ? true : false;
         }
         return $this->SortableByDefault;
+    }
+
+    /**
+     * Get HTML for list with specified items. If an array of item objects are
+     * passed in, the item IDs in the array index are only used if the objects
+     * do not have an Id() method.
+     * @param array $Items Array of item objects or array of associative
+     *       arrays, with item IDs for the base index and (if an array of
+     *       arrays) field identifiers (corresponding to the values used
+     *       in the $Fields parameter to the constructor) for the associative
+     *       array indexes.
+     * @return string HTML for list.
+     */
+    public function getHtml(array $Items): string
+    {
+        # retrieve context values from transport controls
+        $StartingIndex = $this->TransportUI->StartingIndex($this->StartingIndex);
+
+        # display buttons above list
+        $Html = $this->getTopButtonHtml();
+
+        # display heading for entire list
+        $Html .= $this->getListHeadingHtml();
+
+        # display "no items" message and exit if no items and no show empty table
+        if (!$this->DisplayEmptyTable && !count($Items)) {
+            $Html .= $this->getNoItemsMessageHtml();
+            return $Html;
+        }
+
+        # begin item table
+        $Html .= '<table class="table table-striped mv-itemlistui">';
+
+        # begin header row
+        $Html .= "<thead><tr class='table-dark'>";
+
+        # for each field
+        foreach ($this->Fields as $FieldId => $FieldInfo) {
+            $ClassAttrib = isset($FieldInfo["AlignRight"])
+                    ? " class=\"text-end\"" : "";
+            $Html .= "<th".$ClassAttrib.">"
+                    .$this->getFieldHeadingHtml($FieldId)."</th>\n";
+        }
+
+        # add action header if needed
+        if (count($this->Actions)) {
+            $Html .= "<th>Actions</th>\n";
+        }
+
+        # end header row
+        $Html .= "</tr></thead>\n";
+
+        # begin content area
+        $Html .= "<tbody>\n";
+
+        # if no items in table
+        if (!count($Items)) {
+            # display "no items" table row
+            $ColumnCount = count($this->Fields) + (count($this->Actions) ? 1 : 0);
+            $Html .= "<tr><td colspan=\"".$ColumnCount."\">"
+                    .$this->getNoItemsMessageHtml()."</td></tr>";
+        } else {
+            # add content rows
+            foreach ($Items as $ItemId => $Item) {
+                $Html .= $this->getRowHtml((string)$ItemId, $Item);
+            }
+        }
+
+        # end content area
+        $Html .= "</tbody>\n";
+
+        # end item table
+        $Html .= "</table>\n";
+
+        # if there are more items than are displayed
+        if ($this->TotalItemCount > count($Items)) {
+            # display transport controls
+            $this->TransportUI->startingIndex($StartingIndex);
+            $this->TransportUI->itemCount($this->TotalItemCount);
+            if (strlen($this->TransportMsg ?? "")) {
+                $this->TransportUI->message($this->TransportMsg);
+            }
+            $this->TransportUI->baseLink($this->getFullBaseLink());
+            $Html .= $this->TransportUI->getHtml();
+        }
+
+        return $Html;
+    }
+
+    /**
+     * Set total count of items.  If not specified, the number of items
+     * supplied will be assumed to be the total number of items.
+     * @param int $ItemCount Total count of items.
+     */
+    public function setTotalItemCount(int $ItemCount): void
+    {
+        $this->TotalItemCount = $ItemCount;
+    }
+
+    /**
+     * Set starting index for segment of items (within total list of items)
+     * to be displayed.  If not specified, the index retrieved from $GET
+     * will be used, or zero if no value is available from $GET.
+     * @param int $Index Starting index.
+     */
+    public function setStartingIndex(int $Index): void
+    {
+        $this->StartingIndex = $Index;
+    }
+
+    /**
+     * Set text to display on transport controls line.  If not specified,
+     * this defaults to "Items X - Y of Z", where "X", "Y", and "Z" are
+     * filled in appropriately for the current segment being displayed.
+     * @param string $Msg Text to display on transport control line.
+     */
+    public function setTransportControlsMessage(string $Msg): void
+    {
+        $this->TransportMsg = $Msg;
     }
 
     /**
@@ -392,80 +541,25 @@ class ItemListUI
      *       to value retrieved from $GET, or zero if no $GET value)
      * @param string $TransportMsg Text to display on transport control line.
      *       (OPTIONAL, defaults to "Items X - Y of Z")
+     * @return void
+     * @deprecated
      */
     public function display(
         array $Items,
-        int $TotalItemCount = null,
-        int $StartingIndex = null,
-        string $TransportMsg = null
-    ) {
-        # retrieve context values from transport controls
-        $StartingIndex = $this->TransportUI->StartingIndex($StartingIndex);
-
-        # display buttons above list
-        print $this->getTopButtonHtml();
-
-        # display heading for entire list
-        print $this->getListHeadingHtml();
-
-        # display "no items" message and exit if no items and no show empty table
-        if (!$this->DisplayEmptyTable && !count($Items)) {
-            print $this->getNoItemsMessageHtml();
-            return;
+        ?int $TotalItemCount = null,
+        ?int $StartingIndex = null,
+        ?string $TransportMsg = null
+    ): void {
+        if ($TotalItemCount !== null) {
+            $this->setTotalItemCount($TotalItemCount);
         }
-
-        # begin item table
-        print '<table class="table table-striped mv-itemlistui">';
-
-        # begin header row
-        print "<thead><tr class='thead-dark'>";
-
-        # for each field
-        foreach ($this->Fields as $FieldId => $FieldInfo) {
-            print "<th>".$this->getFieldHeadingHtml($FieldId)."</th>\n";
+        if ($StartingIndex !== null) {
+            $this->setStartingIndex($StartingIndex);
         }
-
-        # add action header if needed
-        if (count($this->Actions)) {
-            print "<th>Actions</th>\n";
+        if ($TransportMsg !== null) {
+            $this->setTransportControlsMessage($TransportMsg);
         }
-
-        # end header row
-        print "</tr></thead>\n";
-
-        # begin content area
-        print "<tbody>\n";
-
-        # if no items in table
-        if (!count($Items)) {
-            # display "no items" table row
-            $ColumnCount = count($this->Fields) + (count($this->Actions) ? 1 : 0);
-            print "<tr><td colspan=\"".$ColumnCount."\">"
-                    .$this->getNoItemsMessageHtml()."</td></tr>";
-        } else {
-            # add content rows
-            foreach ($Items as $ItemId => $Item) {
-                print $this->getRowHtml((string)$ItemId, $Item);
-            }
-        }
-
-        # end content area
-        print "</tbody>\n";
-
-        # end item table
-        print "</table>\n";
-
-        # if there are more items than are displayed
-        if ($TotalItemCount > count($Items)) {
-            # display transport controls
-            $this->TransportUI->startingIndex($StartingIndex);
-            $this->TransportUI->itemCount($TotalItemCount);
-            if (strlen($TransportMsg ?? "")) {
-                $this->TransportUI->message($TransportMsg);
-            }
-            $this->TransportUI->baseLink($this->getFullBaseLink());
-            $this->TransportUI->display();
-        }
+        print $this->getHtml($Items);
     }
 
 
@@ -480,7 +574,10 @@ class ItemListUI
     private $ItemsPerPage = 25;
     private $NoItemsMsg;
     private $SortableByDefault = true;
+    private $StartingIndex = null;
     private $Subheading = "";
+    private $TotalItemCount = null;
+    private $TransportMsg = null;
     private $TransportUI;
     private $VariablesToPreserve = [];
 
@@ -500,17 +597,6 @@ class ItemListUI
                 $Html .= "<span title=\"".htmlspecialchars($Info["Tooltip"])."\">";
             } else {
                 $Html .= "<span>";
-            }
-            if (isset($Info["Icon"]) && strlen($Info["Icon"])) {
-                $IconFile = $GLOBALS["AF"]->GUIFile($Info["Icon"]);
-                $IconTag = $IconFile
-                        ? '<img class="mv-button-icon" '
-                          .'src="'.$IconFile.'" alt=""> '
-                        : "";
-                $IconButtonClass = " mv-button-iconed";
-            } else {
-                $IconTag = "";
-                $IconButtonClass = "";
             }
 
             if (isset($Info["Checked"])) {
@@ -537,9 +623,12 @@ class ItemListUI
                         ."' + this.options[this.selectedIndex].value)");
                 $Html .= $OptList->getHtml();
             } else {
-                $Html .= "<a class=\"btn btn-primary btn-sm "
-                        .$IconButtonClass."\" href=\"".$Info["Link"]."\">"
-                        .$IconTag.htmlspecialchars($Info["Label"])."</a>";
+                $Button = new HtmlButton($Info["Label"]);
+                $Button->setLink($Info["Link"]);
+                if (strlen($Info["Icon"] ?? "")) {
+                    $Button->setIcon($Info["Icon"]);
+                }
+                $Html .= $Button->getHtml();
             }
             $Html .= "</span>";
         }
@@ -549,8 +638,9 @@ class ItemListUI
 
     /**
      * Generate HTML for list heading.
+     * @return string Generated HTML.
      */
-    private function getListHeadingHtml()
+    private function getListHeadingHtml(): string
     {
         $Html = "";
 
@@ -610,13 +700,16 @@ class ItemListUI
             $FieldInfo = $this->Fields[$FieldId];
 
             # retrieve class for cell
-            $ClassAttrib = "";
-            if (isset($FieldInfo["ClassFunction"])) {
-                $Class = trim($FieldInfo["ClassFunction"]($Item, $FieldId));
-                if (strlen($Class)) {
-                    $ClassAttrib = " class=\"".$Class."\"";
-                }
+            $Classes = isset($FieldInfo["AlignRight"]) ? "text-end" : "";
+            if (isset($FieldInfo["CssClassFunction"])) {
+                $Classes .= " ".$FieldInfo["CssClassFunction"]($Item, $FieldId);
             }
+            if (isset($FieldInfo["CssClasses"])) {
+                $Classes .= " ".$FieldInfo["CssClasses"];
+            }
+            $ClassAttrib = strlen($Classes)
+                    ? " class=\"".trim($Classes)."\""
+                    : "";
 
             # add cell to row
             $Html .= "<td".$ClassAttrib.">".$Content."</td>\n";
@@ -732,22 +825,22 @@ class ItemListUI
                         .") or a get() method.");
             }
 
-            # if value is an array use just the first element
-            if (is_array($Value)) {
-                $Value = array_shift($Value);
-            }
+            if ($Value !== null) {
+                # if value is an array use just the first element
+                if (is_array($Value)) {
+                    $Value = array_shift($Value) ?? "";
+                }
 
-            # trim value if max length specified for field
-            if (isset($FieldInfo["MaxLength"]) && strlen($Value)) {
-                $Value = StdLib::neatlyTruncateString(
-                    $Value,
-                    $FieldInfo["MaxLength"]
-                );
-            }
+                # trim value if max length specified for field
+                if (isset($FieldInfo["MaxLength"]) && strlen($Value)) {
+                    $Value = StdLib::neatlyTruncateString(
+                        $Value,
+                        $FieldInfo["MaxLength"]
+                    );
+                }
 
-            # encode any HTML-significant chars in value if necessary
-            if (!isset($FieldInfo["AllowHTML"])) {
-                if (!is_null($Value)) {
+                # encode any HTML-significant chars in value if necessary
+                if (!isset($FieldInfo["AllowHTML"])) {
                     $Value = htmlspecialchars($Value);
                 }
             }
@@ -792,6 +885,7 @@ class ItemListUI
      */
     private function getActionButtonHtml(string $ItemId, $Item): string
     {
+        $AF = ApplicationFramework::getInstance();
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
@@ -800,7 +894,7 @@ class ItemListUI
             if ($ActionInfo["TestFunc"] !== null) {
                 $DisplayButton = $ActionInfo["TestFunc"]($Item);
             } elseif (is_object($Item) && method_exists($Item, "UserCanEdit")) {
-                $DisplayButton = $Item->userCanEdit($User);
+                $DisplayButton = $Item->UserCanEdit($User);
             } else {
                 $DisplayButton = true;
             }
@@ -818,7 +912,7 @@ class ItemListUI
                     }
                 }
                 if ($ActionInfo["Icon"]) {
-                    $IconFile = $GLOBALS["AF"]->GUIFile($ActionInfo["Icon"]);
+                    $IconFile = $AF->gUIFile($ActionInfo["Icon"]);
                     $IconTag = $IconFile
                             ? '<img class="mv-button-icon" src="'
                                     .$IconFile.'" alt=""> '
@@ -843,10 +937,10 @@ class ItemListUI
         }
         if ($Item instanceof Record) {
             ob_start();
-            $GLOBALS["AF"]->SignalEvent(
+            $AF->signalEvent(
                 "EVENT_HTML_INSERTION_POINT",
                 [
-                    $GLOBALS["AF"]->GetPageName(),
+                    $AF->getPageName(),
                     "Resource Summary Buttons",
                     ["Resource" => $Item]
                 ]

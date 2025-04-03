@@ -3,14 +3,16 @@
 #   FILE:  Entries.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\Blog\BlogEntryUI;
 use Metavus\User;
 
+# ----- SETUP ----------------------------------------------------------------
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
@@ -22,6 +24,25 @@ $UserIsSubscribed = $H_Blog->UserIsSubscribedToNotifications($User);
 
 $BlogSchema = new MetadataSchema($H_Blog->GetSchemaId());
 
+$UnsubscribeButton = new HtmlButton("Unsubscribe");
+$UnsubscribeButton->setIcon("BellMinus.svg");
+$UnsubscribeButton->setTitle("Unsubscribe from new blog entry e-mail");
+$UnsubscribeButton->setLink("index.php?P=P_Blog_Unsubscribe");
+
+$SubscribeButton = new HtmlButton("Subscribe");
+$SubscribeButton->setIcon("BellPlus.svg");
+$SubscribeButton->setTitle("Subscribe to receive e-mail when new blog entries are posted");
+$SubscribeButton->setLink("index.php?P=P_Blog_Subscribe");
+
+$AdminListButton = new HtmlButton("Admin List");
+$AdminListButton->setIcon("settings.png");
+$AdminListButton->setLink("index.php?P=P_Blog_ListEntries");
+
+$NewEntryButton = new HtmlButton("New Entry");
+$NewEntryButton->setIcon("Plus.svg");
+$NewEntryButton->setLink(str_replace('$ID', "NEW&SC=".$SafeSchemaId, $BlogSchema->getEditPage()));
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <div class="container-fluid">
   <div class="row">
@@ -31,32 +52,16 @@ $BlogSchema = new MetadataSchema($H_Blog->GetSchemaId());
     <div class="col text-right">
       <?PHP if ($NotificationsEnabled) { ?>
             <?PHP if ($UserIsSubscribed) { ?>
-          <a class="btn btn-primary mv-button-iconed"
-             title="Unsubscribe from new blog entry e-mail"
-             href="index.php?P=P_Blog_Unsubscribe"><img
-             src="<?= $AF->GUIFile('BellMinus.svg'); ?>"
-             alt="" class="mv-button-icon" /> Unsubscribe</a>
+                <?= $UnsubscribeButton->getHtml(); ?>
             <?PHP } else { ?>
-          <a class="btn btn-primary mv-button-iconed"
-             title="Subscribe to receive e-mail when new blog entries are posted"
-             href="index.php?P=P_Blog_Subscribe"><img
-             src="<?= $AF->GUIFile('BellPlus.svg'); ?>"
-             alt="" class="mv-button-icon" /> Subscribe</a>
+                <?= $SubscribeButton->getHtml(); ?>
             <?PHP } ?>
       <?PHP } ?>
       <?PHP if ($BlogSchema->UserCanEdit($User)) { ?>
-        <a class="btn btn-primary mv-button-iconed"
-            href="index.php?P=P_Blog_ListEntries">
-          <img class="mv-button-icon"
-            src="<?= $AF->GUIFile('settings.png') ?>"
-            alt="" /> Admin List</a>
+            <?= $AdminListButton->getHtml(); ?>
       <?PHP } ?>
       <?PHP if ($BlogSchema->UserCanAuthor($User)) { ?>
-        <a class="btn btn-primary mv-button-iconed"
-            href="<?= str_replace('$ID', "NEW&SC=".$SafeSchemaId, $BlogSchema->editPage()) ?>">
-            <img class="mv-button-icon"
-                src="<?= $AF->GUIFile('Plus.svg') ?>"
-                alt="" />New Entry</a>
+            <?= $NewEntryButton->getHtml(); ?>
       <?PHP } ?>
     </div>
   </div>

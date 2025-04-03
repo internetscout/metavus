@@ -84,8 +84,9 @@ trait StoredFile
 
     /**
      * If this file lacks a checksum, compute one.
+     * @return void
      */
-    public function populateChecksum()
+    public function populateChecksum(): void
     {
         $DB = $this->getDB();
         $FileName = $this->getFileName();
@@ -115,8 +116,9 @@ trait StoredFile
 
     /**
      * If this file lacks a stored length, attempt to determine and add one.
+     * @return void
      */
-    public function populateLength()
+    public function populateLength(): void
     {
         $DB = $this->getDB();
         $FileName = $this->getFileName();
@@ -151,8 +153,9 @@ trait StoredFile
 
     /**
      * Perform initial population of the file length and checksum information. If the file is small
+     * @return void
      */
-    protected function storeFileLengthAndChecksum()
+    protected function storeFileLengthAndChecksum(): void
     {
         $DB = $this->getDB();
 

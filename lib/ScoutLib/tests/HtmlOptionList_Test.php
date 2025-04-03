@@ -3,8 +3,30 @@
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
+require_once("lib/ScoutLib/tests/HtmlValidationTestTrait.php");
+
 class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
 {
+    use HtmlValidationTestTrait;
+
+    /**
+     * Head of custom attributes for this test.
+     * Since unregistered attributes trigger errors when validating html,
+     * we have to explicitly ignore those errors.
+     */
+    const CUSTOM_ATTRIBUTE_HEAD = "attr";
+    const VALIDATION_ERRORS_TO_IGNORE = [
+        "/The document has no document element/",
+        "/Specification mandates value for attribute multiple/",
+        "/Specification mandates value for attribute disabled/",
+        "/Specification mandates value for attribute selected/",
+        "/Element '.*select': Missing child element/",
+        "/The attribute 'onChange' is not allowed/",
+        "/The attribute 'data-\w+' is not allowed/",
+        "/The attribute '" . self::CUSTOM_ATTRIBUTE_HEAD
+            . "-\w+' is not allowed/",
+    ];
+
     /**
      * Test __construct().
      */
@@ -28,24 +50,35 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         # Test basic structure of <select>
         $MsgHeader = "Test basic structure of <select>: ";
         $OptionList = new HtmlOptionList($MockFormName, []);
-        $this->validateHtml($OptionList);
+        $this->validateHtml($OptionList->getHtml(), $this::VALIDATION_ERRORS_TO_IGNORE);
 
         $DOM = new DOMDocument();
         $DOM->loadHTML($OptionList->getHtml());
         $HTMLSelectEles = $DOM->getElementsByTagName("select");
 
-        $this->assertSame(1, $HTMLSelectEles->count(),
-                $MsgHeader . "There should be exactly 1 <select> element.");
+        $this->assertSame(
+            1,
+            $HTMLSelectEles->count(),
+            $MsgHeader . "There should be exactly 1 <select> element."
+        );
 
         $SelectEle = $HTMLSelectEles->item(0);
-        $this->assertSame($MockFormName, $SelectEle->getAttribute("name"),
-                $MsgHeader . "Should have a correct form name.");
+        $this->assertSame(
+            $MockFormName,
+            $SelectEle->getAttribute("name"),
+            $MsgHeader . "Should have a correct form name."
+        );
 
-        $this->assertSame($MockFormName, $SelectEle->getAttribute("id"),
-                $MsgHeader . "Should have a correct form id.");
+        $this->assertSame(
+            $MockFormName,
+            $SelectEle->getAttribute("id"),
+            $MsgHeader . "Should have a correct form id."
+        );
 
-        $this->assertEmpty($SelectEle->getElementsByTagName("option"),
-                $MsgHeader . "Should not have any <option> when no option is provided.");
+        $this->assertEmpty(
+            $SelectEle->getElementsByTagName("option"),
+            $MsgHeader . "Should not have any <option> when no option is provided."
+        );
 
         # Test basic structure of <option>
         $MsgHeader = "Test basic structure of <option>: ";
@@ -53,16 +86,25 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertSame(3, count($OptionEles),
-                $MsgHeader . "There should be exactly 1 <option> inside <select>"
-                    . " for each option provided to the constructor.");
+        $this->assertSame(
+            3,
+            count($OptionEles),
+            $MsgHeader . "There should be exactly 1 <option> inside <select>"
+                . " for each option provided to the constructor."
+        );
 
         foreach (range(0, 2) as $Idx) {
             $OptionEle = $OptionEles->item($Idx);
-            $this->assertSame("val " . $Idx, $OptionEle->getAttribute("value"),
-                    $MsgHeader . "Should have a correct form value.");
-            $this->assertSame("label " . $Idx, $OptionEle->textContent,
-                    $MsgHeader . "Should have a correct label.");
+            $this->assertSame(
+                "val " . $Idx,
+                $OptionEle->getAttribute("value"),
+                $MsgHeader . "Should have a correct form value."
+            );
+            $this->assertSame(
+                "label " . $Idx,
+                $OptionEle->textContent,
+                $MsgHeader . "Should have a correct label."
+            );
         }
 
         # Test providing some grouped options to the constructor
@@ -72,22 +114,34 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptionEles = $SelectEle->getElementsByTagName("option");
         $OptgroupEles = $SelectEle->getElementsByTagName("optgroup");
 
-        $this->assertSame(1, count($OptgroupEles),
-                $MsgHeader . "There should be exactly 1 <optgroup> inside <select>"
-                    . " for each option group provided to the constructor.");
+        $this->assertSame(
+            1,
+            count($OptgroupEles),
+            $MsgHeader . "There should be exactly 1 <optgroup> inside <select>"
+                . " for each option group provided to the constructor."
+        );
 
-        $this->assertSame(4, count($OptionEles),
-                $MsgHeader . "There should be exactly 1 <option> inside <select>"
-                    . " for each option provided to the constructor.");
+        $this->assertSame(
+            4,
+            count($OptionEles),
+            $MsgHeader . "There should be exactly 1 <option> inside <select>"
+                . " for each option provided to the constructor."
+        );
 
         $OptgroupEle = $OptgroupEles->item(0);
         $OptionEles = $OptgroupEle->getElementsByTagName("option");
-        $this->assertSame(2, count($OptionEles),
-                $MsgHeader . "There should be exactly 1 <option> inside a <optgroup>"
-                        . " for each option within the group provided to the constructor.");
+        $this->assertSame(
+            2,
+            count($OptionEles),
+            $MsgHeader . "There should be exactly 1 <option> inside a <optgroup>"
+                . " for each option within the group provided to the constructor."
+        );
 
-        $this->assertSame("label 1", $OptgroupEle->getAttribute("label"),
-                $MsgHeader . "<optgroup> should have a correct 'label' attribute.");
+        $this->assertSame(
+            "label 1",
+            $OptgroupEle->getAttribute("label"),
+            $MsgHeader . "<optgroup> should have a correct 'label' attribute."
+        );
 
         # Test specifying a single selected option
         $MsgHeader = "Test specifying a single selected option: ";
@@ -96,15 +150,21 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
 
-        $this->assertFalse($OptionEles->item(0)->hasAttribute("selected"),
-                $MsgHeader . "<option> not selected should not have"
-                        ." the 'selected' attribute.");
-        $this->assertFalse($OptionEles->item(2)->hasAttribute("selected"),
-                $MsgHeader . "<option> not selected should not have"
-                        ." the 'selected' attribute.");
+        $this->assertFalse(
+            $OptionEles->item(0)->hasAttribute("selected"),
+            $MsgHeader . "<option> not selected should not have"
+                . " the 'selected' attribute."
+        );
+        $this->assertFalse(
+            $OptionEles->item(2)->hasAttribute("selected"),
+            $MsgHeader . "<option> not selected should not have"
+                . " the 'selected' attribute."
+        );
 
         # Test specifying an array of selected options
         $MsgHeader = "Test specifying an array of selected options: ";
@@ -113,14 +173,20 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(0)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
-        $this->assertTrue($OptionEles->item(2)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(0)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
+        $this->assertTrue(
+            $OptionEles->item(2)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
 
-        $this->assertFalse($OptionEles->item(1)->hasAttribute("selected"),
-                $MsgHeader . "<option> not selected should not have"
-                        ." the 'selected' attribute.");
+        $this->assertFalse(
+            $OptionEles->item(1)->hasAttribute("selected"),
+            $MsgHeader . "<option> not selected should not have"
+                . " the 'selected' attribute."
+        );
 
         # Test pre-selecting a option-gorup's option
         $MsgHeader = "Test pre-selecting a option-gorup's option: ";
@@ -130,12 +196,16 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptgroupEle = $SelectEle->getElementsByTagName("optgroup")->item(0);
         $OptionEles = $OptgroupEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
 
-        $this->assertFalse($OptionEles->item(0)->hasAttribute("selected"),
-                $MsgHeader . "<option> not selected should not have"
-                        ." the 'selected' attribute.");
+        $this->assertFalse(
+            $OptionEles->item(0)->hasAttribute("selected"),
+            $MsgHeader . "<option> not selected should not have"
+                . " the 'selected' attribute."
+        );
     }
 
     /**
@@ -145,10 +215,10 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
     {
         $GenericDisabledMsg = "Disabled <option> should have the 'disabled' attribute.";
         $GenericNotDisabledMsg = "Not disabled <option> should not have the"
-                . " 'disabled' attribute.";
+            . " 'disabled' attribute.";
         $GenericReturnCountMsg = "DisabledOptions() should return an array with correct size.";
         $GenericReturnHashKeyMsg = "DisabledOptions() should return an array with the"
-                . " disabled option's value as its key.";
+            . " disabled option's value as its key.";
 
         # Test disabling a single option
         $MsgHeader = "Test disabling a single option: ";
@@ -157,11 +227,15 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(0)->hasAttribute("disabled"),
-                $MsgHeader . $GenericDisabledMsg);
+        $this->assertTrue(
+            $OptionEles->item(0)->hasAttribute("disabled"),
+            $MsgHeader . $GenericDisabledMsg
+        );
 
-        $this->assertFalse($OptionEles->item(1)->hasAttribute("disabled"),
-                $MsgHeader . $GenericNotDisabledMsg);
+        $this->assertFalse(
+            $OptionEles->item(1)->hasAttribute("disabled"),
+            $MsgHeader . $GenericNotDisabledMsg
+        );
 
         # Test disabling a single additional option
         $MsgHeader = "Test disabling a single additional option: ";
@@ -169,12 +243,16 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(0)->hasAttribute("disabled"),
-                $MsgHeader . "Existing disabled <option> should stay disabled.");
+        $this->assertTrue(
+            $OptionEles->item(0)->hasAttribute("disabled"),
+            $MsgHeader . "Existing disabled <option> should stay disabled."
+        );
 
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("disabled"),
-                $MsgHeader . "The additional disabled <option> should have"
-                        . " the 'disabled' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("disabled"),
+            $MsgHeader . "The additional disabled <option> should have"
+                . " the 'disabled' attribute."
+        );
 
         # Test disabling an array of options
         $MsgHeader = "Test disabling an array of options: ";
@@ -183,13 +261,19 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(0)->hasAttribute("disabled"),
-                $MsgHeader . $GenericDisabledMsg);
-        $this->assertTrue($OptionEles->item(2)->hasAttribute("disabled"),
-                $MsgHeader . $GenericDisabledMsg);
+        $this->assertTrue(
+            $OptionEles->item(0)->hasAttribute("disabled"),
+            $MsgHeader . $GenericDisabledMsg
+        );
+        $this->assertTrue(
+            $OptionEles->item(2)->hasAttribute("disabled"),
+            $MsgHeader . $GenericDisabledMsg
+        );
 
-        $this->assertFalse($OptionEles->item(1)->hasAttribute("disabled"),
-                $MsgHeader . $GenericNotDisabledMsg);
+        $this->assertFalse(
+            $OptionEles->item(1)->hasAttribute("disabled"),
+            $MsgHeader . $GenericNotDisabledMsg
+        );
 
         # Test overriding the existing array of disabled options
         $MsgHeader = "Test overriding the existing array of disabled options: ";
@@ -197,42 +281,63 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("disabled"),
-                $MsgHeader . $GenericDisabledMsg);
-        $this->assertTrue($OptionEles->item(2)->hasAttribute("disabled"),
-                $MsgHeader . $GenericDisabledMsg);
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("disabled"),
+            $MsgHeader . $GenericDisabledMsg
+        );
+        $this->assertTrue(
+            $OptionEles->item(2)->hasAttribute("disabled"),
+            $MsgHeader . $GenericDisabledMsg
+        );
 
-        $this->assertFalse($OptionEles->item(0)->hasAttribute("disabled"),
-                $MsgHeader . $GenericNotDisabledMsg);
+        $this->assertFalse(
+            $OptionEles->item(0)->hasAttribute("disabled"),
+            $MsgHeader . $GenericNotDisabledMsg
+        );
 
         # Test disabledOptions() returns the correct array of
         # disabled options, after disabling a single option
         $MsgHeader = "Test disabledOptions() returns the correct array of"
-                ." disabled options, after disabling a single option: ";
+            . " disabled options, after disabling a single option: ";
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->disabledOptions("val 0");
 
-        $this->assertSame(1, count($OptionList->disabledOptions()),
-                $MsgHeader . $GenericReturnCountMsg);
+        $this->assertSame(
+            1,
+            count($OptionList->disabledOptions()),
+            $MsgHeader . $GenericReturnCountMsg
+        );
 
-        $this->assertArrayHasKey("val 0", $OptionList->disabledOptions(),
-                $MsgHeader . $GenericReturnHashKeyMsg);
+        $this->assertArrayHasKey(
+            "val 0",
+            $OptionList->disabledOptions(),
+            $MsgHeader . $GenericReturnHashKeyMsg
+        );
 
         # Test disabledOptions() returns the correct array of
         # disabled options, after disabling an array of options
         $MsgHeader = "Test disabledOptions() returns the correct array of"
-                . " disabled options, after disabling an array of options: ";
+            . " disabled options, after disabling an array of options: ";
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->disabledOptions(["val 0" => 1, "val 1" => 1]);
         $DisabledOptions = $OptionList->disabledOptions();
 
-        $this->assertSame(2, count($DisabledOptions),
-                $MsgHeader . $GenericReturnCountMsg);
+        $this->assertSame(
+            2,
+            count($DisabledOptions),
+            $MsgHeader . $GenericReturnCountMsg
+        );
 
-        $this->assertArrayHasKey("val 0", $DisabledOptions,
-                $MsgHeader . $GenericReturnHashKeyMsg);
-        $this->assertArrayHasKey("val 1", $DisabledOptions,
-                $MsgHeader . $GenericReturnHashKeyMsg);
+        $this->assertArrayHasKey(
+            "val 0",
+            $DisabledOptions,
+            $MsgHeader . $GenericReturnHashKeyMsg
+        );
+        $this->assertArrayHasKey(
+            "val 1",
+            $DisabledOptions,
+            $MsgHeader . $GenericReturnHashKeyMsg
+        );
     }
 
     /**
@@ -247,12 +352,16 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertFalse($OptionEles->item(0)->hasAttribute("selected"),
-                $MsgHeader . "<option> not selected should not have"
-                        ." the 'selected' attribute.");
+        $this->assertFalse(
+            $OptionEles->item(0)->hasAttribute("selected"),
+            $MsgHeader . "<option> not selected should not have"
+                . " the 'selected' attribute."
+        );
 
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
 
         # Test setting multiple selected options simultaneously
         $MsgHeader = "Test setting multiple selected options simultaneously: ";
@@ -261,10 +370,14 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertTrue($OptionEles->item(0)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("selected"),
-                $MsgHeader . "Selected <option> should have the 'selected' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(0)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("selected"),
+            $MsgHeader . "Selected <option> should have the 'selected' attribute."
+        );
 
         # Test setting new selected option overrides the existing one
         $MsgHeader = "Test setting new selected option overrides the existing one: ";
@@ -274,21 +387,31 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
-        $this->assertFalse($OptionEles->item(0)->hasAttribute("selected"),
-                $MsgHeader . "Previous selected option should have been overriden.");
+        $this->assertFalse(
+            $OptionEles->item(0)->hasAttribute("selected"),
+            $MsgHeader . "Previous selected option should have been overriden."
+        );
 
-        $this->assertTrue($OptionEles->item(1)->hasAttribute("selected"),
-                $MsgHeader . "Option just selected should have the 'selected' attribute.");
+        $this->assertTrue(
+            $OptionEles->item(1)->hasAttribute("selected"),
+            $MsgHeader . "Option just selected should have the 'selected' attribute."
+        );
 
         # Test selectedValue() returns the current selected option(s)
         $MsgHeader = "Test selectedValue() returns the current selected option(s): ";
         $OptionList = $this->getTestHtmlOptionList(2, "val 0");
-        $this->assertEquals("val 0", $OptionList->selectedValue(),
-            $MsgHeader . "Should return the correct currently selected option.");
+        $this->assertEquals(
+            "val 0",
+            $OptionList->selectedValue(),
+            $MsgHeader . "Should return the correct currently selected option."
+        );
 
         $OptionList->selectedValue(["val 1"]);
-        $this->assertEquals(["val 1"], $OptionList->selectedValue(),
-            $MsgHeader . "Should return the correct array of selected options.");
+        $this->assertEquals(
+            ["val 1"],
+            $OptionList->selectedValue(),
+            $MsgHeader . "Should return the correct array of selected options."
+        );
     }
 
     /**
@@ -320,32 +443,48 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptionList->multipleAllowed(true);
         $SelectEle = $this->getOptionListDomEle($OptionList);
 
-        $this->assertTrue($SelectEle->hasAttribute("multiple"),
-                $MsgHeader . "<select> should have the 'multiple' attribute.");
+        $this->assertTrue(
+            $SelectEle->hasAttribute("multiple"),
+            $MsgHeader . "<select> should have the 'multiple' attribute."
+        );
 
-        $this->assertEquals($MockFormName . "[]", $SelectEle->getAttribute("name"),
-                $MsgHeader . "<select>'s form name should be appended with '[]'.");
+        $this->assertEquals(
+            $MockFormName . "[]",
+            $SelectEle->getAttribute("name"),
+            $MsgHeader . "<select>'s form name should be appended with '[]'."
+        );
 
         # Test disallowing selecting multiple options
         $MsgHeader = "Test disallowing selecting multiple options: ";
         $OptionList->multipleAllowed(false);
         $SelectEle = $this->getOptionListDomEle($OptionList);
 
-        $this->assertFalse($SelectEle->hasAttribute("multiple"),
-                $MsgHeader . "<select> should not have the 'multiple' attribute.");
+        $this->assertFalse(
+            $SelectEle->hasAttribute("multiple"),
+            $MsgHeader . "<select> should not have the 'multiple' attribute."
+        );
 
-        $this->assertEquals($MockFormName, $SelectEle->getAttribute("name"),
-                $MsgHeader . "'[]' should be stripped from <select>'s form name.");
+        $this->assertEquals(
+            $MockFormName,
+            $SelectEle->getAttribute("name"),
+            $MsgHeader . "'[]' should be stripped from <select>'s form name."
+        );
 
         # Test multipleAllowed() returns the correct value set before
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->multipleAllowed(true);
-        $this->assertSame(true, $OptionList->multipleAllowed(),
-                "Test multipleAllowed() returns the correct value set before.");
+        $this->assertSame(
+            true,
+            $OptionList->multipleAllowed(),
+            "Test multipleAllowed() returns the correct value set before."
+        );
 
         $OptionList->multipleAllowed(false);
-        $this->assertSame(false, $OptionList->multipleAllowed(),
-                "Test multipleAllowed() returns the correct value set before.");
+        $this->assertSame(
+            false,
+            $OptionList->multipleAllowed(),
+            "Test multipleAllowed() returns the correct value set before."
+        );
     }
 
     /**
@@ -361,23 +500,30 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptionList->submitOnChange(true);
         $OptionList->onChangeAction($OnChangeAct);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertSame($OnChangeAct, $SelectEle->getAttribute("onchange"),
-                "Test an 'onChange' event listener is present when submitOnChange"
-                        . " is true and an onChangeAction is specified.");
+        $this->assertSame(
+            $OnChangeAct,
+            $SelectEle->getAttribute("onchange"),
+            "Test an 'onChange' event listener is present when submitOnChange"
+                . " is true and an onChangeAction is specified."
+        );
 
         # Test 'onChangeAction' has no effect when 'submitOnChange' is false
         $OptionList->submitOnChange(false);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertFalse($SelectEle->hasAttribute("onchange"),
-                "Test 'onChangeAction' has no effect when 'submitOnChange' is false.");
+        $this->assertFalse(
+            $SelectEle->hasAttribute("onchange"),
+            "Test 'onChangeAction' has no effect when 'submitOnChange' is false."
+        );
 
         # Test there is always a default 'onChangeAction'
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->submitOnChange(true);
         $OptionList->onChangeAction("");
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertTrue($SelectEle->hasAttribute("onchange"),
-                "Test there is always a default 'onChangeAction'.");
+        $this->assertTrue(
+            $SelectEle->hasAttribute("onchange"),
+            "Test there is always a default 'onChangeAction'."
+        );
 
         # Test 'submitOnChange' returns the correct value set
         $Msg = "Test 'submitOnChange' returns the correct value set.";
@@ -391,8 +537,11 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         # Test 'onChangeAction' returns the correct value set
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->onChangeAction($OnChangeAct);
-        $this->assertSame($OnChangeAct, $OptionList->onChangeAction(),
-                "Test 'onChangeAction' returns the correct value set.");
+        $this->assertSame(
+            $OnChangeAct,
+            $OptionList->onChangeAction(),
+            "Test 'onChangeAction' returns the correct value set."
+        );
     }
 
     /**
@@ -406,28 +555,41 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $MsgHeader = "Test still printing html when there is no option: ";
         $OptionList = new HtmlOptionList($MockFormName, []);
         $OptionList->printIfEmpty(true);
-        $this->assertTrue(strpos($OptionList->getHtml(), "<select") !== false,
-                $MsgHeader . "Html generated should contain a <select>.");
+        $this->assertTrue(
+            strpos($OptionList->getHtml(), "<select") !== false,
+            $MsgHeader . "Html generated should contain a <select>."
+        );
 
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertSame($MockFormName, $SelectEle->getAttribute("name"),
-                $MsgHeader . "<select> should have the correct form name.");
+        $this->assertSame(
+            $MockFormName,
+            $SelectEle->getAttribute("name"),
+            $MsgHeader . "<select> should have the correct form name."
+        );
 
         # Test not printing html when there is no option
         $Option = new HtmlOptionList($MockFormName, []);
         $OptionList->printIfEmpty(false);
-        $this->assertFalse(strpos($OptionList->getHtml(), "<select"),
-                "Test not printing html when there is no option.");
+        $this->assertFalse(
+            strpos($OptionList->getHtml(), "<select"),
+            "Test not printing html when there is no option."
+        );
 
         # Test printIfEmpty() returns the correct value set
         $OptionList = new HtmlOptionList($MockFormName, []);
         $OptionList->printIfEmpty(true);
-        $this->assertSame(true, $OptionList->printIfEmpty(),
-                "Test printIfEmpty() returns the correct value set.");
+        $this->assertSame(
+            true,
+            $OptionList->printIfEmpty(),
+            "Test printIfEmpty() returns the correct value set."
+        );
 
         $OptionList->printIfEmpty(false);
-        $this->assertSame(false, $OptionList->printIfEmpty(),
-                "Test printIfEmpty() returns the correct value set.");
+        $this->assertSame(
+            false,
+            $OptionList->printIfEmpty(),
+            "Test printIfEmpty() returns the correct value set."
+        );
     }
 
     /**
@@ -439,13 +601,17 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->disabled(true);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertTrue($SelectEle->hasAttribute("disabled"),
-                "Test disabling the option list.");
+        $this->assertTrue(
+            $SelectEle->hasAttribute("disabled"),
+            "Test disabling the option list."
+        );
 
         $OptionList->disabled(false);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertFalse($SelectEle->hasAttribute("disabled"),
-                "Test enabling disabled option list.");
+        $this->assertFalse(
+            $SelectEle->hasAttribute("disabled"),
+            "Test enabling disabled option list."
+        );
 
         # Test disabled() returns the correct value set
         $Msg = "Test disabled() returns the correct value set.";
@@ -463,23 +629,34 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         # Test no class for the option list is set initially
         $MsgHeader = "Test no class for the option list is set initially: ";
         $OptionList = $this->getTestHtmlOptionList(2);
-        $this->assertSame(null, $OptionList->classForList(),
-                $MsgHeader . "classForList() should return null.");
+        $this->assertSame(
+            null,
+            $OptionList->classForList(),
+            $MsgHeader . "classForList() should return null."
+        );
 
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertFalse($SelectEle->hasAttribute("class"),
-                $MsgHeader . "<select> should not have the 'class' attribute.");
+        $this->assertFalse(
+            $SelectEle->hasAttribute("class"),
+            $MsgHeader . "<select> should not have the 'class' attribute."
+        );
 
         # Test setting css class for the option list
         $MockClass = "test-class test-class-more";
         $OptionList->classForList($MockClass);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertSame($MockClass, $SelectEle->getAttribute("class"),
-                "Test setting css class for the option list.");
+        $this->assertSame(
+            $MockClass,
+            $SelectEle->getAttribute("class"),
+            "Test setting css class for the option list."
+        );
 
         # Test classForList() returns the correct value set
-        $this->assertSame($MockClass, $OptionList->classForList(),
-                "Test classForList() returns the correct value set.");
+        $this->assertSame(
+            $MockClass,
+            $OptionList->classForList(),
+            "Test classForList() returns the correct value set."
+        );
     }
 
     /**
@@ -490,14 +667,19 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         # Test no class for option(s) is set initially
         $MsgHeader = "Test no class for option(s) is set initially: ";
         $OptionList = $this->getTestHtmlOptionList(2);
-        $this->assertSame(null, $OptionList->classForOptions(),
-                $MsgHeader . "classForOptions() should return null.");
+        $this->assertSame(
+            null,
+            $OptionList->classForOptions(),
+            $MsgHeader . "classForOptions() should return null."
+        );
 
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEles = $SelectEle->getElementsByTagName("option");
         foreach ($OptionEles as $OptionEle) {
-            $this->assertFalse($OptionEle->hasAttribute("class"),
-                    $MsgHeader . "<option> should not have the 'class' attribute.");
+            $this->assertFalse(
+                $OptionEle->hasAttribute("class"),
+                $MsgHeader . "<option> should not have the 'class' attribute."
+            );
         }
 
         # Test setting a single class for all options
@@ -508,8 +690,11 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptionEles = $SelectEle->getElementsByTagName("option");
 
         foreach ($OptionEles as $OptionEle) {
-            $this->assertSame($MockClass, $OptionEle->getAttribute("class"),
-                    "Test setting a single class for all options.");
+            $this->assertSame(
+                $MockClass,
+                $OptionEle->getAttribute("class"),
+                "Test setting a single class for all options."
+            );
         }
 
         # Test setting an array of different classes for each option
@@ -572,14 +757,19 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $this->assertEquals(3, $OptionEles->item(1)->getAttribute("data-ccc"), $Msg);
 
         # Test dataForOptions() returns the correct value set
-        $this->assertEquals($Data, $OptionList->dataForOptions(),
-                "Test dataForOptions() returns the correct value set.");
+        $this->assertEquals(
+            $Data,
+            $OptionList->dataForOptions(),
+            "Test dataForOptions() returns the correct value set."
+        );
 
         # Test dataForOptions() returns empty array when no option data specified
         $OptionList = $this->getTestHtmlOptionList(2);
-        $this->assertEmpty($OptionList->dataForOptions(),
-                "Test dataForOptions() returns empty array"
-                        . " when no option data specified.");
+        $this->assertEmpty(
+            $OptionList->dataForOptions(),
+            "Test dataForOptions() returns empty array"
+                . " when no option data specified."
+        );
     }
 
     /**
@@ -597,26 +787,38 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEle = $SelectEle->getElementsByTagName("option")->item(0);
 
-        $this->assertSame("aaa", $OptionEle->textContent,
-                "Test setting a maximum label length.");
+        $this->assertSame(
+            "aaa",
+            $OptionEle->textContent,
+            "Test setting a maximum label length."
+        );
 
         # Test setting maxLabelLength to 0 disables the restriction
         $OptionList->maxLabelLength(0);
         $SelectEle = $this->getOptionListDomEle($OptionList);
         $OptionEle = $SelectEle->getElementsByTagName("option")->item(0);
 
-        $this->assertSame($TestLabel, $OptionEle->textContent,
-                "Test setting maxLabelLength to 0 disables the restriction.");
+        $this->assertSame(
+            $TestLabel,
+            $OptionEle->textContent,
+            "Test setting maxLabelLength to 0 disables the restriction."
+        );
 
         # Test by default there is no maximum label length restriction
         $OptionList = new HtmlOptionList($MockFormName, $MockOptions);
-        $this->assertSame(0, $OptionList->maxLabelLength(),
-                "Test by default there is no maximum label length restriction.");
+        $this->assertSame(
+            0,
+            $OptionList->maxLabelLength(),
+            "Test by default there is no maximum label length restriction."
+        );
 
         # Test maxLabelLength() returns the correct value set
         $OptionList->maxLabelLength(6666);
-        $this->assertSame(6666, $OptionList->maxLabelLength(),
-                "Test maxLabelLength() returns the correct value set.");
+        $this->assertSame(
+            6666,
+            $OptionList->maxLabelLength(),
+            "Test maxLabelLength() returns the correct value set."
+        );
     }
 
     /**
@@ -632,66 +834,44 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
         $OptionList = $this->getTestHtmlOptionList(2);
         $OptionList->addAttribute($AttributeA, 1);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertSame("1", $SelectEle->getAttribute($AttributeA),
-                "Test adding a single additional attribute to the option list.");
+        $this->assertSame(
+            "1",
+            $SelectEle->getAttribute($AttributeA),
+            "Test adding a single additional attribute to the option list."
+        );
 
         # Test adding more than 1 additional attributes to the option list
         $MsgHeader = "Test adding more than 1 additional attributes to the option list: ";
         $OptionList->addAttribute($AttributeB, 2);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertSame("1", $SelectEle->getAttribute($AttributeA),
-                $MsgHeader . "Attribute added previously should not be overriden.");
+        $this->assertSame(
+            "1",
+            $SelectEle->getAttribute($AttributeA),
+            $MsgHeader . "Attribute added previously should not be overriden."
+        );
 
-        $this->assertSame("2", $SelectEle->getAttribute($AttributeB),
-                $MsgHeader . "Attribtue just added should be present.");
+        $this->assertSame(
+            "2",
+            $SelectEle->getAttribute($AttributeB),
+            $MsgHeader . "Attribtue just added should be present."
+        );
 
         # Test overriding the value of an attribute added previously
         $OptionList->addAttribute($AttributeB, 6);
         $SelectEle = $this->getOptionListDomEle($OptionList);
-        $this->assertSame("6", $SelectEle->getAttribute($AttributeB),
-                "Test overriding the value of an attribute added previously.");
+        $this->assertSame(
+            "6",
+            $SelectEle->getAttribute($AttributeB),
+            "Test overriding the value of an attribute added previously."
+        );
     }
 
     /**
-     * Test the html of an HtmlOptionList is valid.
-     * @param HtmlOptionList $OptionList Target HtmlOptionList.
+     * {@see HtmlValidationTestTrait::preprocessHtml()}
      */
-    private function validateHtml(HtmlOptionList $OptionList)
+    private function preprocessHtml(string $OptionListHtml)
     {
-        # We validate the option list's html by first validating
-        # it against XHTML and then filtering out error
-        # messages of errors that are not error in HTML.
-        # We do this instead of just using DOMDocument::validate()
-        # because DOMDocument::validate(), which internally uses
-        # libxml2's xmlValidateDocument(), will attempt to
-        # fetch DTD from W3C, which will then get blocked (see
-        # https://www.w3.org/blog/systeam/2008/02/08/w3c_s_excessive_dtd_traffic/).
-        # Fetching HTML4.01 DTD manually and then using it as a local
-        # DTD does not solve the problem because it's using a DTD
-        # syntax that libxml2 cannot parse. For HTML5, since it's
-        # no longer SGML based, there is no DTD to use.
-        $ErrorsToIgnore = [
-            "/The document has no document element/",
-            "/Specification mandates value for attribute multiple/",
-            "/Specification mandates value for attribute disabled/",
-            "/Specification mandates value for attribute selected/",
-            "/Element '.*select': Missing child element/",
-            "/The attribute 'onChange' is not allowed/",
-            "/The attribute 'data-\w+' is not allowed/",
-            "/The attribute '" . self::CUSTOM_ATTRIBUTE_HEAD
-                    . "-\w+' is not allowed/",
-
-        ];
-
-        $Html = '<form action=""><p>' . $OptionList->getHtml() . '</p></form>';
-        $ValidationErrors = StdLib::validateXhtml($Html, $ErrorsToIgnore);
-
-        $ErrorMsgHeader = "getHtml() returned an invalid html; document errors:\n";
-        $ErrorMsgBuilder = function($Msg, $Error) {
-            return $Msg . "***** " . $Error->message . "\n";
-        };
-        $ErrorMsg = array_reduce($ValidationErrors, $ErrorMsgBuilder, $ErrorMsgHeader);
-        $this->assertEmpty($ValidationErrors, $ErrorMsg);
+        return '<form action=""><p>' . $OptionListHtml . '</p></form>';
     }
 
     /**
@@ -702,7 +882,7 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
      */
     private function getOptionListDomEle(HtmlOptionList $OptionList)
     {
-        $this->validateHtml($OptionList);
+        $this->validateHtml($OptionList->getHtml(), $this::VALIDATION_ERRORS_TO_IGNORE);
 
         # return <select>
         $DOM = new DOMDocument();
@@ -724,10 +904,12 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
      * @param string $FormName Form name for the <select> (OPTIONAL).
      * @return HtmlOptionList The option list just built.
      */
-    private function getTestHtmlOptionList(int $OptionCount, $SelectedValues = null,
-            $FormName = "TestFormName")
-    {
-        foreach (range(0, $OptionCount-1) as $Idx) {
+    private function getTestHtmlOptionList(
+        int $OptionCount,
+        $SelectedValues = null,
+        $FormName = "TestFormName"
+    ) {
+        foreach (range(0, $OptionCount - 1) as $Idx) {
             $Options["val " . $Idx] = "label " . $Idx;
         }
 
@@ -735,12 +917,4 @@ class HtmlOptionList_Test extends PHPUnit\Framework\TestCase
             new HtmlOptionList($FormName, $Options, $SelectedValues) :
             new HtmlOptionList($FormName, $Options);
     }
-
-    /**
-     * Head of custom attributes for this test.
-     * Since unregistered attributes trigger errors when validating html,
-     * we have to explicitly ignore those errors.
-     */
-    const CUSTOM_ATTRIBUTE_HEAD = "attr";
 }
-

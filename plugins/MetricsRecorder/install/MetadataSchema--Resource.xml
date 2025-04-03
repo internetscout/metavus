@@ -11,6 +11,7 @@
     </Description>
     <Editable>FALSE</Editable>
     <Enabled>TRUE</Enabled>
+    <TriggersAutoUpdates>FALSE</TriggersAutoUpdates>
     <Owner>MetricsRecorder</Owner>
     <ViewingPrivileges>
       <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
@@ -28,6 +29,7 @@
     </Description>
     <Editable>FALSE</Editable>
     <Enabled>TRUE</Enabled>
+    <TriggersAutoUpdates>FALSE</TriggersAutoUpdates>
     <Owner>MetricsRecorder</Owner>
     <ViewingPrivileges>
       <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>

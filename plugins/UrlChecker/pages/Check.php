@@ -3,13 +3,13 @@
 #   FILE:  Check.php (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\Plugins\UrlChecker\Record;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
@@ -18,7 +18,7 @@ PageTitle("Automatically checking an URL...");
 CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
 
 $AF = ApplicationFramework::getInstance();
-$MyPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$MyPlugin = \Metavus\Plugins\UrlChecker::getInstance();
 
 $ResourceId = StdLib::getFormValue("ResourceId");
 if (Record::itemExists($ResourceId)) {

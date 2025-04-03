@@ -3,13 +3,18 @@
 #   FILE:  Login.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-PageTitle("Sign in");
+namespace Metavus;
 
+# ----- SETUP ----------------------------------------------------------------
+$LogInButton = new HtmlButton("Log In");
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Sign in");
 ?>
 
 <div class="mv-content-authbox">
@@ -30,8 +35,7 @@ PageTitle("Sign in");
         <?PHP
         if (isset($_POST["HTTP_REFERER"]) || isset($_SERVER["HTTP_REFERER"])) {
             ?><input type="hidden" name="HTTP_REFERER" value="<?PHP
-                $Referer = isset($_POST["HTTP_REFERER"]) ?
-                $_POST["HTTP_REFERER"] : $_SERVER["HTTP_REFERER"];
+                $Referer = $_POST["HTTP_REFERER"] ?? $_SERVER["HTTP_REFERER"];
                 print htmlspecialchars($Referer)."\">";
         }
         ?>
@@ -47,8 +51,7 @@ PageTitle("Sign in");
                 </tr>
                 <tr>
                     <th></th>
-                    <td><button class="btn btn-primary" type="submit"
-                        value="Log In">Log In</button></td>
+                    <td><?= $LogInButton->getHtml(); ?></td>
                 </tr>
             </tbody>
         </table>

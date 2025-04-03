@@ -3,13 +3,12 @@
 #   FILE:  TransportControlsUI_Base.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\StdLib;
@@ -27,6 +26,7 @@ abstract class TransportControlsUI_Base
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /** parameter ($_GET) names (control ID is appended if non-zero) */
+    const PNAME_CHECKSUM = "CK";
     const PNAME_REVERSESORT = "RS";
     const PNAME_SORTFIELD = "SF";
     const PNAME_STARTINGINDEX = "SI";
@@ -41,7 +41,7 @@ abstract class TransportControlsUI_Base
      * @throws InvalidArgumentException If supplied ID duplicates the ID of
      *       an existing TransportControlUI instance.
      */
-    public function __construct(int $ControlId = null)
+    public function __construct(?int $ControlId = null)
     {
         # if no ID supplied
         if ($ControlId === null) {
@@ -96,6 +96,35 @@ abstract class TransportControlsUI_Base
     }
 
     /**
+     * Filter supplied list of item IDs down to just the portion to be
+     * displayed on the current page.  In addition to filtering, this also
+     * sets the item count and items per page (so no calls to itemCount()
+     * or itemsPerPage() are needed) and adds a checksum to control links,
+     * so that paging is reset if the list of items changes.
+     * @param array $AllItemIds All item IDs.
+     * @param int $ItemsPerPage Maximum number of items on one page.
+     * @return array Item IDs for current page.
+     */
+    public function filterItemIdsForCurrentPage(
+        array $AllItemIds,
+        int $ItemsPerPage
+    ): array {
+        # save total item count and items per page
+        $this->ItemCount = count($AllItemIds);
+        $this->ItemsPerPage = $ItemsPerPage;
+
+        # calculate and save checksum
+        $this->ItemChecksum = md5(serialize($AllItemIds));
+
+        # pare down list to just IDs for current page and return it to caller
+        return array_slice(
+            $AllItemIds,
+            $this->StartingIndex,
+            $ItemsPerPage
+        );
+    }
+
+    /**
      * Get ID for controls.
      * @return int Control ID.
      */
@@ -109,7 +138,7 @@ abstract class TransportControlsUI_Base
      * @param int $NewValue Max number of items displayed per page.  (OPTIONAL)
      * @return int Current max number of items per page.
      */
-    public function itemsPerPage(int $NewValue = null): int
+    public function itemsPerPage(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->ItemsPerPage = $NewValue;
@@ -122,7 +151,7 @@ abstract class TransportControlsUI_Base
      * @param int $NewValue New total count of items.  (OPTIONAL)
      * @return int Current total count of items.
      */
-    public function itemCount(int $NewValue = null): int
+    public function itemCount(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->ItemCount = $NewValue;
@@ -135,7 +164,7 @@ abstract class TransportControlsUI_Base
      * @param int $NewValue New starting index value.  (OPTIONAL)
      * @return int Current starting index value.
      */
-    public function startingIndex(int $NewValue = null): int
+    public function startingIndex(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->StartingIndex = $NewValue;
@@ -148,7 +177,7 @@ abstract class TransportControlsUI_Base
      * @param string $NewValue New sort field.  (OPTIONAL)
      * @return string|null Current sort field or NULL if none set..
      */
-    public function sortField(string $NewValue = null)
+    public function sortField(?string $NewValue = null): ?string
     {
         if ($NewValue !== null) {
             $this->SortField = $NewValue;
@@ -163,7 +192,7 @@ abstract class TransportControlsUI_Base
      * @param string $NewValue New default sort field.  (OPTIONAL)
      * @return string|null Current default sort field or NULL if none set.
      */
-    public function defaultSortField(string $NewValue = null)
+    public function defaultSortField(?string $NewValue = null): ?string
     {
         if ($NewValue !== null) {
             $this->DefaultSortField = $NewValue;
@@ -176,7 +205,7 @@ abstract class TransportControlsUI_Base
      * @param bool $NewValue New value.  (OPTIONAL)
      * @return bool TRUE to reverse sort order or FALSE to use normal order.
      */
-    public function reverseSortFlag(bool $NewValue = null): bool
+    public function reverseSortFlag(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->ReverseSortFlag = $NewValue;
@@ -200,7 +229,10 @@ abstract class TransportControlsUI_Base
         $EncodeSeparators = true,
         $ExcludeParameters = [],
         $IncludeAllControls = true
-    ) {
+    ): string {
+        $String = "";
+        $Sep = $EncodeSeparators ? "&amp;" : "&";
+
         $Controls = $IncludeAllControls ? self::$ActiveControls
                 : [ self::$ActiveControls[$this->Id] ];
         $QData = [];
@@ -224,10 +256,12 @@ abstract class TransportControlsUI_Base
             unset($QData[$Param]);
         }
 
-        $String = "";
         if (count($QData)) {
-            $Sep = $EncodeSeparators ? "&amp;" : "&";
-            $String = $Sep.http_build_query($QData, "", $Sep);
+            $String .= $Sep.http_build_query($QData, "", $Sep);
+        }
+
+        if (isset($this->ItemChecksum)) {
+            $String .= $Sep."CK=".$this->ItemChecksum;
         }
 
         return $String;
@@ -241,7 +275,7 @@ abstract class TransportControlsUI_Base
      * @param string $NewValue Item type name.  (OPTIONAL)
      * @return string Current item type name.
      */
-    public function itemTypeName(string $NewValue = null): string
+    public function itemTypeName(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->ItemTypeName = $NewValue;
@@ -254,7 +288,7 @@ abstract class TransportControlsUI_Base
      * @param string $NewValue New base URL.
      * @return string Current base link.
      */
-    public function baseLink(string $NewValue = null): string
+    public function baseLink(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->BaseLink = $NewValue;
@@ -267,7 +301,7 @@ abstract class TransportControlsUI_Base
      * @param string $NewValue New message text.  (OPTIONAL)
      * @return string Current message text.
      */
-    public function message(string $NewValue = null): string
+    public function message(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->Message = $NewValue;
@@ -278,7 +312,7 @@ abstract class TransportControlsUI_Base
     /**
      * Generate and print HTML for transport controls.
      */
-    abstract public function display();
+    abstract public function display(): void;
 
     /**
      * Generate and return HTML for transport controls.
@@ -305,6 +339,7 @@ abstract class TransportControlsUI_Base
     protected $BaseLink;
     protected $DefaultSortField = null;
     protected $Id;
+    protected $ItemChecksum;
     protected $ItemCount;
     protected $ItemsPerPage = 10;
     protected $ItemTypeName = "Item";
@@ -319,8 +354,9 @@ abstract class TransportControlsUI_Base
 
     /**
      * Check indexes and make sure they are within bounds.
+     * @return void
      */
-    protected function checkIndexes()
+    protected function checkIndexes(): void
     {
         # determine index of first item on the first and last page
         $ExtraItems = $this->ItemCount % $this->ItemsPerPage;

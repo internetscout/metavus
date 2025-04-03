@@ -1,0 +1,59 @@
+<?PHP
+#
+#   FILE:  MoodleTutorial.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+?>
+<h1>Embedding a resource in Moodle</h1>
+
+<ol>
+  <li>Select a course to edit and navigate to the front page for that
+    course.</li>
+
+  <li>Toggle the <i>Edit mode</i> switch at top right.<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_1.jpg") ?>"/></li>
+
+  <li>Click <i>Add an activity or resource</i> in the section where
+    you want to attach an assignment.<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_2.jpg") ?>"/></li>
+
+  <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
+    from the list.
+
+  <li>Press the <i>Select content</i> button<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_3.jpg") ?>"/></li>
+
+  <li>Use the search box and/or the facets shown at right to locate
+    the resource(s) you want.</li>
+
+  <li>Use the <i>Select</i> buttons to make your resource selections.<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_4.jpg") ?>"/></li>
+
+  <li>When you've selected all the resources you want, press the <i>Send
+      to LMS</i> button to forward your selections back to Moodle.<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_5.jpg") ?>"/></li>
+
+  <li>Press the <i>Save and display</i> button.<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_6.jpg") ?>"/></li>
+
+  <li>Your selected resource(s) will now appear embedded in a Moodle
+    assignment.<br/>
+    <img src="<?= $AF->gUIFile("Moodle_Tutorial_7.jpg") ?>"/></li>
+</ol>
+
+<style type="text/css">
+li + li {
+  margin-top: 0.75em;
+}

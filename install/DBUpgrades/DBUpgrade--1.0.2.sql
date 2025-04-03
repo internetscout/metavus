@@ -22,3 +22,5 @@ UPDATE MetadataFields SET DefaultQualifier = NULL WHERE DefaultQualifier IS NOT 
 -- add directory cache columns to PluginInfo
 ALTER TABLE PluginInfo ADD COLUMN DirectoryCache BLOB;
 ALTER TABLE PluginInfo ADD COLUMN DirectoryCacheLastUpdatedAt TIMESTAMP;
+
+CREATE INDEX Index_FD ON ReferenceInts(FieldId, DstRecordId);

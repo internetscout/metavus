@@ -3,13 +3,15 @@
 #   FILE:  ExportUsersExecute.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\MetadataSchema;
 use Metavus\PrivilegeFactory;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\UserFactory;
 
@@ -26,7 +28,7 @@ function ListDir($DirPath, $Pattern)
     static $ResultArray = array();
 
     $Handle = opendir($DirPath);
-    while ($File = readdir($Handle)) {
+    while ($Handle && $File = readdir($Handle)) {
         if ($File == '.' || $File == '..') {
             continue;
         }
@@ -36,11 +38,15 @@ function ListDir($DirPath, $Pattern)
             $ResultArray[] = $DirPath.$File;
         }
     }
-    closedir($Handle);
+    if ($Handle) {
+        closedir($Handle);
+    }
     return $ResultArray;
 }
 
 # ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
 
 # check if current user is authorized
 if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
@@ -56,7 +62,7 @@ if (isset($_POST["Submit"]) && $_POST["Submit"] == "Cancel") {
 
 # initialize variables here
 $MaxUserToExport = 50;
-$UserCount = isset($_SESSION["UserCount"]) ? $_SESSION["UserCount"] : 0;
+$H_UserCount = $_SESSION["UserCount"] ?? 0;
 $UserFactory = new UserFactory();
 
 if (!isset($_POST["F_UserPrivs"])) {
@@ -64,7 +70,7 @@ if (!isset($_POST["F_UserPrivs"])) {
         ".*.",
         null,
         "UserName",
-        $UserCount,
+        $H_UserCount,
         $MaxUserToExport
     );
 } else {
@@ -74,13 +80,11 @@ if (!isset($_POST["F_UserPrivs"])) {
 
     $UserInfo = array_slice(
         $UserInfo,
-        $UserCount,
+        $H_UserCount,
         $MaxUserToExport,
         true
     );
 }
-$ExportComplete = count($UserInfo) < $MaxUserToExport
-        ? true : false;
 
 # open export path
 if (!isset($_SESSION["ExportPath"])) {
@@ -106,6 +110,7 @@ $FP = fopen($ExportPath, "a");
 if ($FP == false) {
     $ErrorMessage = "Cannot open Export Filename: $ExportPath<br>";
     $_SESSION["ErrorMessage"] = $ErrorMessage;
+
     $AF->SetJumpToPage("DisplayError");
     return;
 }
@@ -121,11 +126,7 @@ $PrivDescriptions = (new PrivilegeFactory())->GetPrivileges(true, false);
 foreach ($UserInfo as $Entry) {
     if ($Entry["BrowsingFieldId"] > 0) {
         $Field = $Schema->GetField($Entry["BrowsingFieldId"]);
-        if (is_object($Field)) {
-            $BrowsingField = $Field->Name();
-        } else {
-            $BrowsingField = null;
-        }
+        $BrowsingField = $Field->Name();
     } else {
         $BrowsingField = null;
     }
@@ -145,14 +146,14 @@ foreach ($UserInfo as $Entry) {
               $BrowsingField."\t\n";
 
     fwrite($FP, $Output);
-    $UserCount++;
+    $H_UserCount++;
 
     # now export privileges for this user
     $NewUser = new User($Entry["UserId"]);
     $PrivList = $NewUser->GetPrivList();
 
     foreach ($PrivList as $Privilege) {
-        if (is_numeric($Privilege)) {
+        if (is_numeric($Privilege) && in_array($Privilege, $PrivDescriptions)) {
             $Privilege = $PrivDescriptions[$Privilege];
             $Output = $Entry["UserName"]."\t\t\t\t\t\t\t\t\t\t\t\t\t".
                         $Privilege."\n";
@@ -161,32 +162,31 @@ foreach ($UserInfo as $Entry) {
     }
 }
 
-# update usercount for refresh as well as page variables
-$_SESSION["UserCount"] = $UserCount;
+# update user count for refresh as well as page variables
+$_SESSION["UserCount"] = $H_UserCount;
 
-$H_ExportComplete = $ExportComplete;
-$H_UserCount = $UserCount;
+$H_ExportComplete = count($UserInfo) < $MaxUserToExport;
 $H_FileName = "tmp/".$_SESSION["FileName"];
 
 #  Time to auto-refresh?
-if ($ExportComplete == false) {
+if ($H_ExportComplete === false) {
     $AF->SetJumpToPage("index.php?P=ExportUsersExecute", 1);
 }
 
 PageTitle("Export Users");
 
 # register post-processing function with the application framework
-$AF->AddPostProcessingCall("PostProcessingFn", $FP, $ExportComplete);
+$AF->AddPostProcessingCall("PostProcessingFn", $FP, $H_ExportComplete);
 
 /**
 * Post-processing call, to close file pointer and clean export status
 * session variables after export is complete.
 * @param mixed $FP File pointer.
-* @param book $ExportComplete If 1, export is complete.
+* @param bool $ExportComplete If 1, export is complete.
 */
-function PostProcessingFn($FP, $ExportComplete)
+function PostProcessingFn($FP, $ExportComplete): void
 {
-    if ($ExportComplete == true) {
+    if ($ExportComplete) {
         fclose($FP);
         unset($_SESSION["ExportComplete"]);
         unset($_SESSION["UserCount"]);

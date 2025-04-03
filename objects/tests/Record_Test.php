@@ -12,6 +12,7 @@
 namespace Metavus;
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Date;
 use ScoutLib\StdLib;
@@ -149,6 +150,7 @@ class Record_Test extends \PHPUnit\Framework\TestCase
         # lose any values in the process
         $this->CheckTempToggle($TestResource);
 
+        $this->runTasks();
 
         # clean up function-specific objects
         $TestResource->destroy();
@@ -167,7 +169,7 @@ class Record_Test extends \PHPUnit\Framework\TestCase
 
         # test get, set, and clear for each test field
         foreach (self::$TestFieldIds as $FieldName => $FieldId) {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
 
             # whether, before testing equivalence, we need to pop the
             # returned value out of an array
@@ -725,8 +727,7 @@ class Record_Test extends \PHPUnit\Framework\TestCase
     }
 
     /**
-    * Check that permanent resources can be made temporary, and that
-    * all their field values remain unchanged when that happens.
+    * Check that permanent resources cannot be made temporary.
     * @param Record $Resource Permanent resource for testing.
     */
     private function checkTempToggle($Resource)
@@ -736,35 +737,35 @@ class Record_Test extends \PHPUnit\Framework\TestCase
             "Check that provided resource is permanent."
         );
 
-        $Before = $Resource->GetAsArray(true, false);
+        try {
+            $Resource->isTempRecord(true);
+            $this->fail("Should not be able to make perm resources temp.");
+        } catch (Exception $ex) {
+            ;
+        }
+    }
 
-        $this->assertTrue(
-            $Resource->isTempRecord(true),
-            "Check that permanent resources can be made temporary."
-        );
-
-        $After = $Resource->GetAsArray(true, false);
-        $IdCol = Record::getItemIdColumnName();
-        unset($Before[$IdCol]);
-        unset($After[$IdCol]);
-
-        $this->assertEquals(
-            $Before,
-            $After,
-            "Check that resource values don't change on perm/temp toggle"
-        );
-
-        $RCopy = new Record($Resource->Id());
-
-        $AfterCopy = $RCopy->GetAsArray(true, false);
-        unset($AfterCopy[$IdCol]);
-
-        $this->assertEquals(
-            $After,
-            $AfterCopy,
-            "Check that resource values don't change on perm/temp toggle "
-            ."w/ newly loaded resource"
-        );
+    /**
+     * Run queued tasks.
+     */
+    private function runTasks()
+    {
+        $AF = ApplicationFramework::getInstance();
+        do {
+            $TaskList = $AF->getQueuedTaskList();
+            foreach ($TaskList as $Task) {
+                try {
+                    if ($Task["Parameters"]) {
+                        call_user_func_array($Task["Callback"], $Task["Parameters"]);
+                    } else {
+                        call_user_func($Task["Callback"]);
+                    }
+                } catch (Exception $ex) {
+                    // do nothing
+                }
+                $AF->deleteTask($Task["TaskId"]);
+            }
+        } while (count($TaskList) > 0);
     }
 
     protected static $TestFieldIds;

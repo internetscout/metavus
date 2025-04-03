@@ -3,13 +3,14 @@
 #   FILE:  OAIItemFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2009-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\OAIPMHServer;
 
+use InvalidArgumentException;
 use Metavus\MetadataSchema;
 use Metavus\RecordFactory;
 use Metavus\SearchEngine;
@@ -60,16 +61,12 @@ class OAIItemFactory implements \ScoutLib\OAIItemFactory
             $SearchInfo["searchScoreScale"] = $this->SearchScoreScale;
         }
 
-        # attempt to create item
-        $Item = new OAIItem($ItemId, $this->RepDescr, $SearchInfo);
-
-        # if item creation failed
-        if ($Item->status() == -1) {
-            # return NULL to indicate that no item was found with that ID
-            return null;
-        } else {
-            # return item to caller
+        # attempt to create item and return null if Item cannot be created
+        try {
+            $Item = new OAIItem($ItemId, $this->RepDescr, $SearchInfo);
             return $Item;
+        } catch (InvalidArgumentException $e) {
+            return null;
         }
     }
 
@@ -80,8 +77,8 @@ class OAIItemFactory implements \ScoutLib\OAIItemFactory
      * @return array Requested Items.
      */
     public function getItems(
-        string $StartingDate = null,
-        string $EndingDate = null
+        ?string $StartingDate = null,
+        ?string $EndingDate = null
     ): array {
         return $this->getItemsInSet(null, $StartingDate, $EndingDate);
     }
@@ -96,9 +93,9 @@ class OAIItemFactory implements \ScoutLib\OAIItemFactory
      * @return array Requested items.
      */
     public function getItemsInSet(
-        string $Set = null,
-        string $StartingDate = null,
-        string $EndingDate = null,
+        ?string $Set = null,
+        ?string $StartingDate = null,
+        ?string $EndingDate = null,
         $SearchParams = null
     ): array {
         $AF = ApplicationFramework::getInstance();
@@ -196,8 +193,11 @@ class OAIItemFactory implements \ScoutLib\OAIItemFactory
      * @param string $EndingDate Ending date for results.(OPTIONAL)
      * @return array IDs of found items.
      */
-    public function searchForItems($SearchParams, $StartingDate = null, $EndingDate = null)
-    {
+    public function searchForItems(
+        $SearchParams,
+        $StartingDate = null,
+        $EndingDate = null
+    ): array {
         # perform search and return results to caller
         return $this->getItemsInSet(null, $StartingDate, $EndingDate, $SearchParams);
     }
@@ -238,8 +238,9 @@ class OAIItemFactory implements \ScoutLib\OAIItemFactory
 
     /**
      * Load normalized set names and name mappings.
+     * @return void
      */
-    private function loadSetNameInfo()
+    private function loadSetNameInfo(): void
     {
         # if set names have not already been loaded
         if (!isset($this->SetSpecs)) {

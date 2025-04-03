@@ -6,6 +6,7 @@
 #   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
 
@@ -138,7 +139,7 @@ if (!is_null($UserName)) {
 # act on form submission
 $ButtonPushed = StdLib::getFormValue("Submit");
 switch ($ButtonPushed) {
-    case "Continue":
+    case "Send Reset Email":
         $FormValues = $H_FormUI->getNewValuesFromForm();
         $Result = SendRecoveryEmail($FormValues["Username"]);
         if (is_string($Result)) {

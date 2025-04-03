@@ -1,0 +1,60 @@
+<?PHP
+#
+#   FILE:  LTILogin.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (isset($H_Error)) {
+    print '<!DOCTYPE html><html lang="en">'
+        .'<head><title>Error</title></head>'
+        .'<body><p><b>ERROR:</b> '.$H_Error.'</p></body>'
+        .'</html>';
+    return;
+}
+
+if (!isset($H_RedirectUrl)) {
+    throw new Exception("Variable \$H_RedirectUrl not set.");
+}
+if (!isset($H_State)) {
+    throw new Exception("Variable \$H_State not set.");
+}
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+$ServiceName = $Plugin->getConfigSetting("ServiceName");
+
+$EnableDisplayButton = new HtmlButton("Click to enable display of embedded content");
+$EnableDisplayButton->setId("mv-embed-button");
+$EnableDisplayButton->hide();
+
+# ----- DISPLAY --------------------------------------------------------------
+
+?><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><?= $ServiceName ?></title>
+    <?PHP $AF->includeUIFile("P_EduLink_Login.js"); ?>
+  </head>
+  <body>
+  <?= $EnableDisplayButton->getHtml(); ?>
+    <script>
+      doRedirect(
+          '<?= $H_State ?>',
+          '<?= ApplicationFramework::baseUrl() ?>',
+          '<?= $H_RedirectUrl ?>'
+      );
+    </script>
+  </body>
+</html>

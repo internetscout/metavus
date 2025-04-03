@@ -3,13 +3,12 @@
 #   FILE:  ItemFactory.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2007-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2007-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 
@@ -30,30 +29,35 @@ abstract class ItemFactory
      * Class constructor.
      * @param string $ItemClassName Class of items to be manipulated by factory.
      * @param string $ItemTableName Name of database table used to store info
-     *       about items.
+     *      about items.
      * @param string $ItemIdColumnName Name of field in database table used to
-     *       store item IDs.
+     *      store item IDs.
      * @param string $ItemNameColumnName Name of field in database table used to
-     *       store item names.  (OPTIONAL)
+     *      store item names.  (OPTIONAL)
      * @param bool $OrderOpsAllowed If TRUE, ordering operations are allowed
-     *       with items, and the database table must contain "Previous" and
-     *       "Next" fields as described by the PersistentDoublyLinkedList class.
+     *      with items, and the database table must contain "Previous" and
+     *      "Next" fields as described by the PersistentDoublyLinkedList class.
      * @param string $SqlCondition SQL condition clause (without "WHERE") to
-     *       include when retrieving items from database.  (OPTIONAL)
+     *      include when retrieving items from database.  (OPTIONAL)
+     * @param callable|null $ItemInstFunc If supplied, an item ID will be passed to
+     *      this function or method to instantiate items, rather than using the
+     *      item class constructor.  (OPTIONAL)
      */
     public function __construct(
         string $ItemClassName,
         string $ItemTableName,
         string $ItemIdColumnName,
-        string $ItemNameColumnName = null,
+        ?string $ItemNameColumnName = null,
         bool $OrderOpsAllowed = false,
-        string $SqlCondition = null
+        ?string $SqlCondition = null,
+        ?callable $ItemInstFunc = null
     ) {
         # save item access names
         $this->ItemClassName = $ItemClassName;
         $this->ItemTableName = $ItemTableName;
         $this->ItemIdColumnName = $ItemIdColumnName;
         $this->ItemNameColumnName = $ItemNameColumnName;
+        $this->ItemInstFunc = $ItemInstFunc;
 
         # save database operation conditional
         $this->SqlCondition = $SqlCondition;
@@ -101,7 +105,7 @@ abstract class ItemFactory
 
         # delete stale items
         foreach ($ItemIds as $ItemId) {
-            $Item = new $this->ItemClassName($ItemId);
+            $Item = $this->getItem($ItemId);
             $Item->destroy();
         }
 
@@ -188,7 +192,7 @@ abstract class ItemFactory
      *   sent in an SQL query
      */
     public function getItemCount(
-        string $Condition = null,
+        ?string $Condition = null,
         bool $IncludeTempItems = false,
         array $Exclusions = []
     ): int {
@@ -269,9 +273,9 @@ abstract class ItemFactory
      * @return array Item IDs.
      */
     public function getItemIds(
-        string $Condition = null,
+        ?string $Condition = null,
         bool $IncludeTempItems = false,
-        string $SortField = null,
+        ?string $SortField = null,
         bool $SortAscending = true
     ): array {
         return $this->getItemIdsForCondition(
@@ -290,7 +294,7 @@ abstract class ItemFactory
      * @return string|null Lastest modification date in SQL date/time format,
      *       or null when no item is found.
      */
-    public function getLatestModificationDate(string $Condition = null)
+    public function getLatestModificationDate(?string $Condition = null)
     {
         # set up SQL condition if supplied
         $ConditionString = ($Condition == null) ? "" : " WHERE " . $Condition;
@@ -320,7 +324,12 @@ abstract class ItemFactory
      */
     public function getItem(int $ItemId)
     {
-        return new $this->ItemClassName($ItemId);
+        if (is_callable($this->ItemInstFunc)) {
+            $Item = ($this->ItemInstFunc)($ItemId);
+        } else {
+            $Item = new $this->ItemClassName($ItemId);
+        }
+        return $Item;
     }
 
     /**
@@ -368,7 +377,8 @@ abstract class ItemFactory
      * @param string $Name Name to match.
      * @param bool $IgnoreCase If TRUE, ignore case when attempting to match
      *       the item name.  (OPTIONAL, defaults to FALSE)
-     * @return int|false ID or FALSE if name not found.
+     * @return int|false ID or FALSE if name not found. If multiple items have
+     *       the same name, the ID of the first matching item is returned.
      * @throws Exception If item type does not have a name field defined.
      */
     public function getItemIdByName(string $Name, bool $IgnoreCase = false)
@@ -430,8 +440,8 @@ abstract class ItemFactory
      * @return array Array with item names as values and item IDs as indexes.
      */
     public function getItemNames(
-        string $SqlCondition = null,
-        int $Limit = null,
+        ?string $SqlCondition = null,
+        ?int $Limit = null,
         int $Offset = 0,
         array $Exclusions = []
     ): array {
@@ -501,7 +511,7 @@ abstract class ItemFactory
      *       retrieval. (OPTIONAL)
      * @return array Array with item objects as values and item IDs as indexes.
      */
-    public function getItems(string $SqlCondition = null): array
+    public function getItems(?string $SqlCondition = null): array
     {
         $Items = array();
         $Ids = $this->getItemIds($SqlCondition);
@@ -519,10 +529,11 @@ abstract class ItemFactory
      */
     public function nameIsInUse(string $Name, bool $IgnoreCase = false): bool
     {
+        # specify BINARY to make string comparison case-sensitive
         $Condition = $IgnoreCase
             ? "LOWER(" . $this->ItemNameColumnName . ")"
             . " = '" . addslashes(strtolower($Name)) . "'"
-            : $this->ItemNameColumnName . " = '" . addslashes($Name) . "'";
+            : $this->ItemNameColumnName . " = BINARY '" . addslashes($Name) . "'";
         if ($this->SqlCondition) {
             $Condition .= " AND " . $this->SqlCondition;
         }
@@ -698,7 +709,7 @@ abstract class ItemFactory
      * @return bool TRUE if caching is enabled, otherwise FALSE.
      * @see clearCaches()
      */
-    public function cachingEnabled(bool $NewValue = null): bool
+    public function cachingEnabled(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->CachingEnabled = $NewValue ? true : false;
@@ -710,7 +721,7 @@ abstract class ItemFactory
      * Clear item information caches.
      * @see cachingEnabled()
      */
-    public function clearCaches()
+    public function clearCaches(): void
     {
         unset($this->ItemIdByNameCache);
     }
@@ -724,7 +735,7 @@ abstract class ItemFactory
      * condition.
      * @param string|null $Condition SQL condition (should not include "WHERE").
      */
-    public function setOrderOpsCondition($Condition)
+    public function setOrderOpsCondition($Condition): void
     {
         # condition is non-negative IDs (non-temp items) plus supplied condition
         $NewCondition = $this->ItemIdColumnName . " >= 0"
@@ -740,7 +751,7 @@ abstract class ItemFactory
      * @param mixed $TargetItem Item (object or ID) to insert before.
      * @param mixed $NewItem Item (object or ID) to insert.
      */
-    public function insertBefore($TargetItem, $NewItem)
+    public function insertBefore($TargetItem, $NewItem): void
     {
         # error out if ordering operations are not allowed for this item type
         if (!$this->OrderOpsAllowed) {
@@ -760,7 +771,7 @@ abstract class ItemFactory
      * @param mixed $TargetItem Item (object or ID) to insert after.
      * @param mixed $NewItem Item to insert.
      */
-    public function insertAfter($TargetItem, $NewItem)
+    public function insertAfter($TargetItem, $NewItem): void
     {
         # error out if ordering operations are not allowed for this item type
         if (!$this->OrderOpsAllowed) {
@@ -778,7 +789,7 @@ abstract class ItemFactory
      * it is moved to the beginning.
      * @param mixed $Item Item (object or ID) to add.
      */
-    public function prepend($Item)
+    public function prepend($Item): void
     {
         # error out if ordering operations are not allowed for this item type
         if (!$this->OrderOpsAllowed) {
@@ -796,7 +807,7 @@ abstract class ItemFactory
      * it is moved to the end.
      * @param mixed $Item Item (object or ID) to add.
      */
-    public function append($Item)
+    public function append($Item): void
     {
         # error out if ordering operations are not allowed for this item type
         if (!$this->OrderOpsAllowed) {
@@ -832,7 +843,7 @@ abstract class ItemFactory
      * otherwise remove the item from the database.
      * @param int $ItemId ID of item to be removed from order.
      */
-    public function removeItemFromOrder(int $ItemId)
+    public function removeItemFromOrder(int $ItemId): void
     {
         # error out if ordering operations are not allowed for this item type
         if (!$this->OrderOpsAllowed) {
@@ -852,7 +863,7 @@ abstract class ItemFactory
      * @param string $Method Name of method.  (OPTIONAL)
      * @return array Array of arrays of error message strings.
      */
-    public function errorMessages(string $Method = null): array
+    public function errorMessages(?string $Method = null): array
     {
         if ($Method === null) {
             return $this->getAllErrorMessages();
@@ -877,9 +888,9 @@ abstract class ItemFactory
      *       only meaningful if a sort field is specified.)
      */
     protected function getItemIdsForCondition(
-        string $Condition = null,
+        ?string $Condition = null,
         bool $IncludeTempItems = false,
-        string $SortField = null,
+        ?string $SortField = null,
         bool $SortAscending = true
     ): array {
         # if temp items are supposed to be included
@@ -1137,9 +1148,10 @@ abstract class ItemFactory
 
     protected $DB;
     protected $ItemClassName;
-    protected $ItemTableName;
     protected $ItemIdColumnName;
+    protected $ItemInstFunc;
     protected $ItemNameColumnName;
+    protected $ItemTableName;
 
     private $CachingEnabled = true;
     private $ItemIdByNameCache;

@@ -3,16 +3,27 @@
 #   FILE:  ConfirmNotifySubscribers.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-# ----- MAIN -----------------------------------------------------------------
+use Metavus\HtmlButton;
 
+# ----- SETUP ----------------------------------------------------------------
 $SafeEntryId = defaulthtmlentities($H_Entry->Id());
 $SafeEntryUrl = defaulthtmlentities($H_Entry->EntryUrl());
 $SafeEntryTitle = defaulthtmlentities($H_Entry->Title());
 
+$NotifyButton = new HtmlButton("Notify");
+$NotifyButton->setIcon("Check.svg");
+$NotifyButton->setLink("index.php?P=P_Blog_NotifySubscribers&ID=$SafeEntryId");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->setLink($SafeEntryUrl);
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Notify Blog Subscribers Confirmation</h1>
@@ -22,11 +33,6 @@ $SafeEntryTitle = defaulthtmlentities($H_Entry->Title());
   <i><?= $SafeEntryTitle; ?></i>?
 </p>
 
-<a class="btn btn-primary mv-button-iconed"
-    href="index.php?P=P_Blog_NotifySubscribers&amp;ID=<?= $SafeEntryId; ?>"><img
-        src="<?= $AF->GUIFile('Check.svg'); ?>"
-        alt="" class="mv-button-icon" /> Notify</a>
+<?= $NotifyButton->getHtml(); ?>
 
-<a class="btn btn-danger mv-button-iconed" href="<?= $SafeEntryUrl; ?>"><img
-        src="<?= $AF->GUIFile('Cross.svg'); ?>"
-        alt="" class="mv-button-icon" /> Cancel</a>
+<?= $CancelButton->getHtml(); ?>

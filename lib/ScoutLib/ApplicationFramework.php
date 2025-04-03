@@ -3,7 +3,7 @@
 #   FILE:  ApplicationFramework.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -25,7 +25,18 @@ use Throwable;
  */
 class ApplicationFramework
 {
+    use AFTaskManagerTrait;
+    use AFUrlManagerTrait;
+
     # ---- PUBLIC INTERFACE --------------------------------------------------
+
+    /** TO DO:  Move these constants to AFTaskManagerTrait when minimum */
+    /**     required PHP version can support trait constants.  (PHP 8.2) */
+    const PRIORITY_HIGH = 1;        /**  Highest priority. */
+    const PRIORITY_MEDIUM = 2;      /**  Medium (default) priority. */
+    const PRIORITY_LOW = 3;         /**  Lower priority. */
+    const PRIORITY_BACKGROUND = 4;  /**  Lowest priority. */
+
 
     /** @name Application Framework */ /*@(*/
 
@@ -46,7 +57,7 @@ class ApplicationFramework
      * Default top-level exception handler.
      * @param Throwable $Exception Exception to be handled.
      **/
-    public function globalExceptionHandler(Throwable $Exception)
+    public function globalExceptionHandler(Throwable $Exception): void
     {
         # display exception info
         $Message = $Exception->getMessage();
@@ -60,7 +71,7 @@ class ApplicationFramework
             "$1 ",
             $Exception->getTraceAsString()
         );
-        if (php_sapi_name() == "cli") {
+        if ($this->isRunningFromCommandLine()) {
             print "Uncaught Exception\n"
                 . "Message: " . $Message . "\n"
                 . "Location: " . $Location . "\n"
@@ -89,7 +100,7 @@ class ApplicationFramework
         }
 
         # log exception if not running from command line
-        if (php_sapi_name() !== "cli") {
+        if (!$this->isRunningFromCommandLine()) {
             $TraceString = $Exception->getTraceAsString();
             $TraceString = str_replace("\n", ", ", $TraceString);
             $TraceString = preg_replace(
@@ -115,7 +126,7 @@ class ApplicationFramework
      * @param string $NewValue New prefix.  (OPTIONAL)
      * @return string Current prefix.
      */
-    public static function defaultNamespacePrefix(string $NewValue = null): string
+    public static function defaultNamespacePrefix(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             if (substr($NewValue, -1) != "\\") {
@@ -133,7 +144,7 @@ class ApplicationFramework
      * @param string $NewValue New prefix.  (OPTIONAL)
      * @return string Current prefix.
      */
-    public static function localNamespacePrefix(string $NewValue = null): string
+    public static function localNamespacePrefix(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             if (substr($NewValue, -1) != "\\") {
@@ -166,9 +177,9 @@ class ApplicationFramework
      */
     public static function addObjectDirectory(
         string $Dir,
-        $NamespacePrefixes = array(),
+        $NamespacePrefixes = [],
         $Callback = null
-    ) {
+    ): void {
         # check to make sure any supplied callback looks valid
         if ($Callback !== null) {
             if (!is_callable($Callback)) {
@@ -191,10 +202,10 @@ class ApplicationFramework
         });
 
         # add directory to directory list
-        self::$ObjectDirectories[$Dir] = array(
+        self::$ObjectDirectories[$Dir] = [
             "NamespacePrefixes" => $NamespacePrefixes,
             "Callback" => $Callback,
-        );
+        ];
     }
 
     /**
@@ -217,7 +228,7 @@ class ApplicationFramework
     public function addImageDirectories(
         array $NewDirs,
         bool $SearchFirst = false
-    ) {
+    ): void {
         # add directories to existing image directory list
         $this->ImageDirList = $this->addToDirList(
             $this->ImageDirList,
@@ -247,7 +258,7 @@ class ApplicationFramework
     public function addIncludeDirectories(
         array $NewDirs,
         bool $SearchFirst = false
-    ) {
+    ): void {
         # add directories to existing image directory list
         $this->IncludeDirList = $this->addToDirList(
             $this->IncludeDirList,
@@ -280,7 +291,7 @@ class ApplicationFramework
     public function addInterfaceDirectories(
         array $NewDirs,
         bool $SearchFirst = false
-    ) {
+    ): void {
         # add directories to existing image directory list
         $this->InterfaceDirList = $this->addToDirList(
             $this->InterfaceDirList,
@@ -293,6 +304,50 @@ class ApplicationFramework
         $this->InterfaceSettingsByDirCache = null;
         self::$UserInterfaceListCache = [];
         self::$UserInterfacePathsCache = [];
+    }
+
+    /**
+     * Add callback to map page names when looking in specified interface
+     * or page file directories.  This mechanism can also be used to skip
+     * interface or page file directories by returning an empty string
+     * rather than a name.
+     * @param array $Dirs Directories for which to apply mapping function.
+     * @param callable $Func Mapping function, that takes a directory as
+     *      its first argument and a page name as its second argument, and
+     *      returns a potentially-modified page name to look for in that
+     *      directory, or an empty string to skip that directory.
+     */
+    public function addPageNameMappingFunction(
+        array $Dirs,
+        callable $Func
+    ): void {
+        foreach ($Dirs as $Dir) {
+            $this->PageNameMapFuncs[$Dir] = $Func;
+        }
+    }
+
+    /**
+     * Add additional directorys to be searched for page (PHP) files.
+     * Specified directories will be searched in the order they are added.  If a
+     * directory is already present in the list, it will be moved to end to be
+     * searched last.  If SearchFirst is TRUE, all search order aspects are reversed,
+     * with directories (new or already present) added to the front of the list
+     * (to be searched first), and new directories searched in the reverse of
+     * the order in which they are supplied.
+     * @param array $NewDirs New directories to be searched.
+     * @param bool $SearchFirst If TRUE, the directory(s) are searched after the entries
+     *       current in the list, instead of before.  (OPTIONAL, defaults to FALSE)
+     */
+    public function addPageFileDirectories(
+        array $NewDirs,
+        bool $SearchFirst = false
+    ): void {
+        # add directories to existing image directory list
+        $this->PageFileDirList = $this->addToDirList(
+            $this->PageFileDirList,
+            $NewDirs,
+            $SearchFirst
+        );
     }
 
     /**
@@ -315,7 +370,7 @@ class ApplicationFramework
     public function addFunctionDirectories(
         array $NewDirs,
         bool $SearchFirst = false
-    ) {
+    ): void {
         # add directories to existing image directory list
         $this->FunctionDirList = $this->addToDirList(
             $this->FunctionDirList,
@@ -329,7 +384,7 @@ class ApplicationFramework
      * return an array of browser names.
      * @param callable $DetectionFunc Browser detection function callback.
      */
-    public function setBrowserDetectionFunc(callable $DetectionFunc)
+    public function setBrowserDetectionFunc(callable $DetectionFunc): void
     {
         $this->BrowserDetectFunc = $DetectionFunc;
     }
@@ -340,29 +395,34 @@ class ApplicationFramework
      * @param callable $Callback Callback to add.
      * @param array $Parameters Callback parameters in an array.  (OPTIONAL)
      */
-    public function addUnbufferedCallback(callable $Callback, array $Parameters = [])
-    {
+    public function addUnbufferedCallback(
+        callable $Callback,
+        array $Parameters = []
+    ): void {
         if (is_callable($Callback)) {
-            $this->UnbufferedCallbacks[] = array($Callback, $Parameters);
+            $this->UnbufferedCallbacks[] = [ $Callback, $Parameters ];
         }
     }
 
     /**
      * Get/set UI template location cache expiration period in minutes.  An
      * expiration period of 0 disables caching.
-     * @param int $NewInterval New expiration period in minutes.  (OPTIONAL)
+     * @param int $NewValue New expiration period in minutes.  (OPTIONAL)
      * @param bool $Persistent If TRUE the new value will be saved (i.e.
      *       persistent across page loads), otherwise the value will apply to
      *       just the current page load.  (OPTIONAL, defaults to FALSE)
      * @return int Current expiration period in minutes.
      */
     public function templateLocationCacheExpirationInterval(
-        int $NewInterval = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
+        if ($NewValue !== null) {
+            $this->TemplateLocationCacheInterval = $NewValue;
+        }
         return $this->updateIntSetting(
             "TemplateLocationCacheInterval",
-            $NewInterval,
+            $NewValue,
             $Persistent
         );
     }
@@ -370,9 +430,9 @@ class ApplicationFramework
     /**
      * Clear template location cache.
      */
-    public function clearTemplateLocationCache()
+    public function clearTemplateLocationCache(): void
     {
-        $this->TemplateLocationCache = array();
+        $this->TemplateLocationCache = [];
         $this->SaveTemplateLocationCache = true;
     }
 
@@ -386,9 +446,12 @@ class ApplicationFramework
      * @return int Current expiration period in minutes.
      */
     public function objectLocationCacheExpirationInterval(
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
+        if ($NewValue !== null) {
+            self::$ObjectLocationCacheInterval = $NewValue;
+        }
         return $this->updateIntSetting(
             "ObjectLocationCacheInterval",
             $NewValue,
@@ -399,9 +462,9 @@ class ApplicationFramework
     /**
      * Clear object (class) file location cache.
      */
-    public function clearObjectLocationCache()
+    public function clearObjectLocationCache(): void
     {
-        self::$ObjectLocationCache = array();
+        self::$ObjectLocationCache = [];
         self::$SaveObjectLocationCache = true;
     }
 
@@ -415,7 +478,7 @@ class ApplicationFramework
      * @return bool TRUE if enabled, otherwise FALSE.
      */
     public function urlFingerprintingEnabled(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -432,7 +495,7 @@ class ApplicationFramework
      * @see ApplicationFramework::generateCompactCss()
      */
     public function scssSupportEnabled(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -450,7 +513,7 @@ class ApplicationFramework
      * @see ApplicationFramework::scssSupportEnabled()
      */
     public function generateCompactCss(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -468,7 +531,7 @@ class ApplicationFramework
      * @see ApplicationFramework::javascriptMinimizationEnabled()
      */
     public function useMinimizedJavascript(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -486,7 +549,7 @@ class ApplicationFramework
      * @see ApplicationFramework::useMinimizedJavascript()
      */
     public function javascriptMinimizationEnabled(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -508,7 +571,7 @@ class ApplicationFramework
     public function recordContextInCaseOfCrash(
         int $BacktraceOptions = 0,
         int $BacktraceLimit = 0
-    ) {
+    ): void {
         if (!$this->RunningInBackground) {
             return;
         }
@@ -532,10 +595,14 @@ class ApplicationFramework
      * Load page PHP and HTML/TPL files.
      * @param string $PageName Name of page to be loaded (e.g. "BrowseResources").
      */
-    public function loadPage(string $PageName)
+    public function loadPage(string $PageName): void
     {
-        # perform any clean URL rewriting
-        $PageName = $this->rewriteCleanUrls($PageName);
+        # check whether we were invoked by a mapped clean URL, and switch to
+        #   appropriate page and set appropriate $_GET parameters if so
+        $CleanUrlPageName = $this->getPageAndSetParamsForCleanUrl();
+        if (strlen($CleanUrlPageName)) {
+            $PageName = $CleanUrlPageName;
+        }
 
         # sanitize incoming page name and save local copy
         $PageName = preg_replace("/[^a-zA-Z0-9_.-]/", "", $PageName);
@@ -569,7 +636,7 @@ class ApplicationFramework
         $Context["Variables"] = $this->CurrentLoadingContext;
         $this->signalEvent(
             "EVENT_PHP_FILE_LOAD_COMPLETE",
-            array("PageName" => $PageName, "Context" => $Context)
+            [ "PageName" => $PageName, "Context" => $Context ]
         );
         $PageCompleteOutput = (string)ob_get_contents();
         ob_end_clean();
@@ -677,6 +744,15 @@ class ApplicationFramework
     }
 
     /**
+     * Determine whether currently running from the command line.
+     * @return bool TRUE if running from command line, otherwise FALSE.
+     */
+    public function isRunningFromCommandLine(): bool
+    {
+        return (PHP_SAPI == "cli");
+    }
+
+    /**
      * Get name of page being loaded.  The page name will not include an extension.
      * This call is only meaningful once loadPage() has been called.
      * @return string Page name.
@@ -684,6 +760,42 @@ class ApplicationFramework
     public function getPageName(): string
     {
         return $this->PageName;
+    }
+
+    /**
+     * Determine whether AF believes that the specified page exists (i.e. has
+     * an associated HTML and/or PHP file).
+     * @param string $PageName Name of page to check.
+     * @return bool TRUE if page exists, otherwise FALSE.
+     */
+    public function isExistingPage(string $PageName): bool
+    {
+        # look for PHP file for supplied page name
+        $PageFile = $this->findFile(
+            $this->PageFileDirList,
+            $PageName,
+            ["php"]
+        );
+
+        # report to caller that page exists if PHP file was found
+        if ($PageFile !== null) {
+            return true;
+        }
+
+        # look for HTML file for supplied page name
+        $PageFile = $this->findFile(
+            $this->InterfaceDirList,
+            $PageName,
+            [ "tpl", "html" ]
+        );
+
+        # report to caller that page exists if HTML file was found
+        if ($PageFile !== null) {
+            return true;
+        }
+
+        # report to caller that page does not exist
+        return false;
     }
 
     /**
@@ -695,23 +807,12 @@ class ApplicationFramework
     public function getRelativeUrl()
     {
         # retrieve current URL
-        $Url = self::getScriptUrl();
+        $Url = self::getUrlPath();
 
         # remove the base path if present
         $BasePath = $this->Settings["BasePath"];
         if (stripos($Url, $BasePath) === 0) {
             $Url = substr($Url, strlen($BasePath));
-        }
-
-        # if we're being accessed via an alternate domain,
-        #  add the appropriate prefix in
-        if ($this->cleanUrlSupportAvailable() &&
-            self::$RootUrlOverride !== null) {
-            $VHost = $_SERVER["SERVER_NAME"];
-            if (isset($this->AlternateDomainPrefixes[$VHost])) {
-                $ThisPrefix = $this->AlternateDomainPrefixes[$VHost];
-                $Url = $ThisPrefix . "/" . $Url;
-            }
         }
 
         return $Url;
@@ -720,7 +821,6 @@ class ApplicationFramework
     /**
      * Get the full URL to the page.
      * @return string The full URL to the page.
-     * @see ApplicationFramework::rootUrlOverride()
      */
     public function getAbsoluteUrl(): string
     {
@@ -739,7 +839,7 @@ class ApplicationFramework
      * @param bool $IsLiteral If TRUE, do not attempt to prepend "index.php?P=" to page.
      *       (OPTIONAL, defaults to FALSE)
      */
-    public function setJumpToPage($Page, int $Delay = 0, bool $IsLiteral = false)
+    public function setJumpToPage($Page, int $Delay = 0, bool $IsLiteral = false): void
     {
         if (!is_null($Page)
             && (!$IsLiteral)
@@ -755,6 +855,36 @@ class ApplicationFramework
             $this->JumpToPage = $Page;
         }
         $this->JumpToPageDelay = $Delay;
+    }
+
+    /**
+     * Set URL to jump to after PHP page file is executed.
+     * @param string $Url Url to jump to.
+     * @throws InvalidArgumentException If an invalid URL is provided.
+     */
+    public function setJumpToUrl(string $Url): void
+    {
+        # if a relative URL was given, convert to absolute w/in our site
+        if (parse_url($Url, PHP_URL_SCHEME) === null) {
+            $TargetUrl = $this->baseUrl().$Url;
+            if (filter_var($TargetUrl, FILTER_VALIDATE_URL) === false) {
+                throw new InvalidArgumentException(
+                    "Relative URL (".$Url.") provided for setJumpToUrl()"
+                    ." not valid after converting to absolute URL (".$TargetUrl.")."
+                );
+            }
+        } else {
+            if (filter_var($Url, FILTER_VALIDATE_URL) === false) {
+                throw new InvalidArgumentException(
+                    "Invalid URL (".$Url.") provided for setJumpToUrl()."
+                );
+            }
+            $TargetUrl = $Url;
+        }
+
+        # set up page jump
+        $this->JumpToPage = $TargetUrl;
+        $this->JumpToPageDelay = 0;
     }
 
     /**
@@ -775,7 +905,7 @@ class ApplicationFramework
      * @param string $NewSetting New character encoding value string (e.g. "ISO-8859-1").
      * @return string Current character encoding value.
      */
-    public function htmlCharset(string $NewSetting = null): string
+    public function htmlCharset(?string $NewSetting = null): string
     {
         if ($NewSetting !== null) {
             $this->HtmlCharset = $NewSetting;
@@ -792,10 +922,10 @@ class ApplicationFramework
      * just local (cached) minimized versions being generated and/or used.
      * @param string|array $File File name or array of file names.
      */
-    public function doNotMinimizeFile($File)
+    public function doNotMinimizeFile($File): void
     {
         if (!is_array($File)) {
-            $File = array($File);
+            $File = [ $File ];
         }
         $this->DoNotMinimizeList = array_merge($this->DoNotMinimizeList, $File);
     }
@@ -810,7 +940,7 @@ class ApplicationFramework
      * @param bool $NewValue TRUE to enable use of tag, or FALSE to disable.  (OPTIONAL)
      * @return bool TRUE if tag is currently used, otherwise FALSE..
      */
-    public function useBaseTag(bool $NewValue = null): bool
+    public function useBaseTag(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->UseBaseTag = $NewValue ? true : false;
@@ -825,7 +955,7 @@ class ApplicationFramework
      * @param bool $NewSetting TRUE to suppress HTML output, FALSE to not suppress HTML
      *       output.  (OPTIONAL, defaults to TRUE)
      */
-    public function suppressHTMLOutput(bool $NewSetting = true)
+    public function suppressHtmlOutput(bool $NewSetting = true): void
     {
         $this->SuppressHTML = $NewSetting;
     }
@@ -837,7 +967,7 @@ class ApplicationFramework
      * @param bool $NewSetting TRUE to suppress standard page start/end, FALSE
      *       to not suppress standard start/end.  (OPTIONAL, defaults to TRUE)
      */
-    public function suppressStandardPageStartAndEnd(bool $NewSetting = true)
+    public function suppressStandardPageStartAndEnd(bool $NewSetting = true): void
     {
         $this->SuppressStdPageStartAndEnd = $NewSetting;
     }
@@ -847,7 +977,7 @@ class ApplicationFramework
      * @param bool $NewValue TRUE to suppress, or FALSE to allow.
      * @return bool TRUE if suppressed, otherwise FALSE.
      */
-    public static function suppressSessionInitialization(bool $NewValue = null): bool
+    public static function suppressSessionInitialization(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             self::$SuppressSessionInitialization = $NewValue;
@@ -860,7 +990,7 @@ class ApplicationFramework
      * @param string $UIName Name of new default user interface.  (OPTIONAL)
      * @return string Name of currently default user interface.
      */
-    public static function defaultUserInterface(string $UIName = null): string
+    public static function defaultUserInterface(?string $UIName = null): string
     {
         if ($UIName !== null) {
             self::$DefaultUI = $UIName;
@@ -874,7 +1004,7 @@ class ApplicationFramework
      * @param string $UIName Name of new active user interface.  (OPTIONAL)
      * @return string Name of currently active user interface.
      */
-    public static function activeUserInterface(string $UIName = null): string
+    public static function activeUserInterface(?string $UIName = null): string
     {
         if ($UIName !== null) {
             self::$ActiveUI = preg_replace("/^SPTUI--/", "", $UIName);
@@ -892,14 +1022,14 @@ class ApplicationFramework
      *       expression will be returned.  (OPTIONAL)
      * @return array List of users interfaces (canonical name => label).
      */
-    public function getUserInterfaces(string $FilterExp = null): array
+    public function getUserInterfaces(?string $FilterExp = null): array
     {
         if (!isset(self::$UserInterfaceListCache[$FilterExp])) {
             # retrieve paths to user interface directories
             $Paths = $this->getUserInterfacePaths($FilterExp);
 
             # start out with an empty list
-            self::$UserInterfaceListCache[$FilterExp] = array();
+            self::$UserInterfaceListCache[$FilterExp] = [];
 
             # for each possible UI directory
             foreach ($Paths as $CanonicalName => $Path) {
@@ -911,9 +1041,9 @@ class ApplicationFramework
 
                     # if the UI name looks reasonable
                     if (($Label !== false) && strlen(trim($Label))) {
-                        # use read name
+                        # use UI name read from NAME file
                         self::$UserInterfaceListCache[$FilterExp][$CanonicalName] =
-                            trim($Label);
+                                trim($Label);
                     }
                 }
 
@@ -921,7 +1051,7 @@ class ApplicationFramework
                 if (!isset(self::$UserInterfaceListCache[$FilterExp][$CanonicalName])) {
                     # use base directory for name
                     self::$UserInterfaceListCache[$FilterExp][$CanonicalName] =
-                        basename($Path);
+                            basename($Path);
                 }
             }
         }
@@ -938,7 +1068,7 @@ class ApplicationFramework
      *       expression will be returned.  (OPTIONAL)
      * @return array List of users interface paths (canonical name => interface path)
      */
-    public function getUserInterfacePaths(string $FilterExp = null): array
+    public function getUserInterfacePaths(?string $FilterExp = null): array
     {
         if (!isset(self::$UserInterfacePathsCache[$FilterExp])) {
             # extract possible UI locations from interface location list
@@ -970,12 +1100,12 @@ class ApplicationFramework
             $InterfaceDirs = array_reverse($InterfaceDirs);
 
             # start out with an empty list
-            self::$UserInterfacePathsCache[$FilterExp] = array();
-            $InterfacesFound = array();
+            self::$UserInterfacePathsCache[$FilterExp] = [];
+            $InterfacesFound = [];
 
             # for each possible UI directory
             foreach ($InterfaceDirs as $InterfaceDir) {
-                # check if the dir exists
+                # skip directory if it does not exist
                 if (!is_dir($InterfaceDir)) {
                     continue;
                 }
@@ -985,7 +1115,7 @@ class ApplicationFramework
                     $this->logError(self::LOGLVL_WARNING, "Unable to read"
                             ." interface directory \"".$InterfaceDir."\".");
                 } else {
-                    # for each file in current directory
+                    # for each file in directory
                     while (($DirEntry = $Dir->read()) !== false) {
                         $InterfacePath = $InterfaceDir . "/" . $DirEntry;
 
@@ -994,10 +1124,10 @@ class ApplicationFramework
                         #   or that isn't a directory
                         #   or that doesn't match the filter regex (if supplied)
                         if (in_array($DirEntry, $InterfacesFound)
-                            || !preg_match('/^[a-zA-Z0-9]+$/', $DirEntry)
-                            || !is_dir($InterfacePath)
-                            || (($FilterExp !== null)
-                                && !preg_match($FilterExp, $InterfacePath))) {
+                                || !preg_match('/^[a-zA-Z0-9]+$/', $DirEntry)
+                                || !is_dir($InterfacePath)
+                                || (($FilterExp !== null)
+                                    && !preg_match($FilterExp, $InterfacePath))) {
                             continue;
                         }
 
@@ -1022,7 +1152,7 @@ class ApplicationFramework
      *      available with that name.
      * @throws Exception If setting value is found but multi-value.
      */
-    public function getInterfaceSetting(string $SettingName)
+    public function getInterfaceSetting(string $SettingName): ?string
     {
         if (is_null($this->InterfaceSettingsCache)) {
             $this->InterfaceSettingsCache = $this->loadInterfaceSettings();
@@ -1043,7 +1173,7 @@ class ApplicationFramework
      *      available with that name.
      * @throws Exception If setting value is found but not multi-value.
      */
-    public function getMultiValueInterfaceSetting(string $SettingName)
+    public function getMultiValueInterfaceSetting(string $SettingName): ?array
     {
         if (is_null($this->InterfaceSettingsCache)) {
             $this->InterfaceSettingsCache = $this->loadInterfaceSettings();
@@ -1091,10 +1221,10 @@ class ApplicationFramework
         &$Arg7 = self::NOVALUE,
         &$Arg8 = self::NOVALUE,
         &$Arg9 = self::NOVALUE
-    ) {
+    ): void {
         $FuncIndex = count($this->PostProcessingFuncs);
         $this->PostProcessingFuncs[$FuncIndex]["Function"] = $Function;
-        $this->PostProcessingFuncs[$FuncIndex]["Arguments"] = array();
+        $this->PostProcessingFuncs[$FuncIndex]["Arguments"] = [];
         $Index = 1;
         while (isset(${"Arg" . $Index}) && (${"Arg" . $Index} !== self::NOVALUE)) {
             $this->PostProcessingFuncs[$FuncIndex]["Arguments"][$Index]
@@ -1111,21 +1241,21 @@ class ApplicationFramework
      * everything from CONTEXT_START, variables that begin with "H_" from CONTEXT_PAGE,
      * and nothing from all other files.  (NOTE: There is currently no purpose for
      * setting a filter for CONTEXT_END, because it is the last file loaded.)
-     * @param string $Context Context to set for (CONTEXT_PAGE,
+     * @param int $Context Context to set for (CONTEXT_PAGE,
      *      CONTEXT_INTERFACE, CONTEXT_START, CONTEXT_END).
-     * @param mixed $NewSetting TRUE to allow everything, FALSE to allow nothing,
-     *      or a prefix or array of prefixes to match the beginning of variable
-     *      names.
+     * @param bool|array|string $NewSetting TRUE to allow everything, FALSE
+     *      to allow nothing, or a prefix or array of prefixes to match the
+     *      beginning of variable names.
      * @throws InvalidArgumentException If new setting appears invalid.
      */
-    public function setContextFilter(string $Context, $NewSetting)
+    public function setContextFilter(int $Context, $NewSetting): void
     {
         if (($NewSetting === true)
             || ($NewSetting === false)
             || is_array($NewSetting)) {
             $this->ContextFilters[$Context] = $NewSetting;
         } elseif (is_string($NewSetting)) {
-            $this->ContextFilters[$Context] = array($NewSetting);
+            $this->ContextFilters[$Context] = [ $NewSetting ];
         } else {
             throw new InvalidArgumentException(
                 "Invalid setting (" . $NewSetting . ")."
@@ -1148,7 +1278,7 @@ class ApplicationFramework
      * @param string $FileName Base file name.
      * @return string|null Full relative path name of file or NULL if file not found.
      */
-    public function gUIFile(string $FileName)
+    public function gUIFile(string $FileName): ?string
     {
         # determine which location to search based on file suffix
         $FileType = $this->getFileType($FileName);
@@ -1185,6 +1315,9 @@ class ApplicationFramework
 
                             # remember to strip off cache location (.htaccess will handle)
                             $CacheLocationToStrip = self::$JSMinCacheDir;
+
+                            # set flag to indicate that we have used compiled JS files
+                            $this->MinimizedJsFileUsed = true;
                         }
                     }
                 }
@@ -1205,6 +1338,9 @@ class ApplicationFramework
 
                 # remember to strip off cache location (.htaccess will handle)
                 $CacheLocationToStrip = self::$ScssCacheDir;
+
+                # set flag to indicate that we have used compiled CSS files
+                $this->CompiledCssFileUsed = true;
             }
             # otherwise just search for the file
         } else {
@@ -1244,14 +1380,96 @@ class ApplicationFramework
     }
 
     /**
+     * Get HTML tag for loading specified CSS, JavaScript, or image file,
+     * using a relative URL for the file.  If the file is not found or is
+     * an unknown or unsupported type of file, an empty string is returned,
+     * and a LOGLVL_WARNING message is written to the log.
+     * @param string $FileName Base file name.
+     * @param ?array $ExtraAttribs Any additional attributes that should
+     *      be included in HTML tag, with attribute names for the index.
+     *      Attributes with no value should be set to TRUE or FALSE and
+     *      will only be included if the value is TRUE.  (OPTIONAL)
+     * @return string Tag to load file, or empty string if file was not
+     *      found or file type was unknown or unsupported.
+     */
+    public function gUIFileTag(
+        string $FileName,
+        ?array $ExtraAttribs = null
+    ): string {
+        # find specific file to use (with full relative path)
+        $FullFileName = $this->gUIFile($FileName);
+        if ($FullFileName === null) {
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "Could not find UI file \"".$FileName."\" to generate tag for."
+                        ." (Active UI: ".self::$ActiveUI.")"
+            );
+            return "";
+        }
+
+        # generate tag for specified file
+        $Tag = $this->getUIFileLoadingTag($FullFileName, $ExtraAttribs);
+        if ($Tag === "") {
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "Could not generate tag for UI file \"".$FileName."\"."
+            );
+            return "";
+        }
+        return $Tag;
+    }
+
+    /**
+     * Get HTML tag for loading specified CSS, JavaScript, or image file,
+     * using an absolute URL for the file.  If the file is not found or is
+     * an unknown or unsupported type of file, an empty string is returned,
+     * and a LOGLVL_WARNING message is written to the log.
+     * @param string $FileName Base file name.
+     * @param ?array $ExtraAttribs Any additional attributes that should
+     *      be included in HTML tag, with attribute names for the index.
+     *      Attributes with no value should be set to TRUE or FALSE and
+     *      will only be included if the value is TRUE.  (OPTIONAL)
+     * @return string Tag to load file, or empty string if file was not
+     *      found or file type was unknown or unsupported.
+     */
+    public function gUIFileTagAbs(
+        string $FileName,
+        ?array $ExtraAttribs = null
+    ): string {
+        # find specific file to use (with full relative path)
+        $FullFileName = $this->gUIFile($FileName);
+        if ($FullFileName === null) {
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "Could not find UI file \"".$FileName."\" to generate tag for."
+                        ." (Active UI: ".self::$ActiveUI.")"
+            );
+            return "";
+        }
+        $FullFileName = $this->baseUrl().$FullFileName;
+
+        # generate tag for specified file
+        $Tag = $this->getUIFileLoadingTag($FullFileName, $ExtraAttribs);
+        if ($Tag === "") {
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "Could not generate tag for UI file \"".$FileName."\"."
+            );
+            return "";
+        }
+        return $Tag;
+    }
+
+    /**
      * Search UI directories for specified interface (image, CSS, JavaScript
      * etc) file and print name of correct file with leading path.  If the file
      * is not found, nothing is printed.  This is intended to be called from
      * within interface HTML files to ensure that the correct file is loaded,
      * regardless of which interface the file is in.
      * @param string $FileName Base file name (without leading path).
+     * @deprecated
      */
-    public function pUIFile(string $FileName)
+    public function pUIFile(string $FileName): void
     {
         $FullFileName = $this->gUIFile($FileName);
         if ($FullFileName) {
@@ -1275,18 +1493,13 @@ class ApplicationFramework
      * be included if found.
      * @param string|array $FileNames File name or array of file names,
      *       without leading path.
-     * @param string $AdditionalAttributes Any additional attributes that
-     *       should be included in HTML tag.  (OPTIONAL)
      */
-    public function includeUIFile($FileNames, string $AdditionalAttributes = null)
+    public function includeUIFile($FileNames): void
     {
         # convert file name to array if necessary
         if (!is_array($FileNames)) {
             $FileNames = [$FileNames];
         }
-
-        # pad additional attributes if supplied
-        $AddAttribs = $AdditionalAttributes ? " " . $AdditionalAttributes : "";
 
         # for each file
         foreach ($FileNames as $BaseFileName) {
@@ -1296,7 +1509,7 @@ class ApplicationFramework
             # if file was found
             if ($FileName) {
                 # print appropriate tag
-                print $this->getUIFileLoadingTag($FileName, $AdditionalAttributes);
+                print $this->getUIFileLoadingTag($FileName);
             } else {
                 $this->logError(
                     self::LOGLVL_WARNING,
@@ -1325,14 +1538,50 @@ class ApplicationFramework
                     );
                     $OverrideFileName = $this->gUIFile($BaseOverrideFileName);
                     if ($OverrideFileName) {
-                        print $this->getUIFileLoadingTag(
-                            $OverrideFileName,
-                            $AdditionalAttributes
-                        );
+                        print $this->getUIFileLoadingTag($OverrideFileName);
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Clear all CSS files compiled from SCSS.  This must be called ONLY
+     * before any CSS files have been generated on this page load, via calls
+     * to gUIFile(), gUIFileTag(), gUIFileTagAbs(), pUIFile(), includeUIFile()
+     * or other code that may call any of those methods.  Calling this method
+     * may disrupt other page loads or reloads in progress (because the CSS
+     * file they cite may no longer exist), so should not be done lightly.
+     * @return bool TRUE if removal succeeded, otherwise FALSE.
+     * @throws Exception If called after compiled CSS file has been used.
+     */
+    public function clearCompiledCssFiles(): bool
+    {
+        if ($this->CompiledCssFileUsed) {
+            throw new Exception("Attempt to clear compiled CSS files after"
+                    ." compiled file has already been used.");
+        }
+        return StdLib::deleteDirectoryTree(self::$ScssCacheDir);
+    }
+
+    /**
+     * Clear all JavaScript files we have minimized.  This must be called ONLY
+     * before any JavaScript files have been minimized on this page load, via
+     * calls to gUIFile(), gUIFileTag(), gUIFileTagAbs(), pUIFile(),
+     * includeUIFile() or other code that may call any of those methods.
+     * Calling this method may disrupt other page loads or reloads in progress
+     * (because the minimized JavaScript file they cite may no longer exist),
+     * so should not be done lightly.
+     * @return bool TRUE if removal succeeded, otherwise FALSE.
+     * @throws Exception If called after compiled CSS file has been used.
+     */
+    public function clearMinimizedJavascriptFiles(): bool
+    {
+        if ($this->MinimizedJsFileUsed) {
+            throw new Exception("Attempt to clear minimized JS files after"
+                    ." minimized file has already been used.");
+        }
+        return StdLib::deleteDirectoryTree(self::$JSMinCacheDir);
     }
 
     /**
@@ -1341,7 +1590,7 @@ class ApplicationFramework
      * characters are the same.
      * @param string $Pattern File name or file name pattern.
      */
-    public function doNotUrlFingerprint(string $Pattern)
+    public function doNotUrlFingerprint(string $Pattern): void
     {
         $this->UrlFingerprintBlacklist[] = $Pattern;
     }
@@ -1357,7 +1606,7 @@ class ApplicationFramework
      *       respect to other required files of the same type.  (OPTIONAL,
      *       defaults to ORDER_MIDDLE)
      */
-    public function requireUIFile($FileNames, int $Order = self::ORDER_MIDDLE)
+    public function requireUIFile($FileNames, int $Order = self::ORDER_MIDDLE): void
     {
         # convert file names to array if necessary
         if (!is_array($FileNames)) {
@@ -1431,7 +1680,7 @@ class ApplicationFramework
      * Add meta tag to page output.
      * @param array $Attribs Tag attributes, with attribute names for the index.
      */
-    public function addMetaTag(array $Attribs)
+    public function addMetaTag(array $Attribs): void
     {
         # add new meta tag to list
         $this->MetaTags[] = $Attribs;
@@ -1445,7 +1694,7 @@ class ApplicationFramework
      * @param array $UniqueAttribs Tag attribute(s) that must be unique, with
      *       attribute names for the index.  (OPTIONAL)
      */
-    public function addMetaTagOnce(array $Attribs, array $UniqueAttribs = null)
+    public function addMetaTagOnce(array $Attribs, ?array $UniqueAttribs = null): void
     {
         # add new meta tag to list
         $this->UniqueMetaTags[] = [
@@ -1481,7 +1730,7 @@ class ApplicationFramework
         array $ReqArgs = [],
         array $OptArgs = [],
         array $Pages = []
-    ) {
+    ): void {
         if (!strlen($Keyword) || !ctype_alnum(str_replace("-", "", $Keyword))) {
             throw new InvalidArgumentException("Invalid insertion keyword ('" . $Keyword
                 . "') passed from " . StdLib::getMyCaller() . ".");
@@ -1505,7 +1754,7 @@ class ApplicationFramework
      * @param array $Args Callback arguments, with argument names for the index.
      * @return string Formatted insertion keyword string.
      */
-    public function formatInsertionKeyword(string $Keyword, array $Args = null): string
+    public function formatInsertionKeyword(string $Keyword, ?array $Args = null): string
     {
         $ArgString = "";
         if (($Args !== null) && count($Args)) {
@@ -1592,33 +1841,61 @@ class ApplicationFramework
      * @see ApplicationFramework::doNotCacheCurrentPage()
      */
     public function pageCacheEnabled(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
     }
 
     /**
-     * Get/set page cache expiration period in seconds.  The default is ten
-     * minutes (600 seconds).
-     * @param int $NewValue Expiration period in seconds.  (OPTIONAL)
+     * Get page cache expiration period in minutes.
+     * @return int Current setting.
+     */
+    public function getPageCacheExpirationPeriod(): int
+    {
+        return $this->updateIntSetting(substr(__FUNCTION__, 3));
+    }
+
+    /**
+     * Set page cache expiration period in minutes.  The default is 24
+     * hours (1440 minutes).
+     * @param int $NewValue Expiration period in minutes.  (OPTIONAL)
+     * @param bool $Persistent If TRUE the new value will be saved (i.e.
+     *       persistent across page loads), otherwise the value will apply to
+     *       just the current page load.  (OPTIONAL, defaults to FALSE)
+     */
+    public function setPageCacheExpirationPeriod(
+        ?int $NewValue = null,
+        bool $Persistent = false
+    ): void {
+        $this->updateIntSetting(substr(__FUNCTION__, 3), $NewValue, $Persistent);
+    }
+
+    /**
+     * Get/set page cache expiration period in minutes.  The default is
+     * 24 hours (1440 minutes).
+     * @param int $NewValue Expiration period in minutes.  (OPTIONAL)
      * @param bool $Persistent If TRUE the new value will be saved (i.e.
      *       persistent across page loads), otherwise the value will apply to
      *       just the current page load.  (OPTIONAL, defaults to FALSE)
      * @return int Current setting.
+     * @deprecated
      */
     public function pageCacheExpirationPeriod(
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
-        return $this->updateIntSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
+        if ($NewValue !== null) {
+            $this->setPageCacheExpirationPeriod($NewValue, $Persistent);
+        }
+        return $this->getPageCacheExpirationPeriod();
     }
 
     /**
      * Prevent the current page from being cached.
      * @see ApplicationFramework::pageCachingEnabled()
      */
-    public function doNotCacheCurrentPage()
+    public function doNotCacheCurrentPage(): void
     {
         $this->CacheCurrentPage = false;
     }
@@ -1629,7 +1906,7 @@ class ApplicationFramework
      * @param array $Pages List of pages.  (OPTIONAL, defaults to current page)
      * @see ApplicationFramework::clearPageCacheForTag()
      */
-    public function addPageCacheTag(string $Tag, array $Pages = null)
+    public function addPageCacheTag(string $Tag, ?array $Pages = null): void
     {
         # normalize tag
         $Tag = strtolower($Tag);
@@ -1656,7 +1933,7 @@ class ApplicationFramework
      * @param string $Tag Tag to clear pages for.
      * @see ApplicationFramework::addPageCacheTag()
      */
-    public function clearPageCacheForTag(string $Tag)
+    public function clearPageCacheForTag(string $Tag): void
     {
         # get tag ID
         $TagId = $this->getPageCacheTagId($Tag);
@@ -1675,7 +1952,7 @@ class ApplicationFramework
     /**
      * Clear all pages from page cache.
      */
-    public function clearPageCache()
+    public function clearPageCache(): void
     {
         # clear all page cache tables
         $this->DB->query("TRUNCATE TABLE AF_CachedPages");
@@ -1685,21 +1962,61 @@ class ApplicationFramework
     }
 
     /**
-     * Get page cache information.
-     * @return array Associative array of cache info, with entries for
-     *       "NumberOfEntries" and "OldestTimestamp" (date on oldest cache
-     *       entry as a Unix timestamp).
+     * Get page cache information.  The key difference between this method
+     * and getPageCacheExtendedInfo() is that this method omits information
+     * that takes significantly more time to retrieve.
+     * @return array Associative array of cache info, with these entries:
+     *      "NumberOfEntries" - number of entris in page cache
+     *      "OldestTimestamp" - date on oldest cache entry (Unix timestamp)
+     *      "NewestTimestamp" - date on newest cache entry (Unix timestamp)
      */
     public function getPageCacheInfo(): array
     {
-        $Length = $this->DB->queryValue("SELECT COUNT(*) AS CacheLen"
-            . " FROM AF_CachedPages", "CacheLen");
-        $Oldest = $this->DB->queryValue("SELECT CachedAt FROM AF_CachedPages"
-            . " ORDER BY CachedAt ASC LIMIT 1", "CachedAt");
-        return array(
-            "NumberOfEntries" => $Length,
-            "OldestTimestamp" => !is_null($Oldest) ? strtotime($Oldest) : null,
-        );
+        $Query = "SELECT"
+                ." COUNT(*) AS NumberOfEntries, "
+                ." UNIX_TIMESTAMP(MIN(CachedAt)) AS OldestTimestamp,"
+                ." UNIX_TIMESTAMP(MAX(CachedAt)) AS NewestTimestamp"
+                ." FROM AF_CachedPages";
+        $this->DB->query($Query);
+        $Row = $this->DB->fetchRow();
+        assert(is_array($Row));
+        return $Row;
+    }
+
+    /**
+     * Get extended page cache information.  The difference between this
+     * method and getPageCacheInfo() is that this method adds information
+     * that takes significantly more time to retrieve.
+     * @return array In addition to the values returned by getPageCacheInfo(),
+     *      this method adds these entries:
+     *      "PageInfo" - associative array of associative arrays with page
+     *          names for the outer index, and the following for the inner
+     *          index and values:
+     *              "AverageSize" - average size of cached page (bytes)
+     *              "Count" - number of times page appears in cache
+     *              "OldestTimestamp" - date on oldest cache entry for
+     *                  page (Unix timestamp)
+     *              "NewestTimestamp" - date on newest cache entry for
+     *                  page (Unix timestamp)
+     *              "Page" - page name (same as index)
+     */
+    public function getPageCacheExtendedInfo(): array
+    {
+        $Query = "SELECT"
+                ." COUNT(*) AS Count,"
+                ." UNIX_TIMESTAMP(MIN(CachedAt)) AS OldestTimestamp,"
+                ." UNIX_TIMESTAMP(MAX(CachedAt)) AS NewestTimestamp,"
+                ." AVG(LENGTH(PageContent)) AS AverageSize,"
+                ." REGEXP_REPLACE(Fingerprint,'-[0-9a-f]+$','') AS Page"
+                ." FROM AF_CachedPages GROUP BY Page";
+        $this->DB->query($Query);
+        $ExtendedInfo["PageInfo"] = [];
+        while ($Row = $this->DB->fetchRow()) {
+            $ExtendedInfo["PageInfo"][$Row["Page"]] = $Row;
+            $ExtendedInfo["PageInfo"][$Row["Page"]] = $Row;
+            $ExtendedInfo["PageInfo"][$Row["Page"]] = $Row;
+        }
+        return $this->getPageCacheInfo() + $ExtendedInfo;
     }
 
     /**
@@ -1719,10 +2036,10 @@ class ApplicationFramework
     /**
      * Get/set expiration date/time for new cached version of current page.
      * @param string $Date New expiration date.  (OPTIONAL)
-     * @return string|bool Current expiration date, in SQL date format, or FALSE if
+     * @return string|false Current expiration date, in SQL date format, or FALSE if
      *      no expiration date set.
      */
-    public function expirationDateForCurrentPage(string $Date = null)
+    public function expirationDateForCurrentPage(?string $Date = null)
     {
         if ($Date !== null) {
             $DateStamp = strtotime($Date);
@@ -1759,7 +2076,7 @@ class ApplicationFramework
     public function registerCallbackForPageCacheHit(
         callable $Func,
         array $Params
-    ) {
+    ): void {
         if (is_array($Func) && is_object($Func[0])) {
             throw new InvalidArgumentException("Instance of ".get_class($Func[0])
                     ." passed in for callback.  A static method must be used"
@@ -1792,7 +2109,7 @@ class ApplicationFramework
      * @see slowPageLoadThreshold()
      */
     public function logSlowPageLoads(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -1809,7 +2126,7 @@ class ApplicationFramework
      * @see logSlowPageLoads()
      */
     public function slowPageLoadThreshold(
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
         return $this->updateIntSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -1829,7 +2146,7 @@ class ApplicationFramework
      * @see highMemoryUsageThreshold()
      */
     public function logHighMemoryUsage(
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -1843,10 +2160,26 @@ class ApplicationFramework
      *       just the current page load.  (OPTIONAL, defaults to FALSE)
      * @return bool TRUE if logging is enabled, otherwise FALSE.
      */
-    public function logPhpNotices(bool $NewValue = null, $Persistent = false): bool
+    public function logPhpNotices(?bool $NewValue = null, $Persistent = false): bool
     {
         return !array_key_exists("LogPhpNotices", $this->Settings) ? false
                 : $this->updateBoolSetting("LogPhpNotices", $NewValue, $Persistent);
+    }
+
+    /**
+     * Get/set whether logging of database cache pruning is enabled.  Pruning
+     * activity will be logged with LOGLVL_INFO if enabled.
+     * @param bool $NewValue TRUE to enable logging or FALSE to disable.  (OPTIONAL)
+     * @param bool $Persistent If TRUE the new value will be saved (i.e.
+     *       persistent across page loads), otherwise the value will apply to
+     *       just the current page load.  (OPTIONAL, defaults to FALSE)
+     * @return bool TRUE if logging is enabled, otherwise FALSE.
+     */
+    public function logDBCachePruning(
+        ?bool $NewValue = null,
+        bool $Persistent = false
+    ): bool {
+        return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
     }
 
     /**
@@ -1861,7 +2194,7 @@ class ApplicationFramework
      * @see logHighMemoryUsage()
      */
     public function highMemoryUsageThreshold(
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
         return $this->updateIntSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
@@ -1930,15 +2263,15 @@ class ApplicationFramework
                 return false;
             } else {
                 # format log entry
-                $ErrorAbbrevs = array(
+                $ErrorAbbrevs = [
                     self::LOGLVL_FATAL => "FTL",
                     self::LOGLVL_ERROR => "ERR",
                     self::LOGLVL_WARNING => "WRN",
                     self::LOGLVL_INFO => "INF",
                     self::LOGLVL_DEBUG => "DBG",
                     self::LOGLVL_TRACE => "TRC",
-                );
-                $Msg = str_replace(array("\n", "\t", "\r"), " ", $Msg);
+                ];
+                $Msg = str_replace([ "\n", "\t", "\r" ], " ", $Msg);
                 $Msg = substr(trim($Msg), 0, self::LOGFILE_MAX_LINE_LENGTH);
                 $LogEntry = date(StdLib::SQL_DATE_FORMAT)
                     . " " . ($this->isRunningInBackground() ? "B" : "F")
@@ -1958,6 +2291,43 @@ class ApplicationFramework
             # report to caller that message was not logged
             return false;
         }
+    }
+
+    /**
+     * Write debug message and (optionally) contents of variable to log.
+     * Using the AF class alias, this method can be called like this:
+     *      \AF::logDebug("Message or variable name", $OptionalVariable);
+     * @param string $Msg Debug message to be written to log.
+     * @param mixed $Variable Variable to include content of in logged
+     *      debug message.  [OPTIONAL]
+     */
+    public static function logDebug(string $Msg, $Variable = null): void
+    {
+        # if a variable was supplied in addition to a message
+        if (func_num_args() > 1) {
+            # limit output in case Xdebug version of var_dump() is used
+            ini_set('xdebug.var_display_max_depth', "5");
+            ini_set('xdebug.var_display_max_children', "256");
+            ini_set('xdebug.var_display_max_data', "1024");
+
+            # dump variable contents
+            ob_start();
+            var_dump($Variable);
+            $DumpLine = __LINE__ - 1;
+            $DumpContent = (string)ob_get_contents();
+            ob_end_clean();
+
+            # strip out file/line and HTML tags if inserted by Xdebug
+            $DumpContent = str_replace(__FILE__.":"
+                    .$DumpLine.":", "", $DumpContent);
+            $DumpContent = strip_tags($DumpContent);
+
+            # add variable contents dump to message to be logged
+            $Msg .= " ".$DumpContent;
+        }
+
+        # write message to log
+        self::getInstance()->logError(self::LOGLVL_DEBUG, $Msg);
     }
 
     /**
@@ -1984,7 +2354,7 @@ class ApplicationFramework
      * @return int Current error logging level.
      * @see ApplicationFramework::logError()
      */
-    public function loggingLevel(int $NewValue = null, bool $Persistent = false): int
+    public function loggingLevel(?int $NewValue = null, bool $Persistent = false): int
     {
         # constrain new level (if supplied) to within legal bounds
         if ($NewValue !== null) {
@@ -2001,7 +2371,7 @@ class ApplicationFramework
      * @param string $NewValue New log file name.  (OPTIONAL)
      * @return string Current log file name.
      */
-    public function logFile(string $NewValue = null): string
+    public function logFile(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->LogFileName = $NewValue;
@@ -2043,7 +2413,7 @@ class ApplicationFramework
                         * ($Limit + 1)))
             );
             fseek($FHandle, $SeekPosition);
-            $Block = fread($FHandle, ($FileSize - $SeekPosition));
+            $Block = fread($FHandle, max(1, $FileSize - $SeekPosition));
             fclose($FHandle);
             if ($Block === false) {
                 $this->logError(self::LOGLVL_WARNING, "Unable to read from log file \""
@@ -2059,7 +2429,7 @@ class ApplicationFramework
             # load all lines from log file
             $Lines = file($LogFile, FILE_IGNORE_NEW_LINES);
             if ($Lines === false) {
-                return array();
+                return [];
             }
         }
 
@@ -2067,7 +2437,7 @@ class ApplicationFramework
         $Lines = array_reverse($Lines);
 
         # for each log file line
-        $Entries = array();
+        $Entries = [];
         foreach ($Lines as $Line) {
             # attempt to parse line into component parts
             $Pieces = explode(" ", $Line, 5);
@@ -2078,14 +2448,14 @@ class ApplicationFramework
             $Msg = isset($Pieces[4]) ? $Pieces[4] : "";
 
             # skip line if it looks invalid
-            $ErrorAbbrevs = array(
+            $ErrorAbbrevs = [
                 "FTL" => self::LOGLVL_FATAL,
                 "ERR" => self::LOGLVL_ERROR,
                 "WRN" => self::LOGLVL_WARNING,
                 "INF" => self::LOGLVL_INFO,
                 "DBG" => self::LOGLVL_DEBUG,
                 "TRC" => self::LOGLVL_TRACE,
-            );
+            ];
             if ((($Back != "F") && ($Back != "B"))
                 || !array_key_exists($Level, $ErrorAbbrevs)
                 || !strlen($Msg)) {
@@ -2093,12 +2463,12 @@ class ApplicationFramework
             }
 
             # convert parts into appropriate values and add to entries
-            $Entries[] = array(
+            $Entries[] = [
                 "Time" => strtotime($Date . " " . $Time),
                 "Background" => ($Back == "B") ? true : false,
                 "Level" => $ErrorAbbrevs[$Level],
                 "Message" => $Msg,
-            );
+            ];
         }
 
         # return entries to caller
@@ -2190,17 +2560,17 @@ class ApplicationFramework
      * @param int $EventType Type of event (constant).  (OPTIONAL if EventsOrEventName
      *       is an array of events)
      */
-    public function registerEvent($EventsOrEventName, int $EventType = null)
+    public function registerEvent($EventsOrEventName, ?int $EventType = null): void
     {
         # convert parameters to array if not already in that form
         $Events = is_array($EventsOrEventName) ? $EventsOrEventName
-            : array($EventsOrEventName => $EventType);
+            : [ $EventsOrEventName => $EventType ];
 
         # for each event
         foreach ($Events as $Name => $Type) {
             # store event information
             $this->RegisteredEvents[$Name]["Type"] = $Type;
-            $this->RegisteredEvents[$Name]["Hooks"] = array();
+            $this->RegisteredEvents[$Name]["Hooks"] = [];
         }
     }
 
@@ -2247,12 +2617,12 @@ class ApplicationFramework
      */
     public function hookEvent(
         $EventsOrEventName,
-        callable $Callback = null,
+        ?callable $Callback = null,
         int $Order = self::ORDER_MIDDLE
     ): bool {
         # convert parameters to array if not already in that form
         $Events = is_array($EventsOrEventName) ? $EventsOrEventName
-            : array($EventsOrEventName => $Callback);
+            : [ $EventsOrEventName => $Callback ];
 
         # for each event
         $Success = true;
@@ -2267,7 +2637,7 @@ class ApplicationFramework
                 } elseif (isset($this->RegisteredEvents[$EventName])) {
                     # add callback for event
                     $this->RegisteredEvents[$EventName]["Hooks"][]
-                        = array("Callback" => $EventCallback, "Order" => $Order);
+                            = [ "Callback" => $EventCallback, "Order" => $Order ];
 
                     # sort callbacks by order
                     if (count($this->RegisteredEvents[$EventName]["Hooks"]) > 1) {
@@ -2307,12 +2677,13 @@ class ApplicationFramework
      */
     public function unhookEvent(
         $EventsOrEventName,
-        callable $Callback = null,
+        ?callable $Callback = null,
         int $Order = self::ORDER_MIDDLE
     ): int {
         # convert parameters to array if not already in that form
-        $Events = is_array($EventsOrEventName) ? $EventsOrEventName
-            : array($EventsOrEventName => $Callback);
+        $Events = is_array($EventsOrEventName)
+                ? $EventsOrEventName
+                : [ $EventsOrEventName => $Callback ];
 
         # for each event
         $UnhookCount = 0;
@@ -2321,16 +2692,11 @@ class ApplicationFramework
             if (isset($this->RegisteredEvents[$EventName])
                 && count($this->RegisteredEvents[$EventName])) {
                 # if this callback has been hooked for this event
-                $CallbackData = array("Callback" => $EventCallback, "Order" => $Order);
-                if (in_array(
-                    $CallbackData,
-                    $this->RegisteredEvents[$EventName]["Hooks"]
-                )) {
+                $CallbackData = [ "Callback" => $EventCallback, "Order" => $Order ];
+                $Hooks = $this->RegisteredEvents[$EventName]["Hooks"];
+                if (in_array($CallbackData, $Hooks)) {
                     # unhook callback
-                    $HookIndex = array_search(
-                        $CallbackData,
-                        $this->RegisteredEvents[$EventName]["Hooks"]
-                    );
+                    $HookIndex = array_search($CallbackData, $Hooks);
                     unset($this->RegisteredEvents[$EventName]["Hooks"][$HookIndex]);
                     $UnhookCount++;
                 }
@@ -2345,11 +2711,12 @@ class ApplicationFramework
      * Signal that an event has occured.
      * @param string $EventName Name of event being signaled.
      * @param array $Parameters Associative array of parameters for event,
-     *       with CamelCase names as indexes.  The order of the array
-     *       MUST correspond to the order of the parameters expected by the
-     *       signal handlers.  (OPTIONAL)
-     * @return mixed Appropriate return value for event type.  Returns NULL if no event
-     *       with specified name was registered and for EVENTTYPE_DEFAULT events.
+     *      with CamelCase names as indexes.  The order of the array
+     *      MUST correspond to the order of the parameters expected by the
+     *      signal handlers.  (OPTIONAL)
+     * @return mixed Appropriate return value for event type.  Returns
+     *      NULL if no event with specified name was registered and for
+     *      EVENTTYPE_DEFAULT events.
      */
     public function signalEvent(string $EventName, array $Parameters = [])
     {
@@ -2364,7 +2731,7 @@ class ApplicationFramework
                     break;
 
                 case self::EVENTTYPE_NAMED:
-                    $ReturnValue = array();
+                    $ReturnValue = [];
                     break;
             }
 
@@ -2438,7 +2805,7 @@ class ApplicationFramework
      * are other events already in the queue.
      * @param string $EventName Periodic event name (e.g. "EVENT_DAILY").
      * @param callable $Callback Event callback.
-     * @return mixed Next run time as a timestamp, or FALSE if event was not
+     * @return int|false Next run time as a timestamp, or FALSE if event was not
      *       a periodic event or was not previously run.
      */
     public function eventWillNextRunAt(string $EventName, callable $Callback)
@@ -2487,7 +2854,7 @@ class ApplicationFramework
         $LastRunTimes = $this->DB->fetchColumn("LastRunAt", "Signature");
 
         # for each known event
-        $Events = array();
+        $Events = [];
         foreach ($this->KnownPeriodicEvents as $Signature => $Info) {
             # if last run time for event is available
             if (array_key_exists($Signature, $LastRunTimes)) {
@@ -2524,7 +2891,7 @@ class ApplicationFramework
         string $EventName,
         callable $Callback,
         array $Parameters
-    ) {
+    ): void {
         static $DB;
         if (!isset($DB)) {
             $DB = new Database();
@@ -2563,609 +2930,6 @@ class ApplicationFramework
     /*@)*/ /* Event Handling */
 
 
-    # ---- Task Management ---------------------------------------------------
-
-    /** @name Task Management */ /*@(*/
-
-    /**  Highest priority. */
-    const PRIORITY_HIGH = 1;
-    /**  Medium (default) priority. */
-    const PRIORITY_MEDIUM = 2;
-    /**  Lower priority. */
-    const PRIORITY_LOW = 3;
-    /**  Lowest priority. */
-    const PRIORITY_BACKGROUND = 4;
-    /**  Names of available priorities. */
-    public static $AvailablePriorities = [
-        self::PRIORITY_BACKGROUND => "Background",
-        self::PRIORITY_LOW => "Low",
-        self::PRIORITY_MEDIUM => "Medium",
-        self::PRIORITY_HIGH => "High",
-    ];
-
-    /**
-     * Access the task manager.
-     * @return AFTaskManager Reference to active AFTaskManager instance.
-     */
-    public function &taskMgr()
-    {
-        return $this->TaskMgr;
-    }
-
-    /**
-     * Add task to queue.
-     * If $Callback refers to a function (rather than an object method) that function
-     * must be available in a global scope on all pages.
-     * If $Priority is out-of-bounds, it wil be normalized to be within bounds.
-     * @param callable $Callback Function or method to call to perform task.
-     * @param array $Parameters Array containing parameters to pass to function or
-     *       method.  (OPTIONAL, pass NULL for no parameters)
-     * @param int $Priority Priority to assign to task.  (OPTIONAL, defaults
-     *       to PRIORITY_LOW)
-     * @param string $Description Text description of task.  (OPTIONAL)
-     */
-    public function queueTask(
-        callable $Callback,
-        array $Parameters = null,
-        int $Priority = self::PRIORITY_LOW,
-        string $Description = ""
-    ) {
-        /* @phpstan-ignore-next-line */
-        call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Add task to queue if not already in queue or currently running.
-     * If task is already in queue with a lower priority than specified, the task's
-     * priority will be increased to the new value.
-     * If $Callback refers to a function (rather than an object method) that function
-     * must be available in a global scope on all pages.
-     * If $Priority is out-of-bounds, it wil be normalized to be within bounds.
-     * @param callable $Callback Function or method to call to perform task.
-     * @param array $Parameters Array containing parameters to pass to function or
-     *       method.  (OPTIONAL, pass NULL for no parameters)
-     * @param int $Priority Priority to assign to task.  (OPTIONAL, defaults
-     *       to PRIORITY_LOW)
-     * @param string $Description Text description of task.  (OPTIONAL)
-     * @return bool TRUE if task was added, otherwise FALSE.
-     * @see ApplicationFramework::taskIsInQueue()
-     */
-    public function queueUniqueTask(
-        callable $Callback,
-        array $Parameters = null,
-        int $Priority = self::PRIORITY_LOW,
-        string $Description = ""
-    ): bool {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Check if task is already in queue or currently running.
-     * When no $Parameters value is specified the task is checked against
-     * any other entries with the same $Callback.
-     * @param callable $Callback Function or method to call to perform task.
-     * @param array $Parameters Array containing parameters to pass to function or
-     *       method.  (OPTIONAL)
-     * @return bool TRUE if task is already in queue, otherwise FALSE.
-     */
-    public function taskIsInQueue(callable $Callback, array $Parameters = null): bool
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Retrieve current number of tasks in queue.
-     * @param int $Priority Priority of tasks.  (OPTIONAL, defaults to all priorities)
-     * @return int Number of tasks currently in queue.
-     */
-    public function getTaskQueueSize(int $Priority = null): int
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Retrieve list of tasks currently in queue.
-     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to 100)
-     * @param int $Offset Offset into queue to start retrieval.  (OPTIONAL)
-     * @return array Array with task IDs for index and task info for values.  Task info
-     *       is stored as associative array with "Callback" and "Parameter" indices.
-     */
-    public function getQueuedTaskList(int $Count = 100, int $Offset = 0)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Get number of queued tasks that match supplied values.  Tasks will
-     * not be counted if the values do not match exactly, so callbacks with
-     * methods for different objects (even of the same class) will not match.
-     * @param callable $Callback Function or method to call to perform task.
-     *       (OPTIONAL)
-     * @param array $Parameters Array containing parameters to pass to function
-     *       or method.  Pass in empty array to match tasks with no parameters.
-     *       (OPTIONAL)
-     * @param int $Priority Priority to assign to task.  (OPTIONAL)
-     * @param string $Description Text description of task.  (OPTIONAL)
-     * @return int Number of tasks queued that match supplied parameters.
-     */
-    public function getQueuedTaskCount(
-        callable $Callback = null,
-        array $Parameters = null,
-        int $Priority = null,
-        string $Description = null
-    ): int {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Retrieve list of tasks currently running.
-     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to 100)
-     * @param int $Offset Offset into queue to start retrieval.  (OPTIONAL)
-     * @return Array with task IDs for index and task info for values.  Task info
-     *       is stored as associative array with "Callback" and "Parameter" indices.
-     */
-    public function getRunningTaskList(int $Count = 100, int $Offset = 0)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Retrieve list of tasks currently orphaned.
-     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to 100)
-     * @param int $Offset Offset into queue to start retrieval.  (OPTIONAL)
-     * @return Array with task IDs for index and task info for values.  Task info
-     *       is stored as associative array with "Callback" and "Parameter" indices.
-     */
-    public function getOrphanedTaskList(int $Count = 100, int $Offset = 0)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Retrieve current number of orphaned tasks.
-     * @return int Number of orphaned tasks.
-     */
-    public function getOrphanedTaskCount()
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Move orphaned task back into queue.
-     * @param int $TaskId Task ID.
-     * @param int $NewPriority New priority for task being requeued.  (OPTIONAL)
-     */
-    public function requeueOrphanedTask(int $TaskId, int $NewPriority = null)
-    {
-        /* @phpstan-ignore-next-line */
-        call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Set whether to requeue the currently-running background task when
-     * it completes.
-     * @param bool $NewValue If TRUE, current task will be requeued.  (OPTIONAL,
-     *       defaults to TRUE)
-     */
-    public function requeueCurrentTask(bool $NewValue = true)
-    {
-        /* @phpstan-ignore-next-line */
-        call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Remove task from task queues.
-     * @param int $TaskId Task ID.
-     * @return int Number of tasks removed.
-     */
-    public function deleteTask(int $TaskId): int
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Retrieve task info from queue (either running or queued tasks).
-     * @param int $TaskId Task ID.
-     * @return Array with task info for values or NULL if task is not found.
-     *       Task info is stored as associative array with "Callback" and
-     *       "Parameter" indices.
-     */
-    public function getTask(int $TaskId)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Get/set whether automatic task execution is enabled.  (This does not
-     * prevent tasks from being manually executed.)
-     * @param bool $NewValue TRUE to enable or FALSE to disable.  (OPTIONAL)
-     * @param bool $Persistent If TRUE the new value will be saved (i.e.
-     *       persistent across page loads), otherwise the value will apply to
-     *       just the current page load.  (OPTIONAL, defaults to FALSE)
-     * @return bool Returns TRUE if automatic task execution is enabled or
-     *       otherwise FALSE.
-     */
-    public function taskExecutionEnabled(
-        bool $NewValue = null,
-        bool $Persistent = false
-    ): bool {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Get/set maximum number of tasks to have running simultaneously.
-     * @param int $NewValue New setting for max number of tasks.  (OPTIONAL)
-     * @param bool $Persistent If TRUE the new value will be saved (i.e.
-     *       persistent across page loads), otherwise the value will apply to
-     *       just the current page load.  (OPTIONAL, defaults to FALSE)
-     * @return int Current maximum number of tasks to run at once.
-     */
-    public function maxTasks(int $NewValue = null, bool $Persistent = false)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Get printable synopsis for task callback.  Any string values in the
-     * callback parameter list will be escaped with htmlspecialchars().
-     * @param array $TaskInfo Array of task info as returned by getTask().
-     * @return string Task callback synopsis string.
-     * @see ApplicationFramework::getTask()
-     */
-    public static function getTaskCallbackSynopsis(array $TaskInfo): string
-    {
-        return call_user_func_array(["ScoutLib\AFTaskManager", __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Determine current priority if running in background.
-     * @return int Current background priority (PRIORITY_ value), or NULL
-     *       if not currently running in background.
-     */
-    public function getCurrentBackgroundPriority(): int
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Get next higher possible background task priority.  If already at the
-     * highest priority, the same value is returned.
-     * @param int $Priority Background priority (PRIORITY_ value).  (OPTIONAL,
-     *       defaults to current priority if running in background, or NULL if
-     *       running in foreground)
-     * @return integer|null Next higher background priority, or NULL if no priority
-     *       specified and currently running in foreground.
-     */
-    public function getNextHigherBackgroundPriority(int $Priority = null)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /**
-     * Get next lower possible background task priority.  If already at the
-     * lowest priority, the same value is returned.
-     * @param int $Priority Background priority (PRIORITY_ value).  (OPTIONAL,
-     *       defaults to current priority if running in background, or NULL if
-     *       running in foreground)
-     * @return integer|null Next lower background priority, or NULL if no priority
-     *       specified and currently running in foreground.
-     */
-    public function getNextLowerBackgroundPriority(int $Priority = null)
-    {
-        /* @phpstan-ignore-next-line */
-        return call_user_func_array([$this->TaskMgr, __FUNCTION__], func_get_args());
-    }
-
-    /*@)*/ /* Task Management */
-
-
-    # ---- Clean URL Support -------------------------------------------------
-
-    /** @name Clean URL Support */ /*@(*/
-
-    /**
-     * Add clean URL mapping.  This method allows a "clean URL" (usually a
-     * purely structural URL that does not contain a query string and is
-     * more human-friendly) to be specified and mapped to a particular page,
-     * with segments of the clean URL being extracted and put into $_GET
-     * variables, as if they had been in a query string.  IMPORTANT: If the
-     * $Template parameter is used to automagically swap in clean URLs in page
-     * output, the number of variables specified by $GetVars should be limited,
-     * as X variables causes X! regular expression replacements to be performed
-     * on the output.
-     * @param string $Pattern Regular expression to match against clean URL,
-     *      with starting and ending delimiters.
-     * @param string $Page Page (P= value) to load if regular expression matches.
-     * @param array $GetVars Array of $_GET variables to set using matches from
-     *      regular expression, with variable names for the array indexes and
-     *      variable value templates (with $N as appropriate, for captured
-     *      subpatterns from matching) for the array values.  (OPTIONAL)
-     * @param string $Template Template to use to insert clean URLs in
-     *      HTML output.  $_GET variables value locations should be specified
-     *      in the template via the variable name preceded by a "$".
-     */
-    public function addCleanUrl(
-        string $Pattern,
-        string $Page,
-        array $GetVars = null,
-        string $Template = null
-    ) {
-        # flag that output modifications need to be regenerated from clean URL info
-        $this->OutputModificationsAreCurrent = false;
-
-        # save clean URL mapping parameters
-        $this->CleanUrlMappings[] = array(
-            "Pattern" => $Pattern,
-            "Page" => $Page,
-            "GetVars" => $GetVars,
-            "AddedBy" => StdLib::getCallerInfo(),
-            "Template" => $Template,
-        );
-    }
-
-    /**
-     * Add clean URL mapping.  This method allows a "clean URL" (usually a
-     * purely structural URL that does not contain a query string and is
-     * more human-friendly) to be specified and mapped to a particular page,
-     * with segments of the clean URL being extracted and put into $_GET
-     * variables, as if they had been in a query string.
-     * @param string $Pattern Regular expression to match against clean URL,
-     *      with starting and ending delimiters.
-     * @param string $Page Page (P= value) to load if regular expression matches.
-     * @param array $GetVars Array of $_GET variables to set using matches from
-     *      regular expression, with variable names for the array indexes and
-     *      variable value templates (with $N as appropriate, for captured
-     *      subpatterns from matching) for the array values.  (OPTIONAL)
-     * @param callable $Callback Callback that takes matches for the first
-     *      parameter (similar to those passed by preg_replace_callback())
-     *      the $Pattern value as the second parameter, the $Page value as the third
-     *      parameter, and the full pattern (with "href=" etc) being matched for
-     *      the fourth parameter.  The callback should return a string to replace
-     *      the matched (conventional/unclean) URL.
-     * @see addCleanUrl()
-     */
-    public function addCleanUrlWithCallback(
-        string $Pattern,
-        string $Page,
-        array $GetVars = null,
-        callable $Callback = null
-    ) {
-        # flag that output modifications need to be regenerated from clean URL info
-        $this->OutputModificationsAreCurrent = false;
-
-        # save clean URL mapping parameters
-        $this->CleanUrlMappings[] = array(
-            "Pattern" => $Pattern,
-            "Page" => $Page,
-            "GetVars" => $GetVars,
-            "AddedBy" => StdLib::getCallerInfo(),
-            "Template" => $Callback,
-        );
-    }
-
-    /**
-     * Add clean URL with destination page and (optionally) any $_GET parameters
-     * to pass to the page.
-     * @param string $CleanUrl Clean URL suffix (i.e. the portion after the
-     *      domain and any site base path).
-     * @param string $Page Name of page that clean URL should load.
-     * @param array $PageParameters Any $_GET parameters to add to the page,
-     *      with parameter names for the index and parameter values for the
-     *      values.  (OPTIONAL)
-     */
-    public function addSimpleCleanUrl(
-        string $CleanUrl,
-        string $Page,
-        array $PageParameters = []
-    ) {
-        $this->addCleanUrl(
-            "%^".$CleanUrl."/?$%i",
-            $Page,
-            $PageParameters,
-            $CleanUrl
-        );
-    }
-
-    /**
-     * Report whether clean URL has already been mapped.
-     * @param string $Path Relative URL path to test against.
-     * @return bool TRUE if pattern is already mapped, otherwise FALSE.
-     */
-    public function cleanUrlIsMapped(string $Path): bool
-    {
-        foreach ($this->CleanUrlMappings as $Info) {
-            if (preg_match($Info["Pattern"], $Path)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Get the clean URL mapped for a path.  This only works for clean URLs
-     * where a replacement template for insertion into output (the $Template
-     * parameter to addCleanUrl()) was specified.
-     * @param string $Path Unclean path, e.g., index.php?P=FullRecord&ID=123.
-     * @return string Returns the clean URL for the path if one exists. Otherwise it
-     *     returns the path unchanged.
-     * @see ApplicationFramework::addCleanUrl()
-     */
-    public function getCleanRelativeUrlForPath(string $Path): string
-    {
-        # make sure update modification patterns and callbacks are current
-        $this->convertCleanUrlRequestsToOutputModifications();
-
-        # the search patterns and callbacks require a specific format
-        $Format = "href=\"" . str_replace("&", "&amp;", $Path) . "\"";
-        $Search = $Format;
-
-        # perform any regular expression replacements on the search string
-        $Search = preg_replace(
-            $this->OutputModificationPatterns,
-            $this->OutputModificationReplacements,
-            $Search
-        );
-
-        # only run the callbacks if a replacement hasn't already been performed
-        if ($Search == $Format) {
-            # perform any callback replacements on the search string
-            foreach ($this->OutputModificationCallbacks as $Info) {
-                # make the information available to the callback
-                $this->OutputModificationCallbackInfo = $Info;
-
-                # execute the callback
-                $Search = preg_replace_callback(
-                    $Info["SearchPattern"],
-                    array($this, "outputModificationCallbackShell"),
-                    $Search
-                );
-            }
-        }
-
-        # return the path untouched if no replacements were performed
-        if ($Search == $Format) {
-            return $Path;
-        }
-
-        # remove the bits added to the search string to get it recognized by
-        # the replacement expressions and callbacks
-        $Result = substr($Search, 6, -1);
-
-        return $Result;
-    }
-
-    /**
-     * Get the unclean URL for mapped for a path.
-     * @param string $Path Clean path, e.g., r123/resource-title
-     * @return string Returns the unclean URL for the path if one exists.
-     *       Otherwise it returns the path unchanged.
-     */
-    public function getUncleanRelativeUrlWithParamsForPath(string $Path): string
-    {
-        # for each clean URL mapping
-        foreach ($this->CleanUrlMappings as $Info) {
-            # if current path matches the clean URL pattern
-            if (preg_match($Info["Pattern"], $Path, $Matches)) {
-                # the GET parameters for the URL, starting with the page name
-                $GetVars = array("P" => $Info["Page"]);
-
-                # if additional $_GET variables specified for clean URL
-                if ($Info["GetVars"] !== null) {
-                    # for each $_GET variable specified for clean URL
-                    foreach ($Info["GetVars"] as $VarName => $VarTemplate) {
-                        # start with template for variable value
-                        $Value = $VarTemplate;
-
-                        # for each subpattern matched in current URL
-                        foreach ($Matches as $Index => $Match) {
-                            # if not first (whole) match
-                            if ($Index > 0) {
-                                # make any substitutions in template
-                                $Value = str_replace("$" . $Index, $Match, $Value);
-                            }
-                        }
-
-                        # add the GET variable
-                        $GetVars[$VarName] = $Value;
-                    }
-                }
-
-                # return the unclean URL
-                return "index.php?" . http_build_query($GetVars);
-            }
-        }
-
-        # return the path unchanged
-        return $Path;
-    }
-
-    /**
-     * Get the clean URL for the current page if one is available. Otherwise,
-     * the unclean URL will be returned.
-     * @return string Returns the clean URL for the current page if possible.
-     */
-    public function getCleanRelativeUrl(): string
-    {
-        return $this->getCleanRelativeUrlForPath($this->getUncleanRelativeUrlWithParams());
-    }
-
-    /**
-     * Get the unclean URL for the current page.
-     * @return string Returns the unclean URL for the current page.
-     */
-    public function getUncleanRelativeUrlWithParams(): string
-    {
-        $GetVars = array("P" => $this->getPageName()) + $_GET;
-        return "index.php?" . http_build_query($GetVars);
-    }
-
-    /**
-     * Get list of all clean URLs currently added.
-     * @return array Array of arrays of clean URL info, with the indexes "Pattern",
-     *       "Page", "GetVars", and "AddedBy".  The values for the first three are
-     *       in the same format is was passed in to addCleanUrl(), while the value
-     *       for "AddedBy" is in the format returned by StdLib::getCallerInfo().
-     */
-    public function getCleanUrlList()
-    {
-        return $this->CleanUrlMappings;
-    }
-
-    /**
-     * Add an alternate domain for the site which should map to a
-     * path tree under the main site URL.  In addition to CleanURL
-     * support via htaccess, this functionality also requires that a
-     * RootUrlOverride be configured specifying the primary URL of the
-     * site.
-     * @param string $Domain Domain that should be served from a prefix.
-     * @param string $Prefix Prefix (a URL path component) from whence
-     *     the domain should be served, without leading or trailing
-     *     slashes.
-     * @see ApplicationFramework::rootUrlOverride()
-     */
-    public function addPrefixForAlternateDomain(string $Domain, string $Prefix)
-    {
-        $this->AlternateDomainPrefixes[$Domain] = $Prefix;
-    }
-
-
-    /**
-     * Get the list of configured alternate domains.
-     * @return array of alternate domains (e.g., example.com).
-     */
-    public function getAlternateDomains()
-    {
-        return array_keys($this->AlternateDomainPrefixes);
-    }
-
-    /**
-     * Get configured prefix for an alternate domain, if one exists.
-     * @param string $Domain Domain that should be searched for.
-     * @return string|null Configured prefix (without leading or
-     *     trailing slashes), or NULL if no prefix was configured.
-     */
-    public function getPrefixForAlternateDomain(string $Domain)
-    {
-        return isset($this->AlternateDomainPrefixes[$Domain]) ?
-            $this->AlternateDomainPrefixes[$Domain] : null;
-    }
-
-    /*@)*/ /* Clean URL Support */
-
     # ---- Server Environment ------------------------------------------------
 
     /** @name Server Environment */ /*@(*/
@@ -3175,7 +2939,7 @@ class ApplicationFramework
      * @param int $NewValue New session timeout value.  (OPTIONAL)
      * @return int Current session timeout value in seconds.
      */
-    public function sessionLifetime(int $NewValue = null)
+    public function sessionLifetime(?int $NewValue = null)
     {
         # if we don't yet have a SessionLifetime column because the update
         # to create it hasn't yet run, use the default value
@@ -3240,15 +3004,9 @@ class ApplicationFramework
      * slash (e.g. http://foobar.com).
      * @return string URL portion.
      * @see ApplicationFramework::preferHttpHost()
-     * @see ApplicationFramework::rootUrlOverride()
      */
     public static function rootUrl(): string
     {
-        # return override value if one is set
-        if (self::$RootUrlOverride !== null) {
-            return self::$RootUrlOverride;
-        }
-
         # determine scheme name
         $Protocol = (isset($_SERVER["HTTPS"]) ? "https" : "http");
 
@@ -3280,35 +3038,12 @@ class ApplicationFramework
     }
 
     /**
-     * Get/set root URL override.  (The "root URL" is the portion of the URL
-     * through the host name.)  Any trailing slash will be removed.  Pass in
-     * NULL to clear any existing override.  This setting primarily affects
-     * the values returned by the URL retrieval methods and the attempted
-     * insertion of clean URLs in outgoing HTML.
-     * @param string $NewValue New root URL override.  (OPTIONAL)
-     * @return string|null Current root URL override, or NULL if root URL
-     *       is not currently overridden.
-     * @see ApplicationFramework::rootUrl()
-     * @see ApplicationFramework::baseUrl()
-     * @see ApplicationFramework::fullUrl()
-     * @see ApplicationFramework::getAbsoluteUrl()
-     */
-    public static function rootUrlOverride(string $NewValue = self::NOVALUE)
-    {
-        if ($NewValue !== self::NOVALUE) {
-            self::$RootUrlOverride = strlen(trim($NewValue)) ? $NewValue : null;
-        }
-        return self::$RootUrlOverride;
-    }
-
-    /**
      * Get current base URL (the part before index.php) (e.g. http://foobar.com/path/).
      * The base URL is determined using the ultimate executing URL, after
      * any clean URL remapping has been applied, so any extra "directory"
      * segments that are really just part of a clean URL will not be included.
      * @return string Base URL string with trailing slash.
      * @see ApplicationFramework::preferHttpHost()
-     * @see ApplicationFramework::rootUrlOverride()
      */
     public static function baseUrl(): string
     {
@@ -3327,7 +3062,6 @@ class ApplicationFramework
      * string (e.g. http://foobar.com/path/index.php?A=123&B=456).
      * @return string Full URL.
      * @see ApplicationFramework::preferHttpHost()
-     * @see ApplicationFramework::rootUrlOverride()
      */
     public static function fullUrl(): string
     {
@@ -3344,7 +3078,7 @@ class ApplicationFramework
      * @see ApplicationFramework::baseUrl()
      * @see ApplicationFramework::fullUrl()
      */
-    public static function preferHttpHost(bool $NewValue = null): bool
+    public static function preferHttpHost(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             self::$PreferHttpHost = ($NewValue ? true : false);
@@ -3368,25 +3102,6 @@ class ApplicationFramework
     }
 
     /**
-     * Retrieve SCRIPT_URL server value, pulling it from elsewhere if that
-     * variable isn't set.
-     * @return string|null SCRIPT_URL value or NULL if unable to determine value.
-     */
-    public static function getScriptUrl()
-    {
-        if (array_key_exists("SCRIPT_URL", $_SERVER)) {
-            return $_SERVER["SCRIPT_URL"];
-        } elseif (array_key_exists("REQUEST_URI", $_SERVER)) {
-            $Piece = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-            return ($Piece === false) ? null : $Piece;
-        } elseif (array_key_exists("REDIRECT_URL", $_SERVER)) {
-            return $_SERVER["REDIRECT_URL"];
-        } else {
-            return null;
-        }
-    }
-
-    /**
      * Report whether a specified URL appears to be external (i.e. for a page
      * outside of the site).
      * @param string $Url URL to check.
@@ -3407,31 +3122,19 @@ class ApplicationFramework
     }
 
     /**
-     * Get the domain being used for the current request, taking into account
-     * any root URL override and/or alternate domain settings that are in
-     * place.
-     * @return string Domain being used.
+     * Get the domain being used for the current request.
+     * @return string Domain being used, or an empty string if unable to
+     *      determine the domain.
      */
     public static function getCurrentDomain() : string
     {
         static $Domain = false;
-
         if ($Domain === false) {
-            # if root URL override is set (which it will be for alternate
-            # domains; see ApplicationFramework::addPrefixForAlternateDomain()),
-            # then we'll need to check HTTP_HOST rather than rootUrl() to
-            # get the domain being used for this pageload
-            if (!is_null(ApplicationFramework::rootUrlOverride()) &&
-                isset($_SERVER["HTTP_HOST"])) {
-                $Domain = $_SERVER["HTTP_HOST"];
-            } else {
-                $Domain = parse_url(
-                    ApplicationFramework::rootUrl(),
-                    PHP_URL_HOST
-                );
-            }
+            $Domain = parse_url(
+                ApplicationFramework::rootUrl(),
+                PHP_URL_HOST
+            ) ?? "";
         }
-
         return $Domain;
     }
 
@@ -3447,7 +3150,7 @@ class ApplicationFramework
     public static function wasUrlRewritten(string $ScriptName = "index.php"): bool
     {
         # get path portion of URL (does not include query or fragment)
-        $Path = parse_url(self::getScriptUrl(), PHP_URL_PATH);
+        $Path = parse_url(self::getUrlPath(), PHP_URL_PATH);
 
         if (is_string($Path)) {
             $BasePath = self::basePath();
@@ -3476,7 +3179,7 @@ class ApplicationFramework
      * @return bool TRUE if page was loaded via AJAX (or other automated
      *       method), otherwise FALSE.
      */
-    public static function reachedViaAjax(bool $NewSetting = null): bool
+    public static function reachedViaAjax(?bool $NewSetting = null): bool
     {
         if ($NewSetting !== null) {
             self::$IsAjaxPageLoad = $NewSetting;
@@ -3494,26 +3197,6 @@ class ApplicationFramework
     }
 
     /**
-     * Get current amount of free memory.  The value returned is a "best
-     * guess" based on reported memory usage.
-     * @return int Number of bytes.
-     */
-    public static function getFreeMemory()
-    {
-        return StdLib::getPhpMemoryLimit() - memory_get_usage(true);
-    }
-
-    /**
-     * Get current percentage of free memory.  The value returned is based
-     * on a "best guess" from reported memory usage.
-     * @return float Estimated percentage free.
-     */
-    public static function getPercentFreeMemory()
-    {
-        return (self::getFreeMemory() / StdLib::getPhpMemoryLimit()) * 100;
-    }
-
-    /**
      * Log a message about slow database queries.
      * @param string $Query SQL query
      * @param array $QuerySite Location that issued the query in
@@ -3525,7 +3208,7 @@ class ApplicationFramework
         array $QuerySite,
         float $Duration
     ): void {
-        $QuerySiteDesc = basename($QuerySite["file"]).":".$QuerySite["line"];
+        $QuerySiteDesc = self::stackFrameSummary($QuerySite);
 
         # reduce repeated strings of whitespace to single spaces
         $Query = preg_replace('/\h+/', ' ', trim($Query));
@@ -3547,10 +3230,72 @@ class ApplicationFramework
     }
 
     /**
+     * Log a message when the database caches are pruned.
+     * @param array $QuerySite Location that issued the query prompting the
+     *   cache pruning in the format provided by debug_backtrace()
+     * @param array $CachedQueries Queries that were in the cache when it was pruned
+     */
+    public static function logDBCachePrune(
+        array $QuerySite,
+        array $CachedQueries
+    ): void {
+        $AF = self::getInstance();
+        if (!$AF->logDBCachePruning()) {
+            return;
+        }
+
+        $QuerySiteDesc = self::stackFrameSummary($QuerySite);
+
+        $NumCacheEntries = count($CachedQueries);
+
+        # compute size of each result in cache
+        $QuerySizes = [];
+        foreach ($CachedQueries as $Query => $Results) {
+            $Size = 0;
+            foreach ($Results as $Index => $Row) {
+                if ($Index == "NumRows") {
+                    continue;
+                }
+                foreach ($Row as $Col) {
+                    $Size += strlen((string)$Col);
+                }
+            }
+
+            $QuerySizes[$Query] = $Size;
+        }
+
+        # get the largest five
+        arsort($QuerySizes, SORT_NUMERIC);
+        $QuerySizes = array_slice($QuerySizes, 0, 5, true);
+
+        # generate a summary of those five
+        $CacheSummary = "";
+        foreach ($QuerySizes as $Query => $Size) {
+            if (strlen($Query) > 300) {
+                $Query = trim(substr($Query, 0, 300))."...";
+            }
+            $CacheSummary .= " ".$Query." (Result Size: ".number_format($Size)." bytes);";
+        }
+
+        $AF->logMessage(
+            self::LOGLVL_INFO,
+            "Database caches pruned at ".$QuerySiteDesc."."
+                ." Cache contained ".$NumCacheEntries." entries."
+                ." Largest five result sets summarized here."
+                ."  URL: ".$AF->fullUrl()
+                ."  IP: ".($_SERVER["REMOTE_ADDR"] ?? "(none)")
+                ."  CACHE:".$CacheSummary
+        );
+    }
+
+    /**
      * Get/set maximum PHP execution time.  Setting a new value is not possible
      * if PHP is running in safe mode.  Note that this method returns the actual
      * maximum execution time as currently understood by PHP, which could be
-     * different from the saved ApplicationFramework setting.
+     * different from the saved ApplicationFramework setting.  To prevent hazardous
+     * behavior due to malfunctioning PHP setting access, if a value of 0 is returned
+     * by ini_get() for max_execution_time, this method logs an error with a level
+     * of LOGLVL_WARNING and returns 30 instead.
      * @param int $NewValue New setting for max execution time in seconds.  (OPTIONAL,
      *       but minimum value is 5 if specified)
      * @param bool $Persistent If TRUE the new value will be saved (i.e.
@@ -3558,7 +3303,7 @@ class ApplicationFramework
      *       just the current page load.  (OPTIONAL, defaults to FALSE)
      * @return int Current max execution time in seconds.
      */
-    public function maxExecutionTime(int $NewValue = null, bool $Persistent = false): int
+    public function maxExecutionTime(?int $NewValue = null, bool $Persistent = false): int
     {
         if ($NewValue !== null) {
             $NewValue = max($NewValue, 5);
@@ -3566,7 +3311,15 @@ class ApplicationFramework
             set_time_limit($NewValue - (int)$this->getElapsedExecutionTime());
             $this->updateIntSetting("MaxExecTime", $NewValue, $Persistent);
         }
-        return (int)ini_get("max_execution_time");
+        $CurrentValue = (int)ini_get("max_execution_time");
+        if ($CurrentValue == 0) {
+            $CurrentValue = 30;
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "PHP max_execution_time value was 0."
+            );
+        }
+        return $CurrentValue;
     }
 
     /**
@@ -3579,7 +3332,7 @@ class ApplicationFramework
      * @return int Current threshold in seconds.
      */
     public function databaseSlowQueryThresholdForForeground(
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
         if (($NewValue !== null) && !$this->isRunningInBackground()) {
@@ -3602,7 +3355,7 @@ class ApplicationFramework
      * @return int Current threshold in seconds.
      */
     public function databaseSlowQueryThresholdForBackground(
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = false
     ): int {
         if (($NewValue !== null) && $this->isRunningInBackground()) {
@@ -3642,8 +3395,8 @@ class ApplicationFramework
      */
     public function downloadFile(
         string $FilePath,
-        string $FileName = null,
-        string $MimeType = null,
+        ?string $FileName = null,
+        ?string $MimeType = null,
         bool $AlwaysDownload = false
     ): bool {
         # check that file is readable
@@ -3675,6 +3428,8 @@ class ApplicationFramework
             }
         }
 
+        header("Content-Type: " . $MimeType);
+
         # list of mime types where we allow the browser to decide on
         # how to display the item by omitting the Content-Disposition
         # header
@@ -3686,18 +3441,6 @@ class ApplicationFramework
         ];
 
         # set headers to download file
-        header("Content-Type: " . $MimeType);
-
-        # provide Content-Length header for HTTP 1.x connections.
-        # Including Content-Length for HTTP/2 makes Safari produce "cannot
-        # parse response" errors, however per sec 8.1.2.6 of RFC 7540
-        # Content-Length is optional for HTTP/2. Omitting it makes Safari
-        # happy with no ill effects for Firefox or Chrome.
-        if (isset($_SERVER["SERVER_PROTOCOL"]) &&
-            stripos($_SERVER["SERVER_PROTOCOL"], "http/1.") !== false) {
-            header("Content-Length: " . filesize($FilePath));
-        }
-
         if ($AlwaysDownload
                 || ($this->CleanUrlRewritePerformed
                         && !in_array($MimeType, $InlineTypes))) {
@@ -3711,6 +3454,7 @@ class ApplicationFramework
 
         # send file to user, but unbuffered to avoid memory issues
         $this->addUnbufferedCallback(function ($File) {
+            $FileSize = (int)filesize($File);
             $BlockSize = 512000;
 
             $Handle = @fopen($File, "rb");
@@ -3723,16 +3467,21 @@ class ApplicationFramework
             #       waiting for it while the download completes)
             session_write_close();
 
-            while (!feof($Handle)) {
-                print fread($Handle, $BlockSize);
-                flush();
+            if (self::isSupportedRangeRequest()) {
+                self::handleRangeRequest($Handle, $FileSize, $BlockSize);
+            } else {
+                header("Content-Length: " . $FileSize);
+                while (!feof($Handle)) {
+                    print fread($Handle, $BlockSize);
+                    flush();
+                }
             }
 
             fclose($Handle);
-        }, array($FilePath));
+        }, [ $FilePath ]);
 
         # prevent HTML output that might interfere with download
-        $this->suppressHTMLOutput();
+        $this->suppressHtmlOutput();
 
         # set flag to indicate not to log a slow page load in case client
         #       connection delays PHP execution because of header
@@ -3755,7 +3504,7 @@ class ApplicationFramework
      * @see ApplicationFramework::releaseLock()
      * @see ApplicationFramework::maxExecutionTime()
      */
-    public function getLock(string $LockName = null, bool $Wait = true): bool
+    public function getLock(?string $LockName = null, bool $Wait = true): bool
     {
         # use name of calling function if lock name if not supplied
         if ($LockName === null) {
@@ -3831,7 +3580,7 @@ class ApplicationFramework
      *      with specified name was found.
      * @see ApplicationFramework::getLock()
      */
-    public function releaseLock(string $LockName = null): bool
+    public function releaseLock(?string $LockName = null): bool
     {
         # use name of calling function if lock name if not supplied
         if ($LockName === null) {
@@ -3867,15 +3616,15 @@ class ApplicationFramework
     public function beginAjaxResponse(
         string $ResponseType = "JSON",
         bool $CloseSession = true
-    ) {
+    ): void {
         switch ($ResponseType) {
             case "JSON":
-                $this->suppressHTMLOutput();
+                $this->suppressHtmlOutput();
                 header("Content-Type: application/json; charset="
                         .$this->HtmlCharset, true);
                 break;
             case "XML":
-                $this->suppressHTMLOutput();
+                $this->suppressHtmlOutput();
                 header("Content-Type: application/xml; charset="
                         .$this->HtmlCharset, true);
                 break;
@@ -3901,7 +3650,7 @@ class ApplicationFramework
      * browser in this page load (usually JSON, XML, or HTML).
      * @param int $MaxAge Max number of seconds a page should be cached.
      */
-    public function setBrowserCacheExpirationTime(int $MaxAge)
+    public function setBrowserCacheExpirationTime(int $MaxAge): void
     {
         # set headers to control caching
         header("Expires: " . gmdate("D, d M Y H:i:s \G\M\T", time() + $MaxAge));
@@ -3915,7 +3664,7 @@ class ApplicationFramework
      * @param bool $InUse TRUE for sessions that are in use (OPTIONAL)
      * @return bool TRUE if session is in use, otherwise FALSE.
      */
-    public function sessionInUse(bool $InUse = null): bool
+    public function sessionInUse(?bool $InUse = null): bool
     {
         if ($InUse !== null) {
             $this->SessionInUse = $InUse;
@@ -3930,11 +3679,9 @@ class ApplicationFramework
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $AdditionalRequiredUIFiles = [];
-    private $AlternateDomainPrefixes = [];
     private $BrowserDetectFunc;
     private $CacheCurrentPage = true;
-    private $CleanUrlMappings = [];
-    private $CleanUrlRewritePerformed = false;
+    private $CompiledCssFileUsed = false;
     private $CssUrlFingerprintPath;
     private $CurrentPageExpirationDate = null;
     private $DB;
@@ -3951,12 +3698,12 @@ class ApplicationFramework
     private $JumpToPage = null;
     private $JumpToPageDelay = 0;
     private $LogFileName = "local/logs/site.log";
+    private $MinimizedJsFileUsed = false;
     private $MetaTags = [];
     private $OutputModificationCallbackInfo;
     private $OutputModificationCallbacks = [];
     private $OutputModificationPatterns = [];
     private $OutputModificationReplacements = [];
-    private $OutputModificationsAreCurrent = false;
     private $PageCacheTags = [];
     private $PageName = "";
     private $PostProcessingFuncs = [];
@@ -3968,21 +3715,20 @@ class ApplicationFramework
     private $Settings;
     private $SuppressHTML = false;
     private $SuppressStdPageStartAndEnd = false;
-    private $TaskMgr;
     private $TemplateLocationCache;
     private $TemplateLocationCacheInterval = 60;        # in minutes
     private $TemplateLocationCacheExpiration;
     private $UnbufferedCallbacks = [];
     private $UniqueMetaTags = [];
     private $UrlFingerprintBlacklist = [];
-    private $UseBaseTag = false;
+    private $UseBaseTag = true;
     private $SessionInUse = false;
 
     # ---- Page Building (Internal Variables) --------------------------------
     private $CallbackForPageCacheHits;
     private $ContextFilters = [
         self::CONTEXT_START => true,
-        self::CONTEXT_PAGE => array("H_"),
+        self::CONTEXT_PAGE => [ "H_" ],
     ];
     private $CurrentLoadingContext = [];
     private $EscapedInsertionKeywords = [];
@@ -4008,7 +3754,6 @@ class ApplicationFramework
     private static $ObjectLocationCacheInterval = 60;
     private static $ObjectLocationCacheExpiration;
     private static $PreferHttpHost = false;
-    private static $RootUrlOverride = null;
     private static $SaveObjectLocationCache = false;
     private static $ScssCacheDir = "local/data/caches/SCSS";
     private static $SuppressSessionInitialization = false;
@@ -4027,36 +3772,43 @@ class ApplicationFramework
      */
     private $NoTSR = false;
 
-    private $RegisteredEvents = array();
-    private $KnownPeriodicEvents = array();
-    private $PeriodicEvents = array(
+    private $RegisteredEvents = [];
+    private $KnownPeriodicEvents = [];
+    private $PeriodicEvents = [
         "EVENT_HOURLY" => self::EVENTTYPE_DEFAULT,
         "EVENT_DAILY" => self::EVENTTYPE_DEFAULT,
         "EVENT_WEEKLY" => self::EVENTTYPE_DEFAULT,
         "EVENT_MONTHLY" => self::EVENTTYPE_DEFAULT,
         "EVENT_PERIODIC" => self::EVENTTYPE_NAMED,
-    );
-    private $EventPeriods = array(
+    ];
+    private $EventPeriods = [
         "EVENT_HOURLY" => 3600,
         "EVENT_DAILY" => 86400,
         "EVENT_WEEKLY" => 604800,
         "EVENT_MONTHLY" => 2592000,
         "EVENT_PERIODIC" => 0,
-    );
-    private $UIEvents = array(
+    ];
+    private $UIEvents = [
         "EVENT_PAGE_LOAD" => self::EVENTTYPE_CHAIN,
         "EVENT_PHP_FILE_LOAD" => self::EVENTTYPE_CHAIN,
         "EVENT_PHP_FILE_LOAD_COMPLETE" => self::EVENTTYPE_DEFAULT,
         "EVENT_HTML_FILE_LOAD" => self::EVENTTYPE_CHAIN,
         "EVENT_HTML_FILE_LOAD_COMPLETE" => self::EVENTTYPE_DEFAULT,
         "EVENT_PAGE_OUTPUT_FILTER" => self::EVENTTYPE_CHAIN,
-    );
+    ];
 
     /**
      * Object constructor.
      **/
     protected function __construct()
     {
+        # clear memory usage tracking peak (if we can) to make it more
+        #       likely that our memory usage tracking will be accurate
+        # (function added in PHP 8.2)
+        if (function_exists("memory_reset_peak_usage")) {
+            memory_reset_peak_usage();
+        }
+
         # check that classes needed for bootstrapping are available
         if (!class_exists("ScoutLib\\Database")) {
             throw new Exception("Required class \"ScoutLib\\Database\" not available.");
@@ -4066,7 +3818,7 @@ class ApplicationFramework
         }
 
         # set up a class alias for convenience
-        class_alias("ScoutLib\ApplicationFramework", "AF");
+        class_alias("ScoutLib\\ApplicationFramework", "AF");
 
         # adjust environment in case we are being run via CGI
         self::adjustEnvironmentForCgi();
@@ -4087,7 +3839,7 @@ class ApplicationFramework
         spl_autoload_register([$this, "autoloadObjects"]);
 
         # set up function to output any buffered text in case of crash
-        register_shutdown_function(array($this, "onCrash"));
+        register_shutdown_function([ $this, "onCrash" ]);
 
         # set up our internal environment
         $this->DB = new Database();
@@ -4098,7 +3850,7 @@ class ApplicationFramework
 
         # if we were not invoked via command line interface
         #       and session initialization has not been explicitly suppressed
-        if ((php_sapi_name() !== "cli") && (!self::$SuppressSessionInitialization)) {
+        if ((!$this->isRunningFromCommandLine()) && (!self::$SuppressSessionInitialization)) {
             # attempt to start PHP session
             $this->startPhpSession();
         }
@@ -4136,9 +3888,6 @@ class ApplicationFramework
         if ($this->logPhpNotices()) {
             set_error_handler([$this, "phpNoticeHandler"]);
         }
-
-        # initialize task manager
-        $this->TaskMgr = new AFTaskManager($this);
     }
 
     /**
@@ -4211,7 +3960,7 @@ class ApplicationFramework
      * Load our settings from database, initializing them if needed.
      * @throws Exception If unable to load settings.
      */
-    private function loadSettings()
+    private function loadSettings(): void
     {
         # read settings in from database
         $this->DB->query("SELECT * FROM ApplicationFrameworkSettings");
@@ -4237,31 +3986,14 @@ class ApplicationFramework
 
         # if base path was not previously set or we appear to have moved
         if (!array_key_exists("BasePath", $this->Settings)
-            || (!strlen($this->Settings["BasePath"] ?? ""))
-            || (!array_key_exists("BasePathCheck", $this->Settings))
-            || (__FILE__ != $this->Settings["BasePathCheck"])) {
+                || (!strlen($this->Settings["BasePath"] ?? ""))
+                || (!array_key_exists("BasePathCheck", $this->Settings))
+                || (__FILE__ != $this->Settings["BasePathCheck"])) {
             # attempt to extract base path from Apache .htaccess file
-            if (is_readable(".htaccess")) {
-                $Lines = file(".htaccess");
-                if ($Lines !== false) {
-                    foreach ($Lines as $Line) {
-                        if (preg_match("/\\s*RewriteBase\\s+/", $Line)) {
-                            $Pieces = preg_split(
-                                "/\\s+/",
-                                $Line,
-                                -1,
-                                PREG_SPLIT_NO_EMPTY
-                            );
-                            if (($Pieces !== false) && (count($Pieces) >= 2)) {
-                                $BasePath = $Pieces[1];
-                            }
-                        }
-                    }
-                }
-            }
+            $BasePath = self::getRewritebaseFromHtaccess();
 
             # if base path was found
-            if (isset($BasePath)) {
+            if (strlen($BasePath)) {
                 # save base path locally
                 $this->Settings["BasePath"] = $BasePath;
 
@@ -4273,9 +4005,13 @@ class ApplicationFramework
         }
 
         # retrieve template location cache
-        $this->TemplateLocationCache = unserialize(
-            $this->Settings["TemplateLocationCache"]
-        );
+        if (strlen($this->Settings["TemplateLocationCache"] ?? "")) {
+            $this->TemplateLocationCache = unserialize(
+                $this->Settings["TemplateLocationCache"]
+            );
+        } else {
+            $this->TemplateLocationCache = [];
+        }
         $this->TemplateLocationCacheInterval =
             $this->Settings["TemplateLocationCacheInterval"];
         $this->TemplateLocationCacheExpiration =
@@ -4284,10 +4020,10 @@ class ApplicationFramework
         # if template location cache looks invalid or has expired
         $CurrentTime = time();
         if (!is_array($this->TemplateLocationCache)
-            || !count($this->TemplateLocationCache)
-            || ($CurrentTime >= $this->TemplateLocationCacheExpiration)) {
+                || !count($this->TemplateLocationCache)
+                || ($CurrentTime >= $this->TemplateLocationCacheExpiration)) {
             # clear cache and reset cache expiration
-            $this->TemplateLocationCache = array();
+            $this->TemplateLocationCache = [];
             $this->TemplateLocationCacheExpiration =
                 $CurrentTime + ($this->TemplateLocationCacheInterval * 60);
             $this->SaveTemplateLocationCache = true;
@@ -4303,179 +4039,14 @@ class ApplicationFramework
 
         # if object location cache looks invalid or has expired
         if (!is_array(self::$ObjectLocationCache)
-            || !count(self::$ObjectLocationCache)
-            || ($CurrentTime >= self::$ObjectLocationCacheExpiration)) {
+                || !count(self::$ObjectLocationCache)
+                || ($CurrentTime >= self::$ObjectLocationCacheExpiration)) {
             # clear cache and reset cache expiration
-            self::$ObjectLocationCache = array();
+            self::$ObjectLocationCache = [];
             self::$ObjectLocationCacheExpiration =
                 $CurrentTime + (self::$ObjectLocationCacheInterval * 60);
             self::$SaveObjectLocationCache = true;
         }
-    }
-
-    /**
-     * Perform any page redirects or $_GET value settings resulting from
-     * clean URL mappings.
-     * @param string $PageName Starting page name.
-     * @return string Page name after any clean URL mappings.
-     */
-    private function rewriteCleanUrls(string $PageName): string
-    {
-        # if URL rewriting is supported by the server
-        if ($this->cleanUrlSupportAvailable()) {
-            # retrieve current URL and remove base path if present
-            $Url = $this->getRelativeUrl();
-
-            # for each clean URL mapping
-            foreach ($this->CleanUrlMappings as $Info) {
-                # if current URL matches clean URL pattern
-                if (preg_match($Info["Pattern"], $Url, $Matches)) {
-                    # set new page
-                    $PageName = $Info["Page"];
-
-                    # if $_GET variables specified for clean URL
-                    if ($Info["GetVars"] !== null) {
-                        # for each $_GET variable specified for clean URL
-                        foreach ($Info["GetVars"] as $VarName => $VarTemplate) {
-                            # start with template for variable value
-                            $Value = $VarTemplate;
-
-                            # for each subpattern matched in current URL
-                            foreach ($Matches as $Index => $Match) {
-                                # if not first (whole) match
-                                if ($Index > 0) {
-                                    # make any substitutions in template
-                                    $Value = str_replace("$" . $Index, $Match, $Value);
-                                }
-                            }
-
-                            # set $_GET variable
-                            $_GET[$VarName] = $Value;
-                        }
-                    }
-
-                    # set flag indicating clean URL mapped
-                    $this->CleanUrlRewritePerformed = true;
-
-                    # stop looking for a mapping
-                    break;
-                }
-            }
-        }
-
-        # return (possibly) updated page name to caller
-        return $PageName;
-    }
-
-    /**
-     * Check if alternate domains are configured and if this page was
-     * accessed via an alternate domain, rewriting URLs in the page
-     * output to refer to the correct domain.  Any URLs that live within
-     * the path subtree configured for our alternate domain will be
-     * converted to absolute URLs under that domain.  Any URLs that live
-     * outside the path subtree for our alternate domain (e.g., css
-     * files) will be converted to absolute URLs under our primary
-     * domain.
-     * @param string $Html Input HTML.
-     * @return string Possibly modified HTML.
-     */
-    private function rewriteAlternateDomainUrls(string $Html): string
-    {
-        # if we were loaded via an alternate domain, and we have a
-        # RootUrlOverride configured to tell us which domain is the
-        # primary, and if rewriting support is enabled, then we can
-        # handle URL Rewriting
-        if ($this->loadedViaAlternateDomain() &&
-            self::$RootUrlOverride !== null &&
-            $this->cleanUrlSupportAvailable()) {
-            # pull out the configured prefix for this domain
-            $VHost = $_SERVER["SERVER_NAME"];
-            $ThisPrefix = $this->AlternateDomainPrefixes[$VHost];
-
-            # get the URL for the primary domain, including the base path
-            # (usually the part between the host name and the PHP file name)
-            $RootUrl = $this->rootUrl() . self::basePath();
-
-            # and figure out what protcol we were using
-            $Protocol = (isset($_SERVER["HTTPS"]) ? "https" : "http");
-
-            # NB: preg_replace iterates through the configured
-            # search/replacement pairs, such that the second one
-            # runs after the first and so on
-
-            # the first n-1 patterns below convert any relative
-            # links in the generated HTML to absolute links using
-            # our primary domain (e.g., for stylesheets, javascript,
-            # images, etc)
-
-            # the nth pattern looks for links that live within the
-            # path subtree specified by our configured prefix on
-            # our primary domain, then replaces them with equivalent
-            # links on our secondary domain
-
-            # for example, if our primary domain is
-            # example.com/MySite and our secondary domain is
-            # things.example.org/MySite with 'things' as the
-            # configured prefix, then this last pattern will look
-            # for example.com/MySite/things and replace it with
-            # things.example.org/MySite
-            $RelativePathPatterns = array(
-                "%src=\"(?!http://|https://)%i",
-                "%src='(?!http://|https://)%i",
-                "%href=\"(?!http://|https://)%i",
-                "%href='(?!http://|https://)%i",
-                "%action=\"(?!http://|https://)%i",
-                "%action='(?!http://|https://)%i",
-                "%@import\s+url\(\"(?!http://|https://)%i",
-                "%@import\s+url\('(?!http://|https://)%i",
-                "%src:\s+url\(\"(?!http://|https://)%i",
-                "%src:\s+url\('(?!http://|https://)%i",
-                "%@import\s+\"(?!http://|https://)%i",
-                "%@import\s+'(?!http://|https://)%i",
-                "%" . preg_quote($RootUrl . $ThisPrefix . "/", "%") . "%",
-            );
-            $RelativePathReplacements = array(
-                "src=\"" . $RootUrl,
-                "src='" . $RootUrl,
-                "href=\"" . $RootUrl,
-                "href='" . $RootUrl,
-                "action=\"" . $RootUrl,
-                "action='" . $RootUrl,
-                "@import url(\"" . $RootUrl,
-                "@import url('" . $RootUrl,
-                "src: url(\"" . $RootUrl,
-                "src: url('" . $RootUrl,
-                "@import \"" . $RootUrl,
-                "@import '" . $RootUrl,
-                $Protocol . "://" . $VHost . self::basePath(),
-            );
-
-            $NewHtml = preg_replace(
-                $RelativePathPatterns,
-                $RelativePathReplacements,
-                $Html
-            );
-
-            # check to make sure relative path fixes didn't fail
-            $Html = $this->checkOutputModification(
-                $Html,
-                $NewHtml,
-                "alternate domain substitutions"
-            );
-        }
-
-        return $Html;
-    }
-
-    /**
-     * Determine if the current page load used an alternate domain.
-     * @return bool TRUE for requests using an alternate domain, FALSE otherwise.
-     */
-    private function loadedViaAlternateDomain(): bool
-    {
-        return (isset($_SERVER["SERVER_NAME"]) &&
-            isset($this->AlternateDomainPrefixes[$_SERVER["SERVER_NAME"]])) ?
-            true : false;
     }
 
     /**
@@ -4499,8 +4070,8 @@ class ApplicationFramework
     private function findFile(
         array $DirectoryList,
         string $BaseName,
-        array $PossibleSuffixes = null,
-        array $PossiblePrefixes = null
+        ?array $PossibleSuffixes = null,
+        ?array $PossiblePrefixes = null
     ) {
         # generate template cache index for this page
         $CacheKey = md5(serialize($DirectoryList))
@@ -4510,10 +4081,7 @@ class ApplicationFramework
 
         # if caching is enabled and we have cached location
         if (($this->TemplateLocationCacheInterval > 0)
-            && array_key_exists(
-                $CacheKey,
-                $this->TemplateLocationCache
-            )) {
+                && array_key_exists($CacheKey, $this->TemplateLocationCache)) {
             # use template location from cache
             $FoundFileName = $this->TemplateLocationCache[$CacheKey];
         } else {
@@ -4522,19 +4090,19 @@ class ApplicationFramework
                 && count($PossibleSuffixes)
                 && !preg_match("/\.[a-zA-Z0-9]+$/", $BaseName)) {
                 # add versions of file names with suffixes to file name list
-                $FileNames = array();
+                $FileNames = [];
                 foreach ($PossibleSuffixes as $Suffix) {
                     $FileNames[] = $BaseName . "." . $Suffix;
                 }
             } else {
                 # use base name as file name
-                $FileNames = array($BaseName);
+                $FileNames = [ $BaseName ];
             }
 
             # if prefixes specified
             if ($PossiblePrefixes !== null && count($PossiblePrefixes)) {
                 # add versions of file names with prefixes to file name list
-                $NewFileNames = array();
+                $NewFileNames = [];
                 foreach ($FileNames as $FileName) {
                     foreach ($PossiblePrefixes as $Prefix) {
                         $NewFileNames[] = $Prefix . $FileName;
@@ -4544,17 +4112,25 @@ class ApplicationFramework
             }
 
             # expand directory list to include variants
-            $DirectoryList = $this->expandDirectoryList($DirectoryList);
+            $OriginList = [];
+            $DirectoryList = $this->expandDirectoryList($DirectoryList, $OriginList);
 
             # for each possible location
             $FoundFileName = null;
-            foreach ($DirectoryList as $Dir) {
+            foreach ($OriginList as $Dir => $OrigDir) {
+                $MapFunc = $this->PageNameMapFuncs[$OrigDir] ?? null;
+
                 # for each possible file name
                 foreach ($FileNames as $File) {
+                    # map file name if mapping function available for this directory
+                    if ($MapFunc !== null) {
+                        $File = ($MapFunc)($OrigDir, $File);
+                    }
+
                     # if template is found at location
-                    if (file_exists($Dir . $File)) {
+                    if (file_exists($Dir.$File)) {
                         # save full template file name and stop looking
-                        $FoundFileName = $Dir . $File;
+                        $FoundFileName = $Dir.$File;
                         break 2;
                     }
                 }
@@ -4787,7 +4363,16 @@ class ApplicationFramework
             $DirSettings = $this->getInterfaceSettingsForDir($Dir);
 
             # add loaded settings to overall settings
-            $Settings = array_merge($Settings, $DirSettings);
+            foreach ($DirSettings as $Key => $Val) {
+                if (is_array($Val) && isset($Settings[$Key])) {
+                    $Settings[$Key] = array_merge(
+                        $Settings[$Key],
+                        $DirSettings[$Key]
+                    );
+                } else {
+                    $Settings[$Key] = $DirSettings[$Key];
+                }
+            }
         }
 
         # save settings with template locations
@@ -4995,7 +4580,7 @@ class ApplicationFramework
         $this->CssUrlFingerprintPath = dirname($SrcFile);
         $CssCode = preg_replace_callback(
             "/url\((['\"]?)([^)]+)\.([a-z]+)(['\"]?)\)/",
-            array($this, "cssUrlFingerprintInsertion"),
+            [ $this, "cssUrlFingerprintInsertion" ],
             $CssCode
         );
         if ($CssCode === null) {
@@ -5028,8 +4613,8 @@ class ApplicationFramework
      * Minimize JavaScript file (if updated) to cache directory and return
      * path to resulting minimized file to caller.
      * @param string $SrcFile JavaScript file name with leading path.
-     * @return mixed Minimized JavaScript file with leading path or NULL if
-     *       minimization failed or minimized file could not be written.
+     * @return string|null Minimized JavaScript file with leading path or NULL
+     *       if minimization failed or minimized file could not be written.
      */
     private function minimizeJavascriptFile(string $SrcFile)
     {
@@ -5170,10 +4755,10 @@ class ApplicationFramework
      * @return array Array with names of required files (without paths) for the
      *       index, and loading order hints (ORDER_*) for the values..
      */
-    private function getRequiredFilesNotYetLoaded(string $PageContentFile = null)
+    private function getRequiredFilesNotYetLoaded(?string $PageContentFile = null)
     {
         # start out assuming no files required
-        $RequiredFiles = array();
+        $RequiredFiles = [];
 
         # if page content file supplied
         if ($PageContentFile) {
@@ -5232,7 +4817,7 @@ class ApplicationFramework
     private function subBrowserIntoFileNames(array $FileNames)
     {
         # if a browser detection function has been made available
-        $UpdatedFileNames = array();
+        $UpdatedFileNames = [];
         if (is_callable($this->BrowserDetectFunc)) {
             # call function to get browser list
             $Browsers = call_user_func($this->BrowserDetectFunc);
@@ -5322,7 +4907,7 @@ class ApplicationFramework
             # for each combination of unique attributes
             foreach ($UniqueAttribNameCombos as $UniqueNameCombo) {
                 # for each attribute in combination
-                $AttribStrings = array();
+                $AttribStrings = [];
                 foreach ($UniqueNameCombo as $UniqueName) {
                     # add attrib/value string to list
                     $AttribStrings[] = $UniqueName . "=\""
@@ -5367,7 +4952,9 @@ class ApplicationFramework
             }
 
             # if standard page start and end have been disabled
-            if ($this->SuppressStdPageStartAndEnd) {
+            # and page output contains no <head> element
+            if ($this->SuppressStdPageStartAndEnd &&
+                strpos($PageOutput, "<head>") === false) {
                 # add segment to beginning of page output
                 $PageOutput = $Section . $PageOutput;
             } else {
@@ -5581,21 +5168,38 @@ class ApplicationFramework
     }
 
     /**
-     * Get HTML tag for loading specified CSS or JavaScript file.  If the
-     * type of the specified file is unknown or unsupported, an empty string
-     * is returned.
+     * Get HTML tag for loading specified CSS, JavaScript, or image file.
+     * If the type of the specified file is unknown or unsupported, an empty
+     * string is returned.
      * @param string $FileName UI file name, including leading path.
-     * @param string $AdditionalAttributes Any additional attributes that
-     *       should be included in HTML tag.  (OPTIONAL)
+     * @param ?array $ExtraAttribs Any additional attributes that should
+     *      be included in HTML tag, with attribute names for the index.
+     *      Attributes with no value should be set to TRUE or FALSE and
+     *      will only be included if the value is TRUE.  (OPTIONAL)
      * @return string Tag to load file, or empty string if file type was unknown
      *       or unsupported.
      */
     private function getUIFileLoadingTag(
         string $FileName,
-        string $AdditionalAttributes = null
+        ?array $ExtraAttribs = null
     ): string {
-        # pad additional attributes if supplied
-        $AddAttribs = $AdditionalAttributes ? " " . $AdditionalAttributes : "";
+        # if additional attributes supplied
+        if ($ExtraAttribs !== null) {
+            # escape attribute values and convert to name="value" format
+            $MapFunc = function ($Key) use ($ExtraAttribs) {
+                $Value = $ExtraAttribs[$Key];
+                if (is_bool($Value)) {
+                    return $Value ? $Key : "";
+                }
+                return $Key."=\"".htmlspecialchars($Value)."\"";
+            };
+            $FormattedAttribs = array_map($MapFunc, array_keys($ExtraAttribs));
+
+            # asseemble attribute string
+            $AttribString = " ".join(" ", $FormattedAttribs);
+        } else {
+            $AttribString = "";
+        }
 
         # retrieve type of UI file
         $FileType = $this->getFileType($FileName);
@@ -5605,17 +5209,17 @@ class ApplicationFramework
             case self::FT_CSS:
                 $Tag = "    <link rel=\"stylesheet\" type=\"text/css\""
                     . " media=\"all\" href=\"" . $FileName . "\""
-                    . $AddAttribs . " />\n";
+                    . $AttribString . " />\n";
                 break;
 
             case self::FT_JAVASCRIPT:
                 $Tag = "    <script type=\"text/javascript\""
                     . " src=\"" . $FileName . "\""
-                    . $AddAttribs . "></script>\n";
+                    . $AttribString . "></script>\n";
                 break;
 
             case self::FT_IMAGE:
-                $Tag = "<img src=\"" . $FileName . "\"" . $AddAttribs . ">";
+                $Tag = "<img src=\"" . $FileName . "\"" . $AttribString . ">";
                 break;
 
             default:
@@ -5631,7 +5235,7 @@ class ApplicationFramework
      * Load object file for specified class.
      * @param string $ClassName Name of class.
      */
-    private function autoloadObjects(string $ClassName)
+    private function autoloadObjects(string $ClassName): void
     {
         # if we have a cached location for the class
         #       and the cached value indicates that a file could not be found
@@ -5700,8 +5304,9 @@ class ApplicationFramework
 
                 # strip off any directory-specific namespace prefix
                 foreach ($Info["NamespacePrefixes"] as $Prefix) {
-                    if (strpos($ClassFileName, $Prefix) === 0) {
-                        $ClassFileName = substr($ClassFileName, strlen($Prefix));
+                    $PrefixLen = strlen($Prefix);
+                    if (($PrefixLen > 0) && (strpos($ClassFileName, $Prefix) === 0)) {
+                        $ClassFileName = substr($ClassFileName, $PrefixLen);
                         break;
                     }
                 }
@@ -5789,18 +5394,18 @@ class ApplicationFramework
      * Load any user interface functions available in interface include
      * directories (in F-FuncName.html or F-FuncName.php files).
      */
-    private function loadUIFunctions()
+    private function loadUIFunctions(): void
     {
-        $Dirs = array(
+        $Dirs = [
             "local/interface/%ACTIVEUI%/include",
             "interface/%ACTIVEUI%/include",
             "local/interface/%DEFAULTUI%/include",
             "interface/%DEFAULTUI%/include",
-        );
+        ];
         foreach ($Dirs as $Dir) {
             $Dir = str_replace(
-                array("%ACTIVEUI%", "%DEFAULTUI%"),
-                array(self::$ActiveUI, self::$DefaultUI),
+                [ "%ACTIVEUI%", "%DEFAULTUI%" ],
+                [ self::$ActiveUI, self::$DefaultUI ],
                 $Dir
             );
             if (is_dir($Dir)) {
@@ -5834,7 +5439,7 @@ class ApplicationFramework
      * @param string $EventName Name of event.
      * @param callable $Callback Event callback.
      */
-    private function processPeriodicEvent(string $EventName, callable $Callback)
+    private function processPeriodicEvent(string $EventName, callable $Callback): void
     {
         # retrieve last execution time for event if available
         $Signature = self::getCallbackSignature($Callback);
@@ -5849,19 +5454,24 @@ class ApplicationFramework
         # if event should run
         if ($ShouldExecute) {
             # add event to task queue
-            $WrapperCallback = array("ScoutLib\ApplicationFramework", "runPeriodicEvent");
-            $WrapperParameters = array(
-                $EventName, $Callback, array("LastRunAt" => $LastRun)
-            );
+            $WrapperCallback = [
+                "ScoutLib\ApplicationFramework",
+                "runPeriodicEvent"
+            ];
+            $WrapperParameters = [
+                $EventName,
+                $Callback,
+                [ "LastRunAt" => $LastRun ]
+            ];
             $this->queueUniqueTask($WrapperCallback, $WrapperParameters);
         }
 
         # add event to list of periodic events
-        $this->KnownPeriodicEvents[$Signature] = array(
+        $this->KnownPeriodicEvents[$Signature] = [
             "Period" => $EventName,
             "Callback" => $Callback,
             "Queued" => $ShouldExecute
-        );
+        ];
     }
 
     /**
@@ -5893,11 +5503,10 @@ class ApplicationFramework
         # if HTML has been output and it's time to launch another task
         # (only TSR if HTML has been output because otherwise browsers
         #       may misbehave after connection is closed)
-        if ((PHP_SAPI != "cli")
-            && ($this->JumpToPage || !$this->SuppressHTML)
-            && !$this->loadedViaAlternateDomain()
-            && $this->TaskMgr->taskExecutionEnabled()
-            && $this->TaskMgr->getTaskQueueSize()) {
+        if ((!$this->isRunningFromCommandLine())
+                && ($this->JumpToPage || !$this->SuppressHTML)
+                && $this->taskExecutionEnabled()
+                && $this->getTaskQueueSize()) {
             # begin buffering output for TSR
             ob_start();
 
@@ -5913,7 +5522,7 @@ class ApplicationFramework
      * Attempt to close out page loading with the browser and then execute
      * background tasks.
      */
-    private function launchTSR()
+    private function launchTSR(): void
     {
         # set headers to close out connection to browser
         if (!$this->NoTSR) {
@@ -5967,7 +5576,7 @@ class ApplicationFramework
         }
 
         # run qny queued tasks
-        $this->TaskMgr->runQueuedTasks();
+        $this->runQueuedTasks();
     }
 
     /**
@@ -5975,10 +5584,10 @@ class ApplicationFramework
      * (Not intended to be called directly, could not be made private to class because
      * of automatic execution method.)
      */
-    public function onCrash()
+    public function onCrash(): void
     {
         # attempt to remove any memory limits
-        $FreeMemory = $this->getFreeMemory();
+        $FreeMemory = StdLib::getFreeMemory();
         ini_set("memory_limit", "-1");
 
         # if there is a background task currently running
@@ -6026,7 +5635,6 @@ class ApplicationFramework
                 . "' WHERE TaskId = " . intval($this->RunningTask["TaskId"]));
         }
 
-        print("\n");
         return;
     }
 
@@ -6074,97 +5682,6 @@ class ApplicationFramework
     }
 
     /**
-     * Convert all previously-saved clean URL requests to output modification
-     * patterns or callbacks.
-     * @see ApplicationFramework::addCleanUrl()
-     */
-    private function convertCleanUrlRequestsToOutputModifications()
-    {
-        # if no new CleanURLs added since the last time we updated,
-        # then nothing to do
-        if ($this->OutputModificationsAreCurrent) {
-            return;
-        }
-
-        # clear any existing output modifications
-        $this->OutputModificationCallbacks = [];
-        $this->OutputModificationPatterns = [];
-        $this->OutputModificationReplacements = [];
-
-        # for each requested clean URL
-        foreach ($this->CleanUrlMappings as $CleanUrlParams) {
-            # pull all parameters into local variables
-            $Pattern = $CleanUrlParams["Pattern"];
-            $Page = $CleanUrlParams["Page"];
-            $GetVars = $CleanUrlParams["GetVars"];
-            $Template = $CleanUrlParams["Template"];
-
-            # skip if no replacement template specified
-            if ($Template === null) {
-                continue;
-            }
-
-            # if GET parameters specified
-            if (($GetVars !== null) && count($GetVars)) {
-                # retrieve all possible permutations of GET parameters
-                $GetPerms = StdLib::arrayPermutations(array_keys($GetVars));
-
-                # for each permutation of GET parameters
-                foreach ($GetPerms as $VarPermutation) {
-                    # construct search pattern for permutation
-                    $SearchPattern = "/href=([\"'])index\\.php\\?P=" . $Page;
-                    $GetVarSegment = "";
-                    foreach ($VarPermutation as $GetVar) {
-                        if (preg_match("%\\\$[0-9]+%", $GetVars[$GetVar])) {
-                            $GetVarSegment .= "&amp;" . $GetVar . "=((?:(?!\\1)[^&])+)";
-                        } else {
-                            $GetVarSegment .= "&amp;" . $GetVar . "=" . $GetVars[$GetVar];
-                        }
-                    }
-                    $SearchPattern .= $GetVarSegment . "\\1/i";
-
-                    # construct replacement string for permutation (if needed)
-                    if (is_callable($Template)) {
-                        $Replacement = "";
-                    } else {
-                        $Replacement = $Template;
-                        $Index = 2;
-                        foreach ($VarPermutation as $GetVar) {
-                            $Replacement = str_replace(
-                                "\$" . $GetVar,
-                                "\$" . $Index,
-                                $Replacement
-                            );
-                            $Index++;
-                        }
-                        $Replacement = "href=\"" . $Replacement . "\"";
-                    }
-
-                    $this->addOutputModification(
-                        $Pattern,
-                        $Page,
-                        $SearchPattern,
-                        $Replacement,
-                        $Template
-                    );
-                }
-            } else {
-                $SearchPattern = "/href=\"index\\.php\\?P=" . $Page . "\"/i";
-                $Replacement = is_callable($Template) ? "" : "href=\"".$Template."\"";
-                $this->addOutputModification(
-                    $Pattern,
-                    $Page,
-                    $SearchPattern,
-                    $Replacement,
-                    $Template
-                );
-            }
-        }
-
-        $this->OutputModificationsAreCurrent = true;
-    }
-
-    /**
      * Add page output modification pattern or callback.
      * @param string $Pattern Regular expression to match against clean URL,
      *       with starting and ending delimiters.
@@ -6175,7 +5692,6 @@ class ApplicationFramework
      *      assume relative URLs.)
      * @param string|callable $Template Template to use to insert clean URLs
      *      in HTML output, or callback to perform replacement.
-     * @see ApplicationFramework::convertCleanUrlRequestsToOutputModifications()
      */
     private function addOutputModification(
         string $Pattern,
@@ -6183,7 +5699,7 @@ class ApplicationFramework
         string $SearchPattern,
         string $Replacement,
         $Template
-    ) {
+    ): void {
         # construct absolute path version of search pattern
         $AbsSearchPrefix = preg_quote($this->baseUrl(), "/");
         $AbsSearchPattern = str_replace(
@@ -6225,6 +5741,16 @@ class ApplicationFramework
             $this->OutputModificationPatterns[] = $AbsSearchPattern;
             $this->OutputModificationReplacements[] = $AbsReplacement;
         }
+    }
+
+    /**
+     * Clear all current output modifications and callbacks.
+     */
+    private function clearAllOutputModifications(): void
+    {
+        $this->OutputModificationCallbacks = [];
+        $this->OutputModificationPatterns = [];
+        $this->OutputModificationReplacements = [];
     }
 
     /**
@@ -6304,7 +5830,7 @@ class ApplicationFramework
      */
     public function updateStringSetting(
         string $FieldName,
-        string $NewValue = null,
+        ?string $NewValue = null,
         bool $Persistent = true
     ): string {
         # if a new value was supplied
@@ -6342,7 +5868,7 @@ class ApplicationFramework
      */
     public function updateIntSetting(
         string $FieldName,
-        int $NewValue = null,
+        ?int $NewValue = null,
         bool $Persistent = true
     ): int {
         # if a new value was supplied
@@ -6380,7 +5906,7 @@ class ApplicationFramework
      */
     public function updateBoolSetting(
         string $FieldName,
-        bool $NewValue = null,
+        ?bool $NewValue = null,
         bool $Persistent = true
     ): bool {
         # if a new value was supplied
@@ -6418,7 +5944,7 @@ class ApplicationFramework
      */
     private static function includeFile(
         string $_AF_File,
-        array $_AF_ContextVars = array()
+        array $_AF_ContextVars = []
     ) {
         # set up context
         foreach ($_AF_ContextVars as $_AF_VarName => $_AF_VarValue) {
@@ -6452,7 +5978,7 @@ class ApplicationFramework
             || ($this->ContextFilters[$Context] == false)) {
             # clear all variables if no setting for context is available
             #       or setting is FALSE
-            return array();
+            return [];
         } elseif ($this->ContextFilters[$Context] == true) {
             # keep all variables if setting for context is TRUE
             return $ContextVars;
@@ -6476,31 +6002,36 @@ class ApplicationFramework
     }
 
     /** Default list of directories to search for user interface (HTML/TPL) files. */
-    private $InterfaceDirList = array(
+    private $InterfaceDirList = [
         "interface/%ACTIVEUI%/",
         "interface/%DEFAULTUI%/",
-    );
+    ];
+    private $PageNameMapFuncs = [];
+    /** Default list of directories to search for page (PHP) files. */
+    private $PageFileDirList = [
+        "pages/",
+    ];
     /**
      * Default list of directories to search for UI include (CSS, JavaScript,
      * common HTML, common PHP, /etc) files.
      */
-    private $IncludeDirList = array(
+    private $IncludeDirList = [
         "interface/%ACTIVEUI%/include/",
         "interface/%ACTIVEUI%/objects/",
         "interface/%DEFAULTUI%/include/",
         "interface/%DEFAULTUI%/objects/",
-    );
+    ];
     /** Default list of directories to search for image files. */
-    private $ImageDirList = array(
+    private $ImageDirList = [
         "interface/%ACTIVEUI%/images/",
         "interface/%DEFAULTUI%/images/",
-    );
+    ];
     /** Default list of directories to search for files containing PHP functions. */
-    private $FunctionDirList = array(
+    private $FunctionDirList = [
         "interface/%ACTIVEUI%/include/",
         "interface/%DEFAULTUI%/include/",
         "include/",
-    );
+    ];
 
     private $ExpandedDirectoryListCache = [];
     private $ExpandedDirectoryListOriginCache = [];
@@ -6519,9 +6050,11 @@ class ApplicationFramework
     private function loadPhpFileForPage(string $PageName): string
     {
         # look for PHP file for page
-        $OurPageFile = "pages/" . $this->PageName . ".php";
-        $LocalPageFile = "local/pages/" . $this->PageName . ".php";
-        $PageFile = file_exists($LocalPageFile) ? $LocalPageFile : $OurPageFile;
+        $PageFile = $this->findFile(
+            $this->PageFileDirList,
+            $this->PageName,
+            ["php"]
+        );
 
         # signal PHP file load (providing opportunity to modify file name)
         $SignalResult = $this->signalEvent(
@@ -6549,8 +6082,8 @@ class ApplicationFramework
                 return "";
             }
         } else {
-            # bail out if file does not exist
-            if (!is_readable($PageFile)) {
+            # bail out if no file found or file does not exist
+            if (($PageFile === null) || !is_readable($PageFile)) {
                 return "";
             }
         }
@@ -6592,7 +6125,7 @@ class ApplicationFramework
         $PageFile = $this->findFile(
             $this->InterfaceDirList,
             $this->PageName,
-            array("tpl", "html")
+            [ "tpl", "html" ]
         );
 
         # signal HTML file load (providing opportunity to modify file name)
@@ -6626,7 +6159,7 @@ class ApplicationFramework
             $PageFile = $this->findFile(
                 $this->InterfaceDirList,
                 $SignalResult["PageName"],
-                array("tpl", "html")
+                [ "tpl", "html" ]
             );
 
             # log error if no HTML file found based on modified page name
@@ -6645,7 +6178,7 @@ class ApplicationFramework
         ob_start();
 
         # if HTML file is available
-        if (file_exists($PageFile)) {
+        if (isset($PageFile) && file_exists($PageFile)) {
             # load HTML file
             $this->HtmlFileContext = $this->CurrentLoadingContext;
             $this->CurrentLoadingContext = self::includeFile(
@@ -6709,8 +6242,8 @@ class ApplicationFramework
         $File = $this->findFile(
             $this->IncludeDirList,
             "Start",
-            array("tpl", "html"),
-            array("StdPage", "StandardPage")
+            [ "tpl", "html" ],
+            [ "StdPage", "StandardPage" ]
         );
         if ($File) {
             ob_start();
@@ -6743,8 +6276,8 @@ class ApplicationFramework
         $File = $this->findFile(
             $this->IncludeDirList,
             "End",
-            array("tpl", "html"),
-            array("StdPage", "StandardPage")
+            [ "tpl", "html" ],
+            [ "StdPage", "StandardPage" ]
         );
         if ($File) {
             ob_start();
@@ -6804,7 +6337,7 @@ class ApplicationFramework
             # perform output modification
             $NewOutput = preg_replace_callback(
                 $Info["SearchPattern"],
-                array($this, "outputModificationCallbackShell"),
+                [ $this, "outputModificationCallbackShell" ],
                 $Output
             );
 
@@ -6818,9 +6351,10 @@ class ApplicationFramework
         }
 
         # provide the opportunity to modify full page output
-        $SignalResult = $this->signalEvent("EVENT_PAGE_OUTPUT_FILTER", array(
-            "PageOutput" => $Output
-        ));
+        $SignalResult = $this->signalEvent(
+            "EVENT_PAGE_OUTPUT_FILTER",
+            [ "PageOutput" => $Output ]
+        );
         if (isset($SignalResult["PageOutput"])
             && strlen(trim($SignalResult["PageOutput"]))) {
             $Output = $SignalResult["PageOutput"];
@@ -6828,11 +6362,8 @@ class ApplicationFramework
 
         # if relative paths may not work because we were invoked via clean URL
         if ($this->CleanUrlRewritePerformed || self::wasUrlRewritten()) {
-            $Output = $this->makeRelativePathsAbsolute($Output);
+            $Output = $this->convertRelativePathsToAbsolute($Output);
         }
-
-        # handle any necessary alternate domain rewriting
-        $Output = $this->rewriteAlternateDomainUrls($Output);
 
         return $Output;
     }
@@ -6843,85 +6374,75 @@ class ApplicationFramework
      * @param string $Output Page output.
      * @return string Processed page output.
      */
-    private function makeRelativePathsAbsolute(string $Output): string
+    private function convertRelativePathsToAbsolute(string $Output): string
     {
         $BaseUrl = $this->baseUrl();
 
         # if using the <base> tag is okay
         if ($this->UseBaseTag) {
             # add <base> tag to header
-            $Output = str_replace(
+            $Output = str_ireplace(
                 "<head>",
-                "<head><base href=\"" . $BaseUrl . "\" />",
+                "<head><base href=\"".$BaseUrl."\" />",
                 $Output
             );
 
             # get absolute URL to current page
-            $FullUrl = $BaseUrl . $this->getRelativeUrl();
+            $FullUrl = $BaseUrl.$this->getRelativeUrl();
 
-            # make HREF attribute values with just a fragment ID
-            # absolute since they don't work with the <base> tag because
-            # they are relative to the current page/URL, not the site
-            # root
-            $NewOutput = preg_replace(
-                ["%href=\"(#[^:\" ]+)\"%i", "%href='(#[^:' ]+)'%i"],
-                ["href=\"" . $FullUrl . "$1\"", "href='" . $FullUrl . "$1'"],
-                $Output
-            );
-
-            # check to make sure HREF cleanup didn't fail detectably
-            $Output = $this->checkOutputModification(
-                $Output,
-                $NewOutput,
-                "HREF cleanup"
-            );
+            # convert HREF attribute values with just a fragment ID into
+            # absolute paths since they don't work with the <base> tag because
+            # they are relative to the current page/URL, not the site root
+            $Replacements = [
+                "%href=\"(#[^:\" ]+)\"%i"
+                        => "href=\"".$FullUrl."$1\"",
+                "%href='(#[^:' ]+)'%i"
+                        => "href='".$FullUrl."$1'",
+            ];
         } else {
-            # try to fix any relative paths throughout code
+            # try to convert any relative paths to absolute paths in output
             $SrcFileExtensions = "(js|css|gif|png|jpg|svg|ico)";
-            $RelativePathPatterns = array(
-                "%src=\"/?([^?*:;{}\\\\\" ]+)\." . $SrcFileExtensions . "\"%i",
-                "%src='/?([^?*:;{}\\\\' ]+)\." . $SrcFileExtensions . "'%i",
+            $Replacements = [
+                "%src=\"/?([^?*:;{}\\\\\" ]+)\.".$SrcFileExtensions."\"%i"
+                        => "src=\"".$BaseUrl."$1.$2\"",
+                "%src='/?([^?*:;{}\\\\' ]+)\.".$SrcFileExtensions."'%i"
+                        => "src=\"".$BaseUrl."$1.$2\"",
                 # (don't rewrite HREF attributes that are just fragment
                 #   IDs because they are relative to the current page/URL,
                 #   not the site root)
-                "%href=\"/?([^#][^:\" ]*)\"%i",
-                "%href='/?([^#][^:' ]*)'%i",
-                "%action=\"/?([^#][^:\" ]*)\"%i",
-                "%action='/?([^#][^:' ]*)'%i",
-                "%@import\s+url\(\"/?([^:\" ]+)\"\s*\)%i",
-                "%@import\s+url\('/?([^:\" ]+)'\s*\)%i",
-                "%src:\s+url\(\"/?([^:\" ]+)\"\s*\)%i",
-                "%src:\s+url\('/?([^:\" ]+)'\s*\)%i",
-                "%@import\s+\"/?([^:\" ]+)\"\s*%i",
-                "%@import\s+'/?([^:\" ]+)'\s*%i",
-            );
-            $RelativePathReplacements = array(
-                "src=\"" . $BaseUrl . "$1.$2\"",
-                "src=\"" . $BaseUrl . "$1.$2\"",
-                "href=\"" . $BaseUrl . "$1\"",
-                "href=\"" . $BaseUrl . "$1\"",
-                "action=\"" . $BaseUrl . "$1\"",
-                "action=\"" . $BaseUrl . "$1\"",
-                "@import url(\"" . $BaseUrl . "$1\")",
-                "@import url('" . $BaseUrl . "$1')",
-                "src: url(\"" . $BaseUrl . "$1\")",
-                "src: url('" . $BaseUrl . "$1')",
-                "@import \"" . $BaseUrl . "$1\"",
-                "@import '" . $BaseUrl . "$1'",
-            );
-            $NewOutput = preg_replace(
-                $RelativePathPatterns,
-                $RelativePathReplacements,
-                $Output
-            );
-
-            # check to make sure relative path fixes didn't fail detectably
-            $Output = $this->checkOutputModification(
-                $Output,
-                $NewOutput,
-                "relative path fixes"
-            );
+                "%href=\"/?([^#][^:\" ]*)\"%i"
+                        => "href=\"".$BaseUrl."$1\"",
+                "%href='/?([^#][^:' ]*)'%i"
+                        => "href=\"".$BaseUrl."$1\"",
+                "%action=\"/?([^#][^:\" ]*)\"%i"
+                        => "action=\"".$BaseUrl."$1\"",
+                "%action='/?([^#][^:' ]*)'%i"
+                        => "action=\"".$BaseUrl."$1\"",
+                "%@import\s+url\(\"/?([^:\" ]+)\"\s*\)%i"
+                        => "@import url(\"".$BaseUrl."$1\")",
+                "%@import\s+url\('/?([^:\" ]+)'\s*\)%i"
+                        => "@import url('".$BaseUrl."$1')",
+                "%src:\s+url\(\"/?([^:\" ]+)\"\s*\)%i"
+                        => "src: url(\"".$BaseUrl."$1\")",
+                "%src:\s+url\('/?([^:\" ]+)'\s*\)%i"
+                        => "src: url('".$BaseUrl."$1')",
+                "%@import\s+\"/?([^:\" ]+)\"\s*%i"
+                        => "@import \"".$BaseUrl."$1\"",
+                "%@import\s+'/?([^:\" ]+)'\s*%i"
+                        => "@import '".$BaseUrl."$1'",
+            ];
         }
+
+        # perform path fix replacements in output
+        $Patterns = array_keys($Replacements);
+        $NewOutput = preg_replace($Patterns, $Replacements, $Output);
+
+        # check to make sure path fixes didn't fail in a detectable manner
+        $Output = $this->checkOutputModification(
+            $Output,
+            $NewOutput,
+            ($this->UseBaseTag ? "HREF cleanup" : "relative path fixes")
+        );
 
         return $Output;
     }
@@ -7096,18 +6617,21 @@ class ApplicationFramework
         # if caching has not been disallowed for current page
         if ($this->CacheCurrentPage) {
             # get fingerprint for requested page
-            $PageFingerprint = $this->getPageFingerprint($PageName);
+            $DB = $this->DB;
+            $EscapedPageFingerprint = $DB->escapeString(
+                $this->getPageFingerprint($PageName)
+            );
 
             # look for matching page in cache in database
-            $this->DB->query("SELECT * FROM AF_CachedPages"
-                    ." WHERE Fingerprint = '".addslashes($PageFingerprint)."'");
+            $DB->query("SELECT * FROM AF_CachedPages"
+                    ." WHERE Fingerprint = '".$EscapedPageFingerprint."'");
 
             # if matching page found
-            if ($this->DB->numRowsSelected() > 0) {
+            if ($DB->numRowsSelected() > 0) {
                 # if cached page has expired
-                $Row = $this->DB->fetchRow();
+                $Row = $DB->fetchRow();
                 $ExpirationTime = strtotime(
-                    "-" . $this->pageCacheExpirationPeriod() . " seconds"
+                    "-" . $this->getPageCacheExpirationPeriod() . " minutes"
                 );
                 if ((strtotime($Row["CachedAt"]) < $ExpirationTime)
                         || (($Row["ExpirationDate"] !== null)
@@ -7115,8 +6639,20 @@ class ApplicationFramework
                     # clear all expired pages from cache
                     $this->clearExpiredPagesFromCache();
                 } else {
-                    # use cached page
-                    $CachedPage = $Row["PageContent"];
+                    # decompress cached data to get cached page
+                    $CachedPage = gzuncompress($Row["PageContent"]);
+
+                    # if decompression failed
+                    if ($CachedPage === false) {
+                        # clear data for this page from cache
+                        $DB->query("DELETE FROM AF_CachedPages"
+                                ." WHERE Fingerprint = '".$EscapedPageFingerprint."'");
+
+                        # report no cached page available to caller
+                        return null;
+                    }
+
+                    # save cache expiration time for page
                     $this->CurrentPageExpirationDate = $Row["ExpirationDate"];
                 }
             }
@@ -7132,12 +6668,13 @@ class ApplicationFramework
     /**
      * Clear all expired pages from page cache.
      */
-    private function clearExpiredPagesFromCache()
+    private function clearExpiredPagesFromCache(): void
     {
-        $ExpirationTime = strtotime("-".$this->pageCacheExpirationPeriod()." seconds");
+        $ExpirationPeriod = $this->getPageCacheExpirationPeriod();
+        $ExpirationTime = strtotime("-".$ExpirationPeriod." minutes");
         if ($ExpirationTime === false) {
             throw new Exception("Invalid page cache expiration period ("
-                    .$this->pageCacheExpirationPeriod().").");
+                    .$ExpirationPeriod." minutes).");
         }
         $ExpirationTimestamp = date(StdLib::SQL_DATE_FORMAT, $ExpirationTime);
         # (these DELETEs are done as two separate queries for each table
@@ -7164,7 +6701,7 @@ class ApplicationFramework
      * @param string $PageName Name of page.
      * @param string $PageContent Full content of page.
      */
-    private function updatePageCache(string $PageName, string $PageContent)
+    private function updatePageCache(string $PageName, string $PageContent): void
     {
         # if page caching is enabled and current page should be cached
         if ($this->pageCacheEnabled()
@@ -7176,26 +6713,34 @@ class ApplicationFramework
                     . " (PAGE: " . $PageName . ", URL: " . $this->fullUrl() . ")";
                 $this->logError(self::LOGLVL_ERROR, $LogMsg);
             } else {
-                # save page to cache
-                $PageFingerprint = $this->getPageFingerprint($PageName);
-                $EscapedPageFingerprint = $this->DB->escapeString($PageFingerprint);
-                $EscapedPageContent = $this->DB->escapeString($PageContent);
+                # escape page fingerprint
+                $DB = $this->DB;
+                $EscapedPageFingerprint = $DB->escapeString(
+                    $this->getPageFingerprint($PageName)
+                );
+
+                # compress and escape page data
+                $EscapedPageContent = $DB->escapeString(gzcompress($PageContent, 9));
+
+                # if we have an expiration date for cached version of this page
                 if ($this->CurrentPageExpirationDate !== null) {
+                    # save cached page version with predetermined expiration date
                     $EscapedExpiration = $this->DB->escapeString(
                         $this->CurrentPageExpirationDate
                     );
-                    $this->DB->query("INSERT INTO AF_CachedPages"
+                    $DB->query("INSERT INTO AF_CachedPages"
                             ." (Fingerprint, PageContent, ExpirationDate) VALUES"
                             ." ('".$EscapedPageFingerprint."', '"
                                     .$EscapedPageContent."', '"
                                     .$EscapedExpiration."')");
                 } else {
-                    $this->DB->query("INSERT INTO AF_CachedPages"
+                    # save cached page version with no predetermined expiration date
+                    $DB->query("INSERT INTO AF_CachedPages"
                             ." (Fingerprint, PageContent) VALUES"
                             ." ('".$EscapedPageFingerprint."', '"
                                     .$EscapedPageContent."')");
                 }
-                $CacheId = $this->DB->getLastInsertId();
+                $CacheId = $DB->getLastInsertId();
 
                 # for each page cache tag that was added
                 foreach ($this->PageCacheTags as $Tag => $Pages) {
@@ -7205,7 +6750,7 @@ class ApplicationFramework
                         $TagId = $this->getPageCacheTagId($Tag);
 
                         # mark current page as associated with tag
-                        $this->DB->query("INSERT INTO AF_CachedPageTagInts"
+                        $DB->query("INSERT INTO AF_CachedPageTagInts"
                             . " (TagId, CacheId) VALUES "
                             . " (" . intval($TagId) . ", " . intval($CacheId) . ")");
                     }
@@ -7216,7 +6761,7 @@ class ApplicationFramework
                     $CallbackData = $this->DB->escapeString(
                         serialize($this->CallbackForPageCacheHits)
                     );
-                    $this->DB->query("INSERT INTO AF_CachedPageCallbacks"
+                    $DB->query("INSERT INTO AF_CachedPageCallbacks"
                             ." (CacheId, Callbacks)"
                             ." VALUES (".$CacheId.", '".$CallbackData."')"
                             ." ON DUPLICATE KEY UPDATE Callbacks = '".$CallbackData."'");
@@ -7283,7 +6828,7 @@ class ApplicationFramework
      * Run any callback registered for a page cache hit on the specified page.
      * @param string $PageName Name of page to check for registered callback.
      */
-    private function runCallbackForPageCacheHit(string $PageName)
+    private function runCallbackForPageCacheHit(string $PageName): void
     {
         # check for callback for page
         $Fingerprint = $this->getPageFingerprint($this->PageName);
@@ -7315,7 +6860,7 @@ class ApplicationFramework
      * primarily to bump the CTime on the session file, so that we
      * don't prematurely clean up sessions.
      */
-    private function updateLastUsedTimeForActiveSessions()
+    private function updateLastUsedTimeForActiveSessions(): void
     {
         if ($this->SessionInUse) {
             $_SESSION["AF_SessionLastUsed"] = date(StdLib::SQL_DATE_FORMAT);
@@ -7331,7 +6876,7 @@ class ApplicationFramework
      * correct that situation, so that the variables are available via the
      * intended names when running via CGI.
      */
-    private static function adjustEnvironmentForCgi()
+    private static function adjustEnvironmentForCgi(): void
     {
         # if it appears we are running via a CGI interpreter
         if (isset($_SERVER["ORIG_SCRIPT_NAME"])) {
@@ -7355,11 +6900,12 @@ class ApplicationFramework
      * 301, or by outputting a blank page with a refresh meta tag.
      * @param string $Page Address (URL) to redirect to.
      */
-    private static function redirectToPage(string $Page)
+    private static function redirectToPage(string $Page): void
     {
-        # if client supports HTTP/1.1, use a 303 as it is most accurate
-        if ($_SERVER["SERVER_PROTOCOL"] == "HTTP/1.1") {
-            header("HTTP/1.1 303 See Other");
+        # if client supports HTTP/1.1 or 2.0, use a 303 as it is most accurate
+        if ($_SERVER["SERVER_PROTOCOL"] == "HTTP/1.1"
+                || $_SERVER["SERVER_PROTOCOL"] == "HTTP/2.0") {
+            header($_SERVER["SERVER_PROTOCOL"]." 303 See Other");
             header("Location: " . $Page);
         } else {
             # if the request was an HTTP/1.0 GET or HEAD, then
@@ -7382,9 +6928,79 @@ class ApplicationFramework
     }
 
     /**
+     * Determine if the current HTTP request is a Range request of a type that
+     *   we support. Currently this includes single-part Range requests
+     *   (needed by Safari for files in <video> tags) and open-ended range
+     *   requests (sent by Chrome and Firefox for files in <video> tags).
+     *   multi-part ranges and negative ranges are not supported.  (per
+     *   RFC9110 sec 14 paragraph 2, servers may ignore the Range header and
+     *   respond as if the GET had been provided without one, so this partial
+     *   support is RFC compliant)
+     * @return bool TRUE for supported Range requests, FALSE otherwise.
+     * @see handleRangeRequest()
+     */
+    private static function isSupportedRangeRequest(): bool
+    {
+        return (bool)preg_match('%^bytes=[0-9]+-[0-9]*$%', $_SERVER["HTTP_RANGE"] ?? "");
+    }
+
+    /**
+     * Handle HTTP GET requests that included a Range header. If the range is
+     *   invalid, replies with HTTP 416. Otherwise replies with HTTP 206 and
+     *   the requested chunk of the file.
+     * @param resource $Handle Open file handle for the data file, as returned
+     *     by `fopen()`.
+     * @param int $FileSize Size of the source file.
+     * @param int $BlockSize Block size to use when reading file.
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+     */
+    private static function handleRangeRequest(
+        $Handle,
+        int $FileSize,
+        int $BlockSize
+    ): void {
+        $Protocol = $_SERVER["SERVER_PROTOCOL"];
+
+        if (!preg_match('%^bytes=([0-9]+)-([0-9]*)$%', $_SERVER["HTTP_RANGE"], $Matches)) {
+            throw new Exception(
+                __FUNCTION__." called for non-Range request. "
+            );
+        }
+
+        $Start = intval($Matches[1]);
+
+        # if end was omitted, return up to two blocks of data
+        # (per RFC9110 sec 15.3.7 paragraph 2, servers can opt to send
+        # a subset of the requested data)
+        $End = (strlen($Matches[2]) > 0) ?
+            intval($Matches[2]) :
+            min($FileSize - 1, $Start + 2 * $BlockSize);
+
+        if ($Start < 0 || $End < $Start || $End >= $FileSize) {
+            header($Protocol." 416 Range Not Satisfiable");
+            return;
+        }
+
+        header($Protocol." 206 Partial Content");
+        header("Content-Range: bytes ".$Start."-".$End."/".$FileSize);
+        header("Content-Length: " . ($End - $Start + 1));
+
+        $Position = $Start;
+        fseek($Handle, $Position);
+        while ($Position < $End) {
+            $ThisBlockSize = max(1, min($BlockSize, $End - $Position + 1));
+
+            print fread($Handle, $ThisBlockSize);
+            flush();
+
+            $Position += $ThisBlockSize;
+        }
+    }
+
+    /**
      * Log slow page loads, if appropriate.
      */
-    private function checkForAndLogSlowPageLoads()
+    private function checkForAndLogSlowPageLoads(): void
     {
         if (!$this->DoNotLogSlowPageLoad
                 && $this->logSlowPageLoads()
@@ -7400,10 +7016,10 @@ class ApplicationFramework
     /**
      * Log high memory usage, if appropriate.
      */
-    private function checkForAndLogHighMemoryUsage()
+    private function checkForAndLogHighMemoryUsage(): void
     {
         if ($this->logHighMemoryUsage()) {
-            $PeakUsage = memory_get_peak_usage(true);
+            $PeakUsage = memory_get_peak_usage();
             $MemoryThreshold = ($this->highMemoryUsageThreshold()
                     * StdLib::getPhpMemoryLimit()) / 100;
             if ($PeakUsage >= $MemoryThreshold) {
@@ -7419,7 +7035,7 @@ class ApplicationFramework
      * Display output from page file, if any.
      * @param string $Output Page file output.
      */
-    private function displayPageFileOutput(string $Output)
+    private function displayPageFileOutput(string $Output): void
     {
         if (strlen($Output)) {
             if (!$this->SuppressHTML) {
@@ -7441,5 +7057,51 @@ class ApplicationFramework
                 ?></td></tr></table><?PHP
             }
         }
+    }
+
+    /**
+     * Generate a one-line summary of a stack frame from a backtrace.
+     * @param array $Frame Stack frame from debug_backtrace().
+     * @return string Stack frame summary.
+     */
+    private static function stackFrameSummary(array $Frame) : string
+    {
+        if (isset($Frame["file"]) && isset($Frame["line"])) {
+            return basename($Frame["file"]).":".$Frame["line"];
+        }
+
+        if (isset($Frame["class"]) && isset($Frame["function"])) {
+            return $Frame["class"]."::".$Frame["function"];
+        }
+
+        return preg_replace('/\v/', ' ', print_r($Frame, true));
+    }
+
+    /**
+     * Read "RewriteBase" value from .htaccess file, if available.
+     * @return string RewriteBase value or empty string if none found.
+     */
+    private static function getRewritebaseFromHtaccess(): string
+    {
+        $RewriteBase = "";
+        if (is_readable(".htaccess")) {
+            $Lines = file(".htaccess");
+            if ($Lines !== false) {
+                foreach ($Lines as $Line) {
+                    if (preg_match("/\\s*RewriteBase\\s+/", $Line)) {
+                        $Pieces = preg_split(
+                            "/\\s+/",
+                            $Line,
+                            -1,
+                            PREG_SPLIT_NO_EMPTY
+                        );
+                        if (($Pieces !== false) && (count($Pieces) >= 2)) {
+                            $RewriteBase = $Pieces[1];
+                        }
+                    }
+                }
+            }
+        }
+        return $RewriteBase;
     }
 }

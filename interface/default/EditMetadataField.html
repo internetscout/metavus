@@ -3,18 +3,30 @@
 #   FILE:  EditMetadataField.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\SearchEngine;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
+/**
+ * Get the first error from the given list of errors.
+ * @param array $Errors List of errors
+ * @return string|null the first error or NULL if none exist
+ */
+function GetFirstError(array $Errors)
+{
+    reset($Errors);
+    return current($Errors) !== false ? current($Errors) : null;
+}
 
 /**
  * Get an array of options available for a flag value.The array keys are values
@@ -34,7 +46,7 @@ function GetFlagOptions()
 function GetPrivilegeOptions()
 {
     $PrivilegeFactory = new PrivilegeFactory();
-    return ["--" => "--"] + $PrivilegeFactory->GetPrivileges(true, false);
+    return ["--" => "--"] + $PrivilegeFactory->getPrivileges(true, false);
 }
 
 /**
@@ -63,6 +75,23 @@ function GetSafeFlagOption($State)
 }
 
 /**
+ * Transform an array of field type enumerations to an array of human-readable
+ * strings.
+ * @param array $Types Array of field type enumerations
+ * @return array array of field human-readable strings
+ */
+function MakeTypesHumanReadable(array $Types)
+{
+    $Strings = MetadataField::$FieldTypeHumanEnums;
+
+    foreach ($Types as $Constant => $Type) {
+        $Types[$Constant] = StdLib::getArrayValue($Strings, $Constant, "Unknown");
+    }
+
+    return $Types;
+}
+
+/**
  * Print the type field for the given metadata field data.
  * @param array $Data metadata field data
  * @param string|null $Error field error, if one exists
@@ -87,7 +116,7 @@ function PrintTypeField(array $Data, $Error)
         <input type="hidden" id="F_Type" name="F_Type" value="<?= $SafeType; ?>" />
             <?= $SafeTypeName; ?>
       <?PHP } else { ?>
-          <?PHP (new HtmlOptionList("F_Type", $AllowedTypes, $Data["Type"]))->PrintHtml(); ?>
+          <?PHP (new HtmlOptionList("F_Type", $AllowedTypes, $Data["Type"]))->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
@@ -97,6 +126,7 @@ function PrintTypeField(array $Data, $Error)
 
 /**
 * Print the name of the schema associated with a field.
+* @param MetadataSchema $Schema Schema to print
 * @return void
 */
 function PrintSchemaName($Schema)
@@ -107,12 +137,11 @@ function PrintSchemaName($Schema)
       mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
       mfe-type-url mfe-type-point mfe-type-reference mfe-type-email mfe-type-searchparameterset">
     <th>Schema</th>
-    <td><?= $Schema->Name() ?></td>
+    <td><?= $Schema->name() ?></td>
     <td class="mfe mfe-appliesto">All fields.</td>
   </tr>
     <?PHP
 }
-
 
 /**
  * Print the name field for the given metadata field data.
@@ -261,7 +290,7 @@ function PrintEnabledField(array $Data, $Error)
               "F_Enabled",
               GetFlagOptions(),
               $Data["Enabled"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
@@ -296,7 +325,7 @@ function PrintEditableField(array $Data, $Error)
               "F_Editable",
               GetFlagOptions(),
               $Data["Editable"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
@@ -330,7 +359,7 @@ function PrintOptionalField(array $Data, $Error)
               "F_Optional",
               GetFlagOptions(),
               $Data["Optional"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto">
@@ -371,7 +400,7 @@ function PrintUsesQualifiersField(array $Data, $Error)
               "F_UsesQualifiers",
               GetFlagOptions(),
               $Data["UsesQualifiers"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
@@ -412,7 +441,7 @@ function PrintHasItemLevelQualifiersField(array $Data, $Error)
               "F_HasItemLevelQualifiers",
               GetFlagOptions(),
               $Data["HasItemLevelQualifiers"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
@@ -428,10 +457,10 @@ function PrintHasItemLevelQualifiersField(array $Data, $Error)
 /**
 * Print HTML elements for the CopyOnResourceDuplication field.
 * @param array $Data metadata field data
-* @param array $H_Schema metadata schema for this field
-* @param strng_null $Error field error, if one exists
+* @param array $Schema metadata schema for this field
+* @param string|null $Error field error, if one exists
 */
-function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error)
+function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error): void
 {
     list($SafeTex, $SaveValue) = GetSafeFlagOption($Data["CopyOnResourceDuplication"]);
     ?>
@@ -448,7 +477,7 @@ function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error)
             "F_CopyOnResourceDuplication",
             GetFlagOptions(),
             $Data["CopyOnResourceDuplication"]
-        ))->PrintHtml(); ?>
+        ))->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
   </tr>
@@ -460,7 +489,7 @@ function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error)
  * @param array $Data metadata field data
  * @param array $Error field
  */
-function printObfuscateValueForAnonymousUsersField(array $Data, $Error)
+function printObfuscateValueForAnonymousUsersField(array $Data, $Error): void
 {
     ?>
 <tr class="mfe mfe-value mfe-group-generic mfe-field-obfuscate mfe-type-email">
@@ -473,7 +502,7 @@ function printObfuscateValueForAnonymousUsersField(array $Data, $Error)
         "F_ObfuscateValueForAnonymousUsers",
         GetFlagOptions(),
         $Data["ObfuscateValueForAnonymousUsers"]
-    ))->PrintHtml(); ?>
+    ))->printHtml(); ?>
   </td>
   <td class="mfe mfe-appliesto"><i>Email</i> fields.</td>
 </tr>
@@ -484,13 +513,14 @@ function printObfuscateValueForAnonymousUsersField(array $Data, $Error)
  * Print the default qualifier field for the given metadata field data.
  * @param array $Data metadata field data
  * @param string|null $Error field error, if one exists
+ * @param array $QualifierList array of available qualifiers
  * @return void
  */
-function PrintDefaultQualifierField(array $Data, $Error)
+function PrintDefaultQualifierField(array $Data, $Error, $QualifierList)
 {
     # get the options
     $Options = array_intersect_key(
-        GetQualifierList(),
+        $QualifierList,
         array_flip($Data["AssociatedQualifierList"])
     );
     $Options = ["--" => "--"] + $Options;
@@ -508,7 +538,7 @@ function PrintDefaultQualifierField(array $Data, $Error)
           "F_DefaultQualifier",
           $Options,
           $Data["DefaultQualifier"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
         <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
@@ -524,12 +554,13 @@ function PrintDefaultQualifierField(array $Data, $Error)
  * Print the allowed qualifiers field for the given metadata field data.
  * @param array $Data metadata field data
  * @param string|null $Error field error, if one exists
+ * @param array $Options Array of options for HtmlOptionList, with form values
+ *       for the array index and labels for the array values.
  * @return void
  */
-function PrintAssociatedQualifierListField(array $Data, $Error)
+function PrintAssociatedQualifierListField(array $Data, $Error, $Options)
 {
     # get the options
-    $Options = GetQualifierList();
     $Selected = $Data["AssociatedQualifierList"];
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-qualifiers mfe-field-allowedqualifiers
@@ -543,9 +574,9 @@ function PrintAssociatedQualifierListField(array $Data, $Error)
     <td>
       <?PHP
           $OptList = new HtmlOptionList("F_AssociatedQualifierList[]", $Options, $Selected);
-          $OptList->Size(8);
-          $OptList->MultipleAllowed(true);
-          $OptList->PrintHtml();
+          $OptList->size(8);
+          $OptList->multipleAllowed(true);
+          $OptList->printHtml();
         ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
@@ -578,7 +609,7 @@ function PrintShowQualifiersField(array $Data, $Error)
           "F_ShowQualifiers",
           GetFlagOptions(),
           $Data["ShowQualifiers"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
       &nbsp;&nbsp;&nbsp;&nbsp;<i>(on the full record page)</i>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
@@ -612,7 +643,7 @@ function PrintIncludeInKeywordSearchField(array $Data, $Error)
           "F_IncludeInKeywordSearch",
           GetFlagOptions(),
           $Data["IncludeInKeywordSearch"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Tree</i>, <i>Controlled
         Name</i>, <i>Option</i>, <i>User</i>, <i>Image</i>, <i>File</i>, and
@@ -645,7 +676,7 @@ function PrintIncludeInAdvancedSearchField(array $Data, $Error)
           "F_IncludeInAdvancedSearch",
           GetFlagOptions(),
           $Data["IncludeInAdvancedSearch"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
         <i>Timestamp</i>, <i>Flag</i>, <i>Tree</i>, <i>Controlled Name</i>,
@@ -677,7 +708,7 @@ function PrintIncludeInFacetedSearchField(array $Data, $Error)
           "F_IncludeInFacetedSearch",
           GetFlagOptions(),
           $Data["IncludeInFacetedSearch"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
       <td class="mfe mfe-appliesto">
         <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
       </td>
@@ -706,7 +737,7 @@ function PrintIncludeInSortOptionsField(array $Data, $Error)
           "F_IncludeInSortOptions",
           GetFlagOptions(),
           $Data["IncludeInSortOptions"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
       <td class="mfe mfe-appliesto">
         <i>Text</i>, <i>Number</i>, <i>Date</i>, <i>Timestamp</i>, and
         <i>URL</i> fields.
@@ -752,9 +783,9 @@ function PrintSearchWeightField(array $Data, $Error)
 /**
 * Print the SearchGroupLogic setting for the given field.
 * @param array $Data Metadata field data
-* @param string|null $Errorr Field error, if one exists
+* @param string|null $Error Field error, if one exists
 */
-function PrintSearchGroupLogic(array $Data, $Error)
+function PrintSearchGroupLogic(array $Data, $Error): void
 {
     $SafeValue = intval($Data["SearchGroupLogic"]);
     ?>
@@ -768,7 +799,7 @@ function PrintSearchGroupLogic(array $Data, $Error)
         "F_SearchGroupLogic",
         GetSearchGroupLogicOptions(),
         $Data["SearchGroupLogic"]
-    ))->PrintHtml(); ?>
+    ))->printHtml(); ?>
       <i>(determines how multiple selections for this field are combined)</i>
     </td>
     <td class="mfe mfe-appliesto">
@@ -783,7 +814,7 @@ function PrintSearchGroupLogic(array $Data, $Error)
  * @param array $Data Metadata field data
  * @param string|null $Error Field error, if one exists
  */
-function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error)
+function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error): void
 {
     $SafeValue = intval($Data["FacetsShowOnlyTermsUsedInResults"]);
     ?>
@@ -797,7 +828,7 @@ function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error)
         "F_FacetsShowOnlyTermsUsedInResults",
         GetFlagOptions(),
         $Data["FacetsShowOnlyTermsUsedInResults"]
-    ))->PrintHtml(); ?>
+    ))->printHtml(); ?>
       <i>(determines if search facets will show all top-level terms for the given field rather
         than only those associated with the current set of search results)</i>
     </td>
@@ -813,7 +844,7 @@ function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error)
 * @param array $Data Metadata field data.
 * @param string $Error A field error, if one exists.
 */
-function PrintOptionListThresholdField(array $Data, $Error)
+function PrintOptionListThresholdField(array $Data, $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["OptionListThreshold"] ?? MetadataField::getDefaultValue("OptionListThreshold")
@@ -842,7 +873,7 @@ function PrintOptionListThresholdField(array $Data, $Error)
 * @param array $Data Metadata field data.
 * @param string $Error A field error, if one exists.
 */
-function PrintAjaxThresholdField(array $Data, $Error)
+function PrintAjaxThresholdField(array $Data, $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["AjaxThreshold"] ?? MetadataField::getDefaultValue("AjaxThreshold")
@@ -916,7 +947,7 @@ function PrintUseForOaiSetsField(array $Data, $Error)
           "F_UseForOaiSets",
           GetFlagOptions(),
           $Data["UseForOaiSets"]
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto">
       <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
@@ -944,7 +975,7 @@ function PrintDisplayAsListForAdvancedSearch(array $Data, $Error)
           "F_DisplayAsListForAdvancedSearch",
           GetFlagOptions(),
           $Data["DisplayAsListForAdvancedSearch"] ?? false
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto">
       <i>Tree</i> fields.
@@ -958,7 +989,7 @@ function PrintDisplayAsListForAdvancedSearch(array $Data, $Error)
 * @param array $Data metadata field data
 * @param string|null $Error field error, if one exists
 */
-function PrintMaxDepthForAdvancedSearch(array $Data, $Error)
+function PrintMaxDepthForAdvancedSearch(array $Data, $Error): void
 {
     $SafeValue = defaulthtmlentities($Data["MaxDepthForAdvancedSearch"] ?? 1);
     ?>
@@ -1168,7 +1199,7 @@ function PrintFlagDefaultValueField(array $Data, $Error)
               "F_DefaultValue[Flag]",
               $Options,
               $Data["DefaultValue"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto"><i>Flag</i> fields.</td>
@@ -1241,7 +1272,7 @@ function PrintAllowHtmlField(array $Data, $Error)
 {
     ?>
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-allowhtml
-      mfe-type-text mfe-type-paragraph">
+      mfe-type-paragraph">
     <th>
       <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>
         for="F_AllowHTML">Allow HTML in Text</label>
@@ -1251,7 +1282,7 @@ function PrintAllowHtmlField(array $Data, $Error)
           "F_AllowHTML",
           GetFlagOptions(),
           $Data["AllowHTML"] ?? MetadataField::getDefaultValue("AllowHTML")
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto"><i>Tree</i> and <i>Paragraph</i> fields.</td>
   </tr>
@@ -1418,8 +1449,8 @@ function PrintUpdateMethodField(array $Data, $Error)
               MetadataField::$UpdateTypes,
               $Data["UpdateMethod"]
           );
-              $OptList->PrintIfEmpty(false);
-              $OptList->PrintHtml(); ?>
+              $OptList->printIfEmpty(false);
+              $OptList->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto"><i>Timestamp</i> and <i>User</i> fields.</td>
@@ -1498,7 +1529,7 @@ function PrintUseWysiwygEditorField(array $Data, $Error)
           "F_UseWysiwygEditor",
           GetFlagOptions(),
           $Data["UseWysiwygEditor"] ?? MetadataField::getDefaultValue("UseWysiwygEditor")
-      ))->PrintHtml(); ?>
+      ))->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto"><i>Paragraph</i> fields.</td>
   </tr>
@@ -1583,7 +1614,7 @@ function PrintAllowMultipleField(array $Data, $Error)
               "F_AllowMultiple",
               GetFlagOptions(),
               $Data["AllowMultiple"]
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
       <?PHP } ?>
     </td>
     <td class="mfe mfe-appliesto"><i>Option</i> fields.</td>
@@ -1600,7 +1631,7 @@ function PrintAllowMultipleField(array $Data, $Error)
 function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
 {
     $PrivilegeFactory = new PrivilegeFactory();
-    $Privileges = $PrivilegeFactory->GetPrivileges(true, false);
+    $Privileges = $PrivilegeFactory->getPrivileges(true, false);
     $Selected = $Data["UserPrivilegeRestrictions"];
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-typespecific
@@ -1611,9 +1642,9 @@ function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
     </th>
     <td>
       <?PHP $OptList = new HtmlOptionList("F_UserPrivilegeRestrictions[]", $Privileges, $Selected);
-            $OptList->Size(8);
-            $OptList->MultipleAllowed(true);
-            $OptList->PrintHtml(); ?>
+            $OptList->size(8);
+            $OptList->multipleAllowed(true);
+            $OptList->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto"><i>User</i> fields.</td>
   </tr>
@@ -1626,32 +1657,29 @@ function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
 * @param mixed $Error Field error, if one exists.
 * @param MetadataSchema $Schema to use.
 */
-function PrintViewingPrivilegesField(array $Data, $Error, $Schema)
+function PrintViewingPrivilegesField(array $Data, $Error, $Schema): void
 {
-    $AF = ApplicationFramework::getInstance();
-    global $H_PrivsetUI;
-    $SchemaPrivs = $Schema->ViewingPrivileges();
+    $PrivsetUI = new PrivilegeEditingUI($Schema->id());
+    $SchemaPrivs = $Schema->viewingPrivileges();
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-privileges mfe-field-viewpriv
       mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
       mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
       mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference
-      mfe-type-email">
+      mfe-type-email mfe-type-searchparameterset">
     <th>
       <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
         Viewing Permissions
       </span>
     </th>
     <td class="mv-form-fieldtype-privileges" width="75%">
-      <b>Schema requirements are:</b>&nbsp;<a class="btn btn-primary btn-sm mv-button-iconed"
-          href="index.php?P=EditMetadataSchema&amp;SC=<?= $GLOBALS['H_Schema']->Id(); ?>"><img
-          src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+      <b>Schema requirements are:</b>&nbsp;<?= getSchemaEditButton($Schema->id()); ?>
       <div class="pl-4">
       <?= getPrivilegeDescriptionHtml($SchemaPrivs); ?>
       </div>
       <br>
       <b>This field separately requires</b>:
-      <?PHP $H_PrivsetUI->DisplaySet("ViewingPrivileges", $Data["ViewingPrivileges"]); ?>
+      <?PHP $PrivsetUI->displaySet("ViewingPrivileges", $Data["ViewingPrivileges"]); ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
   </tr>
@@ -1664,31 +1692,29 @@ function PrintViewingPrivilegesField(array $Data, $Error, $Schema)
 * @param mixed $Error Field error, if one exists.
 * @param MetadataSchema $Schema to use.
 */
-function PrintAuthoringPrivilegesField(array $Data, $Error, $Schema)
+function PrintAuthoringPrivilegesField(array $Data, $Error, $Schema): void
 {
-    $AF = ApplicationFramework::getInstance();
-    global $H_PrivsetUI;
-    $SchemaPrivs = $Schema->AuthoringPrivileges();
+    $SchemaPrivs = $Schema->authoringPrivileges();
+    $PrivsetUI = new PrivilegeEditingUI($Schema->id());
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-privileges mfe-field-authorpriv
       mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
       mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
-      mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
+      mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference
+      mfe-type-email mfe-type-searchparameterset">
     <th>
       <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
         Authoring Permissions
       </span>
     </th>
     <td class="mv-form-fieldtype-privileges" width="75%">
-      <b>Schema requirements are:</b>&nbsp;<a class="btn btn-primary btn-sm mv-button-iconed"
-          href="index.php?P=EditMetadataSchema&amp;SC=<?= $GLOBALS['H_Schema']->Id(); ?>"><img
-          src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+      <b>Schema requirements are:</b>&nbsp;<?= getSchemaEditButton($Schema->id()); ?>
       <div class="pl-4">
       <?= getPrivilegeDescriptionHtml($SchemaPrivs); ?>
       </div>
       <br>
       <b>This field separately requires</b>:
-      <?PHP $H_PrivsetUI->DisplaySet("AuthoringPrivileges", $Data["AuthoringPrivileges"]); ?>
+      <?PHP $PrivsetUI->displaySet("AuthoringPrivileges", $Data["AuthoringPrivileges"]); ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
   </tr>
@@ -1701,31 +1727,29 @@ function PrintAuthoringPrivilegesField(array $Data, $Error, $Schema)
 * @param mixed $Error Field error, if one exists.
 * @param MetadataSchema $Schema to use.
 */
-function PrintEditingPrivilegesField(array $Data, $Error, $Schema)
+function PrintEditingPrivilegesField(array $Data, $Error, $Schema): void
 {
-    $AF = ApplicationFramework::getInstance();
-    global $H_PrivsetUI;
-    $SchemaPrivs = $Schema->EditingPrivileges();
+    $PrivsetUI = new PrivilegeEditingUI($Schema->id());
+    $SchemaPrivs = $Schema->editingPrivileges();
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-privileges mfe-field-editpriv mfe-type-text
       mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
       mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image
-      mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
+      mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email
+      mfe-type-searchparameterset">
     <th>
       <span class="mv-form-pseudolabel<?= $Error ? ' alert alert-danger' : '' ?>">
         Editing Permissions
       </span>
     </th>
     <td class="mv-form-fieldtype-privileges" width="75%">
-    <b>Schema requirements are:</b>&nbsp;<a class="btn btn-primary btn-sm mv-button-iconed"
-          href="index.php?P=EditMetadataSchema&amp;SC=<?= $GLOBALS['H_Schema']->Id(); ?>"><img
-          src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt="" class="mv-button-icon"/> Edit</a>
+    <b>Schema requirements are:</b>&nbsp;<?= getSchemaEditButton($Schema->id()); ?>
       <div class="pl-4">
       <?= getPrivilegeDescriptionHtml($SchemaPrivs); ?>
       </div>
       <br>
       <b>This field separately requires</b>:
-      <?PHP $H_PrivsetUI->DisplaySet("EditingPrivileges", $Data["EditingPrivileges"]); ?>
+      <?PHP $PrivsetUI->displaySet("EditingPrivileges", $Data["EditingPrivileges"]); ?>
     </td>
     <td class="mfe mfe-appliesto">All fields.</td>
   </tr>
@@ -1733,13 +1757,27 @@ function PrintEditingPrivilegesField(array $Data, $Error, $Schema)
 }
 
 /**
+ * Create and return HTML for button to edit a Metadata Schema
+ * @param int $SchemaId The ID for the schema to link to.`
+ * @return string The HTML for the button.
+ */
+function getSchemaEditButton(int $SchemaId): string
+{
+    $EditButton = new HtmlButton("Edit");
+    $EditButton->setIcon("Pencil.svg");
+    $EditButton->setSize(HtmlButton::SIZE_SMALL);
+    $EditButton->setLink("index.php?P=EditMetadataSchema&SC=" . $SchemaId);
+    return $EditButton->getHtml();
+}
+
+/**
 * Display the option list of referenceable schema ids.
 * @param array $Data Metadata field data.
 * @param mixed $Error Field error, if one exists
 */
-function PrintReferenceableSchemaIds(array $Data, $Error)
+function PrintReferenceableSchemaIds(array $Data, $Error): void
 {
-    $Schemas = MetadataSchema::GetAllSchemas();
+    $Schemas = MetadataSchema::getAllSchemas();
 
     $OptionValues = [];
     foreach ($Schemas as $Schema) {
@@ -1752,8 +1790,8 @@ function PrintReferenceableSchemaIds(array $Data, $Error)
         $Data["ReferenceableSchemaIds"]
     );
 
-    $OptionList->MultipleAllowed(true);
-    $OptionList->Size(count($Schemas));
+    $OptionList->multipleAllowed(true);
+    $OptionList->size(count($Schemas));
     ?>
 <tr class="mv-content-tallrow mfe mfe-value mfe-group-typespecific mfe-field-referenceableschemas
     mfe-type-reference">
@@ -1763,7 +1801,7 @@ function PrintReferenceableSchemaIds(array $Data, $Error)
     </span>
   </th>
   <td width="75%">
-    <?PHP $OptionList->PrintHtml(); ?>
+    <?PHP $OptionList->printHtml(); ?>
   </td>
   <td class="mfe mfe-appliesto">Reference fields.</td>
 </tr>
@@ -1782,7 +1820,7 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
     $Subsets = $PrivilegeSet->getSubsets();
     $RequiredUserPrivileges = $PrivilegeSet->getPrivileges();
 
-    $AllSchemas = MetadataSchema::GetAllSchemas();
+    $AllSchemas = MetadataSchema::getAllSchemas();
 
     # map of friendly names for operators
     $OpNames = [
@@ -1798,7 +1836,7 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
     # foreach user privilege
     foreach ($RequiredUserPrivileges as $Privilege) {
         $PrivFlag = new Privilege($Privilege);
-        $Elements [] = "Current user has <i>".$PrivFlag->Name()."</i> privilege";
+        $Elements [] = "Current user has <i>".$PrivFlag->name()."</i> privilege";
     }
 
     # foreach condition
@@ -1806,28 +1844,32 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
         # field conditions
         try {
             # get the field
-            $Field = new MetadataField($Condition["FieldId"]);
-            $Prefix = $AllSchemas[$Field->SchemaId()]->AbbreviatedName();
+            $Field = MetadataField::getField($Condition["FieldId"]);
+            $Prefix = $AllSchemas[$Field->schemaId()]->AbbreviatedName();
             $SafeName = defaulthtmlentities("[".$Prefix."] "
-                    .$Field->GetDisplayName());
+                    .$Field->getDisplayName());
             $SafeOperator = $OpNames[ $Condition["Operator"] ];
 
             # proper dislpay of 'current user' tests against user fields
-            if ($Field->Type() == MetadataSchema::MDFTYPE_USER &&
+            if ($Field->type() == MetadataSchema::MDFTYPE_USER &&
                 is_null($Condition["Value"])) {
                 $SafeValue = "current user";
-            } elseif ($Field->Type() == MetadataSchema::MDFTYPE_OPTION) {
+            } elseif ($Field->type() == MetadataSchema::MDFTYPE_OPTION) {
                 # proper display of cname values and the contains /
                 # does not contain test.
-                $CName = new ControlledName($Condition["Value"]);
-                $SafeValue = defaulthtmlentities($CName->Name());
+                if (ControlledName::itemExists($Condition["Value"])) {
+                    $CName = new ControlledName($Condition["Value"]);
+                    $SafeValue = defaulthtmlentities($CName->name());
+                } else {
+                    $SafeValue = "<i>(INVALID VALUE Id=".$Condition["Value"].")</i>";
+                }
 
                 if ($Condition["Operator"] == "==") {
                     $SafeOperator = "contains";
                 } elseif ($Condition["Operator"] == "!=") {
                     $SafeOperator = "does not contain";
                 }
-            } elseif ($Field->Type() == MetadataSchema::MDFTYPE_FLAG) {
+            } elseif ($Field->type() == MetadataSchema::MDFTYPE_FLAG) {
                 # friendly names for flag values
                 $SafeValue = ($Condition["Value"] == 1) ? "true" : "false";
             } else {
@@ -1857,7 +1899,25 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
     return implode(" ".$Logic."<br/>", $Elements);
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Errors)) {
+    throw new Exception("H_Errors not defined.");
+}
+if (!isset($H_FieldData)) {
+    throw new Exception("H_FieldData not defined.");
+}
+if (!isset($H_Qualifiers)) {
+    throw new Exception("H_Qualifiers not defined.");
+}
+if (!isset($H_Schema)) {
+    throw new Exception("H_Schema not defined.");
+}
+if (!isset($H_TypeBasedDefaults)) {
+    throw new Exception("H_TypeBasedDefaults not defined.");
+}
+if (!isset($H_Warnings)) {
+    throw new Exception("H_Warnings not defined.");
+}
 
 $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 $SafeId = defaulthtmlentities($H_FieldData["Id"]);
@@ -1866,6 +1926,41 @@ $SafeMappedName = defaulthtmlentities($H_FieldData["MappedName"]);
 $SafeTypeAsName = defaulthtmlentities($H_FieldData["TypeAsName"]);
 $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
 
+$ExportFieldButton = new HtmlButton("Export Field");
+$ExportFieldButton->setIcon("FileExport.svg");
+$ExportFieldButton->setSize(HtmlButton::SIZE_SMALL);
+$ExportFieldButton->setLink("index.php?P=DBExportField&Id=" . $SafeId);
+
+$PopulateFieldButton = new HtmlButton("Populate Field");
+$PopulateFieldButton->setIcon("MagicWand.svg");
+$PopulateFieldButton->setSize(HtmlButton::SIZE_SMALL);
+$PopulateFieldButton->addClass("mfe mfe-button mfe-submit-populatefield");
+$PopulateFieldButton->setValue("Populate Field...");
+
+$AddButton = new HtmlButton("Add Field");
+$AddButton->setIcon("Plus.svg");
+$AddButton->setSize(HtmlButton::SIZE_SMALL);
+$AddButton->makeSubmitButton();
+
+$UpdateButton = new HtmlButton("Update Field");
+$UpdateButton->setIcon("Disk.svg");
+$UpdateButton->setSize(HtmlButton::SIZE_SMALL);
+$UpdateButton->makeSubmitButton();
+
+$DeleteButton = new HtmlButton("Delete Field");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+$DeleteButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->setSize(HtmlButton::SIZE_SMALL);
+$CancelButton->makeSubmitButton();
+$CancelButton->addSemanticClass("btn-danger");
+
+$AF = ApplicationFramework::getInstance();
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <form method="post"
@@ -1884,20 +1979,15 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
     <div class="col">
         <p>(required fields are <span class="mv-form-requiredfield">circled</span>)</p>
     </div>
-    <div class="col text-right">
-      <?PHP if ($H_FieldData["CanExport"]) { ?>
-        <a class="btn btn-primary btn-sm mv-button-iconed"
-            href="index.php?P=DBExportField&amp;Id=<?= $SafeId; ?>"
-        ><img src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt=""
-            class="mv-button-icon" /> Export Field</a>
-      <?PHP } ?>
-      <?PHP if ($H_FieldData["CanPopulate"]) { ?>
-        <button
-            class="btn btn-primary btn-sm mfe mfe-button mfe-submit-populatefield mv-button-iconed"
-            type="submit" name="Submit" value="Populate Field..."><img
-            src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
-            class="mv-button-icon" /> Populate Field</button>
-      <?PHP } ?>
+    <div class="col text-end">
+        <?PHP
+        if ($H_FieldData["CanExport"]) {
+            print $ExportFieldButton->getHtml();
+        }
+        if ($H_FieldData["CanPopulate"]) {
+            print $PopulateFieldButton->getHtml();
+        }
+        ?>
     </div>
   </div>
   </div>
@@ -1905,11 +1995,22 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
   <?PHP if (count($H_Errors) > 1) { ?>
     <ul class="alert alert-danger list-group list-group-flush">
         <?PHP foreach ($H_Errors as $Error) { ?>
-        <li class="list-group-item"><?= StripXSSThreats($Error); ?></li>
+        <li class="list-group-item"><?= $Error; ?></li>
         <?PHP } ?>
     </ul>
   <?PHP } elseif (count($H_Errors) == 1) { ?>
-    <p class="alert alert-danger"><?= StripXSSThreats(GetFirstError($H_Errors)); ?></p>
+    <p class="alert alert-danger"><?= GetFirstError($H_Errors); ?></p>
+  <?PHP } ?>
+
+  <input type="hidden" name="F_HasWarnings" value="<?= count($H_Warnings) == 0 ? '0' : '1' ?>" />
+  <?PHP if (count($H_Warnings) > 1) { ?>
+    <ul class="alert alert-warning list-group list-group-flush">
+        <?PHP foreach ($H_Warnings as $Warning) { ?>
+        <li class="list-group-item"><?= $Warning; ?></li>
+        <?PHP } ?>
+    </ul>
+  <?PHP } elseif (count($H_Warnings) == 1) { ?>
+    <p class="alert alert-warning"><?= GetFirstError($H_Warnings); ?></p>
   <?PHP } ?>
 
   <?PHP if ($H_FieldData["IsStandard"] || $H_FieldData["HasOwner"] ||
@@ -1922,7 +2023,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
         attributes cannot be modified and the field cannot be deleted until
         another <i><?= $SafeTypeAsName; ?></i> metadata field is
         selected for <i>Resource <?= $SafeMappedName; ?> Field</i>.
-            <?PHP if (User::getCurrentUser()->HasPriv(PRIV_SYSADMIN)) { ?>
+            <?PHP if (User::getCurrentUser()->hasPriv(PRIV_SYSADMIN)) { ?>
           This can be changed using the
         <a href="index.php?P=EditMetadataSchema&SC=<?= $SafeSchemaId ?>"
            >Edit Metadata Schema</a> page.
@@ -1957,7 +2058,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
         mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree mfe-type-controlledname
         mfe-type-option mfe-type-user mfe-type-image mfe-type-file mfe-type-url mfe-type-point
         mfe-type-reference mfe-type-email mfe-type-searchparameterset">
-      <tr class="thead-dark mfe mfe-header mfe-group-generic mfe-type-text mfe-type-paragraph
+      <tr class="table-dark mfe mfe-header mfe-group-generic mfe-type-text mfe-type-paragraph
           mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
           mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
           mfe-type-url mfe-type-point mfe-type-reference mfe-type-email
@@ -1993,7 +2094,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
         mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
         mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file mfe-type-url
         mfe-type-point mfe-type-email">
-      <tr class="thead-dark mfe mfe-header mfe-group-qualifiers mfe-type-text mfe-type-paragraph
+      <tr class="table-dark mfe mfe-header mfe-group-qualifiers mfe-type-text mfe-type-paragraph
           mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
           mfe-type-controlledname mfe-type-option mfe-type-image mfe-type-file mfe-type-url
           mfe-type-point mfe-type-email">
@@ -2008,14 +2109,16 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
           $H_Errors,
           "HasItemLevelQualifiers"
       )); ?>
-      <?PHP PrintAssociatedQualifierListField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
-          "AssociatedQualifierList"
-      )); ?>
-      <?PHP PrintDefaultQualifierField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
-          "DefaultQualifier"
-      )); ?>
+      <?PHP PrintAssociatedQualifierListField(
+          $H_FieldData,
+          StdLib::getArrayValue($H_Errors, "AssociatedQualifierList"),
+          $H_Qualifiers
+      ); ?>
+      <?PHP PrintDefaultQualifierField(
+          $H_FieldData,
+          StdLib::getArrayValue($H_Errors, "DefaultQualifier"),
+          $H_Qualifiers
+      ); ?>
       <?PHP PrintShowQualifiersField($H_FieldData, StdLib::getArrayValue(
           $H_Errors,
           "ShowQualifiers"
@@ -2036,7 +2139,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
         mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree mfe-type-controlledname
         mfe-type-option mfe-type-user mfe-type-image mfe-type-file mfe-type-url mfe-type-reference
         mfe-type-email">
-      <tr class="thead-dark mfe mfe-header mfe-group-search mfe-type-text mfe-type-paragraph
+      <tr class="table-dark mfe mfe-header mfe-group-search mfe-type-text mfe-type-paragraph
           mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
           mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
           mfe-type-url mfe-type-reference mfe-type-email">
@@ -2082,7 +2185,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
     </tbody>
     <tbody class="mfe mfe-group mfe-group-resourceediting mfe-type-tree mfe-type-controlledname
         mfe-type-reference">
-      <tr class="thead-dark mfe mfe-header mfe-group-resourceediting mfe-type-tree
+      <tr class="table-dark mfe mfe-header mfe-group-resourceediting mfe-type-tree
           mfe-type-controlledname mfe-type-reference">
         <th colspan="2">Resource Editing</th>
         <th class="mfe mfe-appliesto">Applies To</th>
@@ -2102,7 +2205,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
     </tbody>
     <tbody class="mfe mfe-group mfe-group-oai mfe-type-tree mfe-type-controlledname
         mfe-type-option">
-      <tr class="thead-dark mfe mfe-header mfe-group-oai mfe-type-tree
+      <tr class="table-dark mfe mfe-header mfe-group-oai mfe-type-tree
           mfe-type-controlledname mfe-type-option">
         <th colspan="2">OAI</th>
         <th class="mfe mfe-appliesto">Applies To</th>
@@ -2117,7 +2220,7 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
           mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-option
           mfe-type-user mfe-type-image mfe-type-url mfe-type-point mfe-type-reference
           mfe-type-file mfe-type-tree mfe-type-email">
-        <tr class="thead-dark mfe mfe-header mfe-group-typespecific mfe-type-text
+        <tr class="table-dark mfe mfe-header mfe-group-typespecific mfe-type-text
             mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
             mfe-type-option mfe-type-user mfe-type-image mfe-type-url mfe-type-point
             mfe-type-reference mfe-type-file mfe-type-tree mfe-type-email">
@@ -2209,12 +2312,13 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
     <tbody class="mfe mfe-group mfe-group-privileges mfe-type-text mfe-type-paragraph
         mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
         mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image
-        mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email">
-      <tr class="thead-dark mfe mfe-header mfe-group-privileges mfe-type-text
+        mfe-type-file mfe-type-url mfe-type-point mfe-type-reference mfe-type-email
+        mfe-type-searchparameterset">
+      <tr class="table-dark mfe mfe-header mfe-group-privileges mfe-type-text
           mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
           mfe-type-flag mfe-type-tree mfe-type-controlledname mfe-type-option mfe-type-user
           mfe-type-image mfe-type-file mfe-type-url mfe-type-point mfe-type-reference
-          mfe-type-email">
+          mfe-type-email mfe-type-searchparameterset">
         <th colspan="2">Privileges</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
@@ -2237,26 +2341,16 @@ $SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
   </table>
 
   <?PHP if (!$H_FieldData["FieldExists"]) { ?>
-    <button class="btn btn-primary mfe mfe-button mfe-submit-addfield mv-button-iconed"
-        type="submit" name="Submit" value="Add Field"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
-        alt="" class="mv-button-icon"/> Add Field</button>
+        <?= $AddButton->getHtml() ?>
   <?PHP } else { ?>
-    <button class="btn btn-primary mfe mfe-button mfe-submit-updatefield mv-button-iconed"
-        type="submit" name="Submit" value="Update Field"><img
-        src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon"/> Update Field</button>
+        <?= $UpdateButton->getHtml() ?>
   <?PHP } ?>
   <?PHP if ($H_FieldData["FieldExists"] && !$H_FieldData["MappedName"] &&
       !$H_FieldData["HasOwner"] && !$H_FieldData["IsLastTreeField"] &&
       !$H_FieldData["UsedByPrivsets"]) { ?>
-    <button class="btn btn-danger mfe mfe-button mfe-submit-deletefield mv-button-iconed"
-        type="submit" name="Submit" value="Delete Field"><img
-        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon"/> Delete Field</button>
+      <?= $DeleteButton->getHtml() ?>
   <?PHP } ?>
-  <button class="btn btn-danger mfe mfe-button mfe-submit-cancel mv-button-iconed" type="submit"
-        name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon"/> Cancel</button>
+      <?= $CancelButton->getHtml() ?>
 </form>
 
 <!-- this needs to come after the form -->

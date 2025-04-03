@@ -3,16 +3,14 @@
 #   FILE:  Rule.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Rules;
-
 use Exception;
-use Metavus\ChangeSetEditingUI;
-use Metavus\MetadataField;
+use Metavus\Plugins\Mailer;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\RecordFactory;
@@ -21,8 +19,6 @@ use Metavus\SearchParameterSet;
 use Metavus\User;
 use Metavus\UserFactory;
 use ScoutLib\Item;
-use ScoutLib\PluginManager;
-use ScoutLib\StdLib;
 
 /**
  * Class representing an individual rule in the Rules plugin.
@@ -87,7 +83,7 @@ class Rule extends Item
      * @param bool $NewValue TRUE to enable, or FALSE to disable.(OPTIONAL)
      * @return bool TRUE if rule is enabled, otherwise FALSE.
      */
-    public function enabled(bool $NewValue = null): bool
+    public function enabled(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("Enabled", $NewValue);
     }
@@ -97,7 +93,7 @@ class Rule extends Item
      * @param int $NewValue New frequency, in minutes.(OPTIONAL)
      * @return int Current frequency.
      */
-    public function checkFrequency(int $NewValue = null): int
+    public function checkFrequency(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("CheckFrequency", $NewValue);
     }
@@ -107,7 +103,7 @@ class Rule extends Item
      * @param SearchParameterSet $NewValue New parameters.(OPTIONAL)
      * @return SearchParameterSet Current search parameters.
      */
-    public function searchParameters(SearchParameterSet $NewValue = null): SearchParameterSet
+    public function searchParameters(?SearchParameterSet $NewValue = null): SearchParameterSet
     {
         $NewStoredValue = ($NewValue === null) ? null
                 : $NewValue->data();
@@ -122,7 +118,7 @@ class Rule extends Item
      * @param int $NewValue New action.(OPTIONAL)
      * @return int Current action.
      */
-    public function action(int $NewValue = null): int
+    public function action(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("Action", $NewValue);
     }
@@ -133,7 +129,7 @@ class Rule extends Item
      *       for index.(OPTIONAL)
      * @return array Current parameters, with parameter names for index.
      */
-    public function actionParameters(array $NewValue = null): array
+    public function actionParameters(?array $NewValue = null): array
     {
         if ($NewValue !== null) {
             $NewValue = serialize($NewValue);
@@ -147,7 +143,7 @@ class Rule extends Item
      * @param PrivilegeSet|null $NewValue New criteria.(OPTIONAL)
      * @return PrivilegeSet|null Current criteria or NULL if no criteria set.
      */
-    public function userSelectionCriteria(PrivilegeSet $NewValue = null)
+    public function userSelectionCriteria(?PrivilegeSet $NewValue = null)
     {
         $ActionParams = $this->actionParameters();
         if (func_num_args() > 0) {
@@ -165,7 +161,7 @@ class Rule extends Item
     /**
      * Check rule for new matching resources and take any needed actions.
      */
-    public function run()
+    public function run(): void
     {
         # search for records that match rule
         $RecordIds = $this->getRecordsThatMatchSearchParams();
@@ -214,7 +210,7 @@ class Rule extends Item
      * changes from the point where this method was called..
      * @param int $UserId ID of user to reset.
      */
-    public function resetForUser(int $UserId)
+    public function resetForUser(int $UserId): void
     {
         # search for records that match rule
         $RecordIds = $this->getRecordsThatMatchSearchParams();
@@ -238,7 +234,7 @@ class Rule extends Item
      * method for retrieving users is available.
      * @param int $UserId ID of user.
      */
-    public static function setDefaultUser(int $UserId)
+    public static function setDefaultUser(int $UserId): void
     {
         self::$DefaultUserId = $UserId;
     }
@@ -256,7 +252,7 @@ class Rule extends Item
      *       by strtotime().(OPTIONAL)
      * @return int Previous check timestamp, as a Unix timestamp.
      */
-    private function lastChecked(string $NewValue = null): int
+    private function lastChecked(?string $NewValue = null): int
     {
         $NewStoredValue = ($NewValue === null) ? null
                 : date("Y-m-d H:i:s", (int)strtotime($NewValue));
@@ -270,7 +266,7 @@ class Rule extends Item
      * @param int $UserId ID of user for action.
      * @param array $RecordIds IDs of records.
      */
-    private function performAction(int $UserId, array $RecordIds)
+    private function performAction(int $UserId, array $RecordIds): void
     {
         switch ($this->action()) {
             case self::ACTION_SENDEMAIL:
@@ -295,7 +291,7 @@ class Rule extends Item
      * @param array $RecordIds IDs of records to use for action.
      * @param int $UserId ID of user to perform action for.
      */
-    private function performActionSendEmail(array $RecordIds, int $UserId)
+    private function performActionSendEmail(array $RecordIds, int $UserId): void
     {
         # retrieve action parameters
         $Params = $this->actionParameters();
@@ -303,7 +299,7 @@ class Rule extends Item
         $ConfirmBeforeSending = $Params["ConfirmBeforeSending"];
 
         # retrieve mailer plugin
-        $Mailer = PluginManager::getInstance()->getPlugin("Mailer");
+        $Mailer = Mailer::getInstance();
 
         # set up extra email substitutions
         $ExtraValues = ["SEARCHCRITERIA" => $this->searchParameters()->textDescription()];
@@ -327,7 +323,7 @@ class Rule extends Item
      * @param int $UserId ID of user to perform action for.
      * @see ChangeSetEditingUI::getValuesFromFormData()
      */
-    private function performActionUpdateFieldValues(array $RecordIds, int $UserId)
+    private function performActionUpdateFieldValues(array $RecordIds, int $UserId): void
     {
         # filter out records that were updated on this invocation
         $RecordIds = array_diff($RecordIds, $this->ChangedResources);
@@ -498,7 +494,7 @@ class Rule extends Item
      *      top level by user ID.(OPTIONAL)
      * @return array Array of arrays of record IDs, indexed by user ID.
      */
-    private function lastMatchingIds(array $NewValue = null): array
+    private function lastMatchingIds(?array $NewValue = null): array
     {
         $NewStoredValue = ($NewValue === null) ? null : serialize($NewValue);
         $StoredValue = $this->DB->updateValue("LastMatchingIds", $NewStoredValue);
@@ -512,7 +508,7 @@ class Rule extends Item
      * different values are needed.
      * @param string $ClassName Class to set values for.
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         if (!isset(self::$ItemIdColumnNames[$ClassName])) {
             self::$ItemIdColumnNames[$ClassName] = "RuleId";
@@ -522,14 +518,14 @@ class Rule extends Item
     }
 
     const SQL_TABLES = [
-        "Rules" => "CREATE TABLE IF NOT EXISTS Rules_Rules (
+        "Rules_Rules" => "CREATE TABLE IF NOT EXISTS Rules_Rules (
                 RuleId                  INT NOT NULL AUTO_INCREMENT,
                 Name                    TEXT,
                 Enabled                 INT DEFAULT 1,
                 CheckFrequency          INT DEFAULT 60,
                 LastChecked             DATETIME,
                 SearchParams            BLOB,
-                LastMatchingIds         BLOB,
+                LastMatchingIds         MEDIUMBLOB,
                 Action                  INT,
                 ActionParams            BLOB,
                 DateCreated             DATETIME,

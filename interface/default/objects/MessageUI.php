@@ -3,7 +3,7 @@
 #   FILE:  MessageUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -23,8 +23,9 @@ class MessageUI
      * Print a resource comment.
      * @param Message $Message Message to display.
      * @param Record $Resource Associated resource.
+     * @return void
      */
-    public static function printForumMessage(Message $Message, Record $Resource)
+    public static function printForumMessage(Message $Message, Record $Resource): void
     {
         $AF = ApplicationFramework::getInstance();
         $EditOkay = false;
@@ -42,10 +43,10 @@ class MessageUI
         }
 
         $EditLink = "index.php?P=AddResourceComment&amp;RI="
-            .$Resource->Id()."&amp;MI=".$Message->id();
+            .$Resource->id()."&amp;MI=".$Message->id();
         $DeleteLink = $EditLink;
         $SpammerLink = "index.php?P=CleanSpam&amp;PI=".$Message->posterId()
-            ."&amp;RI=".$Resource->Id();
+            ."&amp;RI=".$Resource->id();
 
         $DatePosted = strtotime($Message->datePosted());
         $PosterEmail = $Message->posterEmail();
@@ -126,13 +127,13 @@ class MessageUI
                 <div class="col">
                   <a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $EditLink ?>">
                     <img class="mv-button-icon"
-                        src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit Message</a>
+                        src="<?= $AF->gUIFile('Pencil.svg') ?>"/> Edit Message</a>
                   <a class="btn btn-danger btn-sm mv-button-iconed" href="<?= $DeleteLink ?>"><img
-                        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
+                        src="<?= $AF->gUIFile('Delete.svg'); ?>" alt=""
                         class="mv-button-icon" /> Delete Message</a>
                   <?PHP if ($CanMarkSpammers) {  ?>
                   <a class="btn btn-danger btn-sm" href="<?= $SpammerLink ?>"><img
-                        src="<?= $AF->GUIFile('Flag.svg'); ?>" alt=""
+                        src="<?= $AF->gUIFile('Flag.svg'); ?>" alt=""
                         class="mv-button-icon" /> Spammer</a>
                   <?PHP } ?>
                 </div>
@@ -168,8 +169,9 @@ class MessageUI
 
     /**
      * Output supporting javascript that de-obfuscates email addresses.
+     * @return void
      */
-    private static function printJavascriptIfNeeded()
+    private static function printJavascriptIfNeeded(): void
     {
         if (self::$JavascriptPrinted) {
             return;

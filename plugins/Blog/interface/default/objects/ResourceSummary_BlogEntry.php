@@ -3,15 +3,16 @@
 #   FILE:  ResourceSummary_BlogEntry.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
 
-use Metavus\User;
+use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
+use Metavus\Plugins\SocialMedia;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 
@@ -35,54 +36,58 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
     /**
      * Display (output HTML) for resource summary.
      */
-    public function display()
+    public function display(): void
     {
         static $Blog;
+        $Entry = $this->Resource;
         $PluginMgr = PluginManager::getInstance();
         $AF = ApplicationFramework::getInstance();
 
         $AF->RequireUIFile("P_Blog.css");
 
         if (!isset($Blog)) {
-            $Blog = $PluginMgr->getPlugin("Blog");
-            $Blog->SetCurrentBlog($this->Resource->GetBlogId());
+            $Blog = Blog::getInstance();
+            $Blog->SetCurrentBlog($Entry->GetBlogId());
         }
 
-        $SafeId = defaulthtmlentities($this->Resource->Id());
-        $SafeUrl = defaulthtmlentities($this->Resource->EntryUrl());
-        $SafeTitle = $this->Resource->TitleForDisplay();
-        $SafeAuthor = defaulthtmlentities($this->Resource->AuthorForDisplay());
-        $SafeEditor = defaulthtmlentities($this->Resource->EditorForDisplay());
-        $SafeCreationDate = defaulthtmlentities($this->Resource->CreationDateForDisplay());
-        $SafeModificationDate = defaulthtmlentities($this->Resource->ModificationDateForDisplay());
-        $SafePublicationDate = defaulthtmlentities($this->Resource->PublicationDateForDisplay());
+        $SafeId = defaulthtmlentities($Entry->Id());
+        $SafeUrl = defaulthtmlentities($Entry->EntryUrl());
+        $SafeTitle = $Entry->TitleForDisplay();
+        $SafeAuthor = defaulthtmlentities($Entry->AuthorForDisplay());
+        $SafeEditor = defaulthtmlentities($Entry->EditorForDisplay());
+        $SafeCreationDate = defaulthtmlentities($Entry->CreationDateForDisplay());
+        $SafeModificationDate = defaulthtmlentities($Entry->ModificationDateForDisplay());
+        $SafePublicationDate = defaulthtmlentities($Entry->PublicationDateForDisplay());
         $SafePublicationDatePrefix = defaulthtmlentities(
-            $this->Resource->PublicationDateDisplayPrefix()
+            $Entry->PublicationDateDisplayPrefix()
         );
         $SafePublicationDateForParsing = defaulthtmlentities(
-            $this->Resource->PublicationDateForParsing()
+            $Entry->PublicationDateForParsing()
         );
-        $SafeNumberOfComments = defaulthtmlentities($this->Resource->NumberOfComments());
-        $Teaser = self::getEntryTeaser($this->Resource, $Blog->MaxTeaserLength());
-        $Categories = $this->Resource->CategoriesForDisplay();
-        $PrintMoreLink = strlen($this->Resource->get("Body")) > strlen($Teaser);
-        $EditLink = str_replace('$ID', $SafeId, $this->Resource->getSchema()->editPage());
+        $SafeNumberOfComments = defaulthtmlentities($Entry->NumberOfComments());
+        $Teaser = self::getEntryTeaser($Entry, $Blog->MaxTeaserLength());
+        $Categories = $Entry->CategoriesForDisplay();
+        $PrintMoreLink = strlen($Entry->get("Body")) > strlen($Teaser);
+        $EditLink = str_replace('$ID', $SafeId, $Entry->getSchema()->getEditPage());
+
+        $EditButton = new HtmlButton("Edit");
+        $EditButton->setIcon("Pencil.svg");
+        $EditButton->setSize(HtmlButton::SIZE_SMALL);
+        $EditButton->setLink(str_replace('$ID', $SafeId, $Entry->getSchema()->getEditPage()));
         ?>
         <article class="blog-entry blog-short" itemscope="itemscope"
             itemtype="http://schema.org/BlogPosting">
         <link itemprop="url" href="<?= $SafeUrl; ?>" />
         <header class="blog-header">
-            <?PHP if ($this->Resource->UserCanEdit(User::getCurrentUser())) { ?>
+            <?PHP if ($Entry->UserCanEdit(User::getCurrentUser())) { ?>
             <div class="container-fluid">
                 <div class="row">
                     <div class="col">
                         <h3 class="blog-title">
-                            <a href="index.php?P=P_Blog_Entry&amp;ID=<?= $SafeId; ?>">
+                            <a href="index.php?P=FullRecord&amp;ID=<?= $Entry->id() ?>">
                                 <span itemprop="headline"><?= $SafeTitle; ?></span>
                             </a>
-                            <a class="btn btn-sm btn-primary mv-button-iconed"
-                                href="<?= $EditLink ?>"><img class="mv-button-icon" src="<?=
-                                    $AF->GUIFile('Pencil.svg') ?>"/> Edit</a>
+                            <?= $EditButton->getHtml(); ?>
                         </h3>
 
                     </div>
@@ -90,7 +95,7 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
             </div>
             <?PHP } else { ?>
             <h3 class="blog-title">
-                <a href="index.php?P=P_Blog_Entry&amp;ID=<?= $SafeId; ?>">
+                <a href="index.php?P=FullRecord&amp;ID=<?= $Entry->id() ?>">
                     <span itemprop="headline"><?= $SafeTitle; ?></span>
                 </a>
             </h3>
@@ -114,23 +119,23 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
 
         <?PHP if (!count($Categories) || !$PrintMoreLink) { ?>
         <section class="share" aria-label="sharing buttons">
-            <?PHP $PluginMgr->getPlugin("SocialMedia")->DisplaySmallShareButtons(
-                $this->Resource
+            <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons(
+                $Entry
             ); ?>
         </section>
         <?PHP } ?>
 
         <?PHP if (count($Categories) && $PrintMoreLink) { ?>
         <section class="share" aria-label="sharing buttons">
-            <?PHP $PluginMgr->getPlugin("SocialMedia")->DisplaySmallShareButtons(
-                $this->Resource
+            <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons(
+                $Entry
             ); ?>
         </section>
         <?PHP } ?>
 
         <?PHP if ($PrintMoreLink || $Blog->EnableComments()) {  ?>
         <p>
-            <a class="blog-more" href="index.php?P=P_Blog_Entry&amp;ID=<?= $SafeId; ?>">
+            <a class="blog-more" href="index.php?P=FullRecord&amp;ID=<?= $Entry->id() ?>">
                 <span class="blog-bullet">&raquo;</span>
                 <?PHP if ($PrintMoreLink) { ?>
                 Read More

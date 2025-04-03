@@ -2,7 +2,7 @@
  * FILE:  ckeditor_setup.js
  *
  * Part of the Metavus digital collections platform
- * Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+ * Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
  * http://scout.wisc.edu
  * @scout:eslint
  */
@@ -148,6 +148,9 @@
     CKEDITOR.config.markdown = {
         lineWrapping: true
     };
+
+    // set the dir attribute to auto
+    CKEDITOR.config.contentsLangDirection = 'auto';
 
     // set custom toolbar for inline editors
     CKEDITOR.on('instanceCreated', function(event) {

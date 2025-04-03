@@ -3,13 +3,12 @@
 #   FILE:  SearchEngine.php
 #
 #   Open Source Metadata Archive Search Engine (OSMASE)
-#   Copyright 2002-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use PorterStemmer;
 use ScoutLib\Database;
@@ -84,7 +83,7 @@ abstract class SearchEngine
         $ItemTypes,
         int $Weight,
         bool $UsedInKeywordSearch
-    ) {
+    ): void {
 
         # save values
         self::$FieldInfo[$FieldId]["FieldType"] = $FieldType;
@@ -129,7 +128,7 @@ abstract class SearchEngine
      * Set debug output level.  Values above zero trigger diagnostic output.
      * @param int $NewValue New debugging level.
      */
-    public function debugLevel(int $NewValue)
+    public function debugLevel(int $NewValue): void
     {
         $this->DebugLevel = $NewValue;
     }
@@ -210,7 +209,7 @@ abstract class SearchEngine
      * Add function that will be called to filter search results.
      * @param callable $FunctionName Function to be called.
      */
-    public function addResultFilterFunction(callable $FunctionName)
+    public function addResultFilterFunction(callable $FunctionName): void
     {
         # save filter function name
         $this->FilterFuncs[] = $FunctionName;
@@ -222,7 +221,7 @@ abstract class SearchEngine
      *       for all items)
      * @return int Result count.
      */
-    public function numberOfResults(int $ItemType = null): int
+    public function numberOfResults(?int $ItemType = null): int
     {
         return ($ItemType === null) ? $this->NumberOfResultsAvailable
             : (isset($this->NumberOfResultsPerItemType[$ItemType])
@@ -280,7 +279,7 @@ abstract class SearchEngine
      * @param int $ItemId ID of item.
      * @param int $ItemType Numerical type of item.
      */
-    public function updateForItem(int $ItemId, int $ItemType)
+    public function updateForItem(int $ItemId, int $ItemType): void
     {
         # delete any existing info for this item
         $this->DB->query("DELETE FROM SearchWordCounts WHERE ItemId = " . $ItemId);
@@ -311,7 +310,7 @@ abstract class SearchEngine
                             $Info["InKeywordSearch"]
                         );
                     }
-                } elseif (strlen($Text)) {
+                } elseif (is_string($Text) && strlen($Text)) {
                     # record search info for text
                     $this->recordSearchInfoForText(
                         $ItemId,
@@ -359,7 +358,7 @@ abstract class SearchEngine
      * Drop all data pertaining to item from search database.
      * @param int $ItemId ID of item to drop from database.
      */
-    public function dropItem(int $ItemId)
+    public function dropItem(int $ItemId): void
     {
         # drop all entries pertaining to item from word count table
         $this->DB->query("DELETE FROM SearchWordCounts WHERE ItemId = " . $ItemId);
@@ -370,7 +369,7 @@ abstract class SearchEngine
      * Drop all data pertaining to field from search database.
      * @param int $FieldId ID of field to drop.
      */
-    public function dropField(int $FieldId)
+    public function dropField(int $FieldId): void
     {
         # drop all entries pertaining to field from word counts table
         $this->DB->query("DELETE FROM SearchWordCounts WHERE FieldId = \'" . $FieldId . "\'");
@@ -443,7 +442,7 @@ abstract class SearchEngine
      * @param array $Synonyms Array of synonyms to remove.  If not
      *       specified, all synonyms for word will be removed.  (OPTIONAL)
      */
-    public function removeSynonyms(string $Word, array $Synonyms = null)
+    public function removeSynonyms(string $Word, ?array $Synonyms = null): void
     {
         # find ID for word
         $WordId = $this->getWordId($Word);
@@ -479,7 +478,7 @@ abstract class SearchEngine
     /**
      * Remove all synonyms.
      */
-    public function removeAllSynonyms()
+    public function removeAllSynonyms(): void
     {
         $this->DB->query("DELETE FROM SearchWordSynonyms");
     }
@@ -610,7 +609,7 @@ abstract class SearchEngine
      * them with the synonyms passed in.
      * @param array $SynonymList Array of arrays of synonyms, with words for index.
      */
-    public function setAllSynonyms(array $SynonymList)
+    public function setAllSynonyms(array $SynonymList): void
     {
         # remove all existing synonyms
         $this->removeAllSynonyms();
@@ -1007,10 +1006,9 @@ abstract class SearchEngine
         }
 
         # if no results found, no required terms, and exclusions specified
-        // @phpstan-ignore-next-line
         if ((count($Scores) == 0)
-                && ($this->RequiredTermCount == 0) // @phpstan-ignore-line
-                && ($this->ExcludedTermCount > 0)) {  // @phpstan-ignore-line
+                && ($this->RequiredTermCount == 0)
+                && ($this->ExcludedTermCount > 0)) {
             # determine which item types are implicated for keyword searches
             $KeywordItemTypes = [];
             foreach (self::$FieldInfo as $FieldId => $Info) {
@@ -1099,7 +1097,7 @@ abstract class SearchEngine
     private function searchForWords(
         array $Words,
         int $FieldId,
-        array $Scores = null
+        ?array $Scores = null
     ): array {
         # start with empty search result scores list if none passed in
         if ($Scores == null) {
@@ -1329,7 +1327,10 @@ abstract class SearchEngine
      * @param int $FieldId ID of field to search.
      * @param string $Phrase Phrase to search for.
      */
-    abstract protected function searchFieldForPhrases(int $FieldId, string $Phrase);
+    abstract protected function searchFieldForPhrases(
+        int $FieldId,
+        string $Phrase
+    ): array;
 
     /**
      * Perform comparison searches.
@@ -1453,8 +1454,11 @@ abstract class SearchEngine
      * @param string $FieldId ID of field.
      * @return array Filtered search result scores.
      */
-    private function filterOnExcludedWords(array $Words, array $Scores, string $FieldId): array
-    {
+    private function filterOnExcludedWords(
+        array $Words,
+        array $Scores,
+        string $FieldId
+    ): array {
         $DB = $this->DB;
 
         # for each word
@@ -1467,8 +1471,9 @@ abstract class SearchEngine
                 # if word is in DB
                 if ($WordId !== null) {
                     # look up counts for word
-                    $DB->Query("SELECT ItemId FROM SearchWordCounts "
-                        . "WHERE WordId=${WordId} AND FieldId=${FieldId}");
+                    $DB->Query("SELECT ItemId FROM SearchWordCounts"
+                            ." WHERE WordId=".intval($WordId)
+                            ." AND FieldId=".intval($FieldId));
 
                     # for each count
                     while ($Record = $DB->FetchRow()) {
@@ -1592,7 +1597,7 @@ abstract class SearchEngine
                 );
 
                 # if we have sorted item IDs
-                if (count($SortedIds) && count($TypeScores)) {
+                if (count($SortedIds) && count($TypeScores)) {  // @phpstan-ignore-line
                     # strip sorted ID list down to those that appear in search results
                     $SortedIds = array_intersect(
                         $SortedIds,
@@ -1824,7 +1829,7 @@ abstract class SearchEngine
                 $this->DebugLevel = $Level;
                 $this->dMsg(0, "Setting debug level to " . $Level);
                 $SearchString = preg_replace(
-                    "/\s*DBUGLVL=${Level}\s*/",
+                    "/\s*DBUGLVL=".$Level."\s*/",
                     "",
                     $SearchString
                 );
@@ -1879,8 +1884,12 @@ abstract class SearchEngine
      * @param int $FieldId ID of field for which count applies.
      * @param int $Weight Numeric weight to apply to count.  (OPTIONAL - defaults to 1)
      */
-    private function updateWordCount(string $Word, int $ItemId, int $FieldId, int $Weight = 1)
-    {
+    private function updateWordCount(
+        string $Word,
+        int $ItemId,
+        int $FieldId,
+        int $Weight = 1
+    ): void {
         # retrieve ID for word
         $WordIds[] = $this->getWordId($Word, true);
 
@@ -1913,6 +1922,8 @@ abstract class SearchEngine
      * Retrieve content for specified field for specified item.
      * @param int $ItemId ID of item.
      * @param string $FieldId ID of field.
+     * @return string|array|null Text value or array of text values or NULL or
+     *      empty array if no values available.
      */
     abstract protected function getFieldContent(int $ItemId, string $FieldId);
 
@@ -1931,7 +1942,7 @@ abstract class SearchEngine
         int $Weight,
         string $Text,
         bool $IncludeInKeyword
-    ) {
+    ): void {
 
         # normalize text
         $Words = $this->parseSearchStringForWords($Text, "OR", true);
@@ -1987,20 +1998,20 @@ abstract class SearchEngine
         #       are performed in sequence, so the order IS SIGNIFICANT)
         $ReplacementPatterns = array(
             # get rid of possessive plurals
-            "/'s[^a-z0-9\\-+~]+/i" => " ",
+            "/'s[^\\w\\d~+-]+/u" => " ",
             # get rid of single quotes / apostrophes
             "/'/" => "",
             # get rid of phrases
             $PhraseSearchPattern => " ",
             # get rid of groups
             $GroupSearchPattern => " ",
-            # convert everything but alphanumerics and minus/plus/tilde to a space
-            "/[^a-z0-9\\-+~]+/i" => "\\1 ",
+            # convert everything but 'word' characters, digits, and tilde/plus/minus to a space
+            "/[^\\w\\d~+-]+/u" => " ",
             # truncate any runs of minus/plus/tilde to just the first char
             "/([~+-])[~+-]+/" => "\\1",
             # convert two alphanumerics segments separated by a minus into
             #       both separate words and a single combined word
-            "/([~+-]?)([a-z0-9]+)-([a-z0-9]+)/i" => "\\1\\2 \\1\\3 \\1\\2\\3",
+            "/([~+-]?)([\\w\\d]+)-([\\w\\d]+)/u" => "\\1\\2 \\1\\3 \\1\\2\\3",
             # convert minus/plus/tilde preceded by anything but whitespace to a space
             "/([^\\s])[~+-]+/i" => "\\1 ",
             # convert minus/plus/tilde followed by whitespace to a space
@@ -2253,7 +2264,7 @@ abstract class SearchEngine
      * Load the ItemTypeCache for a give set of ItemIds.
      * @param array $ItemIds
      */
-    private function loadItemTypeCache(array $ItemIds)
+    private function loadItemTypeCache(array $ItemIds): void
     {
         # nothing to do when no items provided
         if (count($ItemIds) == 0) {
@@ -2293,7 +2304,7 @@ abstract class SearchEngine
      * @param int $Level Level of message.
      * @param string $Msg Message to print.
      */
-    protected function dMsg(int $Level, string $Msg)
+    protected function dMsg(int $Level, string $Msg): void
     {
         if ($this->DebugLevel > $Level) {
             print "SE:  " . $Msg . "<br>\n";

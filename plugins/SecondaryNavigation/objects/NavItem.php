@@ -3,13 +3,12 @@
 #   FILE:  NavItem.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\SecondaryNavigation;
-
 use ScoutLib\Item;
 
 /**
@@ -49,8 +48,9 @@ class NavItem extends Item
      * name) for specified class.  This may be overridden in a child class, if
      * different values are needed.
      * @param string $ClassName Class to set values for.
+     * @return void
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         if (!isset(self::$ItemIdColumnNames[$ClassName])) {
             self::$ItemIdColumnNames[$ClassName] = "NavItemId";
@@ -64,7 +64,7 @@ class NavItem extends Item
      * @param string $NewValue The new link on the NavItem.  (OPTIONAL)
      * @return string The link on the NavItem.
      */
-    public function link(string $NewValue = null): string
+    public function link(?string $NewValue = null): string
     {
         return $this->DB->updateValue("Link", $NewValue);
     }
@@ -74,7 +74,7 @@ class NavItem extends Item
      * @param string $NewValue The new label on the NavItem.  (OPTIONAL)
      * @return string The label on the NavItem.
      */
-    public function label(string $NewValue = null): string
+    public function label(?string $NewValue = null): string
     {
         return $this->DB->updateValue("Label", $NewValue);
     }
@@ -84,7 +84,7 @@ class NavItem extends Item
      * @param int $NewValue The new owner ID on the NavItem.  (OPTIONAL)
      * @return int The owner ID on the NavItem.
      */
-    public function ownerId(int $NewValue = null): int
+    public function ownerId(?int $NewValue = null): int
     {
         return $this->DB->updateValue("OwnerId", $NewValue);
     }
@@ -94,7 +94,7 @@ class NavItem extends Item
      * @param bool|null $NewValue The new CreatedByUser status of the NavItem.  (OPTIONAL)
      * @return bool one if the link is editable, zero if it is not.
      */
-    public function createdByUser(bool $NewValue = null): bool
+    public function createdByUser(?bool $NewValue = null): bool
     {
         return $this->DB->updateValue("CreatedByUser", $NewValue);
     }

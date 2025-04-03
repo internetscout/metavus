@@ -3,13 +3,12 @@
 #   FILE:  SavedSearch.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -112,7 +111,7 @@ class SavedSearch
      * @param SearchParameterSet|null $NewParams Updated search parameters
      * @return SearchParameterSet current search parameters
      */
-    public function searchParameters(SearchParameterSet $NewParams = null): SearchParameterSet
+    public function searchParameters(?SearchParameterSet $NewParams = null): SearchParameterSet
     {
         if (!is_null($NewParams)) {
             $Data = $NewParams->data();
@@ -133,7 +132,7 @@ class SavedSearch
      * @param string $NewValue New name of search value.
      * @return string Current name of search value.
      */
-    public function searchName(string $NewValue = null): string
+    public function searchName(?string $NewValue = null): string
     {
         return $this->DB->UpdateValue("SearchName", $NewValue);
     }
@@ -152,7 +151,7 @@ class SavedSearch
      * @param int $NewValue New user ID value.
      * @return int Current user ID value.
      */
-    public function userId(int $NewValue = null): int
+    public function userId(?int $NewValue = null): int
     {
         return $this->DB->UpdateIntValue("UserId", $NewValue);
     }
@@ -162,15 +161,16 @@ class SavedSearch
      * @param int $NewValue New search frequency value.
      * @return int Current search frequency value.
      */
-    public function frequency(int $NewValue = null): int
+    public function frequency(?int $NewValue = null): int
     {
         return $this->DB->UpdateIntValue("Frequency", $NewValue);
     }
 
     /**
      * Update date this search was last run.
+     * @return void
      */
-    public function updateDateLastRun()
+    public function updateDateLastRun(): void
     {
         $this->DB->Query(
             "UPDATE SavedSearches SET DateLastRun = NOW() "
@@ -191,8 +191,9 @@ class SavedSearch
     /**
      * Save array of last matches.
      * @param array $ArrayOfMatchingIds Matching Ids for a current search.
+     * @return void
      */
-    public function saveLastMatches(array $ArrayOfMatchingIds)
+    public function saveLastMatches(array $ArrayOfMatchingIds): void
     {
         $NewValue = implode(",", $ArrayOfMatchingIds);
         $this->DB->UpdateValue("LastMatchingIds", $NewValue);
@@ -599,7 +600,7 @@ class SavedSearch
                         foreach ($Values as $Value) {
                             # determine wording based on operator
                             preg_match("/^[=><!]+/", $Value, $Matches);
-                            $Operator = $Matches[0];
+                            $Operator = $Matches[0] ?? "";
                             $Wording = $WordsForOperators[$Operator];
 
                             # strip off operator
@@ -714,8 +715,9 @@ class SavedSearch
 
     /**
      * Delete saved search.  (NOTE: Object is no longer usable after this call!)
+     * @return void
      */
-    public function delete()
+    public function delete(): void
     {
         $this->DB->Query("DELETE FROM SavedSearches"." WHERE SearchId = ".intval($this->SearchId));
     }
@@ -787,9 +789,9 @@ class SavedSearch
                             "100" => "*****",
                         ];
                         preg_match("/[0-9]+$/", $Value, $Matches);
-                        $Number = $Matches[0];
+                        $Number = $Matches[0] ?? "";
                         preg_match("/^[=><!]+/", $Value, $Matches);
-                        $Operator = $Matches[0];
+                        $Operator = $Matches[0] ?? "";
                         $ReturnValues[] = $Operator.$StarStrings[$Number];
                     } else {
                         # use value as is
@@ -872,8 +874,9 @@ class SavedSearch
     /**
      * Populate SearchParameters when search is created.
      * @param mixed $SearchParameters Initial parameter values.
+     * @return void
      */
-    private function initializeSearchParameters($SearchParameters)
+    private function initializeSearchParameters($SearchParameters): void
     {
         # if given legacy data, modernize it
         if (!is_null($SearchParameters) && is_array($SearchParameters)) {
@@ -888,8 +891,9 @@ class SavedSearch
 
     /**
      * Populate LastMatches when search is created.
+     * @return void
      */
-    private function initializeLastMatches()
+    private function initializeLastMatches(): void
     {
         # perform search
         $SearchEngine = new SearchEngine();

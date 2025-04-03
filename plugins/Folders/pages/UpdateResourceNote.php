@@ -3,7 +3,7 @@
 #   FILE:  UpdateResourceNote.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -22,7 +22,7 @@ if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
 }
 
 # canceled editing
-if (StdLib::getFormValue("Cancel")) {
+if (StdLib::getFormValue("Submit") === "Cancel") {
     return;
 }
 

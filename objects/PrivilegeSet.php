@@ -3,13 +3,12 @@
 #   FILE:  PrivilegeSet.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -62,7 +61,7 @@ class PrivilegeSet
      * @return string Current privilege set data (opaque value).
      * @throws InvalidArgumentException If data passed in was invalid.
      */
-    public function data(string $NewValue = null): string
+    public function data(?string $NewValue = null): string
     {
         # if new data supplied
         if ($NewValue !== null) {
@@ -119,9 +118,10 @@ class PrivilegeSet
      * Add specified privilege to set.  If specified privilege is already
      * part of the set, no action is taken.
      * @param mixed $Privileges Privilege ID or object (or array of IDs or objects).
+     * @return void
      * @see PrivilegeSet::removePrivilege()
      */
-    public function addPrivilege($Privileges)
+    public function addPrivilege($Privileges): void
     {
         # convert incoming value to array if needed
         if (!is_array($Privileges)) {
@@ -144,9 +144,10 @@ class PrivilegeSet
      * Remove specified privilege from set.  If specified privilege is not
      * currently in the set, no action is taken.
      * @param mixed $Privilege Privilege ID or object to remove from set.
+     * @return void
      * @see PrivilegeSet::addPrivilege()
      */
-    public function removePrivilege($Privilege)
+    public function removePrivilege($Privilege): void
     {
         # remove privilege if currently in set
         if ($this->includesPrivilege($Privilege)) {
@@ -387,8 +388,9 @@ class PrivilegeSet
     /**
      * Add subgroup of privileges/conditions to set.
      * @param PrivilegeSet $Set Subgroup to add.
+     * @return void
      */
-    public function addSubset(PrivilegeSet $Set)
+    public function addSubset(PrivilegeSet $Set): void
     {
         # if subgroup is not already in set
         if (!$this->isInPrivilegeData($Set)) {
@@ -421,7 +423,7 @@ class PrivilegeSet
      *       otherwise FALSE if only one privilege required.  (OPTIONAL)
      * @return bool TRUE if all privileges required, otherwise FALSE.
      */
-    public function usesAndLogic(bool $NewValue = null): bool
+    public function usesAndLogic(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->Logic = $NewValue ? "AND" : "OR";
@@ -458,7 +460,7 @@ class PrivilegeSet
      *       defaults to both comparisons)
      * @return Array of FieldIds that have a User comparison.
      */
-    public function fieldsWithUserComparisons(string $ComparisonType = null): array
+    public function fieldsWithUserComparisons(?string $ComparisonType = null): array
     {
         $Conditions = $this->getConditions();
         $Subsets = $this->getSubsets();
@@ -474,7 +476,7 @@ class PrivilegeSet
         foreach ($Conditions as $Condition) {
             if ((($Condition["Operator"] == $ComparisonType) || ($ComparisonType === null)) &&
                 MetadataSchema::fieldExistsInAnySchema($Condition["FieldId"])) {
-                $Field = new MetadataField($Condition["FieldId"]);
+                $Field = MetadataField::getField($Condition["FieldId"]);
 
                 if ($Field->type() == MetadataSchema::MDFTYPE_USER) {
                     $Result[] = $Condition["FieldId"];
@@ -581,8 +583,9 @@ class PrivilegeSet
     /**
      * Clear internal caches.  This is primarily intended for situations where
      * memory may have run low.
+     * @return void
      */
-    public static function clearCaches()
+    public static function clearCaches(): void
     {
         self::$MetadataFieldCache = [];
         self::$ValueCache = [];
@@ -607,7 +610,7 @@ class PrivilegeSet
                 case "PrivilegeSet":
                 case "AddSubset":
                     # convert child data to new set
-                    $NewSet = PrivilegeSet::createFromXML($Value, $Schema);
+                    $NewSet = PrivilegeSet::createFromXml($Value, $Schema);
 
                     # add new set to our privilege set
                     $PrivSet->addSubset($NewSet);
@@ -764,7 +767,7 @@ class PrivilegeSet
         foreach ($this->Privileges as $Priv) {
             if (is_array($Priv)) {
                 $XOut->startElement("AddCondition");
-                $Field = new MetadataField($Priv["FieldId"]);
+                $Field = MetadataField::getField($Priv["FieldId"]);
                 $Operator = $Priv["Operator"];
                 $Value = $Priv["Value"];
                 $XOut->writeElement("Field", $Field->name());
@@ -795,8 +798,13 @@ class PrivilegeSet
             }
         }
 
+        $XmlData = $XOut->flush();
+        if (is_int($XmlData)) {
+            throw new Exception("XOut->flush() returned int (should be impossible).");
+        }
+
         # return generated XML to caller
-        return $XOut->flush();
+        return $XmlData;
     }
 
 
@@ -815,12 +823,13 @@ class PrivilegeSet
     /**
      * Load privileges from serialized data.
      * @param string $Serialized Privilege data.
+     * @return void
      * @throws InvalidArgumentException If data passed in was invalid.
      */
-    private function loadFromData(string $Serialized)
+    private function loadFromData(string $Serialized): void
     {
         # save calling context in case load causes out-of-memory crash
-        (ApplicationFramework::getInstance())->RecordContextInCaseOfCrash();
+        (ApplicationFramework::getInstance())->recordContextInCaseOfCrash();
 
         # unpack new data
         $Data = unserialize($Serialized);
@@ -915,7 +924,7 @@ class PrivilegeSet
             self::$MetadataFieldCache[$MFieldId] =
                     !MetadataSchema::fieldExistsInAnySchema($Condition["FieldId"])
                     ? false
-                    : new MetadataField($MFieldId);
+                    : MetadataField::getField($MFieldId);
         }
 
         # if the specified field does not exist

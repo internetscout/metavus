@@ -3,13 +3,12 @@
 #   FILE:  PluginManager.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -31,7 +30,7 @@ class PluginManager
      * Get universal instance of class.
      * @return self Class instance.
      */
-    public static function getInstance()
+    public static function getInstance(): self
     {
         if (!isset(self::$Instance)) {
             self::$Instance = new static();
@@ -44,7 +43,7 @@ class PluginManager
      * @param ApplicationFramework $AF Initialized and running application
      *      framework instance within which plugins should run.
      */
-    public static function setApplicationFramework(ApplicationFramework $AF)
+    public static function setApplicationFramework(ApplicationFramework $AF): void
     {
         if (isset(self::$Instance)) {
             throw new Exception("Application framework must be set before"
@@ -59,7 +58,7 @@ class PluginManager
      * @param array $PluginDirectories Array of names of directories
      *       containing plugins, in the order they should be searched.
      */
-    public static function setPluginDirectories(array $PluginDirectories)
+    public static function setPluginDirectories(array $PluginDirectories): void
     {
         if (isset(self::$Instance)) {
             throw new Exception("Plugin directory list must be set before"
@@ -75,7 +74,7 @@ class PluginManager
      *      returns a normalized value.
      * @throws InvalidArgumentException If function is not callable.
      */
-    public static function setConfigValueLoader(callable $Func)
+    public static function setConfigValueLoader(callable $Func): void
     {
         if (isset(self::$Instance)) {
             throw new Exception("Configuration value loader must be set before"
@@ -94,7 +93,7 @@ class PluginManager
      * @param int $MaxAge Maximum age for cached plugin directory lists in
      *   minutes.
      */
-    public static function setPluginDirListExpirationPeriod(int $MaxAge)
+    public static function setPluginDirListExpirationPeriod(int $MaxAge): void
     {
         self::$PluginDirListExpirationPeriod = $MaxAge;
     }
@@ -109,7 +108,7 @@ class PluginManager
      */
     public function loadPlugins(bool $ForceLoading = false): bool
     {
-        $ErrMsgs = array();
+        $ErrMsgs = [];
 
         # look for plugin files
         $this->PluginFiles = $this->findPluginFiles(self::$PluginDirectories);
@@ -127,8 +126,14 @@ class PluginManager
                     # attempt to load plugin
                     $Result = $this->loadPlugin($PluginName, $PluginFileName);
 
-                    # add plugin to list of loaded plugins
-                    $this->Plugins[$PluginName] = $Result;
+                    # if plugin should be loaded
+                    $PluginAttrs = $Result->getAttributes();
+                    if ($ForceLoading
+                            || (!isset($Enabled[$PluginName]) && $PluginAttrs["EnabledByDefault"])
+                            || (isset($Enabled[$PluginName]) && $Enabled[$PluginName])) {
+                        # add plugin to list of loaded plugins
+                        $this->Plugins[$PluginName] = $Result;
+                    }
                 } catch (Exception $Exception) {
                     # save errors
                     $ErrMsgs[$PluginName][] = $Exception->getMessage();
@@ -138,7 +143,7 @@ class PluginManager
 
         # check dependencies and drop any plugins with failed dependencies
         $DepErrMsgs = $this->checkDependencies($this->Plugins);
-        $DisabledPlugins = array();
+        $DisabledPlugins = [];
         foreach ($DepErrMsgs as $PluginName => $Msgs) {
             $DisabledPlugins[] = $PluginName;
             foreach ($Msgs as $Msg) {
@@ -159,8 +164,18 @@ class PluginManager
                 # attempt to make plugin ready
                 try {
                     $Result = $this->readyPlugin($Plugin);
-                } catch (Exception $Except) {
-                    $Result = array("Uncaught Exception: " . $Except->getMessage());
+                } catch (Exception $Ex) {
+                    $ExFile = substr($Ex->getFile(), strlen((string)getcwd()) + 1);
+                    $ExTrace = preg_replace(
+                        ":(#[0-9]+) ".getcwd()."/".":",
+                        "$1 ",
+                        $Ex->getTraceAsString()
+                    );
+                    $Result = [
+                        "Uncaught Exception: ".$Ex->getMessage()
+                                ."(".$ExFile."[".$Ex->getLine()."])<br>"
+                                ."Trace: ".$ExTrace
+                    ];
                 }
 
                 # if making plugin ready failed
@@ -250,8 +265,18 @@ class PluginManager
      * or findPluginHtmlFile() methods..
      * @return Plugin object or NULL if no plugin associated with current page.
      */
-    public function getPluginForCurrentPage()
+    public function getPluginForCurrentPage(): ?Plugin
     {
+        if ($this->PageFilePlugin === null) {
+            $AF = ApplicationFramework::getInstance();
+            $RegEx = "/P_([A-Za-z0-9]+)_.+$/";
+            if (preg_match($RegEx, $AF->getPageName(), $Matches)) {
+                $this->PageFilePlugin = $Matches[1];
+            }
+        }
+        if ($this->PageFilePlugin === null) {
+            throw new Exception("Unable to determine page file for plugin.");
+        }
         return $this->getPlugin($this->PageFilePlugin);
     }
 
@@ -263,7 +288,7 @@ class PluginManager
     public function getPluginAttributes(): array
     {
         # for each loaded plugin
-        $Info = array();
+        $Info = [];
         foreach ($this->Plugins as $PluginName => $Plugin) {
             # retrieve plugin attributes
             $Info[$PluginName] = $Plugin->getAttributes();
@@ -293,7 +318,7 @@ class PluginManager
      */
     public function getDependents(string $PluginName): array
     {
-        $Dependents = array();
+        $Dependents = [];
         $AllAttribs = $this->getPluginAttributes();
         foreach ($AllAttribs as $Name => $Attribs) {
             if (array_key_exists($PluginName, $Attribs["Requires"])) {
@@ -311,7 +336,7 @@ class PluginManager
      */
     public function getActivePluginList(): array
     {
-        $ActivePluginNames = array();
+        $ActivePluginNames = [];
         foreach ($this->Plugins as $PluginName => $Plugin) {
             if ($Plugin->isReady()) {
                 $ActivePluginNames[] = $PluginName;
@@ -328,7 +353,7 @@ class PluginManager
      * @return bool TRUE if plugin is enabled, otherwise FALSE.
      * @throws InvalidArgumentException If invalid plugin name is supplied.
      */
-    public function pluginEnabled(string $PluginName, bool $NewValue = null): bool
+    public function pluginEnabled(string $PluginName, ?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             if (isset($this->Plugins[$PluginName])) {
@@ -383,7 +408,7 @@ class PluginManager
      * @param string $PluginName Base name of plugin.
      * @return string|null Error message or NULL if uninstall succeeded.
      */
-    public function uninstallPlugin(string $PluginName)
+    public function uninstallPlugin(string $PluginName): ?string
     {
         # assume success
         $Result = null;
@@ -422,7 +447,7 @@ class PluginManager
     /**
      * Clear cached data.
      */
-    public function clearCaches()
+    public function clearCaches(): void
     {
         $this->DB->query(
             "UPDATE PluginInfo SET DirectoryCache=NULL, DirectoryCacheLastUpdatedAt=NULL"
@@ -433,12 +458,12 @@ class PluginManager
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $DB;
-    private $ErrMsgs = array();
+    private $ErrMsgs = [];
     private $PageFilePlugin = null;
-    private $Plugins = array();
-    private $PluginFiles = array();
-    private $PluginHasDir = array();
-    private $PluginDirLists = array();
+    private $Plugins = [];
+    private $PluginFiles = [];
+    private $PluginHasDir = [];
+    private $PluginDirLists = [];
 
     private static $AF;
     private static $CfgValueLoader;
@@ -467,18 +492,6 @@ class PluginManager
         # get our own database handle
         $this->DB = new Database();
 
-        # hook into events to load plugin PHP and HTML files
-        self::$AF->hookEvent(
-            "EVENT_PHP_FILE_LOAD",
-            array($this, "findPluginPhpFile"),
-            ApplicationFramework::ORDER_LAST
-        );
-        self::$AF->hookEvent(
-            "EVENT_HTML_FILE_LOAD",
-            array($this, "findPluginHtmlFile"),
-            ApplicationFramework::ORDER_LAST
-        );
-
         # load cache of plugin directories
         $this->loadDirectoryListCache();
 
@@ -498,7 +511,7 @@ class PluginManager
     private function findPluginFiles(array $DirsToSearch): array
     {
         # for each directory
-        $PluginFiles = array();
+        $PluginFiles = [];
         foreach ($DirsToSearch as $Dir) {
             # if directory exists
             if (is_dir($Dir)) {
@@ -585,10 +598,10 @@ class PluginManager
         }
 
         # instantiate and register the plugin
-        $Plugin = new $PluginClassName($PluginName);
+        $Plugin = ($PluginClassName)::getInstance(true);
 
         # check required plugin attributes
-        $RequiredAttribs = array("Name", "Version");
+        $RequiredAttribs = ["Name", "Version"];
         $Attribs = $Plugin->getAttributes();
         foreach ($RequiredAttribs as $AttribName) {
             if (!strlen($Attribs[$AttribName])) {
@@ -608,7 +621,7 @@ class PluginManager
      * @param Plugin $Plugin Plugin to ready.
      * @return array|null Error messages or NULL if no errors.
      */
-    private function readyPlugin(Plugin &$Plugin)
+    private function readyPlugin(Plugin &$Plugin): ?array
     {
         # tell system to recognize any plugin subdirectories
         $this->recognizePluginDirectories($Plugin->getBaseName());
@@ -619,7 +632,7 @@ class PluginManager
         # if install/upgrade failed
         if (is_string($PluginInstalled)) {
             # report errors to caller
-            return array($PluginInstalled);
+            return [$PluginInstalled];
         }
 
         # set up plugin configuration options
@@ -628,7 +641,7 @@ class PluginManager
         # if plugin configuration setup failed
         if ($ErrMsgs !== null) {
             # report errors to caller
-            return is_array($ErrMsgs) ? $ErrMsgs : array($ErrMsgs);
+            return is_array($ErrMsgs) ? $ErrMsgs : [$ErrMsgs];
         }
 
         # set default configuration values if necessary
@@ -642,7 +655,7 @@ class PluginManager
         # if initialization failed
         if ($ErrMsgs !== null) {
             # report errors to caller
-            return is_array($ErrMsgs) ? $ErrMsgs : array($ErrMsgs);
+            return is_array($ErrMsgs) ? $ErrMsgs : [$ErrMsgs];
         }
 
         # register and hook any events for plugin
@@ -662,7 +675,7 @@ class PluginManager
      * @param Plugin $Plugin Plugin to hook.
      * @return array|null Error messages or NULL if no errors.
      */
-    private function hookPlugin(Plugin &$Plugin)
+    private function hookPlugin(Plugin &$Plugin): ?array
     {
         # register any events declared by plugin
         $Events = $Plugin->declareEvents();
@@ -674,11 +687,11 @@ class PluginManager
         $EventsToHook = $Plugin->hookEvents();
         if (count($EventsToHook)) {
             # for each event
-            $ErrMsgs = array();
+            $ErrMsgs = [];
             foreach ($EventsToHook as $EventName => $PluginMethods) {
                 # for each method to hook for the event
                 if (!is_array($PluginMethods)) {
-                    $PluginMethods = array($PluginMethods);
+                    $PluginMethods = [$PluginMethods];
                 }
                 foreach ($PluginMethods as $PluginMethod) {
                     # if the event only allows static callbacks
@@ -690,13 +703,13 @@ class PluginManager
                         );
                         $Result = self::$AF->hookEvent(
                             $EventName,
-                            array($Caller, "CallPluginMethod")
+                            [$Caller, "CallPluginMethod"]
                         );
                     } else {
                         # hook event
                         $Result = self::$AF->hookEvent(
                             $EventName,
-                            array($Plugin, $PluginMethod)
+                            [$Plugin, $PluginMethod]
                         );
                     }
 
@@ -724,17 +737,17 @@ class PluginManager
      * Unhook any events for plugin.
      * @param Plugin $Plugin Plugin to unhook.
      */
-    private function unhookPlugin(Plugin &$Plugin)
+    private function unhookPlugin(Plugin &$Plugin): void
     {
         # if plugin had events to hook
         $EventsToHook = $Plugin->hookEvents();
         if (count($EventsToHook)) {
             # for each event
-            $ErrMsgs = array();
+            $ErrMsgs = [];
             foreach ($EventsToHook as $EventName => $PluginMethods) {
                 # for each method to hook for the event
                 if (!is_array($PluginMethods)) {
-                    $PluginMethods = array($PluginMethods);
+                    $PluginMethods = [$PluginMethods];
                 }
                 foreach ($PluginMethods as $PluginMethod) {
                     # if the event only allows static callbacks
@@ -746,13 +759,13 @@ class PluginManager
                         );
                         self::$AF->unhookEvent(
                             $EventName,
-                            array($Caller, "CallPluginMethod")
+                            [$Caller, "CallPluginMethod"]
                         );
                     } else {
                         # unhook event
                         self::$AF->unhookEvent(
                             $EventName,
-                            array($Plugin, $PluginMethod)
+                            [$Plugin, $PluginMethod]
                         );
                     }
                 }
@@ -879,7 +892,7 @@ class PluginManager
      * interface file loading.
      * @param string $PluginName Base name (class) of plugin.
      */
-    private function recognizePluginDirectories(string $PluginName)
+    private function recognizePluginDirectories(string $PluginName): void
     {
         # if plugin has its own subdirectory
         $PluginFileName = $this->PluginFiles[$PluginName];
@@ -902,6 +915,18 @@ class PluginManager
 
         if (count($DirLists["InterfaceDirs"]) > 0) {
             self::$AF->addInterfaceDirectories($DirLists["InterfaceDirs"], true);
+            self::$AF->addPageNameMappingFunction(
+                $DirLists["InterfaceDirs"],
+                [$this, "mapPageNameForPlugin"]
+            );
+        }
+
+        if (strlen($DirLists["PageFileDir"])) {
+            self::$AF->addPageFileDirectories([ $DirLists["PageFileDir"] ], true);
+            self::$AF->addPageNameMappingFunction(
+                [ $DirLists["PageFileDir"] ],
+                [$this, "mapPageNameForPlugin"]
+            );
         }
 
         if (count($DirLists["IncludeDirs"]) > 0) {
@@ -915,14 +940,52 @@ class PluginManager
         if (count($DirLists["InterfaceObjectDirs"]) > 0) {
             foreach ($DirLists["InterfaceObjectDirs"] as $Dir) {
                 self::$AF->addObjectDirectory($Dir, $Namespace);
+                self::$AF->addIncludeDirectories([$Dir], true);
             }
         }
     }
 
     /**
+     * Attempt to map plugin-specific page name to name of page file to load.
+     * @param string $Dir Directory that may contain page file.
+     * @param string $PageName Original page name.
+     * @return string Mapped page naem or unchanged page name if no mapping found.
+     */
+    public function mapPageNameForPlugin(string $Dir, string $PageName): string
+    {
+        # look for plugin name and plugin page name in base page name
+        preg_match(
+            "/P_([A-Za-z][A-Za-z0-9]*)_([A-Za-z0-9_-]+)(\.[A-Za-z]{3,4})/",
+            $PageName,
+            $Matches
+        );
+
+        # if plugin name and plugin page name were found in base page name
+        if (count($Matches) == 4) {
+            $PluginName = $Matches[1];
+            $NewPageName = $Matches[2].$Matches[3];
+
+            # if interface directory appears to be for this plugin
+            if (strpos($Dir, "/".$PluginName."/") !== false) {
+                # if plugin is ready to run
+                if ($this->pluginReady($PluginName)) {
+                    # save plugin name as home of current page
+                    $this->PageFilePlugin = $PluginName;
+
+                    # return extracted page name to caller
+                    return $NewPageName;
+                }
+            }
+        }
+
+        # return page name unchanged to caller
+        return $PageName;
+    }
+
+    /**
      * Load the cache of plugin directory information.
      */
-    private function loadDirectoryListCache()
+    private function loadDirectoryListCache(): void
     {
         # if cache column does not exist (e.g., because the upgrade to create
         # it has not yet been run), bail
@@ -949,39 +1012,48 @@ class PluginManager
     /**
      * Get the list of directories associated with a given plugin.
      * @param string $PluginName Base name (class) of plugin.
-     * @return array List of directories found, divided by directory type. The
-     *   PluginObjectDir key will be a string giving the directory that
-     *   contains plugin objects -- an /objects subdir if the plugin has one
-     *   or the plugin directory itself otherwise. The PluginObjectDir,
-     *   InterfaceDirs, IncludeDirs, ImageDirs, and InterfaceObjectDirs keys
-     *   will each be arrays of directories.
+     * @return array List of directories found, divided by directory type.
+     *      The PageFileDir and PluginObjectDir key will be strings giving
+     *      the directories that contains page (PHP) files and plugin object
+     *      files -- /pages and /objects subdirs if the plugin has them
+     *      or the plugin directory itself otherwise. The PluginObjectDir,
+     *      InterfaceDirs, IncludeDirs, ImageDirs, and InterfaceObjectDirs
+     *      keys will each be arrays of directories.
      */
     private function getPluginDirectoryLists(string $PluginName) : array
     {
-        # use cached lists if we have them
-        if (isset($this->PluginDirLists[$PluginName])) {
+        $Result = [
+            "ImageDirs" => [],
+            "IncludeDirs" => [],
+            "InterfaceDirs" => [],
+            "InterfaceObjectDirs" => [],
+            "PageFileDir" => "",
+            "PluginObjectDir" => "",
+        ];
+
+        # use cached lists if we have them and they appear complete
+        if (isset($this->PluginDirLists[$PluginName])
+                && (array_keys($this->PluginDirLists[$PluginName])
+                        == array_keys($Result))) {
             return $this->PluginDirLists[$PluginName];
         }
-
-        # othrwise, scan for plugin directories
-        $Result = [
-            "PluginObjectDir" => "",
-            "InterfaceDirs" => [],
-            "IncludeDirs" => [],
-            "ImageDirs" => [],
-            "InterfaceObjectDirs" => [],
-        ];
 
         $PluginFileName = $this->PluginFiles[$PluginName];
         $Dir = dirname($PluginFileName);
 
         # if plugin has its own object directory
-        if (is_dir($Dir . "/objects")) {
+        if (is_dir($Dir."/objects")) {
             # add object directory to class autoloading list
             $Result["PluginObjectDir"] = $Dir."/objects";
         } else {
             # add plugin directory to class autoloading list
             $Result["PluginObjectDir"] = $Dir;
+        }
+
+        # if plugin has its own page file directory
+        if (is_dir($Dir."/pages")) {
+            # add page file directory to page file location list
+            $Result["PageFileDir"] = $Dir."/pages/";
         }
 
         # if plugin has its own interface directory
@@ -1037,16 +1109,18 @@ class PluginManager
      *       default values specified, any existing values will be
      *       overwritten.  (OPTIONAL, default to FALSE)
      */
-    private function setPluginDefaultConfigValues(Plugin $Plugin, bool $Overwrite = false)
-    {
+    private function setPluginDefaultConfigValues(
+        Plugin $Plugin,
+        bool $Overwrite = false
+    ): void {
         # if plugin has configuration info
         $Attribs = $Plugin->getAttributes();
         if (isset($Attribs["CfgSetup"])) {
             foreach ($Attribs["CfgSetup"] as $CfgValName => $CfgSetup) {
                 if (isset($CfgSetup["Default"]) && ($Overwrite
-                        || ($Plugin->configSetting($CfgValName) === null))) {
+                        || ($Plugin->getConfigSetting($CfgValName) === null))) {
                     if (isset(self::$CfgValueLoader)) {
-                        $Plugin->configSetting(
+                        $Plugin->setConfigSetting(
                             $CfgValName,
                             call_user_func(
                                 self::$CfgValueLoader,
@@ -1055,7 +1129,7 @@ class PluginManager
                             )
                         );
                     } else {
-                        $Plugin->configSetting($CfgValName, $CfgSetup["Default"]);
+                        $Plugin->setConfigSetting($CfgValName, $CfgSetup["Default"]);
                     }
                 }
             }
@@ -1072,12 +1146,13 @@ class PluginManager
     private function checkDependencies($Plugins, bool $CheckReady = false): array
     {
         # look until all enabled plugins check out okay
-        $ErrMsgs = array();
+        $ErrMsgs = [];
         do {
             # start out assuming all plugins are okay
             $AllOkay = true;
 
             # for each plugin
+            $Attribs = [];
             foreach ($Plugins as $PluginName => $Plugin) {
                 # if plugin is enabled and not checking for ready
                 #       or plugin is ready
@@ -1229,9 +1304,20 @@ class PluginManager
             }
         }
 
+        # discard any loading order dependencies that are not in supplied plugin list
+        $PrunedPluginsAfterUs = [];
+        foreach ($PluginsAfterUs as $PluginName => $PluginsAfter) {
+            foreach ($PluginsAfter as $PluginAfter) {
+                if (isset($Plugins[$PluginAfter])) {
+                    $PrunedPluginsAfterUs[$PluginName][] = $PluginAfter;
+                }
+            }
+        }
+        $PluginsAfterUs = $PrunedPluginsAfterUs;
+
         # keep track of those plugins we have yet to do and those that are done
         $UnsortedPlugins = array_keys($Plugins);
-        $PluginsProcessed = array();
+        $PluginsProcessed = [];
 
         # limit the number of iterations of the plugin ordering loop
         # to 10 times the number of plugins we have
@@ -1239,6 +1325,7 @@ class PluginManager
         $IterationCount = 0;
 
         # iterate through all the plugins that need processing
+        # (array_shift() pops an element off the beginning of the array)
         while (($NextPlugin = array_shift($UnsortedPlugins)) !== null) {
             # check to be sure that we're not looping forever
             $IterationCount++;
@@ -1265,6 +1352,7 @@ class PluginManager
                         # if there is something that requires us which hasn't
                         # yet been assigned an order, then we can't determine
                         # our own place on this iteration
+                        # (array_push() pushes an element onto the end of the array)
                         array_push($UnsortedPlugins, $NextPlugin);
                         continue 2;
                     } else {
@@ -1279,7 +1367,7 @@ class PluginManager
 
         # arrange plugins according to our ordering
         asort($PluginsProcessed, SORT_NUMERIC);
-        $SortedPlugins = array();
+        $SortedPlugins = [];
         foreach ($PluginsProcessed as $PluginName => $SortOrder) {
             $SortedPlugins[$PluginName] = $Plugins[$PluginName];
         }
@@ -1300,15 +1388,15 @@ class PluginManager
     public function findPluginPhpFile(string $PageName, $FileName): array
     {
         # build list of possible locations for file
-        $Locations = array(
+        $Locations = [
             "local/plugins/%PLUGIN%/pages/%PAGE%.php",
             "plugins/%PLUGIN%/pages/%PAGE%.php",
             "local/plugins/%PLUGIN%/%PAGE%.php",
             "plugins/%PLUGIN%/%PAGE%.php",
-        );
+        ];
 
         # look for file and return (possibly) updated page to caller
-        return $this->findPluginPageFile($PageName, $FileName, $Locations);
+        return $this->findPluginFileForPage($PageName, $FileName, $Locations);
     }
     /** @endcond */
 
@@ -1324,17 +1412,17 @@ class PluginManager
     public function findPluginHtmlFile(string $PageName, $FileName): array
     {
         # build list of possible locations for file
-        $Locations = array(
+        $Locations = [
             "local/plugins/%PLUGIN%/interface/%ACTIVEUI%/%PAGE%.html",
             "plugins/%PLUGIN%/interface/%ACTIVEUI%/%PAGE%.html",
             "local/plugins/%PLUGIN%/interface/%DEFAULTUI%/%PAGE%.html",
             "plugins/%PLUGIN%/interface/%DEFAULTUI%/%PAGE%.html",
             "local/plugins/%PLUGIN%/%PAGE%.html",
             "plugins/%PLUGIN%/%PAGE%.html",
-        );
+        ];
 
         # find HTML file
-        $Params = $this->findPluginPageFile($PageName, $FileName, $Locations);
+        $Params = $this->findPluginFileForPage($PageName, $FileName, $Locations);
 
         # if plugin HTML file was found
         if ($Params["FileName"] != $FileName) {
@@ -1368,8 +1456,11 @@ class PluginManager
      *       file, with %ACTIVEUI%, %PLUGIN%, and %PAGE% used as appropriate.
      * @return array Parameter array with page and file names (updated if appropriate).
      */
-    private function findPluginPageFile(string $PageName, $FileName, array $Locations): array
-    {
+    private function findPluginFileForPage(
+        string $PageName,
+        $FileName,
+        array $Locations
+    ): array {
         # set up return value assuming we will not find plugin page file
         $ReturnValue = ["PageName" => $PageName, "FileName" => $FileName];
 
@@ -1378,25 +1469,24 @@ class PluginManager
 
         # if plugin name and plugin page name were found in base page name
         if (count($Matches) == 3) {
-            # if plugin is valid and enabled and has its own subdirectory
             $PluginName = $Matches[1];
-            if (isset($this->Plugins[$PluginName])
-                && $this->PluginHasDir[$PluginName]
-                && $this->Plugins[$PluginName]->isEnabled()) {
+            $PageName = $Matches[2];
+
+            # if plugin is ready to run
+            if ($this->pluginReady($PluginName)) {
                 # for each possible location
-                $PageName = $Matches[2];
                 $ActiveUI = self::$AF->activeUserInterface();
                 $DefaultUI = self::$AF->defaultUserInterface();
                 foreach ($Locations as $Loc) {
                     # make any needed substitutions into path
                     $FileName = str_replace(
-                        array("%DEFAULTUI%", "%ACTIVEUI%", "%PLUGIN%", "%PAGE%"),
-                        array($DefaultUI, $ActiveUI, $PluginName, $PageName),
+                        ["%DEFAULTUI%", "%ACTIVEUI%", "%PLUGIN%", "%PAGE%"],
+                        [$DefaultUI, $ActiveUI, $PluginName, $PageName],
                         $Loc
                     );
 
                     # if file exists in this location
-                    if (file_exists($FileName)) {
+                    if (is_readable($FileName)) {
                         # set return value to contain full plugin page file name
                         $ReturnValue["FileName"] = $FileName;
 

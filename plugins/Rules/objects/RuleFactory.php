@@ -3,7 +3,7 @@
 #   FILE:  RuleFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -39,7 +39,7 @@ class RuleFactory extends ItemFactory
      * @return array Rules (objects) ready to be checked, with rule IDs
      *       for the index.
      */
-    public function getRulesReadyToCheck()
+    public function getRulesReadyToCheck(): array
     {
         # retrieve IDs of rules in need of checking
         $CheckTest = "(Enabled = 1) AND ((UNIX_TIMESTAMP(LastChecked)"
@@ -62,7 +62,7 @@ class RuleFactory extends ItemFactory
      * @return array Rules (objects) to be checked when items change, with rule
      *       IDs for the index.
      */
-    public function getRulesToCheckOnChange()
+    public function getRulesToCheckOnChange(): array
     {
         # retrieve IDs of rules marked to be checked upon change
         $this->DB->Query("SELECT RuleId FROM Rules_Rules"

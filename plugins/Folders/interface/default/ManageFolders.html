@@ -3,19 +3,23 @@
 #   FILE:  ManageFolders.html (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use ScoutLib\ApplicationFramework;
 
-# ----- MAIN -----------------------------------------------------------------
-
+# ----- SETUP ----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 $AF->requireUIFile("jquery-ui.css", AF::ORDER_FIRST);
 $AF->requireUIFile("jquery-ui.js");
 $AF->requireUIFile("Folders_TransferFolder.js");
 
+$AddFolderButton = new HtmlButton("Add");
+$AddFolderButton->setIcon("Plus.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <div class="container-fluid">
@@ -31,8 +35,7 @@ $AF->requireUIFile("Folders_TransferFolder.js");
         <input type="text" id="FolderName" name="FolderName" placeholder="Folder Name"
             required="true" />
 
-        <button class="btn btn-primary mv-button-iconed" type="submit" value="Add"><img
-            src="<?= $AF->GUIFile('Plus.svg'); ?>" alt="" class="mv-button-icon" /> Add</button>
+        <?= $AddFolderButton->getHtml(); ?>
       </form>
     </div>
   </div>
@@ -70,10 +73,10 @@ $AF->requireUIFile("Folders_TransferFolder.js");
 <div id="mv-folders-transfer-folder-popup" style="display: none">
   <div id="#mv-folders-transfer-folder-popup-body">
     <p id="mv-folders-transfer-folder-popup-description">
-      Please enter the user name of the user whom you want to transfer this folder
+      Please enter the username of the user whom you want to transfer this folder
       (<span class="mv-folders-folder-name"></span>) to.<br/>
       <b>Caution</b>: This operation cannot be undone.</p>
-    <label id="mv-folders-transfer-folder-popup-uname-label">User Name:</label>
+    <label id="mv-folders-transfer-folder-popup-uname-label">Username:</label>
     <input id="mv-folders-transfer-folder-popup-uname-field"
            type="text" name="mv-folders-transfer-folder-popup-uname">
     <div id="mv-folders-transfer-folder-popup-success" class="mv-folders-popup-success"></div>

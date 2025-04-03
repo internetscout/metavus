@@ -1,0 +1,1196 @@
+<?PHP
+#
+#   FILE:  Register.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use Metavus\Plugins\EduLink\LMSRegistration;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\HtmlTable;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+# --- Other (generic) LMS information
+
+/**
+ * Get generic configuration settings.
+ * @return string Settings in HTML.
+ */
+function getOtherSettings() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $BaseUrl = $AF->baseUrl();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->setTableClass("table table-striped");
+    $HtmlTable->addRowsWithHeaders([
+        [
+            "Public key",
+            "<pre id='os-public-key'>".$Plugin->getConfigSetting("PublicKey")."</pre>",
+            (new CopyButton("os-public-key"))->getHtml(),
+        ],
+        [
+            "JWKS",
+            "<pre id='os-jwks'>".$Plugin->getPublicJWKS()."</pre>",
+            (new CopyButton("os-jwks"))->getHtml(),
+        ],
+        [
+            "LTI version",
+            "LTI 1.3",
+            "",
+        ],
+        [
+            "Tool URL",
+            "<pre id='os-tool-url'>".$BaseUrl."</pre>",
+            (new CopyButton("os-tool-url"))->getHtml(),
+        ],
+        [
+            "Initiate login URL",
+            "<pre id='os-login-url'>".$BaseUrl."lti/login</pre>",
+            (new CopyButton("os-login-url"))->getHtml(),
+        ],
+        [
+            "Redirection URI(s)",
+            "<pre id='os-redirect-url'>".$BaseUrl."lti/launch</pre>",
+            (new CopyButton("os-redirect-url"))->getHtml(),
+        ],
+    ]);
+
+    return $HtmlTable->getHtml();
+}
+
+# --- Canvas
+
+/**
+ * Get configuration instructions for Canvas.
+ * @return string Instructions in HTML.
+ */
+function getCanvasInstructions() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $ServiceName = $Plugin->getConfigSetting("ServiceName");
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->isPseudoTable(true);
+
+    $HtmlTable->addRows([
+        [
+            "<div class='mv-p-edulink-tool-heading'>Create an LTI Key</div>",
+            "",
+        ],
+        [
+            "1. Log in to your Canvas site as an administrator.",
+            ""
+        ],
+        [
+            "2. Open the Admin menu at left (icon is a shield with a"
+                ." key in it). If your Canvas install has multiple accounts,"
+                ." select your site administrator account. Otherwise, select your"
+                ." main / only account.",
+            $AF->gUIFileTag("Canvas_Instructions_1.jpg"),
+        ],
+        [
+            "3. Select &quot;Developer Keys&quot;",
+            $AF->gUIFileTag("Canvas_Instructions_2.jpg"),
+        ],
+        [
+            "4. Push the <i>+ Developer Key</i> button, select the <i>+ LTI"
+                ." Key</i> entry.",
+            $AF->gUIFileTag("Canvas_Instructions_3.jpg"),
+        ],
+        [
+            "5. Enter the parameters shown in the &quot;LMS Settings&quot; table"
+                ." below.",
+            ""
+        ],
+        [
+            "<div class='mv-p-edulink-tool-heading'>Configure Your LTI Key</div>",
+            ""
+        ],
+        [
+            "6. Enable the <i>Link Selection</i>, <i>Homework"
+                ." Submission</i>, and <i>Assignment Selection</i> placements"
+                ." and disable any other placements Canvas offers. The UI here"
+                ." is an interactive selector. You may need to click Xs to the"
+                ." right of extra placements to delete them. If a placement you"
+                ." want is not shown, then you will need to click to the right"
+                ." of the current placements, start typing the name of the"
+                ." placement you want, then select your desired placement from"
+                ." the menu that appears.",
+            $AF->gUIFileTag("Canvas_Instructions_4.jpg")
+        ],
+        [
+            "7. Expand all your selected placements from the list and ensure"
+                ." that they are set to use the <i>LtiDeepLinkingRequest</i> message"
+                ." type. For each placement, enter 2048 as the <i>Selection Height</i>"
+                ." and 1024 as the <i>Selection Width</i>.",
+            $AF->gUIFileTag("Canvas_Instructions_5.jpg")
+        ],
+        [
+            "8. Push <i>save</i>.",
+            ""
+        ],
+        [
+            "9. Copy down the number listed in the <i>Details</i> for"
+                ." your newly created key and turn the key on. If you are on"
+                ." a multi-account Canvas, also mark the key visible so that"
+                ." all your Accounts will have access to it.",
+            $AF->gUIFileTag("Canvas_Instructions_6.jpg")
+        ],
+        [
+            "<div class='mv-p-edulink-tool-heading'>Add LTI Apps</div>",
+            ""
+        ],
+        [
+            "10. From the Admin menu at left (the shield + key again, as in Step 2),"
+                ." select an Account containing courses that you want to use"
+                ." with ".$ServiceName.". Click <i>Settings</i>, select"
+                ." the <i>Apps</i> tab, then push the <i>+ App</i> button.",
+            $AF->gUIFileTag("Canvas_Instructions_7.jpg"),
+        ],
+        [
+            "11. Select <i>By Client Id</i> from the <i>Configuration"
+                ." Type</i> menu, then paste in the number copied from the"
+                ." LTI Key <i>Details</i> entry, push &quot;Submit&quot;,"
+                ." then &quot;Install&quot;.",
+            ""
+        ],
+        [
+            "12. Repeat the last two steps for every other account that"
+                ." you want to use with ".$ServiceName."."
+            ,
+            ""
+        ],
+        [
+            "<div class='mv-p-edulink-tool-heading'>Finalize Registration with "
+                .$ServiceName."</div>",
+            ""
+        ],
+        [
+            "13. Lastly, in the &apos;Information From LMS&apos;"
+                ." form below, enter your email, the URL of your"
+                ." Canvas site, and the key details from Step 9."
+                ." Then press the <i>Register</i> button at the bottom of"
+                ." this page.",
+            ""
+        ]
+    ]);
+
+    $Result = "<p>The following steps will set up ".$ServiceName
+        ." for use on your Canvas site.</p>"
+        ."<p>The screenshots below depict a multi-account Canvas installation."
+        ." If you have a single-account Canvas installation, then you will see "
+        ." only one entry in the Admin menu rather than several. "
+        ."(Canvas uses the term &quot;Account&quot to denote not just users"
+        ." but also groups of related users and courses. Depending on your"
+        ." version of Canvas you may have either a single &quot;Account&quot;"
+        ." containing everything OR a &quot;Site Admin&quot; account containing"
+        ." administrative users one or more other accounts representing"
+        ." different institutions / schools / departments / etc.)"
+        ."</p>";
+
+    $Result .= $HtmlTable->getHtml();
+
+    return $Result;
+}
+
+/**
+ * Print configuration settings for Canvas.
+ * @return string Settings in HTML.
+ */
+function getCanvasSettings() : string
+{
+    $Plugin = EduLink::getInstance();
+    $AF = ApplicationFramework::getInstance();
+    $SysConfig = SystemConfiguration::getInstance();
+    $BaseUrl = $AF->baseUrl();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->setTableClass("table table-striped");
+
+    $JWKS = json_decode($Plugin->getPublicJWKS(), true);
+
+    $HtmlTable->addRowsWithHeaders([
+        [
+            "Key Name",
+            "<pre id='cs-key-name'>".$Plugin->getConfigSetting("ServiceName")."</pre>",
+            (new CopyButton("cs-key-name"))->getHtml(),
+        ],
+        [
+            "Owner Email",
+            "<pre id='cs-admin-email'>".$SysConfig->getString("AdminEmail")."</pre>",
+            (new CopyButton("cs-admin-email"))->getHtml(),
+        ],
+        [
+            "Redirect URI(s)",
+            "<pre id='cs-redirect-uri'>".$BaseUrl."lti/launch</pre>",
+            (new CopyButton("cs-redirect-uri"))->getHtml(),
+        ],
+        [
+            "Notes",
+            "<i>(optional)</i>",
+            ""
+        ],
+        [
+            "Method",
+            "Manual Entry",
+            ""
+        ],
+        [
+            "Title",
+            "<pre id='cs-service-name'>".$Plugin->getConfigSetting("ServiceName")."</pre>",
+            (new CopyButton("cs-service-name"))->getHtml(),
+        ],
+        [
+            "Description",
+            "<pre id='cs-description'>".$Plugin->getConfigSetting("ServiceDescription")."<pre>",
+            (new CopyButton("cs-description"))->getHtml(),
+        ],
+        [
+            "Target Link URI",
+            "<pre id='cs-target-uri'>".$BaseUrl."</pre>",
+            (new CopyButton("cs-target-uri"))->getHtml(),
+        ],
+        [
+            "OpenID Connect Initiation URL",
+            "<pre id='cs-login-url'>".$BaseUrl."lti/login</pre>",
+            (new CopyButton("cs-login-url"))->getHtml(),
+        ],
+        [
+            "JWK Method",
+            "Public JWK",
+            ""
+        ],
+        [
+            "Public JWK",
+            "<pre id='cs-jwks'>".json_encode($JWKS["keys"][0])."</pre>",
+            (new CopyButton("cs-jwks"))->getHtml(),
+
+        ],
+    ]);
+
+    return $HtmlTable->getHtml();
+}
+
+# --- Moodle
+
+/**
+ * Get configuration instructions for Moodle.
+ * @return string Instructions in HTML.
+ */
+function getMoodleInstructions() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->isPseudoTable(true);
+
+    $HtmlTable->addRows([
+        [
+            "1. Log in to your Moodle site as an administrator.",
+            "",
+        ],
+        [
+            "2. Select <i>Site Administration</i> from the left-hand navigation.",
+            $AF->gUIFileTag("Moodle_Instructions_1.jpg")
+        ],
+        [
+            "3. Select the <i>Plugins</i> tab, then click <i>Manage"
+                ." tools</i> under <i>Activity modules &gt; External tool</i>",
+            $AF->gUIFileTag("Moodle_Instructions_2.jpg")
+        ],
+        [
+            "4. Click <i>configure a tool manually</i>",
+            $AF->gUIFileTag("Moodle_Instructions_3.jpg")
+        ],
+        [
+            "5. Enter the parameters shown in the &quotLMS Settings&quot; table"
+                ." below and click <i>Save Changes</i>.",
+            ""
+        ],
+        [
+            "6. Click <i>View Configuration Details</i> (shown as a list icon)"
+                ." in the box that appears for your newly created tool.",
+            $AF->gUIFileTag("Moodle_Instructions_4.jpg")
+        ],
+        [
+            "7. Enter the Platform ID and Client ID parameters shown in the pop-up"
+                ." into the &quot;Information From LMS&quot; section below.",
+            ""
+        ],
+        [
+            "8. Push &quot;Register&quot;.",
+            ""
+        ]
+    ]);
+
+    $Html = "<p>Take the following steps to set up "
+        .$Plugin->getConfigSetting("ServiceName")
+        ." for use on your Moodle site.</p>"
+        .$HtmlTable->getHtml();
+
+    return $Html;
+}
+
+/**
+ * Get configuration settings for Moodle.
+ * @return string Settings in HTML.
+ */
+function getMoodleSettings() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $BaseUrl = $AF->baseUrl();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->setTableClass("table table-striped");
+
+    $HtmlTable->addRowsWithHeaders([
+        [
+            "Tool name",
+            "<pre id='ms-tool-name'>".$Plugin->getConfigSetting("ServiceName")."</pre>",
+            (new CopyButton("ms-tool-name"))->getHtml(),
+        ],
+        [
+            "Tool URL",
+            "<pre id='ms-tool-url'>".$BaseUrl."</pre>",
+            (new CopyButton("ms-tool-url"))->getHtml(),
+        ],
+        [
+            "Tool description",
+            "<pre id='ms-description'>".$Plugin->getConfigSetting("ServiceDescription")."<pre>",
+            (new CopyButton("ms-description"))->getHtml(),
+        ],
+        [
+            "LTI Version",
+            "LTI 1.3",
+            ""
+        ],
+        [
+            "Public key type",
+            "RSA Key",
+            ""
+        ],
+        [
+            "Public key",
+            "<pre id='ms-public-key'>".$Plugin->getConfigSetting("PublicKey")."</pre>",
+            (new CopyButton("ms-public-key"))->getHtml(),
+        ],
+        [
+            "Initiate login URL",
+            "<pre id='ms-login-url'>".$BaseUrl."lti/login</pre>",
+            (new CopyButton("ms-login-url"))->getHtml(),
+        ],
+        [
+            "Redirection URI(s)",
+            "<pre id='ms-redirect-uri'>".$BaseUrl."lti/launch</pre>",
+            (new CopyButton("ms-redirect-uri"))->getHtml(),
+        ],
+        [
+            "Custom parameters",
+            "<i>(blank)</i>",
+            ""
+        ],
+        [
+            "Tool configuration usage",
+            "Show in activity chooser and as a preconfigured tool",
+            ""
+        ],
+        [
+            "Default launch container",
+            "Embed",
+            ""
+        ],
+        [
+            "Supports Deep Linking",
+            "<i>(checked)</i>",
+            ""
+        ],
+        [
+            "Content Selection URL",
+            "<i>(blank)</i>",
+            ""
+        ],
+    ]);
+
+    return $HtmlTable->getHtml();
+}
+
+# --- Blackboard
+
+/**
+ * Get configuration instructions for Blackboard.
+ * @return string Instructions in HTML.
+ */
+function getBlackboardInstructions() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $ClientId = $Plugin->getBlackboardClientId();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->isPseudoTable(true);
+
+    $HtmlTable->addRows([
+        [
+            "1. Log in to your blackboard instance as an administrator.",
+            "",
+        ],
+        [
+            "2. Select <i>System Admin</i> from the top navigation.",
+            $AF->gUIFileTag("Blackboard_Instructions_1.jpg")
+        ],
+        [
+            "3. From the <i>Integrations</i> box in the right-hand column, select"
+                ."<i>LTI Tool Provider</i>.",
+            $AF->gUIFileTag("Blackboard_Instructions_2.jpg")
+        ],
+        [
+            "4. Select <i>Register LTI 1.3/Advantage Tool</i>.",
+            $AF->gUIFileTag("Blackboard_Instructions_3.jpg")
+        ],
+        [
+            "5. Enter <code id='bb-client-id'>"
+                .$ClientId."</code> as the Client ID, and press <i>Submit</i>.",
+            "<div style='width: 600px'>"
+                .(new CopyButton("bb-client-id"))->getHtml()."</div>",
+        ],
+        [
+            "6. Toggle the tool status to <i>Approved</i> and press <i>Submit</i>.",
+            $AF->gUIFileTag("Blackboard_Instructions_4.jpg")
+        ]
+    ]);
+
+    $Html = "<p>Take the following steps to configure your Blackboard "
+        ."instance to use ".$Plugin->getConfigSetting("ServiceName").".</p>"
+        .$HtmlTable->getHtml();
+
+    return $Html;
+}
+
+
+# --- Brightspace
+
+/**
+ * Get configuration instructions for Blackboard.
+ * @return string Instructions in HTML.
+ */
+function getBrightspaceInstructions() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->isPseudoTable(true);
+
+    $HtmlTable->addRows([
+        [
+            "<div class='mv-p-edulink-tool-heading'>Register an LTI Tool</div>",
+            "",
+        ],
+        [
+            "1. Log in to your Brightspace instance as an administrator.",
+            "",
+        ],
+        [
+            "2. Open the <i>Admin Tools</i> menu using the gear icon at"
+                ." the top right of the page.",
+            $AF->gUIFileTag("Brightspace_Instructions_1.jpg"),
+        ],
+        [
+            "3. Select <i>Manage Extensibility</i>"
+                ." (usually in the left column, third from the bottom).",
+            $AF->gUIFileTag("Brightspace_Instructions_2.jpg"),
+        ],
+        [
+            "4. Select the <i>LTI Advantage</i> tab, then click the"
+                ." <i>Register Tool</i> button.",
+            $AF->gUIFileTag("Brightspace_Instructions_3.jpg"),
+        ],
+        [
+            "5. Select <i>Standard</i> as the registration type, then fill in"
+                ." the settings using the values provided below.",
+            $AF->gUIFileTag("Brightspace_Instructions_4.jpg"),
+        ],
+        [
+            "6. In the <i>Extensions</i> setting, check the <i>Deep Linking</i> checkbox.",
+            $AF->gUIFileTag("Brightspace_Instructions_5.jpg"),
+        ],
+        [
+            "7. Press the <i>Register</i> button at the bottom of the page.",
+            $AF->gUIFileTag("Brightspace_Instructions_6.jpg"),
+        ],
+        [
+            "<div class='mv-p-edulink-tool-heading'>Create a Deployment</div>",
+            "",
+        ],
+        [
+            "8. Copy the parameters provided by Brightspace into the table below.",
+            "",
+        ],
+        [
+            "9. From the <i>Admin Tools</i> menu, select <i>External Learning Tools</i>"
+                ." (usually in the left column, sixth entry under "
+                ."<i>Organization Related</i>).",
+            $AF->gUIFileTag("Brightspace_Instructions_7.jpg"),
+        ],
+        [
+            "10. Click the <i>New Deployment</i> button",
+            $AF->gUIFileTag("Brightspace_Instructions_8.jpg"),
+        ],
+        [
+            "11. From the <i>Tool</i> dropdown, select "
+                .$Plugin->getConfigSetting("ServiceName"),
+            $AF->gUIFileTag("Brightspace_Instructions_9.jpg"),
+        ],
+        [
+            "12. Fill in <i>Name</i> and <i>Descrption</i> from the values below.",
+            "",
+        ],
+        [
+            "13. Under <i>Make available to</i> near the bottom of the page,"
+                ." click the <i>Add Org Units</i> button.",
+            $AF->gUIFileTag("Brightspace_Instructions_10.jpg"),
+        ],
+        [
+            "14. In the resulting popup, use the search box at top right to find"
+                ." your Org Unit. Click the checkbox in the leftmost column to"
+                ." select your Org Unit. Toggle the radio button in the rightmost"
+                ." column to <i>This org unite and all descendants</i>. Press the"
+                ." <i>Add</i> button at the bottom left of the popup.",
+            $AF->gUIFileTag("Brightspace_Instructions_11.jpg"),
+        ],
+        [
+            "15. Press the <i>Create Deployment</i> button at the bottom left of the page.",
+            $AF->gUIFileTag("Brightspace_Instructions_12.jpg"),
+        ],
+        [
+            "<div class='mv-p-edulink-tool-heading'>Add Links</div>",
+            "",
+        ],
+        [
+            "16. Click on <i>View Links</i> in the popup that comes up.",
+            "",
+        ],
+        [
+            "17. Press the <i>New Link</i> button.",
+            $AF->gUIFileTag("Brightspace_Instructions_13.jpg"),
+        ],
+        [
+            "18. Fill in the <i>Name</i> and <i>Description</i> from the values below."
+                ." For the <i>URL</i> setting, use the <i>Domain</i> value below."
+            ,
+            "",
+        ],
+        [
+            "19. From the <i>Type</i> menu, select <i>Deep Linking Quicklink</i>.",
+            $AF->gUIFileTag("Brightspace_Instructions_14.jpg"),
+        ],
+        [
+            "20. Enter 1024 for the <i>Width</i> and 2048</i> for the Height.",
+            $AF->gUIFileTag("Brightspace_Instructions_15.jpg"),
+        ],
+        [
+            "21. Press <i>Save and Close</i> at the bottom left of the page."
+                ." Registration is now complete.",
+            $AF->gUIFileTag("Brightspace_Instructions_16.jpg"),
+        ],
+    ]);
+
+    $Html = "<p>Take the following steps to configure your Brightspace "
+        ."instance to use ".$Plugin->getConfigSetting("ServiceName").".</p>"
+        .$HtmlTable->getHtml();
+
+    return $Html;
+}
+
+/**
+ * Get configuration settings for Brightspace.
+ * @return string Settings in HTML.
+ */
+function getBrightspaceSettings() : string
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+
+    $BaseUrl = $AF->baseUrl();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->setTableClass("table table-striped");
+
+    $HtmlTable->addRowsWithHeaders([
+        [
+            "Name",
+            "<pre id='brs-tool-name'>".$Plugin->getConfigSetting("ServiceName")."</pre>",
+            (new CopyButton("brs-tool-name"))->getHtml(),
+        ],
+        [
+            "Description",
+            "<pre id='brs-description'>".$Plugin->getConfigSetting("ServiceDescription")."<pre>",
+            (new CopyButton("brs-description"))->getHtml(),
+        ],
+        [
+            "Domain",
+            "<pre id='brs-tool-url'>".$BaseUrl."</pre>",
+            (new CopyButton("brs-tool-url"))->getHtml(),
+        ],
+        [
+            "Redirect URLs",
+            "<pre id='brs-redirect-uri'>".$BaseUrl."lti/launch</pre>",
+            (new CopyButton("brs-redirect-uri"))->getHtml(),
+        ],
+        [
+            "OpenID Connect Login URL",
+            "<pre id='brs-login-url'>".$BaseUrl."lti/login</pre>",
+            (new CopyButton("brs-login-url"))->getHtml(),
+        ],
+        [
+            "Target Link URI",
+            "<i>(blank)</i>",
+        ],
+        [
+            "Keyset URL",
+            "<pre id='brs-jwks-url'>".$BaseUrl."lti/jwks</pre>",
+            (new CopyButton("brs-jwks-url"))->getHtml(),
+        ],
+    ]);
+
+    return $HtmlTable->getHtml();
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+$User = User::getCurrentUser();
+$H_Plugin = EduLink::getInstance();
+
+$References = [
+    "Other" => [
+        "https://www.imsglobal.org/spec/lti/v1p3/"
+            => "LTI v1.3 specification",
+        "https://www.imsglobal.org/spec/lti-dl/v2p0"
+            => "Deep Linking v2.0 specification"
+    ],
+    "Canvas" => [
+        "https://community.canvaslms.com/t5/Admin-Guide/How-do-I-configure-an-LTI-key-for-an-account/ta-p/140"
+            => "Canvas Admin Guide: How do I configure an LTI key for an account?",
+        "https://community.canvaslms.com/t5/Admin-Guide/How-do-I-configure-an-external-app-for-an-account-using-a-client/ta-p/202"
+            => "Canvas Admin Guide: How do I configure an external app for an account using a client ID?",
+        "https://community.canvaslms.com/t5/Admin-Guide/How-do-I-manage-external-app-placements-for-an-account/ta-p/417797"
+            => "Canvas Admin Guide: How do I manage external app placements for an account?",
+    ],
+    "Moodle" => [
+        "https://docs.moodle.org/311/en/External_tool_settings#Adding_a_tool_site-wide"
+            => "Moodle Docs - External Tool Settings: Adding a tool site-wide"
+    ],
+    "Blackboard" => [
+        "https://help.blackboard.com/Learn/Administrator/SaaS/Integrations/Learning_Tools_Interoperability#add_lti13"
+            => "Blackboard: Add an LTI 1.3/Advantage Tool",
+    ],
+    "Brightspace" => [
+        "https://community.d2l.com/brightspace/kb/articles/23660-lti-advantage-v1-3"
+            => "D2L KB: LTI Advantage",
+        "https://community.d2l.com/brightspace/kb/articles/23755-deep-linking-extension-with-lti-1-3"
+            => "D2L KB: Deep linking extension with LTI 1.3"
+    ]
+];
+
+$FormFields = [
+    "LMS" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "Label" => "Select Your LMS Platform",
+        "Options" => [
+            "Other" => "Other LMS",
+            "Blackboard" => "Blackboard",
+            "Canvas" => "Canvas",
+            "Moodle" => "Moodle",
+            "Brightspace" => "Brightspace",
+        ],
+        "Default" => "Canvas",
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+    ],
+    "HEADER_Instructions" => [
+        "Type" => FormUI::FTYPE_HEADING,
+        "Label" => "Instructions",
+    ],
+    "Other_Instructions" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "",
+        "Content" =>
+            "<p>Below are the parameters for this site that are necessary to "
+            ."register it as a tool provider with an LMS. You may not need all of them, "
+            ."depending on your specific LMS.</p>",
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Canvas_Instructions" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "",
+        "Content" => getCanvasInstructions(),
+        "DisplayIf" => ["LMS" => "Canvas"],
+    ],
+    "Moodle_Instructions" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "",
+        "Content" => getMoodleInstructions(),
+        "DisplayIf" => ["LMS" => "Moodle"],
+    ],
+    "Blackboard_Instructions" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "",
+        "Content" => getBlackboardInstructions(),
+        "DisplayIf" => ["LMS" => "Blackboard"],
+    ],
+    "Brightspace_Instructions" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "",
+        "Content" => getBrightspaceInstructions(),
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+    "HEADER_Settings" => [
+        "Type" => FormUI::FTYPE_HEADING,
+        "Label" => "LMS Settings",
+    ],
+    "Other_Settings" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "",
+        "Content" => getOtherSettings(),
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Canvas_Settings" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Enter into Canvas",
+        "Content" => getCanvasSettings(),
+        "DisplayIf" => ["LMS" => "Canvas"],
+    ],
+    "Moodle_Settings" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Enter into Moodle",
+        "Content" => getMoodleSettings(),
+        "DisplayIf" => ["LMS" => "Moodle"],
+    ],
+    "Brightspace_Settings" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Enter into Brightspace",
+        "Content" => getBrightspaceSettings(),
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+    "HEADER_Info" => [
+        "Type" => FormUI::FTYPE_HEADING,
+        "Label" => "Information From LMS",
+    ],
+    "ContactEmail" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Contact Email",
+        "Help" => "Email address for your LMS administrator.",
+        "ValidateFunction" => ["\\Metavus\\FormUI", "validateEmail"],
+        "Required" => true,
+    ],
+    "Other_Issuer" => [
+        "Label" => "Issuer",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Other_ClientId" => [
+        "Label" => "Client ID",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "ValidateFunction" => [$H_Plugin, 'validateIdParameter'],
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Other_AuthLoginUrl" => [
+        "Label" => "Auth Login URL",
+        "Type" => FormUI::FTYPE_URL,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Other_AuthTokenUrl" => [
+        "Label" => "Auth Token URL",
+        "Type" => FormUI::FTYPE_URL,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Other_KeySetUrl" => [
+        "Label" => "Key Set URL",
+        "Type" => FormUI::FTYPE_URL,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Other"],
+    ],
+    "Canvas_Issuer" => [
+        "Label" => "Site URL",
+        "Type" => FormUI::FTYPE_URL,
+        "Help" => "Main URL of your LMS (e.g., https://canvas.my-institution.edu).",
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Canvas"],
+        "ValidateFunction" => function(string $FieldName, $FieldValues, $AllValues) {
+            # if no value provided, nothing to validate
+            if (strlen($FieldValues) == 0) {
+                return null;
+            }
+
+            # if host can not be extracted, nothing to validate
+            # (FormUI's built-in URL validation will complain on invalid URLs)
+            $Host = parse_url($FieldValues, PHP_URL_HOST);
+            if ($Host === null || $Host === false) {
+                return null;
+            }
+
+            # otherwise, ensure that we're not claiming to self-host something that
+            # lives in Instructure's cloud
+            if ($AllValues["Canvas_SelfHosted"] === true &&
+                preg_match('/\.instructure\.com$/', $Host)) {
+                return $FieldValues." ends in .instructure.com, so it cannot be "
+                    ."Self Hosted.";
+            }
+        },
+    ],
+    "Canvas_SelfHosted" => [
+        "Label" => "Self Hosted",
+        "Type" => FormUI::FTYPE_FLAG,
+        "Help" => "Is your LMS hosted on a server owned by your institution "
+            ."(as oppossed to being hosted by Instructure in their cloud)?",
+        "OffLabel" => "No",
+        "OnLabel" => "Yes",
+        "DisplayIf" => ["LMS" => "Canvas"],
+    ],
+    "Canvas_ClientId" => [
+        "Label" => "LTI Key Details",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "Help" => "Key details copied in Step 9.",
+        "ValidateFunction" => [$H_Plugin, 'validateIdParameter'],
+        "DisplayIf" => ["LMS" => "Canvas"],
+    ],
+    "Moodle_Issuer" => [
+        "Label" => "Platform ID",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Moodle"],
+    ],
+    "Moodle_ClientId" => [
+        "Label" => "Client ID",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "ValidateFunction" => [$H_Plugin, 'validateIdParameter'],
+        "DisplayIf" => ["LMS" => "Moodle"],
+    ],
+    "Brightspace_ClientId" => [
+        "Label" => "Client Id",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "ValidateFunction" => [$H_Plugin, 'validateIdParameter'],
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+    "Brightspace_KeySetUrl" => [
+        "Label" => "Brightspace Keyset URL",
+        "Type" => FormUI::FTYPE_URL,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+    "Brightspace_AuthTokenUrl" => [
+        "Label" => "Brightspace OAuth2 Access Token URL",
+        "Type" => FormUI::FTYPE_URL,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+    "Brightspace_AuthLoginUrl" => [
+        "Label" => "OpenID Connect Authentication Endpoint",
+        "Type" => FormUI::FTYPE_URL,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+    "Brightspace_Issuer" => [
+        "Label" => "Issuer",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Required" => true,
+        "DisplayIf" => ["LMS" => "Brightspace"],
+    ],
+];
+
+
+# ----- MAIN -----------------------------------------------------------------
+
+$Values = [];
+if ($User->isLoggedIn()) {
+    $Values["ContactEmail"] = $User->get("EMail");
+}
+
+$H_FormUI = new FormUI(
+    $FormFields,
+    $Values
+);
+
+$H_Status = null;
+
+$ButtonPushed = StdLib::getFormValue("Submit");
+switch ($ButtonPushed) {
+    case "Register":
+        if ($H_FormUI->validateFieldInput() == 0) {
+            $FormValues = $H_FormUI->getNewValuesFromForm();
+
+            $LMS = $FormValues["LMS"];
+            $NewValues = [
+                "LMS" => $LMS,
+                "ContactEmail" => $FormValues["ContactEmail"],
+            ];
+
+            $ValueInfo = [
+                "Moodle" => [
+                    "ProvidedValues" => [
+                        "Issuer",
+                        "ClientId",
+                    ],
+                    "DerivedValues" => [
+                        "AuthLoginUrl" => "/mod/lti/auth.php",
+                        "AuthTokenUrl" => "/mod/lti/token.php",
+                        "KeySetUrl" => "/mod/lti/certs.php",
+                    ],
+                ],
+                "Canvas" => [
+                    "ProvidedValues" => [
+                        "Issuer",
+                        "ClientId",
+                    ],
+                    "DerivedValues" => [
+                        "AuthLoginUrl" => "/api/lti/authorize_redirect",
+                        "AuthTokenUrl" => "/login/oauth2/token",
+                        "KeySetUrl" => "/api/lti/security/jwks",
+                    ],
+                ],
+                "Brightspace" => [
+                    "ProvidedValues" => [
+                        "Issuer",
+                        "ClientId",
+                        "AuthLoginUrl",
+                        "AuthTokenUrl",
+                        "KeySetUrl",
+                    ],
+                    "DerivedValues" => [],
+                ],
+                "Other" => [
+                    "ProvidedValues" => [
+                        "Issuer",
+                        "ClientId",
+                        "AuthLoginUrl",
+                        "AuthTokenUrl",
+                        "KeySetUrl",
+                    ],
+                    "DerivedValues" => [],
+                ],
+            ];
+
+            if (!isset($ValueInfo[$LMS])) {
+                throw new \Exception(
+                    "Invalid LMS provided '".$LMS."' (should be impossible)."
+                );
+            }
+            foreach ($ValueInfo[$LMS]["ProvidedValues"] as $Param) {
+                $NewValues[$Param] = $FormValues[$LMS."_".$Param];
+            }
+
+            # handle hosted canvas instances
+            if ($LMS == "Canvas" && $FormValues["Canvas_SelfHosted"] === false) {
+                $NewValues["Issuer"] = "https://canvas.instructure.com";
+            }
+
+            $Issuer = $NewValues["Issuer"];
+            foreach ($ValueInfo[$LMS]["DerivedValues"] as $Param => $UrlSuffix) {
+                $NewValues[$Param] = $Issuer.$UrlSuffix;
+            }
+
+            if (!LMSRegistration::registrationExists($NewValues)) {
+                LMSRegistration::create($NewValues);
+                $H_Status = "RegistrationCreated";
+            } else {
+                $H_Status = "DuplicateRegistration";
+            }
+        }
+        break;
+
+    default:
+        break;
+}
+
+# ----- SETUP ----------------------------------------------------------------
+$RegisterButton = new HtmlButton("Register");
+$RegisterButton->addSemanticClass("btn-outline-primary");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+if (isset($H_Error)) {
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+    return;
+}
+
+switch ($H_Status) {
+    case "RegistrationCreated":
+        print '<div class="alert alert-success">'
+            .'Registration successfully created and activated.'
+            .'</div>';
+        return;
+
+    case "DuplicateRegistration":
+        print '<div class="alert alert-danger">'
+            .'A registration already exists with the provided parameters.'
+            .'</div>';
+        return;
+
+    default:
+        break;
+}
+?>
+
+<h1><?= $H_Plugin->getConfigSetting("RegistrationTitle") ?></h1>
+
+<?= $H_Plugin->getConfigSetting("RegistrationIntroText") ?>
+
+<?PHP $H_FormUI->displayErrorBlock(); ?>
+
+<form id="mv-p-edulink-tool-form" method="post" enctype="multipart/form-data"
+      action="index.php?P=P_EduLink_Register">
+  <?PHP $H_FormUI->displayFormTable(); ?>
+  <?= $RegisterButton->getHtml(); ?>
+</form>
+
+<div>&nbsp;</div>
+
+<h2>References</h2>
+
+<div id="mv-p-edulink-references">
+<?PHP foreach ($References as $LMS => $Links) { ?>
+  <div id="mv-p-edulink-references-<?= strtolower($LMS) ?>">
+    <ul><?PHP foreach ($Links as $Url => $Label) { ?>
+      <li><a href="<?= $Url ?>" target="_blank"><?= $Label ?></a></li>
+    <?PHP } ?></ul>
+  </div>
+<?PHP } ?>
+</div>
+
+<div>&nbsp;</div>
+
+<style type="text/css">
+pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+table.mv-itemlistui td {
+    word-break: break-all;
+}
+
+#mv-p-edulink-tool-form .mv-form-fieldtype-customcontent th {
+    text-align: left;
+}
+
+#mv-p-edulink-tool-form .mv-form-fieldtype-customcontent li + li {
+    margin-top: 0.75em;
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardInstructions > th,
+#mv-p-edulink-tool-form #row-F_BrightspaceInstructions > th,
+#mv-p-edulink-tool-form #row-F_BrightspaceSettings > th,
+#mv-p-edulink-tool-form #row-F_CanvasInstructions > th,
+#mv-p-edulink-tool-form #row-F_CanvasSettings > th,
+#mv-p-edulink-tool-form #row-F_MoodleInstructions > th,
+#mv-p-edulink-tool-form #row-F_MoodleSettings > th,
+#mv-p-edulink-tool-form #row-F_OtherSettings > th,
+#mv-p-edulink-tool-form #row-F_OtherInstructions > th
+{
+    display: none;
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardInstructions .row,
+#mv-p-edulink-tool-form #row-F_BrightspaceInstructions .row,
+#mv-p-edulink-tool-form #row-F_CanvasInstructions .row,
+#mv-p-edulink-tool-form #row-F_MoodleInstructions .row {
+    font-size: 1.2em;
+    margin-left: calc(-0.25 * var(--bs-gutter-x));
+    margin-right: calc(-0.25 * var(--bs-gutter-x));
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+#mv-p-edulink-tool-form #row-F_CanvasSettings td,
+#mv-p-edulink-tool-form #row-F_MoodleSettings td,
+#mv-p-edulink-tool-form #row-F_OtherSettings td {
+    padding: 0;
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardInstructions .row:nth-of-type(even),
+#mv-p-edulink-tool-form #row-F_BrightspaceInstructions .row:nth-of-type(even),
+#mv-p-edulink-tool-form #row-F_CanvasInstructions .row:nth-of-type(even),
+#mv-p-edulink-tool-form #row-F_MoodleInstructions .row:nth-of-type(even)  {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+#mv-p-edulink-tool-form #row-F_CanvasSettings pre,
+#mv-p-edulink-tool-form #row-F_OtherSettings pre {
+    max-width: 800px;
+}
+
+.mv-p-edulink-tool-heading {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding-top: 20px;
+}
+</style>
+
+<script>
+$(document).ready(function(){
+    var HeaderText = $("h1", "main").text();
+
+    function toggleDisplay() {
+        var SelectedLMS = $("#F_LMS").val().toLowerCase();
+        $("div", "#mv-p-edulink-references").hide();
+        $("#mv-p-edulink-references-" + SelectedLMS).show();
+
+        var Items = [
+            "#section-F_HEADERSettings",
+            "#section-F_HEADERInfo",
+            "#row-F_ContactEmail",
+            "button[name='Submit']"
+        ];
+        Items.forEach(function(Item){
+            if (SelectedLMS == "blackboard") {
+                $("h1", "main").text("Configure Blackboard");
+                $(Item).hide();
+            } else {
+                $("h1", "main").text(HeaderText);
+                $(Item).show();
+            }
+        });
+
+        $("tbody.mv-form-group > tr:visible").each(function(Index, Element){
+            var VisibleChildren = $(Element).children(":visible");
+
+            if (VisibleChildren.length < 3) {
+                var NCols = 3 - (VisibleChildren.length - 1);
+                VisibleChildren.last().attr('colspan', NCols);
+            }
+        });
+
+    }
+
+    toggleDisplay();
+    $("#F_LMS").on('change', toggleDisplay);
+});
+</script>

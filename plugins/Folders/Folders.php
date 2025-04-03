@@ -3,13 +3,12 @@
 #   FILE:  Folders.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\FormUI;
 use Metavus\FullRecordHelper;
@@ -34,17 +33,19 @@ class Folders extends Plugin
 {
     /**
      * Register information about this plugin.
-     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Folders";
-        $this->Version = "1.1.0";
-        $this->Description = "Functionality for adding resources into folders.";
+        $this->Version = "1.2.1";
+        $this->Description = "Allows users to organize groups of items"
+                ." using folders.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Requires = [
+            "MetavusCore" => "1.2.0"
+        ];
         $this->InitializeAfter = ["DBCleanUp", "AccountPruner"];
         $this->EnabledByDefault = true;
 
@@ -79,6 +80,23 @@ class Folders extends Plugin
                 PRIV_COLLECTIONADMIN
             ],
         ];
+        $this->CfgSetup["PrivsToAddCoverImage"] = [
+            "Type" => FormUI::FTYPE_PRIVILEGES,
+            "AllowMultiple" => true,
+            "Label" => "Privilege Needed for Adding Cover Images",
+            "Help" => "Only users with at least one of the selected privilege flags "
+                ."will be able to add cover images to folders.",
+            "Default" => [
+                PRIV_SYSADMIN,
+                PRIV_NEWSADMIN,
+                PRIV_RESOURCEADMIN,
+                PRIV_CLASSADMIN,
+                PRIV_NAMEADMIN,
+                PRIV_RELEASEADMIN,
+                PRIV_USERADMIN,
+                PRIV_COLLECTIONADMIN
+            ],
+        ];
     }
 
     /**
@@ -86,7 +104,7 @@ class Folders extends Plugin
      * @return NULL if initialization was successful, otherwise a string containing
      *       an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         # set up clean URL mapping for folders (folders/folder_id/normalized_folder_name)
         $AF = ApplicationFramework::getInstance();
@@ -135,19 +153,14 @@ class Folders extends Plugin
      * Create the database tables necessary to use this plugin.
      * @return string|null on success or an error message otherwise
      */
-    public function install()
+    public function install(): ?string
     {
-        $DB = new Database();
-        if (false === $DB->query("
-            CREATE TABLE IF NOT EXISTS Folders_SelectedFolders (
-                OwnerId      INT,
-                FolderId     INT,
-                PRIMARY KEY  (OwnerId)
-            );")) {
-            return "Could not create the selected folders table";
+        $Result = $this->createTables(self::SQL_TABLES);
+        if ($Result !== null) {
+            return $Result;
         }
 
-        $this->configSetting("NumDisplayedResources", 5);
+        $this->setConfigSetting("NumDisplayedResources", 5);
 
         return null;
     }
@@ -156,13 +169,9 @@ class Folders extends Plugin
      * Uninstall the plugin.
      * @return NULL|string NULL if successful or an error message otherwise
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
-        $DB = new Database();
-        if (false === $DB->query("DROP TABLE Folders_SelectedFolders;")) {
-            return "Could not remove the selected folders table";
-        }
-        return null;
+        return $this->dropTables(self::SQL_TABLES);
     }
 
     /**
@@ -170,38 +179,16 @@ class Folders extends Plugin
      * @return array the events this plugin provides
      * Deprecated for new interfaces, please use the provided insertion points.
      */
-    public function declareEvents()
+    public function declareEvents(): array
     {
         return ["Folders_EVENT_INSERT_BUTTON_CHECK" => ApplicationFramework::EVENTTYPE_CHAIN];
-    }
-
-    /**
-     * Perform any work needed when the plugin is upgraded to a new version
-     * (for example, adding fields to database tables).
-     * @param string $PreviousVersion The version number of this plugin that was
-     *       previously installed.
-     * @return string|null NULL if upgrade succeeded, otherwise a string containing
-     *       an error message indicating why upgrade failed.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        if (version_compare($PreviousVersion, "1.0.91", "<")) {
-            # PrivsToTransferFolders config setting should be PrivilegeSet, update if not
-            if (is_array($this->configSetting("PrivsToTransferFolders"))) {
-                $this->configSetting(
-                    "PrivsToTransferFolders",
-                    new PrivilegeSet($this->configSetting("PrivsToTransferFolders"))
-                );
-            }
-        }
-        return null;
     }
 
     /**
      * Hook the events into the application framework.
      * @return array the events to be hooked into the application framework
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         $Events = [
             "EVENT_HTML_INSERTION_POINT" => [
@@ -247,7 +234,7 @@ class Folders extends Plugin
     /**
      * Perform database cleanup operations when signaled by the DBCleanUp plugin.
      */
-    public function databaseCleanUp()
+    public function databaseCleanUp(): void
     {
         $Database = new Database();
 
@@ -291,7 +278,7 @@ class Folders extends Plugin
      * @param mixed $Owner User object, user ID, or NULL to use the global user object.
      * @return Folder|null selected folder or NULL if it can't be retrieved.
      */
-    public function getSelectedFolder($Owner = null)
+    public function getSelectedFolder($Owner = null): ?Folder
     {
         $Owner = $this->normalizeOwner($Owner);
 
@@ -314,7 +301,7 @@ class Folders extends Plugin
      * @return Folder|null resource folder that contains folders of resources or
      *   NULL if it can't be retrieved.
      */
-    public function getResourceFolder($Owner = null)
+    public function getResourceFolder($Owner = null): ?Folder
     {
         $Owner = $this->normalizeOwner($Owner);
         $FolderFactory = new FolderFactory($Owner);
@@ -342,12 +329,12 @@ class Folders extends Plugin
      *          initial search.If this number is too large, the add to folder button
      *          is greyed out
      */
-    public function insertAllButtonHTML($PageName, $Location, $Context = null)
+    public function insertAllButtonHTML($PageName, $Location, $Context = null): void
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
-        $IsLoggedIn = $User->IsLoggedIn();
+        $IsLoggedIn = $User->isLoggedIn();
 
         # we need the user to be logged in, on page "SearchResults",
         # pressed a search results button,
@@ -384,22 +371,18 @@ class Folders extends Plugin
             $TooManySearchResults = true;
         }
 
-        $AddAllURL = "index.php?P=P_Folders_AddSearchResults&amp;RF=1";
+        $AddAllURL = "index.php?P=P_Folders_AddSearchResults&RF=1";
 
         if ($SearchParametersForUrl) {
-            $AddAllURL = $AddAllURL."&amp;".$SearchParametersForUrl;
-        }
-
-        if ($SortParamsForUrl) {
-            $AddAllURL = $AddAllURL.$SortParamsForUrl;
+            $AddAllURL = $AddAllURL."&".$SearchParametersForUrl;
         }
 
         // add item type
         if (isset($Context["ItemType"])) {
-            $AddAllURL = $AddAllURL."&amp;ItemType=".$Context["ItemType"];
+            $AddAllURL = $AddAllURL."&ItemType=".$Context["ItemType"];
         }
 
-        $AddAllURL = $AddAllURL."&amp;ReturnTo=".$ReturnToString;
+        $AddAllURL = $AddAllURL."&ReturnTo=".$ReturnToString;
 
         # call out to the external display function to hand off processing
         FolderDisplayUI::insertAllButtonHTML(
@@ -426,9 +409,9 @@ class Folders extends Plugin
     public function insertRemoveAllButtonHTML(
         string $PageName,
         string $Location,
-        array $Context = null
-    ) {
-        $IsLoggedIn = User::getCurrentUser()->IsLoggedIn();
+        ?array $Context = null
+    ): void {
+        $IsLoggedIn = User::getCurrentUser()->isLoggedIn();
 
         # If user is logged in, on page "SearchResults", press a search results button,
         # and context is set and contains the number of search results
@@ -440,13 +423,13 @@ class Folders extends Plugin
 
         $ReturnToString = $Context["ReturnToString"];
         $SearchParametersForUrl = $Context["SearchParameters"]->UrlParameterString();
-        $RemoveAllURL = "index.php?P=P_Folders_RemoveSearchResults&amp;RF=1";
+        $RemoveAllURL = "index.php?P=P_Folders_RemoveSearchResults&RF=1";
 
         if ($SearchParametersForUrl) {
-            $RemoveAllURL .= "&amp;".$SearchParametersForUrl;
+            $RemoveAllURL .= "&".$SearchParametersForUrl;
         }
 
-        $RemoveAllURL .= "&amp;ReturnTo=".$ReturnToString;
+        $RemoveAllURL .= "&ReturnTo=".$ReturnToString;
 
         # assume none of the search results are in the folder
         $ResultsInFolder = false;
@@ -470,10 +453,10 @@ class Folders extends Plugin
      *      automatically-created one.
      * @li The user has added at least one resource to at least one folder.
      * @param int $UserId User identifier.
-     * @return boolean Returns TRUE if the user account shouldn't be removed and FALSE if
+     * @return bool Returns TRUE if the user account shouldn't be removed and FALSE if
      *      the account can be removed as far as the Folders plugin is concerned.
      */
-    public function preventAccountPruning($UserId)
+    public function preventAccountPruning($UserId): bool
     {
         $UserId = intval($UserId);
         $Database = new Database();
@@ -525,7 +508,7 @@ class Folders extends Plugin
      * @param string $SearchPattern Full pattern passed to preg_replace().
      * @return string Replacement to be inserted in place of match.
      */
-    public function cleanUrlTemplate($Matches, $Pattern, $Page, $SearchPattern)
+    public function cleanUrlTemplate($Matches, $Pattern, $Page, $SearchPattern): string
     {
         if ($Page == "P_Folders_ViewFolder") {
             # if no ID found
@@ -561,7 +544,7 @@ class Folders extends Plugin
      *         $Context["Resource"], the resource for which we are
      *         printing the button
      */
-    public function insertButtonHTML($PageName, $Location, $Context = null)
+    public function insertButtonHTML($PageName, $Location, $Context = null): void
     {
         $DisplayLocations = [
             "Resource Summary Buttons",
@@ -573,7 +556,7 @@ class Folders extends Plugin
             return;
         }
 
-        if (!User::getCurrentUser()->IsLoggedIn() || !isset($Context["Resource"])) {
+        if (!User::getCurrentUser()->isLoggedIn() || !isset($Context["Resource"])) {
             return;
         }
 
@@ -597,13 +580,13 @@ class Folders extends Plugin
         $ReturnToString = urlencode($AF->getCleanRelativeUrl());
         $InFolder = $Folder->containsItem($ResourceId);
         $RemoveActionURL = ApplicationFramework::baseUrl()
-            ."index.php?P=P_Folders_RemoveItem&amp;FolderId="
-            .urlencode((string)$FolderId)."&amp;ItemId="
-            .urlencode($ResourceId)."&amp;ReturnTo=".$ReturnToString;
+            ."index.php?P=P_Folders_RemoveItem&FolderId="
+            .urlencode((string)$FolderId)."&ItemId="
+            .urlencode($ResourceId)."&ReturnTo=".$ReturnToString;
         $AddActionURL = ApplicationFramework::baseUrl()
-            ."index.php?P=P_Folders_AddItem&amp;ItemId="
-            .urlencode($ResourceId)."&amp;FolderId="
-            .urlencode((string)$FolderId)."&amp;ReturnTo=".$ReturnToString;
+            ."index.php?P=P_Folders_AddItem&ItemId="
+            .urlencode($ResourceId)."&FolderId="
+            .urlencode((string)$FolderId)."&ReturnTo=".$ReturnToString;
 
         # call out to the external display function to hand off processing
         FolderDisplayUI::insertButtonHTML(
@@ -627,7 +610,7 @@ class Folders extends Plugin
      * @param array $Context Specific info (e.g."ReturnTo" address) that are needed to
      *      generate HTML.
      */
-    public function insertResourceNote($PageName, $Location, $Context = null)
+    public function insertResourceNote($PageName, $Location, $Context = null): void
     {
         # only display when we have Context, are on ViewFolder, and are
         # located After Resource Description
@@ -658,9 +641,9 @@ class Folders extends Plugin
         # otherwise, get the note for this item
         $ResourceNote = $Folder->noteForItem($ResourceId);
         $ReturnToString = urlencode((ApplicationFramework::getInstance())->getCleanRelativeUrl());
-        $EditResourceNoteURL = "index.php?P=P_Folders_ChangeResourceNote&amp;FolderId=".
-            $Folder->id()."&amp;ItemId=".$ResourceId."&amp;ReturnTo=".
-            $ReturnToString;
+        $EditResourceNoteURL = "index.php?P=P_Folders_ChangeResourceNote&FolderId="
+            . $Folder->id() . "&ItemId=" . $ResourceId . "&ReturnTo="
+            . $ReturnToString;
 
         # call out to the external display function
         FolderDisplayUI::insertResourceNote(
@@ -674,7 +657,7 @@ class Folders extends Plugin
     /**
      * Add Javascript globals to page header (hooked to EVENT_IN_HTML_HEADER).
      */
-    public function addJSHeader()
+    public function addJSHeader(): void
     {
         if (!User::getCurrentUser()->isLoggedIn()) {
             return;
@@ -696,10 +679,10 @@ class Folders extends Plugin
      * Called on page load, to add our buttons.
      * @param string $PageName The name of the page that signaled the event.
      */
-    public function addButtons(string $PageName)
+    public function addButtons(string $PageName): void
     {
-        # bail if we're not on FullRecord
-        if ($PageName != "FullRecord") {
+        # bail if we're not on full record page or PhotoLibrary's photo display page
+        if ($PageName != "FullRecord" && $PageName != "P_PhotoLibrary_DisplayPhoto") {
             return;
         }
 
@@ -767,7 +750,7 @@ class Folders extends Plugin
      * @return array the ReturnTo array passed in with the old
      *     folders errors removed.
      */
-    public static function clearPreviousFoldersErrors($ReturnTo)
+    public static function clearPreviousFoldersErrors($ReturnTo): array
     {
         $ReturnQuery = [];
         if (array_key_exists('query', $ReturnTo)) {
@@ -790,7 +773,7 @@ class Folders extends Plugin
      * @param string $State to display, "OK" for success, "ERROR" for error
      * @param string $Message (optional) to display
      */
-    private static function printJson(string $State, string $Message = "")
+    private static function printJson(string $State, string $Message = ""): void
     {
         $JsonArray = [
             "data" => [],
@@ -806,16 +789,16 @@ class Folders extends Plugin
 
     /**
      * Executes the page's result response based on how the page was reached,
-     * delivering success/error via a print(json_encode) (reached with AJAX) or via the standard
-     * jump pages (not reached with AJAX)
-     * @param array $Errors Error codes incurred that are relevant to processing, it is
-     *     empty on success.
+     * delivering success/error via a print(json_encode) (reached with AJAX)
+     * or via the standard jump pages (not reached with AJAX)
+     * @param array $Errors Error codes incurred that are relevant to
+     *      processing, it is empty on success.
      */
-    public static function processPageResponse($Errors)
+    public static function processPageResponse($Errors): void
     {
         $AF = ApplicationFramework::getInstance();
         if (ApplicationFramework::reachedViaAjax()) {
-            $AF->BeginAjaxResponse();
+            $AF->beginAjaxResponse();
 
             # take success as an empty $Errors array
             if (empty($Errors)) {
@@ -864,7 +847,7 @@ class Folders extends Plugin
                 } else {
                     $JumpToPage = $ReturnTo['path'];
                 }
-                $AF->SetJumpToPage($JumpToPage);
+                $AF->setJumpToPage($JumpToPage);
             # else there was a failure and we see it in the error message
             } else {
                 # we expect the messages to be retrieved on the page if we are
@@ -881,7 +864,7 @@ class Folders extends Plugin
 
                 $JumpToPage = $ReturnTo['path']."?".$ReturnTo['query']."&".
                       http_build_query($ErrorsForUrl);
-                $AF->SetJumpToPage($JumpToPage);
+                $AF->setJumpToPage($JumpToPage);
             }
         }
     }
@@ -899,7 +882,7 @@ class Folders extends Plugin
      * @param int|null|User $Owner representing a owner's id or user object
      * @return int|null id of user if possible, null if no user found
      */
-    private function normalizeOwner($Owner = null)
+    private function normalizeOwner($Owner = null): ?int
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -921,4 +904,12 @@ class Folders extends Plugin
     }
 
     private static $SelectedFolders = [];
+
+    public const SQL_TABLES = [
+        "SelectedFolders" => "CREATE TABLE Folders_SelectedFolders (
+                OwnerId      INT,
+                FolderId     INT,
+                PRIMARY KEY  (OwnerId)
+            )",
+    ];
 }

@@ -3,13 +3,12 @@
 #   FILE:  ClassificationFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -28,7 +27,7 @@ class ClassificationFactory extends ItemFactory
      * Class constructor.
      * @param int $FieldId ID of metadata field for classification.
      */
-    public function __construct(int $FieldId = null)
+    public function __construct(?int $FieldId = null)
     {
         # set up item factory base class
         parent::__construct(
@@ -78,8 +77,9 @@ class ClassificationFactory extends ItemFactory
      * this field.
      * @param bool $Foreground TRUE to recalculate in the foreground
      *   (OPTIONAL, default FALSE)
+     * @return void
      */
-    public function recalculateAllResourceCounts($Foreground = false)
+    public function recalculateAllResourceCounts($Foreground = false): void
     {
         # select all the leaf classifications, ordering by depth
         # so that children will be computed first

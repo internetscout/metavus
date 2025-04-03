@@ -3,14 +3,14 @@
 #   FILE:  SecureLoginHelper.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 
 /**
@@ -23,8 +23,9 @@ class SecureLoginHelper
     /**
      * Print any content that should appear in HTML header area to support
      * secure logins.
+     * @return void
      */
-    public static function printHeaderContent()
+    public static function printHeaderContent(): void
     {
         if (self::shouldUseSecureLogin()) {
             # include the 'jsbn' javascript encryption library
@@ -39,7 +40,7 @@ class SecureLoginHelper
                 "base64.js"
             ];
 
-            $GLOBALS["AF"]->IncludeUIFile($LoginInterfaceFiles);
+            ApplicationFramework::getInstance()->includeUIFile($LoginInterfaceFiles);
 
             # get the public key parameters for the most recently generated keypair
             $PubKeyParams = self::getCryptKey();
@@ -77,8 +78,9 @@ class SecureLoginHelper
     /**
      * Print any content that should appear in the login form to support
      * secure logins.
+     * @return void
      */
-    public static function printLoginFormContent()
+    public static function printLoginFormContent(): void
     {
         if (self::shouldUseSecureLogin()) {
             ?>
@@ -237,7 +239,7 @@ class SecureLoginHelper
 
         # export the keypair as an ASCII signing request (which contains the data we want)
         openssl_csr_export(
-            $CSR,
+            $CSR, // @phpstan-ignore-line
             $Export,
             false
         );
@@ -277,12 +279,13 @@ class SecureLoginHelper
      */
     private static function computeMaxKeyAge() : int
     {
+        $AF = ApplicationFramework::getInstance();
         $MaxKeyAge = 3 * self::$KeyRegenInterval;
 
         # if the page cache was enabled, be sure to keep keys that were
         # current (i.e. not expired) as of the oldest cache entry
-        if ($GLOBALS["AF"]->PageCacheEnabled()) {
-            $CacheInfo = $GLOBALS["AF"]->GetPageCacheInfo();
+        if ($AF->pageCacheEnabled()) {
+            $CacheInfo = $AF->getPageCacheInfo();
             if ($CacheInfo["NumberOfEntries"] > 0) {
                 $MaxKeyAge += (time() - $CacheInfo["OldestTimestamp"]);
             }
@@ -325,7 +328,7 @@ class SecureLoginHelper
      * Report whether to use secure login mechanism.
      * @return bool TRUE if secure login should be used, otherwise FALSE.
      */
-    private static function shouldUseSecureLogin()
+    private static function shouldUseSecureLogin(): bool
     {
         return isset($_SERVER["HTTPS"]) ? false : true;
     }

@@ -3,9 +3,10 @@
 #   FILE:  UserNameSearchCallback.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 use Metavus\User;
@@ -17,6 +18,7 @@ use ScoutLib\UserFactory;
  * Highlight (insert <b></b> tags) the search string in a term.
  * @param string $SS The search string to highlight
  * @param string $Term The term which to insert <b> tags to
+ * @return string The term with the highlighted search string
  */
 function HighlightSearchString($SS, $Term)
 {
@@ -24,7 +26,7 @@ function HighlightSearchString($SS, $Term)
     # used to track which letter in the $SS are we currently matching
     $CurrentMatchingIndex = 0;
     # used to track whether current matching letter is the first in a chunk
-    $CountinueMatching = false;
+    $ContinueMatching = false;
     $TermLen = strlen($Term);
     for ($i = 0; $i < $TermLen; $i++) {
         # if the entire $SS has been matched, finish highlight with </b>
@@ -43,10 +45,10 @@ function HighlightSearchString($SS, $Term)
             # if we are not continuing the match, this current matching letter
             # must be the first in the chunk, therefore insert the opening
             # <b> in front of the term
-            if (!$CountinueMatching) {
+            if (!$ContinueMatching) {
                 // insert <b> in front
                 $Result .= "<b>";
-                $CountinueMatching = true;
+                $ContinueMatching = true;
             }
 
             $Result .= $CurrentTermLetter;
@@ -56,9 +58,9 @@ function HighlightSearchString($SS, $Term)
             # the same, and we are still matching, the last matched letter must
             # be the end of the chunk.Therefore insert the closing </b> before
             # we append the current term letter
-            if ($CountinueMatching) {
+            if ($ContinueMatching) {
                 $Result .= "</b>";
-                $CountinueMatching = false;
+                $ContinueMatching = false;
             }
 
             $Result .= $CurrentTermLetter;
@@ -92,4 +94,4 @@ foreach ($RawResult as $Id => $User) {
     ];
 }
 
-echo json_encode($UserNames);
+print json_encode($UserNames);

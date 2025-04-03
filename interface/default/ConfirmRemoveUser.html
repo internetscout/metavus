@@ -3,14 +3,36 @@
 #   FILE:  ConfirmRemoveUser.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\User;
+namespace Metavus;
 
-# ----- MAIN -----------------------------------------------------------------
+use Exception;
 
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_TriedRemovingOwnAccount)) {
+    throw new Exception("H_TriedRemovingOwnAccount not defined.");
+}
+if (!isset($H_UserInUseBy)) {
+    throw new Exception("H_UserInUseBy not defined.");
+}
+if (!isset($H_UsersToRemove)) {
+    throw new Exception("H_UsersToRemove not defined.");
+}
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+$RemoveButton = new HtmlButton("Remove User(s)");
+$RemoveButton->setIcon("Delete.svg");
+$RemoveButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Confirm Remove User</h1>
@@ -43,12 +65,8 @@ use Metavus\User;
 
         <form name="confirmremoveuser" method="post"
             action="index.php?P=SelectEditUserListComplete">
-            <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-                value="Remove User(s)"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-                class="mv-button-icon" /> Remove User(s)</button>
-            <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-                value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-                class="mv-button-icon" /> Cancel</button>
+            <?= $RemoveButton->getHtml() ?>
+            <?= $CancelButton->getHtml() ?>
         </form>
 
 <?PHP } else { ?>

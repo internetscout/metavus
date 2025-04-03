@@ -3,15 +3,20 @@
 #   FILE:  EventReports.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\InterfaceConfiguration;
+use Metavus\Plugins\CalendarEvents;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
 use Metavus\Plugins\SocialMedia;
 use Metavus\RecordFactory;
-use Metavus\InterfaceConfiguration;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
+use ScoutLib\PluginManager;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -19,6 +24,7 @@ use ScoutLib\Database;
 * Helper function to deal with summary arrays.
 * @param array $Array Array to modify.
 * @param string $Key Key to increment.
+* @return void
 */
 function CreateOrIncrement(&$Array, $Key)
 {
@@ -39,18 +45,21 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
+$AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
+
 # check to be sure that the CalendarEvents plugin is actually enabled
 #  before doing other things
-if (!$GLOBALS["G_PluginManager"]->PluginEnabled("CalendarEvents")) {
+if (!$PluginMgr->pluginReady("CalendarEvents")) {
     CheckAuthorization(-1);
     return;
 }
 
 # grab ahold of the relevant metrics objects
-$Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-$Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+$Recorder = MetricsRecorder::getInstance();
+$Reporter = MetricsReporter::getInstance();
 
-$CalendarEvents = $GLOBALS["G_PluginManager"]->GetPlugin("CalendarEvents");
+$CalendarEvents = CalendarEvents::getInstance();
 
 $Now = time();
 
@@ -66,16 +75,16 @@ $H_YearAgo  = date('Y-m-d', $Past["Year"]);
 
 # new events per day
 $DB = new Database();
-$DB->Query(
-    "SELECT DATE(DateOfRecordCreation".$CalendarEvents->GetSchemaId().") AS D,"
+$DB->query(
+    "SELECT DATE(DateOfRecordCreation".$CalendarEvents->getSchemaId().") AS D,"
     ." COUNT(*) AS CNT FROM Records"
-    ." WHERE SchemaId = ".$CalendarEvents->GetSchemaId()
-    ." AND DateOfRecordCreation".$CalendarEvents->GetSchemaId()." IS NOT null"
+    ." WHERE SchemaId = ".$CalendarEvents->getSchemaId()
+    ." AND DateOfRecordCreation".$CalendarEvents->getSchemaId()." IS NOT null"
     ." GROUP BY D"
 );
 
 $H_EventsAddedPerDay = [];
-while ($Row = $DB->FetchRow()) {
+while ($Row = $DB->fetchRow()) {
     $TS = strtotime($Row["D"]);
     $H_EventsAddedPerDay[$TS] = $Row["CNT"];
 }
@@ -87,7 +96,7 @@ $H_TopViews = [
     "Month" => [],
     "Year" => []
 ];
-$Events =     $Recorder->GetEventData(
+$Events =     $Recorder->getEventData(
     "CalendarEvents",
     "ViewEvent",
     null,
@@ -95,7 +104,7 @@ $Events =     $Recorder->GetEventData(
     null,
     null,
     null,
-    $Reporter->ConfigSetting("PrivsToExcludeFromCounts"),
+    $Reporter->getConfigSetting("PrivsToExcludeFromCounts"),
     0,
     null
 );
@@ -116,8 +125,8 @@ foreach ($Events as $Event) {
 # event shares per day
 
 # get a list of the ResourceIds for all events, use it to filter shares
-$EventFactory = new RecordFactory($CalendarEvents->GetSchemaId());
-$EventIds = array_flip($EventFactory->GetItemIds());
+$EventFactory = new RecordFactory($CalendarEvents->getSchemaId());
+$EventIds = array_flip($EventFactory->getItemIds());
 
 $H_SharesByDay = [];
 $H_TopShares = [
@@ -153,7 +162,7 @@ $LegacyColors = [
 ];
 $NextShareTypeIndex = 4;
 
-$Events = $Recorder->GetEventData(
+$Events = $Recorder->getEventData(
     "SocialMedia",
     "ShareResource",
     null,
@@ -161,7 +170,7 @@ $Events = $Recorder->GetEventData(
     null,
     null,
     null,
-    $Reporter->ConfigSetting("PrivsToExcludeFromCounts"),
+    $Reporter->getConfigSetting("PrivsToExcludeFromCounts"),
     0,
     null
 );
@@ -202,16 +211,16 @@ foreach (["Week", "Month", "Year"] as $Period) {
 }
 
 if (isset($_GET["JSON"])) {
-    $GLOBALS["AF"]->SuppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     header("Content-Type: application/json; charset="
            .InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet"), true);
 
     print json_encode([
         "TopViews" => $H_TopViews,
         "TopShares" => $H_TopShares,
-        "EventsAdded" => MetricsReporter::FormatDateKeys($H_EventsAddedPerDay),
-        "ViewsByDay" => MetricsReporter::FormatDateKeys($H_ViewsByDay),
-        "SharesByDay" => MetricsReporter::FormatDateKeys($H_SharesByDay),
+        "EventsAdded" => MetricsReporter::formatDateKeys($H_EventsAddedPerDay),
+        "ViewsByDay" => MetricsReporter::formatDateKeys($H_ViewsByDay),
+        "SharesByDay" => MetricsReporter::formatDateKeys($H_SharesByDay),
     ]);
     return;
 }

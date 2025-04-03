@@ -3,13 +3,12 @@
 #   FILE:  MetadataFieldOrder.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\Database;
@@ -79,8 +78,9 @@ class MetadataFieldOrder extends Folder
      * Delete the metadata field order. This removes the association of the order
      * with any schemas and deletes the folder it uses. The object should not be
      * used after calling this method.
+     * @return void
      */
-    public function delete()
+    public function delete(): void
     {
         # remove the order from the orders associated with schemas
         $this->DB->query("
@@ -93,8 +93,9 @@ class MetadataFieldOrder extends Folder
 
     /**
      * Fix any issues found in case an unfound bug causes something to go awry.
+     * @return void
      */
-    public function mendIssues()
+    public function mendIssues(): void
     {
         $Schema = new MetadataSchema($this->SchemaId);
 
@@ -120,7 +121,11 @@ class MetadataFieldOrder extends Folder
 
         foreach ($ItemIds as $Info) {
             try {
-                $Items[] = new $Info["Type"]($Info["ID"]);
+                if ($Info["Type"] == 'Metavus\MetadataField') {
+                    $Items[] = MetadataField::getField($Info["ID"]);
+                } else {
+                    $Items[] = new $Info["Type"]($Info["ID"]);
+                }
             # skip invalid fields
             } catch (InvalidArgumentException $Exception) {
                 continue;
@@ -153,8 +158,9 @@ class MetadataFieldOrder extends Folder
      * Move the metadata fields out of the given metadata group to the metadata
      * field order and then delete it.
      * @param MetadataFieldGroup $Group Metadata field group.
+     * @return void
      */
-    public function deleteGroup(MetadataFieldGroup $Group)
+    public function deleteGroup(MetadataFieldGroup $Group): void
     {
         if ($this->containsItem($Group->id(), "Metavus\\MetadataFieldGroup")) {
             $this->moveFieldsToOrder($Group);
@@ -213,8 +219,9 @@ class MetadataFieldOrder extends Folder
      * Place items in order according to a passed array
      * @param array $Order to place items in, indices representing IDs, values representing parents
      * @param int $GroupIdOffset offset to determine what is a group, subtract to get group ID
+     * @return void
      */
-    public function reorder(array $Order, int $GroupIdOffset)
+    public function reorder(array $Order, int $GroupIdOffset): void
     {
         # since we don't have a move item to bottom, we use a previous variable and moveItemAfter()
         # this has the side effect keeping enabled fields at the beginning of the order
@@ -223,7 +230,7 @@ class MetadataFieldOrder extends Folder
             if ($ItemId >= $GroupIdOffset) {
                 $Item = new MetadataFieldGroup($ItemId - $GroupIdOffset);
             } else {
-                $Item = new MetadataField($ItemId);
+                $Item = MetadataField::getField($ItemId);
             }
             if (!is_null($Parent) && $Parent != "null" && $Item instanceof MetadataField) {
                 $this->moveItemAfter($Previous, $Item);
@@ -242,10 +249,11 @@ class MetadataFieldOrder extends Folder
     /**
      * Move the given item to the top of the order.
      * @param MetadataField|MetadataFieldGroup $Item The item to move.
+     * @return void
      * @throws Exception If the item isn't a metadata field or metadata group.
      * @throws Exception If the item isn't in the order.
      */
-    public function moveItemToTop($Item)
+    public function moveItemToTop($Item): void
     {
         # make sure the item is either a field or group
         if (!$this->isFieldOrGroup($Item)) {
@@ -281,12 +289,13 @@ class MetadataFieldOrder extends Folder
      * Move the given item to the top of the order.
      * @param MetadataFieldGroup $Group The group within which to move the field.
      * @param MetadataField $Field The field to move.
+     * @return void
      * @throws Exception If the group or field aren't in the order.
      */
     public function moveFieldToTopOfGroup(
         MetadataFieldGroup $Group,
         MetadataField $Field
-    ) {
+    ): void {
 
         # make sure the items are in the order
         if (!$this->itemInOrder($Group) || !$this->itemInOrder($Field)) {
@@ -317,11 +326,12 @@ class MetadataFieldOrder extends Folder
      * Move the given item after the given target item.
      * @param MetadataField|MetadataFieldGroup $Target The item to move after.
      * @param MetadataField|MetadataFieldGroup $Item The item to move.
+     * @return void
      * @throws Exception If the items aren't a metadata field or metadata group.
      * @throws Exception If the items aren't in the order.
      * @throws Exception If attempting to put a group into another one.
      */
-    public function moveItemAfter($Target, $Item)
+    public function moveItemAfter($Target, $Item): void
     {
         # make sure the items are either a field or group
         if (!$this->isFieldOrGroup($Target) || !$this->isFieldOrGroup($Item)) {
@@ -626,7 +636,7 @@ class MetadataFieldOrder extends Folder
      * @param callable $Filter Callback to filter out items.
      * @return object|null Item or NULL if not found.
      */
-    protected function getSiblingItem($Item, int $Offset, callable $Filter = null)
+    protected function getSiblingItem($Item, int $Offset, ?callable $Filter = null)
     {
         $Id = $this->getItemId($Item);
         $Type = $this->getItemType($Item);
@@ -676,7 +686,7 @@ class MetadataFieldOrder extends Folder
         $Enclosure,
         $Item,
         int $Offset,
-        callable $Filter = null
+        ?callable $Filter = null
     ) {
         $ItemIds = $Enclosure->getItemIds();
 
@@ -707,12 +717,13 @@ class MetadataFieldOrder extends Folder
      * @param MetadataFieldGroup $Group Metadata field group.
      * @param MetadataField $Field Metadata field.
      * @param string $Placement Where to place the field ("prepend" or "append").
+     * @return void
      */
     protected function moveFieldToGroup(
         MetadataFieldGroup $Group,
         MetadataField $Field,
         string $Placement
-    ) {
+    ): void {
         # determine which action to use based on the placement value
         $Action = $Placement == "prepend" ? "PrependItem" : "AppendItem";
 
@@ -735,12 +746,13 @@ class MetadataFieldOrder extends Folder
      * @param MetadataFieldGroup $Group Metadata field group.
      * @param MetadataField $Field Metadata field.
      * @param string $Placement Where to place the field ("before" or "after").
+     * @return void
      */
     protected function moveFieldToOrder(
         MetadataFieldGroup $Group,
         MetadataField $Field,
         string $Placement
-    ) {
+    ): void {
 
         # determine which action to use based on the placement value
         $Action = $Placement == "before" ? "InsertItemBefore" : "InsertItemAfter";
@@ -767,8 +779,9 @@ class MetadataFieldOrder extends Folder
      * Move all the metadata fields out of the given metadata field group and
      * into the main order.
      * @param MetadataFieldGroup $Group Metadata field group.
+     * @return void
      */
-    protected function moveFieldsToOrder(MetadataFieldGroup $Group)
+    protected function moveFieldsToOrder(MetadataFieldGroup $Group): void
     {
         $ItemIds = $Group->getItemIds();
         $PreviousItemId = $Group->id();

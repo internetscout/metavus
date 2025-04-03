@@ -6,17 +6,97 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
+use Metavus\Recommender;
+use Metavus\Record;
 use Metavus\ResourceSummary;
+use Metavus\User;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
-function PrintRecommendation($Resource, $FullRecordLink, $EditOkay, $EditLink, $CumulativeRating)
-{
+/**
+ * Print recommendation
+ * @param Record $Resource The resource recommendation to print.
+ * @param string $FullRecordLink The resource full record page link.
+ * @param bool $EditOkay TRUE if the message can be edited by the current user.
+ * @param string $EditLink Where the user should go to edit the link.
+ * @param int|null $CumulativeRating The cumulative rating of the resource.
+ *     Note: NULL can be used to indicate that this resource was never rated before.
+ */
+function PrintRecommendation(
+    Record $Resource,
+    string $FullRecordLink,
+    bool $EditOkay,
+    string $EditLink,
+    ?int $CumulativeRating
+): void {
     $Summary = ResourceSummary::Create($Resource->id());
     $Summary->Editable($EditOkay);
     $Summary->Display();
 }
+
+/**
+* Print recommended resource.
+*/
+function PrintRecommendedResource(): void
+{
+    global $RecommendedResourceId;
+
+    $Resource = new Record($RecommendedResourceId);
+    PrintRecommendation(
+        $Resource,
+        $Resource->getViewPageUrl(),
+        User::getCurrentUser()->HasPriv(PRIV_RESOURCEADMIN),
+        $Resource->getEditPageUrl(),
+        $Resource->ScaledCumulativeRating()
+    );
+}
+
+/**
+* Print recommendation sources.
+*/
+function PrintRecommendationSources(): void
+{
+    global $RecommendedResourceId;
+    global $ResultsPerPage;
+
+    # retrieve user currently logged in
+    $User = User::getCurrentUser();
+
+    $ResourceCount = 0;
+
+    # create recommender
+    $Recommender = new Recommender();
+
+    # get list of recommendation source resources
+    $RecSources = $Recommender->GetSourceList(
+        $User->Get("UserId"),
+        $RecommendedResourceId
+    );
+
+    # for each source resource
+    foreach ($RecSources as $SourceId => $CorrelationScore) {
+        # if we have printed the max number of sources
+        if ($ResourceCount > $ResultsPerPage) {
+            # bail out
+            continue;
+        }
+
+        $ResourceCount++;
+
+        # print resource record
+        $Resource = new Record($SourceId);
+        PrintRecommendation(
+            $Resource,
+            $Resource->getViewPageUrl(),
+            $Resource->UserCanEdit($User),
+            $Resource->getEditPageUrl(),
+            $Resource->ScaledCumulativeRating()
+        );
+    }
+}
+
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -24,7 +104,7 @@ function PrintRecommendation($Resource, $FullRecordLink, $EditOkay, $EditLink, $
 
 <h1>Recommendation Sources</h1>
 
-<p><b>This</b> resource was recommend to you:</p>
+<p><b>This</b> resource was recommended to you:</p>
 
 <?PHP PrintRecommendedResource(); ?>
 

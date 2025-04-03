@@ -6,12 +6,35 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
 use ScoutLib\Email;
 
 PageTitle("Resending Account Activation");
+
+# verify that required incoming variables are set
+if (!isset($H_AccountAlreadyActivated)) {
+    throw new Exception("Required variable \$H_AccountAlreadyActivated is not set");
+}
+if (!isset($H_EMailAddressUsed)) {
+    throw new Exception("Required variable \$H_EMailAddressUsed is not set");
+}
+if ($H_EMailAddressUsed && !isset($H_EMailAddress)) {
+    throw new Exception("Required variable \$H_EMailAddress is not set");
+}
+if (!isset($H_EMailSent)) {
+    throw new Exception("Required variable \$H_EMailSent is not set");
+}
+if (!$H_EMailAddressUsed && !isset($H_UserName)) {
+    throw new Exception("Required variable \$H_UserName is not set");
+}
+if (!isset($H_NumUsersFound)) {
+    throw new Exception("Required variable \$H_NumUsersFound is not set");
+}
+
 ?>
 <?PHP if ($H_AccountAlreadyActivated) { ?>
 <h1>Account Already Activated</h1>
@@ -39,10 +62,14 @@ PageTitle("Resending Account Activation");
 <h1>Message Not Sent</h1>
 
 <div class="alert alert-danger">
-    <?PHP if ($H_UserFound) { ?>
+    <?PHP if ($H_NumUsersFound > 1) { ?>
+    <p>Multiple users match the information provided.</p>
+    <?PHP } elseif ($H_NumUsersFound == 1) { ?>
     <p>It was not possible to resend your account activation e-mail.</p>
     <?PHP } else { ?>
-        <?PHP if ($H_EMailAddressUsed) { ?>
+        <?PHP if (!isset($H_UserName) && !isset($H_EMailAddress)) { ?>
+        <p>No user name or email address was supplied.</p>
+        <?PHP } elseif ($H_EMailAddressUsed) { ?>
         <p>No account was found associated with the e-mail address
         <i><?= $H_EMailAddress; ?></i>.</p>
         <?PHP } else { ?>

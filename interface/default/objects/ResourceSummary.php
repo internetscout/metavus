@@ -3,13 +3,13 @@
 #   FILE:  ResourceSummary.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 /**
@@ -58,25 +58,26 @@ abstract class ResourceSummary
     /**
     * Display (output HTML) for resource summary.
     */
-    abstract public function display();
+    abstract public function display(): void;
 
     /**
      * Display compact resource summary (by default, falling back to the
      * regular summary).
+     * @return void
      */
-    public function displayCompact()
+    public function displayCompact(): void
     {
         static::display();
     }
 
     /**
     * Get/set whether resource should be marked as editable (usually
-    * meaning whether the "Edit" button should be displayed).Default is
+    * meaning whether the "Edit" button should be displayed). Default is
     * to display the button if the resource is editable by current user.
-    * @param bool $NewValue TRUE to display button.(OPTIONAL)
+    * @param bool $NewValue TRUE to display button. (OPTIONAL)
     * @return bool TRUE if button will be displayed, otherwise FALSE.
     */
-    public function editable(bool $NewValue = null)
+    public function editable(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->Editable = $NewValue;
@@ -91,7 +92,7 @@ abstract class ResourceSummary
     * @param bool $NewValue TRUE to display type.(OPTIONAL)
     * @return bool TRUE if type will be displayed, otherwise FALSE.
     */
-    public function includeResourceType(bool $NewValue = null)
+    public function includeResourceType(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->IncludeResourceType = $NewValue;
@@ -105,7 +106,7 @@ abstract class ResourceSummary
      * @param bool $NewValue TRUE to display screenshot (OPTIONAL)
      * @return bool TRUE if screenshot will be displayed, FALSE otherwise.
      */
-    public function showScreenshot(bool $NewValue = null)
+    public function showScreenshot(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->ShowScreenshot = $NewValue;
@@ -118,7 +119,7 @@ abstract class ResourceSummary
     * @param array|string $NewValue Array or string containing terms.
     * @return array Terms to be highlighted.
     */
-    public function termsToHighlight($NewValue = null)
+    public function termsToHighlight($NewValue = null): array
     {
         if ($NewValue !== null) {
             if (!is_array($NewValue)) {
@@ -169,7 +170,7 @@ abstract class ResourceSummary
     protected function getFieldValue($Field)
     {
         $Value = $this->Resource->Get($Field, true);
-        $SignalResult = $GLOBALS["AF"]->SignalEvent(
+        $SignalResult = ApplicationFramework::getInstance()->signalEvent(
             "EVENT_FIELD_DISPLAY_FILTER",
             [
                 "Field" => $Field,
@@ -234,14 +235,16 @@ abstract class ResourceSummary
     /**
     * Signal HTML insertion point event.
     * @param string $Location Location string to pass with signal.
+    * @return void
     */
-    protected function signalInsertionPoint($Location)
+    protected function signalInsertionPoint($Location): void
     {
-        $PageName = $GLOBALS["AF"]->GetPageName();
+        $AF = ApplicationFramework::getInstance();
+        $PageName = $AF->getPageName();
         $Context = $this->AdditionalContext;
         $Context["ResourceId"] = $this->Resource->Id();
         $Context["Resource"] = $this->Resource;
-        $GLOBALS["AF"]->SignalEvent(
+        $AF->signalEvent(
             "EVENT_HTML_INSERTION_POINT",
             [ $PageName, $Location, $Context ]
         );

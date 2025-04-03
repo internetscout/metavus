@@ -3,12 +3,24 @@
 #   FILE:  ConfirmRebuildSearchDB.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+# ----- SETUP ----------------------------------------------------------------
+$ManualRebuildButton = new HtmlButton("Manual Rebuild");
+$ManualRebuildButton->setLink("index.php?P=RebuildSearchDB");
+
+$BackgroundRebuildButton = new HtmlButton("Background Rebuild");
+$BackgroundRebuildButton->setLink("index.php?P=RebuildSearch&AC=Background");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setLink("index.php?P=SysAdmin");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Rebuild Search Database</h1>
@@ -39,7 +51,8 @@ small collections, i.e., those with fewer than 100 or so resource records,
 because rebuilding the search database can take a very long time and background
 tasks are less performance intensive.</p>
 
-<a class="btn btn-primary" href="index.php?P=RebuildSearchDB">Manual Rebuild</a>
-<a class="btn btn-primary"
-    href="index.php?P=RebuildSearch&amp;AC=Background">Background Rebuild</a>
-<a class="btn btn-primary" href="index.php?P=SysAdmin">Cancel</a>
+<?= $ManualRebuildButton->getHtml(); ?>
+
+<?= $BackgroundRebuildButton->getHtml(); ?>
+
+<?= $CancelButton->getHtml(); ?>

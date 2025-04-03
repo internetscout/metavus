@@ -7,9 +7,13 @@
 #   http://metavus.net
 #
 
+use ScoutLib\ApplicationFramework;
+
 # ----- MAIN -----------------------------------------------------------------
 
 # require the CKEditor javascript
-$GLOBALS["AF"]->RequireUIFile("ckeditor.js");
-$GLOBALS["AF"]->RequireUIFile("ckeditor_setup.js");
-$GLOBALS["AF"]->RequireUIFile("adapters/jquery.js");
+$AF = ApplicationFramework::getInstance();
+
+$AF->RequireUIFile("ckeditor.js");
+$AF->RequireUIFile("ckeditor_setup.js");
+$AF->RequireUIFile("adapters/jquery.js");

@@ -3,32 +3,46 @@
 #   FILE:  SysAdmin.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
+use Metavus\HtmlButton;
+use Metavus\Recommender;
+use Metavus\Record;
 use Metavus\ResourceSummary;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
+/**
+ * Outputs each resource recommendation as html.
+ * @param Record $Resource The resource recommendation to print.
+ * @param string $FullRecordLink The resource full record page link.
+ * @param bool $EditOkay TRUE if the message can be edited by the current user.
+ * @param string $EditLink Where the user should go to edit the link.
+ * @param int|null $CumulativeRating The cumulative rating of the resource.
+ *     Note: NULL can be used to indicate that this resource was never rated before.
+ */
 function PrintRecommendation(
-    $Resource,
-    $FullRecordLink,
-    $EditOkay,
-    $EditLink,
-    $CumulativeRating
-) {
+    Record $Resource,
+    string $FullRecordLink,
+    bool $EditOkay,
+    string $EditLink,
+    ?int $CumulativeRating
+): void {
     $Summary = ResourceSummary::Create($Resource->id());
     $Summary->Display();
     ?>
     <table class="table mv-recommendation-contain">
         <tr>
             <td align="right" colspan="5">
-                <a href="<?= GetWhyRecommendLink() ?>"
+                <a href="<?= "index.php?P=WhyRecommend&amp;rr=".$Resource->id() ?>"
                         class="mv-why-recommend-link lightgray">
                         <img class="mv-small-up-arrow" src="<?=
-                                $GLOBALS["AF"]->GUIFile("uparrow_small.gif") ?>"/>
+                            ApplicationFramework::getInstance()->GUIFile("uparrow_small.gif") ?>"/>
                         Why was the above resource recommended?</a>
             </td>
         </tr>
@@ -36,8 +50,213 @@ function PrintRecommendation(
     <?PHP
 }
 
-# ----- MAIN -----------------------------------------------------------------
+/**
+* Output resource recommendations.
+*/
+function PrintRecommendations(): void
+{
+    global $Recommendations;
+    global $CurrentResourceId;
 
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    # for each recommended result
+    foreach ($Recommendations as $ResourceId => $Score) {
+        # export resource ID for use by other functions
+        $CurrentResourceId = $ResourceId;
+
+        # print entry
+        $Resource = new Record($ResourceId);
+        PrintRecommendation(
+            $Resource,
+            $Resource->getViewPageUrl(),
+            $Resource->UserCanEdit(User::getCurrentUser()),
+            $Resource->getEditPageUrl(),
+            $Resource->ScaledCumulativeRating()
+        );
+    }
+}
+
+/**
+* Output total number of resource recommendations.
+*/
+function PrintTotalNumberOfResults(): void
+{
+    global $Recommender;
+
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    print($Recommender->NumberOfResults());
+}
+
+/**
+* Out number of first result shown on this page.
+*/
+function PrintStartingResultNumber(): void
+{
+    global $StartingResult;
+    global $Recommender;
+
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    if ($Recommender->NumberOfResults() == 0) {
+        print("0");
+    } else {
+        print($StartingResult + 1);
+    }
+}
+
+/**
+* Output number of the last result shown on this page.
+*/
+function PrintEndingResultNumber(): void
+{
+    global $StartingResult;
+    global $ResultsPerPage;
+    global $Recommender;
+
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    print(min(($StartingResult + $ResultsPerPage), $Recommender->NumberOfResults()));
+}
+
+/**
+* Determine if additional results are available.
+* @return bool TRUE when additional results exists.
+*/
+function NextResultsAvailable(): bool
+{
+    global $StartingResult;
+    global $ResultsPerPage;
+    global $Recommender;
+
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    return (($StartingResult + $ResultsPerPage) <
+           $Recommender->NumberOfResults()) ? true : false;
+}
+
+/**
+* Print link to previous page of results.
+*/
+function PrintPreviousResultsLink(): void
+{
+    global $StartingResult;
+    global $ResultsPerPage;
+    global $SearchString;
+
+    $NewStartingResult = max(($StartingResult - $ResultsPerPage), 0);
+    print("index.php?P=RecommendResources&amp;sr=".$NewStartingResult);
+}
+
+/**
+* Print link to next page of results.
+*/
+function PrintNextResultsLink(): void
+{
+    global $StartingResult;
+    global $ResultsPerPage;
+    global $SearchString;
+
+    $NewStartingResult = $StartingResult + $ResultsPerPage;
+    print("index.php?P=RecommendResources&amp;sr=".$NewStartingResult);
+}
+
+/**
+* Determine if there are no results.
+* @return bool TRUE when no results exist. FALSE otherwise.
+*/
+function NoResultsFound(): bool
+{
+    global $Recommender;
+
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    return ($Recommender->NumberOfResults() == 0) ? true : false;
+}
+
+/**
+* Output number of next results.
+*/
+function PrintNumberOfNextResults(): void
+{
+    global $ResultsPerPage;
+    global $StartingResult;
+    global $Recommender;
+
+    # make sure recommendations have been generated
+    GetRecommendations();
+
+    print(min($ResultsPerPage, ($Recommender->NumberOfResults() -
+            ($StartingResult + $ResultsPerPage))));
+}
+
+/**
+* Get resource recommendations.
+*/
+function GetRecommendations(): void
+{
+    global $Recommender;
+    global $Recommendations;
+    global $StartingResult;
+    global $ResultsPerPage;
+
+    # bail out if we've already gotten recommendations
+    static $AlreadyGotRecommendations;
+    if ($AlreadyGotRecommendations) {
+        return;
+    }
+    $AlreadyGotRecommendations = true;
+
+    # create recommender
+    $Recommender = new Recommender();
+
+    # add filter function to return only released records
+    $Recommender->AddResultFilterFunction("FilterRecommendationsForReleasedRecords");
+
+    # get recommendations
+    $Recommendations = $Recommender->Recommend(
+        User::getCurrentUser()->Get("UserId"),
+        $StartingResult,
+        $ResultsPerPage
+    );
+}
+
+/**
+* Filter function to show only released recommendations.
+* @param int $ResourceId Resource to test.
+* @return bool TRUE for resources that should be shown. FALSE otherwise.
+*/
+function FilterRecommendationsForReleasedRecords(int $ResourceId): bool
+{
+    $Resource = new Record($ResourceId);
+    return ($Resource->UserCanView(User::getCurrentUser()));
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variable are set
+if (!isset($StartingResult)) {
+    throw new Exception("Variable \$StartingResult not set.");
+}
+
+global $ResultsPerPage;
+
+$PreviousButton = new HtmlButton("← Previous");
+$PreviousButton->setLink("index.php?P=RecommendResources&sr="
+    . max(($StartingResult - $ResultsPerPage), 0));
+
+$NextButton = new HtmlButton("Next →");
+$NextButton->setLink("index.php?P=RecommendResources&sr="
+    . ($StartingResult + $ResultsPerPage));
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Recommended Resources</h1>
@@ -70,20 +289,18 @@ function PrintRecommendation(
 
 <table class="table">
     <tbody><tr><td><?PHP PrintRecommendations(); ?></td></tr></tbody>
-    <?PHP if (PreviousResultsAvailable() || NextResultsAvailable()) { ?>
+    <?PHP if ($StartingResult > 0 || NextResultsAvailable()) { ?>
     <tfoot>
         <tr>
             <td>
-                <?PHP if (PreviousResultsAvailable()) { ?>
-                <a class="btn btn-primary"
-                    href="<?PHP PrintPreviousResultsLink(); ?>">&larr; Previous</a>
-                <?PHP } ?>
+                <?PHP if ($StartingResult > 0) {
+                    print $PreviousButton->getHtml();
+                } ?>
             </td>
             <td>
-                <?PHP if (NextResultsAvailable()) { ?>
-                <a class="btn btn-primary"
-                    href="<?PHP PrintNextResultsLink(); ?>">Next &rarr;</a>
-                <?PHP } ?>
+                <?PHP if (NextResultsAvailable()) {
+                    print $NextButton->getHtml();
+                } ?>
             </td>
         </tr>
     </tfoot>

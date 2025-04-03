@@ -3,28 +3,30 @@
 #   FILE:  XSD.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\MetadataSchema;
+use Metavus\Plugins\OAIPMHServer;
 use Metavus\Plugins\OAIPMHServer\OAIServer;
-use ScoutLib\PluginManager;
+use ScoutLib\ApplicationFramework;
 
+$AF = ApplicationFramework::getInstance();
 $AF->SuppressHTMLOutput();
 
 $SelectedFormat = isset($_POST["FN"]) ? $_POST["FN"] :
     (isset($_GET["FN"]) ? $_GET["FN"] : "");
 
-$Plugin = PluginManager::getInstance()
-    ->getPlugin("OAIPMHServer");
+$OAIPMHServerPlugin = OAIPMHServer::getInstance();
 $Server = new OAIServer(
-    $Plugin->ConfigSetting("RepositoryDescr"),
-    $Plugin->ConfigSetting("Formats"),
+    $OAIPMHServerPlugin->getConfigSetting("RepositoryDescr"),
+    $OAIPMHServerPlugin->getConfigSetting("Formats"),
     null,
-    $Plugin->ConfigSetting("SQEnabled")
+    $OAIPMHServerPlugin->getConfigSetting("SQEnabled")
 );
-$Formats = $Plugin->ConfigSetting("Formats");
+$Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
 
 # check that format is valid, displaying an error if not
 if (!isset($Formats[$SelectedFormat])) {

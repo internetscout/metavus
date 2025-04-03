@@ -6,6 +6,7 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\MetadataSchema;
@@ -13,10 +14,12 @@ use Metavus\Record;
 use Metavus\RecordEditingUI;
 use Metavus\User;
 use Metavus\UserFactory;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # request that this page not be indexed by search engines
-$GLOBALS["AF"]->addMetaTag(["robots" => "noindex"]);
+$AF = ApplicationFramework::getInstance();
+$AF->addMetaTag(["robots" => "noindex"]);
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -25,7 +28,7 @@ PageTitle("New User Sign-Up");
 # don't allow new user signups from spambots
 if ($GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") &&
     $GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForSpamBot()) {
-    $GLOBALS["AF"]->SetJumpToPage("UnauthorizedAccess");
+    $AF->SetJumpToPage("UnauthorizedAccess");
     return;
 }
 
@@ -75,7 +78,7 @@ foreach ($UserFields as $MField) {
 }
 
 # delete temporary record after page load is complete
-$GLOBALS["AF"]->addPostProcessingCall(
+$AF->addPostProcessingCall(
     function ($Record) {
         $Record->destroy();
     },

@@ -2,6 +2,143 @@
 Metavus Change Log
 ==================
 
+Version 1.2.0 - Apr 3, 2025
+
+ADDED
+- Add support for observer notification for record addition, deletion, and
+	modification.  [EA]
+- Add support for two way conversion between Timestamp and Date fields.  [SW]
+- Add checks for exceeding post_max_size and upload_max_filesize along with
+	informative error messages describing how to fix the problem.  [SW]
+- Add handling of CF-Connecting-IP HTTP header for sites using Cloudflare's
+	content distribution network.  [CRH]
+- Add the ability to upload a logo and/or hero image in the interface
+	configuration.  [EA]
+- Add 'Triggers Auto Updates' Metadata Field property to control if changes to
+	a field will run automatic updates (e.g., to Date Last Modified).  [CRH]
+- Extend Search to support exclusions for Option and Controlled Name fields.  [RH]
+- Extend Search Parameter Set fields to support searches involving Reference
+	fields.  [CRH]
+- Allow users to upload an Avatar image.  [CRH]
+- Import Data: Extend to support a sub-delimiter within fields to denote
+	multiple values for that field. Allows row-per-record format data files
+	as produced by many spreadsheet programs.  [AG]
+- Add "Search Load Threshold" parameter. When the system load is higher than
+	this vaue, users must be logged in to perform searches.  [CRH]
+- Add the ability to transfer saved searches to other users.  [AG]
+- mvus utility: new command "user password" for setting user passwords  [EA]
+- mvus utility: new command "list logins"  [EA]
+- mvus utility: new commands "task count" and "task run"  [EA]
+- mvus utility: new command option "cache clear scaled" to clear all scaled
+	versions of images  [EA]
+- MLPHPList plugin: Add support for v3 of the PHPList REST API.  [CRH]
+- UrlChecker: add the ability to check if a transparent http to https upgrade
+	works for a given URL.  [CRH]
+- NEW PLUGIN: PhotoLibrary -- Provides a photo gallery, using files and
+    metadata from within Metavus.  [EA]
+- NEW PLUGIN: ExifTags -- Adds the ability to copy metadata from image tags
+	into Metadata Fields when images are uploaded.  [RH]
+- NEW PLUGIN: CalendarFeed -- Provide iCal feeds for Calendar Events.  [RH]
+- NEW PLUGIN: EduLink -- Provide support for searching and displaying 
+    materials from a Metavus repository within LMS systems and embedding them
+    in LMS-hosted courses.  [CRH]
+- NEW PLUGIN: ChatPDF -- Generate record metadata by sending uploaded PDF
+    files to the ChatPDF for analysis by the ChatGPT LLM AI.  [SW]
+- NEW PLUGIN: WhatCMS -- Query the WhatCMS API for information about the
+	technology behind a given URL, and populate metadata fields with the
+    retrieved values.  [RH]
+- NEW PLUGIN: IIIFImageServer -- Serve images from a Metavus collection using
+	the International Image Interoperability Framework (IIIF) API.  [CRH]
+- NEW PLUGIN: IIIFImageViewer -- Provide interactive display of images  on a
+    Metavus-based site using the IIIF API.  [CRH]
+
+CHANGED
+- Update to Bootstrap v5.3  [CRH]
+- Image::url() now logs a warning for corrupt image files rather than throwing
+	an exception.  [CRH]
+- Move configuration of main navigation items from the NaveEditor plugin and
+	into the Interface Configuration.  [EA]
+- Move handling of EVENT_RESOURCE_MODIFY into the Record object so that callers
+	need not remember to signal it after changing a record.  [CRH]
+- Add logging of database cache pruning.  [CRH]
+- Extend the syntax for specifying image sizes to support scaling/cropping
+	images to fit a specified dimension.  [EA]
+- Change the interpolation methods used when scaling images to generate higher
+	quality scaled versions.  [CRH]
+- Make the blog used for news entries on the front page configurable.  [EA]
+- Extend ApplicationFramework::downloadFile() to support HTTP range requests to
+	support using movies uploaded to File fields in <video> tags.  [CRH]
+- Add caching of search facets.  [CRH]
+- For User fields on Advanced Search, list values in use for the field rather
+	than all users in the system.  [CRH]
+- Rewrite CleanURL handling for sites served from multiple domains.  [EA]
+- Add configuration option to disable collection monograms.  [EA]
+- In WYSIWYG editor, add a "Remove" button for images that will delete the
+	inset corresponding to an image from the HTML.  [CRH]
+- Add per-users caches to AdvancedSearch so that the list of fields and values
+	to display is not re-computed each time the page is loaded.  [CRH]
+- Revise upload handling provided by FormUI to use the FilePond upload library,
+	which provides progress meters and breaks large uploads into chunks to
+	support uploading arbitrarily large files.  [CRH]
+- Blog plugin: When a post has attached images but none of them were included
+	in the body of the post, display the first image at the beginning of
+	the body.  [CRH]
+- Blog plugin: Add ability to send test notifications.  [CRH]
+- AutoFetch plugin: More detailed error reporting when files cannot be
+	retrieved.  [CRH]
+- Folders plugin: Visually distinguish non-public records in shared folders.  [SW]
+- Folders plugin: Extend to support cover images and per-folder descriptions.  [CRH]
+- GoogleMaps plugin: Add option to select which API channel to use.  [CRH]
+- GoogleMaps plugin: Extend to support custom map styles.  [CRH]
+
+FIXED
+- Fix bug that would always run background search and/or recommender updates
+	even when such updates were disabled in the site configuration.  [CRH]
+- Fixed issue with markup incorrectly being escaped in field help tooltips
+	in Metadata Field Editor.  [EA]
+- Fix bug in escaping double quotes in image alt text.  [CRH]
+- Fix bug in phrase searching for File fields.  [EA]
+- Fix several bugs in loading and overriding per-interface settings.  [EA]
+- Fix bug in saving scaled PNG images with a transparent background.  [CRH]
+- More detailed error messages when an Exception is thrown during plugin
+	initialization.  [EA]
+- Improve display and alignment of non-Latin scripts in text fields.  [MA]
+- Edit Option List: Add checks to prevent users from deleting the default value
+	for a field.  [YS]
+- Edit Metadata Field: fix bug that prevented clearing allowed qualifiers.  [AG]
+- Do not save error pages resulting from insufficient viewing permissions in
+	the static page cache.  [CRH]
+- Allow User schema fields to appear on Search Results pages when viewing
+	permissions allow it.  [YS]
+- Fix bug that prevented changes to Metadata Field Ordering from saving.  [YS]
+- Fix bug that prevented 'Set All Users to Default Interface' checkbox on
+	System Configuration from working.  [AG]
+- Revise search descriptions to user names rather than numeric IDs.  [YS]
+- Fix bug in synchronizing some data between the User schema and the APUsers
+	database table.  [AG]
+- Fix bug that prevented configuring Priviliges for Search Parameter Set type
+	metadata fields.  [AG]
+- OAIPMHServer plugin: fix incorrect default base URL.  [MA]
+- Blog plugin: Do not send email to disabled users.  [MA]
+- Blog plugin: Revise hovertest on "Notify" button for unpublished entries to
+	clarify that entries must be published to sent notifications.  [CRH]
+- CalendarEvents plugin: More consistent formatting of event dates.  [RH]
+- UrlChecker plugin: Revise handling of per-domain rate limits so that a large
+	number of checks against the same domain would not slow down checks of other
+	domains.  [CRH]
+- UrlChecker plugin: Fix bug in checking links to locally stored files from
+	File fields.  [MA]
+- UrlChecker plugin: Revise procedure for re-checking URLs to prevent
+	repeatedly rechecking all URLs from records that had any failing URLs.  [CRH]
+- Mailer plugin: Store the Interface in use when a mail is queued, use this
+	interface when performing keyword replacements so that the correct keywords
+	will be used.  [CRH]
+- Rules plugin: Increase width of database column that stores matching records
+	to accommodate rules that have thousands of matches.  [CRH]
+- Photo Library plugin: Display an error message when invalid search parameters
+	are provided rather than an uncaught exception.  [CRH]
+
+
 Version 1.1.0 - June 8, 2023
 
 ADDED

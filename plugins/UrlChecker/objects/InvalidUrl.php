@@ -3,13 +3,12 @@
 #   FILE: InvalidUrl.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\UrlChecker;
-
 use Exception;
 use Metavus\MetadataSchema;
 use Metavus\MetadataField;
@@ -45,7 +44,7 @@ class InvalidUrl
 
         $this->SchemaId = $this->getAssociatedResource()->getSchemaId();
 
-        $Field = new MetadataField($this->FieldId);
+        $Field = MetadataField::getField($this->FieldId);
         if ($Field->schemaId() != $this->SchemaId) {
             throw new Exception(
                 "InvalidUrl constructed for FieldId ".$this->FieldId
@@ -71,7 +70,7 @@ class InvalidUrl
      */
     public function getAssociatedField()
     {
-        return new MetadataField($this->FieldId);
+        return MetadataField::getField($this->FieldId);
     }
 
     public $RecordId = -1;

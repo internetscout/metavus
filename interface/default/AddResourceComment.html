@@ -3,18 +3,24 @@
 #   FILE:  AddResourceComment.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\FormUI;
+namespace Metavus;
+
+use Exception;
 use ScoutLib\ApplicationFramework;
 
-$AF = ApplicationFramework::getInstance();
+# ----- SETUP ----------------------------------------------------------------
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
-
-# ----- MAIN -----------------------------------------------------------------
+if (!isset($H_MaxCommentLength)) {
+    $H_MaxCommentLength = 2000;
+}
+if (!isset($H_Preview)) {
+    throw new Exception("H_Preview not defined.");
+}
 
 if (isset($H_MessageId)) {
     PageTitle("Update Resource Comment");
@@ -24,6 +30,29 @@ if (isset($H_MessageId)) {
     PageTitle("Add Resource Comment");
 }
 
+$UpdateButton = new HtmlButton("Update Comment");
+$UpdateButton->setIcon("Pencil.svg");
+$UpdateButton->makeSubmitButton();
+
+$AddCommentButton = new HtmlButton("Add Comment");
+$AddCommentButton->setIcon("Plus.svg");
+$AddCommentButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+$DeleteButton = new HtmlButton("Delete Comment");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->makeSubmitButton();
+
+$PreviewButton = new HtmlButton("Preview");
+$PreviewButton->setIcon("EyeOpen.svg");
+$PreviewButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
+
 # we have to use ResourceCommentPreview's old HTML here because:
 # 1) we can't display HTML in comments with FormUI paragraphs, as FormUI's ReadOnly fields
 # do not display HTML with the proper formatting, and
@@ -31,6 +60,17 @@ if (isset($H_MessageId)) {
 # which is why we don't move the comment values into a HTML-friendly custom-content box.
 ?>
 <?PHP if ($H_Preview) { ?>
+    <?PHP
+    if (!isset($H_Body)) {
+        throw new Exception("H_Body not defined.");
+    }
+    if (!isset($H_Resource)) {
+        throw new Exception("H_Resource not defined.");
+    }
+    if (!isset($H_Title)) {
+        throw new Exception("H_Title not defined.");
+    }
+    ?>
 <h1>Preview Comment</h1>
 
 <form name="updatemessage" action="<?PHP
@@ -55,20 +95,12 @@ if (isset($H_MessageId)) {
 
 <input type="hidden" name="F_Body" value="<?= defaulthtmlentities($H_Body); ?>">
     <?PHP if (isset($H_MessageId)) { ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Update Comment"><img src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
-        class="mv-button-icon" /> Update Comment</button>
+        <?= $UpdateButton->getHtml() ?>
     <?PHP } else { ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Add Comment"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add Comment</button>
+        <?= $AddCommentButton->getHtml() ?>
     <?PHP } ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Edit Comment"><img class="mv-button-icon"
-        src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit Comment</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $DeleteButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>
 
 <?PHP } else { ?>
@@ -80,25 +112,14 @@ if (isset($H_MessageId)) {
         <?PHP $H_FormUI->displayFormTable(); ?>
 
         <?PHP if (isset($H_MessageId)) { ?>
-        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-            value="Update Comment"><img src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
-            class="mv-button-icon" /> Update Comment</button>
-        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-            value="Delete Comment"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-            class="mv-button-icon" /> Delete Comment</button>
-        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-            value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-            class="mv-button-icon" /> Cancel</button>
+            <?= $UpdateButton->getHtml() ?>
+            <?= $CancelButton->getHtml() ?>
+            <?= $DeleteButton->getHtml() ?>
+
         <?PHP } else { ?>
-        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-            value="Preview"><img src="<?= $AF->GUIFile('EyeOpen.svg'); ?>" alt=""
-            class="mv-button-icon"  /> Preview</button>
-        <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-            value="Add Comment"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-            class="mv-button-icon" /> Add Comment</button>
-        <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-            value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-            class="mv-button-icon" /> Cancel</button>
+            <?= $PreviewButton->getHtml() ?>
+            <?= $AddCommentButton->getHtml() ?>
+            <?= $CancelButton->getHtml() ?>
         <?PHP } ?>
 </form>
     <?PHP } ?>

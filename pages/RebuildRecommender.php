@@ -6,6 +6,7 @@
 #   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\RecordFactory;
 use Metavus\Recommender;
@@ -25,7 +26,7 @@ if ($_GET["AC"] == "Background") {
             ApplicationFramework::PRIORITY_BACKGROUND
         );
     }
-    $GLOBALS["AF"]->QueueUniqueTask(
+    ApplicationFramework::getInstance()->QueueUniqueTask(
         array($Recommender, "PruneCorrelations"),
         array(),
         ApplicationFramework::PRIORITY_BACKGROUND

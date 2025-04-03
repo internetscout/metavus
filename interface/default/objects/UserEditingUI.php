@@ -3,15 +3,15 @@
 #   FILE:  UserEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Date;
 use ScoutLib\StdLib;
 
@@ -55,15 +55,16 @@ class UserEditingUI extends RecordEditingUI
 
     /**
      * Display editing form.
-     * @param string $TableId CSS ID for table element.(OPTIONAL)
-     * @param string $TableStyle CSS styles for table element.(OPTIONAL)
-     * @param string $TableCssClass Additional CSS class for table element.(OPTIONAL)
+     * @param string $TableId CSS ID for table element. (OPTIONAL)
+     * @param string $TableStyle CSS styles for table element. (OPTIONAL)
+     * @param string $TableCssClass Additional CSS class for table element. (OPTIONAL)
+     * @return void
      */
     public function displayFormTable(
-        string $TableId = null,
-        string $TableStyle = null,
-        string $TableCssClass = null
-    ) {
+        ?string $TableId = null,
+        ?string $TableStyle = null,
+        ?string $TableCssClass = null
+    ): void {
         # if the changes the user made should only display the StatusMessages
         # without showing the form, bail
         if (!$this->DisplayForm) {
@@ -79,7 +80,7 @@ class UserEditingUI extends RecordEditingUI
      * @param bool $NewValue TRUE to display the form, FALSE to hide it (OPTIONAL)
      * @return bool TRUE when form is visible
      */
-    public function isFormVisible(bool $NewValue = null): bool
+    public function isFormVisible(?bool $NewValue = null): bool
     {
         if (!is_null($NewValue)) {
             $this->DisplayForm = $NewValue;
@@ -91,8 +92,9 @@ class UserEditingUI extends RecordEditingUI
     /**
      * Log a status message to be displayed above the editing form.
      * @param string $Message Message to display.
+     * @return void
      */
-    public function logStatusMessage(string $Message)
+    public function logStatusMessage(string $Message): void
     {
         self::$StatusMessages[] = $Message;
     }
@@ -101,8 +103,9 @@ class UserEditingUI extends RecordEditingUI
 
     /**
      * Display HTML block with status messages.
+     * @return void
      */
-    public static function displayStatusBlock()
+    public static function displayStatusBlock(): void
     {
         # display any status messages
         if (count(self::$StatusMessages)) {
@@ -132,7 +135,7 @@ class UserEditingUI extends RecordEditingUI
         # use regex to filter out plugins' interfaces, more specifically,
         # drop interfaces whose path is "$PATH/$TO/$HERE/plugins/interface/$NAME"
         # i.e.the "interface" folder has a parent folder with the name "plugins"
-        $UserInterfaceOptions = $GLOBALS["AF"]->getUserInterfaces(
+        $UserInterfaceOptions = ApplicationFramework::getInstance()->getUserInterfaces(
             "/^(?![a-zA-Z0-9\/]*plugins\/)[a-zA-Z0-9\/]*interface\/[a-zA-Z0-9%\/]+/"
         );
 
@@ -276,7 +279,7 @@ class UserEditingUI extends RecordEditingUI
                 if ($Result) {
                     # if value was changed, also call User::set() so that any
                     # needed mirroring into APUsers columns is also done
-                    $this->User->set($FieldName, $Values);
+                    $this->User->setLegacyColumn($FieldName, $Values);
                 }
                 break;
         }

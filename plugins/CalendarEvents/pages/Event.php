@@ -3,18 +3,20 @@
 #   FILE:  Event.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
+use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\CalendarEvents\Event;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
-$H_Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$AF = ApplicationFramework::getInstance();
+$H_Plugin = CalendarEvents::getInstance();
 
 # assume that a generic error will occur
 $H_State = "Error";
@@ -24,17 +26,19 @@ $EventId = StdLib::getArrayValue($_GET, "EventId");
 
 # if the event ID looks invalid
 if (!is_numeric($EventId)) {
+    $AF->doNotCacheCurrentPage();
     $H_State = "Invalid ID";
     return;
 }
 
 # if the event ID actually is invalid
-if (!Event::ItemExists($EventId)) {
+if (!Event::ItemExists((int)$EventId)) {
+    $AF->doNotCacheCurrentPage();
     $H_State = "Invalid ID";
     return;
 }
 
-$H_Event = new Event($EventId);
+$H_Event = new Event((int)$EventId);
 
 # if the entry is some other type of resource
 if (!$H_Plugin->IsEvent($H_Event)) {

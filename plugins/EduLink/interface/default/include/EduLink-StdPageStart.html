@@ -1,0 +1,191 @@
+<?PHP
+#
+#   FILE:  EduLink-StdPageStart.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\Folders\FolderFactory;
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+/**
+ * Determine if the Select Folder link should be displayed.
+ * @return bool TRUE if a user is logged in and they have any folders with
+ *   publicly viewable items. FALSE otherwise.
+ */
+function shouldDisplaySelectFolder() : bool
+{
+    $AF = ApplicationFramework::getInstance();
+
+    if ($AF->getPageName() == "P_EduLink_SelectPublisher") {
+        return false;
+    }
+
+    # get list of public folders
+    $FolderIds = EduLink::getInstance()
+        ->getFolderList();
+
+    # if a user is logged in, add their folders as well
+    $User = $User = User::getCurrentUser();
+    if ($User->isLoggedIn()) {
+        $UserFolderIds = (new FolderFactory($User->id()))
+            ->getResourceFolder()
+            ->getItemIds();
+
+        $FolderIds = array_merge(
+            $FolderIds,
+            $UserFolderIds
+        );
+    }
+
+    # if no folders, nothing to show
+    if (count($FolderIds) == 0) {
+        return false;
+    }
+
+    # otherwise, see if any folders have a visible records in them
+    $RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
+    foreach ($FolderIds as $FolderId) {
+        $Folder = new Folder($FolderId);
+
+        $RecordIds = RecordFactory::buildMultiSchemaRecordList(
+            $Folder->getItemIds()
+        );
+
+        if (!isset($RecordIds[MetadataSchema::SCHEMAID_DEFAULT])) {
+            continue;
+        }
+
+        $VisibleItemIds = $RFactory->filterOutUnviewableRecords(
+            $RecordIds[MetadataSchema::SCHEMAID_DEFAULT],
+            User::getAnonymousUser()
+        );
+
+        # if so, show the folder list
+        if (count($VisibleItemIds) > 0) {
+            return true;
+        }
+    }
+
+    # if no folders contained a visible record, nothing to show
+    return false;
+}
+
+/**
+ * Print the header of the page.
+ * @param string $H_LaunchId LaunchId for the current page
+ */
+function printPageHeader($H_LaunchId) : void
+{
+    $AF = ApplicationFramework::getInstance();
+    $Plugin = EduLink::getInstance();
+    $User = User::getCurrentUser();
+
+    $InterfaceFiles = [
+        "jQuery.js",
+        "jquery.cookie.js",
+        "bootstrap.js",
+        "jquery-ui.js",
+        "CW-Base.js",
+        "P_EduLink.js",
+        "ResourceSelectionUI.js",
+        "bootstrap.css",
+        "jquery-ui.css",
+        "Metavus.css",
+        "P_EduLink.css",
+    ];
+
+
+    $LogoFileName = $Plugin->getConfigSetting("LogoFileName");
+    $ServiceName = $Plugin->getConfigSetting("ServiceName");
+
+    $AF->doNotUrlFingerprint('Meeple.svg');
+    $AF->doNotUrlFingerprint('OpenFolder.svg');
+    $AF->doNotUrlFingerprint('Plus.svg');
+
+    $SelectRecordsUrl = $AF->baseUrl()
+        ."index.php?P=P_EduLink_LTIHome&L=".$H_LaunchId;
+    $SelectFolderUrl = $AF->baseUrl()
+        ."index.php?P=P_EduLink_SelectPublisher&L=".$H_LaunchId;
+
+    // phpcs:disable Generic.Files.LineLength.MaxExceeded
+    // phpcs:disable Generic.WhiteSpace.ScopeIndent.Incorrect
+    // phpcs:disable Generic.WhiteSpace.ScopeIndent.IncorrectExact
+    // phpcs:disable Squiz.WhiteSpace.ScopeClosingBrace.Indent
+?>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <?PHP $AF->includeUIFile($InterfaceFiles);  ?>
+  </head>
+  <body>
+    <div id="mv-p-edulink-login-dialog" style="display: none">
+      <div class="alert alert-danger" style="display: none">
+        The user name or password you entered was incorrect.
+      </div>
+      <div>
+        <?= $Plugin->getConfigSetting("LoginPrompt") ?>
+      </div>
+      <table>
+        <tbody>
+          <tr>
+            <th><label for="F_UserName">User name</label>:</th>
+            <td><input type="text" size="12" id="F_UserName" name="F_UserName" /></td>
+          </tr><tr>
+            <th><label for="F_Password">Password</label>:</th>
+            <td><input type="password" size="12" id="F_Password" name="F_Password" /></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="mv-p-edulink-loading-overlay" style="display: none">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+
+    <div id="mv-segment-body" class="mv-body">
+      <main role="main">
+
+        <div class="container-fluid mv-p-edulink-header">
+          <div class="row">
+            <div class="col"
+                 ><span class="mv-logo-container"><a href="<?= $SelectRecordsUrl ?>"
+                     aria-label="<?= $ServiceName ?>"
+                     ><img class="mv-logo" alt="" src="<?= $AF->gUIFile($LogoFileName) ?>"/></a></span></div>
+            <div class="col text-end">
+              <?PHP if (shouldDisplaySelectFolder()) { ?>
+              <a id="mv-p-edulink-folder-button" href="<?= $SelectFolderUrl ?>"
+                 ><?= file_get_contents($AF->gUIFile("OpenFolder.svg")) ?> Collections</a>
+              <?PHP } ?>
+              <?PHP if (!$User->isLoggedIn()) { ?>
+              <a id="mv-p-edulink-login-button" href="<?= $AF->baseUrl() ?>index.php?P=UserLogin"
+                 ><?= file_get_contents($AF->gUIFile("Meeple.svg")) ?> Sign In</a>
+              <?PHP } else { ?>
+              <a id="mv-p-edulink-logout-button" href="<?= $AF->baseUrl() ?>index.php?P=UserLogout"
+                 ><?= file_get_contents($AF->gUIFile("Meeple.svg")) ?> Sign Out</a>
+              <?PHP } ?>
+            </div>
+          </div>
+        </div>
+<?PHP
+    // phpcs:enable
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_LaunchId)) {
+    throw new Exception("H_LaunchId not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+
+printPageHeader($H_LaunchId);

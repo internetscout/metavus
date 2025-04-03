@@ -3,19 +3,20 @@
 #   FILE:  SocialMedia.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use InvalidArgumentException;
 use Metavus\Image;
+use Metavus\InterfaceConfiguration;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\BotDetector;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Record;
-use Metavus\InterfaceConfiguration;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
@@ -67,8 +68,9 @@ class SocialMedia extends Plugin
 
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Social Media";
         $this->Version = "1.1.5";
@@ -76,11 +78,11 @@ class SocialMedia extends Plugin
             social media websites, like Facebook and Twitter, adding HTML markup
             to a resource's view page so that relevant metadata can be extracted
             more easily when somebody shares it.";
-        $this->Author = "Internet Scout";
+        $this->Author = "Internet Scout Research Group";
         $this->Url = "http://metavus.net";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "MetricsRecorder" => "1.2.4"
         ];
         $this->EnabledByDefault = true;
@@ -100,7 +102,7 @@ class SocialMedia extends Plugin
      * @return null|string if configuration setup succeeded, otherwise a string with
      *       an error message indicating why config setup failed.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $this->CfgSetup["GeneralSection"] = [
             "Type" => "Heading",
@@ -206,7 +208,7 @@ class SocialMedia extends Plugin
      * @return string|null NULL if initialization was successful, otherwise a string
      *       containing an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $AF = ApplicationFramework::getInstance();
 
@@ -263,8 +265,7 @@ class SocialMedia extends Plugin
         );
 
         # register our events with metrics recorder
-        $PluginMgr = PluginManager::getInstance();
-        $PluginMgr->getPlugin("MetricsRecorder")->registerEventType(
+        MetricsRecorder::getInstance()->registerEventType(
             "SocialMedia",
             "ShareResource"
         );
@@ -278,34 +279,34 @@ class SocialMedia extends Plugin
      * @param string $PreviousVersion Previous version of the plugin.
      * @return string|null Returns NULL on success and an error message otherwise.
      */
-    public function upgrade(string $PreviousVersion)
+    public function upgrade(string $PreviousVersion): ?string
     {
         # upgrade from versions < 1.1.0 to 1.1.0
         if (version_compare($PreviousVersion, "1.1.0", "<")) {
             $SchemaId = MetadataSchema::SCHEMAID_DEFAULT;
 
             # the default schema was always enabled in prior versions
-            $this->configSetting("Enabled/".$SchemaId, true);
+            $this->setConfigSetting("Enabled/".$SchemaId, true);
 
             # migrate old field settings
-            $this->configSetting(
+            $this->setConfigSetting(
                 "TitleField/".$SchemaId,
-                $this->configSetting("TitleField")
+                $this->getConfigSetting("TitleField")
             );
-            $this->configSetting(
+            $this->setConfigSetting(
                 "DescriptionField/".$SchemaId,
-                $this->configSetting("DescriptionField")
+                $this->getConfigSetting("DescriptionField")
             );
-            $this->configSetting(
+            $this->setConfigSetting(
                 "ScreenshotField/".$SchemaId,
-                $this->configSetting("ScreenshotField")
+                $this->getConfigSetting("ScreenshotField")
             );
         }
 
         # upgrade from versions < 1.1.1 to 1.1.1
         if (version_compare($PreviousVersion, "1.1.1", "<")) {
             # set the maximum description length to 1200 by default
-            $this->configSetting("MaxDescriptionLength", 1200);
+            $this->setConfigSetting("MaxDescriptionLength", 1200);
         }
 
         return null;
@@ -331,13 +332,14 @@ class SocialMedia extends Plugin
     }
 
     /**
-     * Print the meta tags in the header.Additional information can be found at
+     * Print the meta tags in the header. Additional information can be found at
      * the following URLs:
      * @li http://developers.facebook.com/docs/opengraph/property-types/
      * @li http://developers.facebook.com/docs/opengraph/creating-object-types/
      * @li https://dev.twitter.com/docs/cards
+     * @return void
      */
-    public function printMetaTags()
+    public function printMetaTags(): void
     {
         # variables used to determine if the current page is a view page
         $Path = ApplicationFramework::getInstance()->getUncleanRelativeUrlWithParams();
@@ -372,17 +374,17 @@ class SocialMedia extends Plugin
         }
 
         # extract the metadata from the resource
-        $SiteName = $this->configSetting("SiteName");
+        $SiteName = $this->getConfigSetting("SiteName");
         $Url = $this->getViewPageUrl($Resource);
         $Title = $this->getSimpleFieldValue($Resource, "TitleField") ?? "";
         $Description = $this->getSimpleFieldValue($Resource, "DescriptionField") ?? "";
         $Images = $this->getImagesForResource($Resource);
         $TwitterUsername = $this->formatTwitterUsername(
-            $this->configSetting("TwitterUsername")
+            $this->getConfigSetting("TwitterUsername")
         );
 
         # limit the description length
-        $MaxDescriptionLength = $this->configSetting("MaxDescriptionLength");
+        $MaxDescriptionLength = $this->getConfigSetting("MaxDescriptionLength");
         $Description = StdLib::neatlyTruncateString($Description, $MaxDescriptionLength);
 
         # add marker indicating the beginning of our additions
@@ -419,12 +421,13 @@ class SocialMedia extends Plugin
      * @param Record $Resource Resource to construct a sharing URL for.
      * @param string $Site Website to share to.
      * @param int $UserId Optional user ID to associate with the share action.
+     * @return void
      * @see SITE_EMAIL
      * @see SITE_FACEBOOK
      * @see SITE_TWITTER
      * @see SITE_LINKEDIN
      */
-    public function shareResource($Resource, $Site, $UserId)
+    public function shareResource($Resource, $Site, $UserId): void
     {
         $AF = ApplicationFramework::getInstance();
         $PluginMgr = PluginManager::getInstance();
@@ -437,7 +440,7 @@ class SocialMedia extends Plugin
 
         # if BotDetector is available, use it to bounce robots back to the home page
         if ($PluginMgr->pluginEnabled("BotDetector") &&
-            $PluginMgr->getPlugin("BotDetector")->checkForSpamBot()) {
+            BotDetector::getInstance()->checkForSpamBot()) {
             $AF->setJumpToPage("Home");
             return;
         }
@@ -445,7 +448,7 @@ class SocialMedia extends Plugin
         # e-mail sharing should be handled separately
         if ($Site == self::SITE_EMAIL) {
             # record an event
-            $PluginMgr->getPlugin("MetricsRecorder")->recordEvent(
+            MetricsRecorder::getInstance()->recordEvent(
                 "SocialMedia",
                 "ShareResource",
                 $Resource->id(),
@@ -464,7 +467,7 @@ class SocialMedia extends Plugin
         # redirect to the sharing URL if it could be retrieved
         if (!is_null($SharingUrl)) {
             # record an event
-            $PluginMgr->getPlugin("MetricsRecorder")->recordEvent(
+            MetricsRecorder::getInstance()->recordEvent(
                 "SocialMedia",
                 "ShareResource",
                 $Resource->id(),
@@ -488,7 +491,7 @@ class SocialMedia extends Plugin
      *      social media class constants (e.g.SocialMedia::SITE_FACEBOOK).
      * @return string Returns the share URL for the resource and site.
      */
-    public function getShareUrl(Record $Resource, $Site)
+    public function getShareUrl(Record $Resource, $Site): string
     {
         # map share sites to the URL tokens
         $SiteTokens = [
@@ -519,8 +522,9 @@ class SocialMedia extends Plugin
     /**
      * Print regular size social media buttons to share a given resource.
      * @param Record $Resource The resource to share.
+     * @return void
      */
-    public function displayShareButtons(Record $Resource)
+    public function displayShareButtons(Record $Resource): void
     {
         $this->displayShareButtonsWithCustomSize($Resource, SocialMedia::$LargeIconSize);
     }
@@ -529,8 +533,9 @@ class SocialMedia extends Plugin
     /**
      * Print small social media buttons for a given resource
      * @param Record $Resource The resource to share.
+     * @return void
      */
-    public function displaySmallShareButtons(Record $Resource)
+    public function displaySmallShareButtons(Record $Resource): void
     {
         $this->displayShareButtonsWithCustomSize($Resource, SocialMedia::$SmallIconSize);
     }
@@ -541,9 +546,9 @@ class SocialMedia extends Plugin
      * @param MetadataSchema $Schema Schema to test with.
      * @return bool Returns TRUE if meta tag printing is enabled for the schema.
      */
-    protected function isEnabledForSchema(MetadataSchema $Schema)
+    protected function isEnabledForSchema(MetadataSchema $Schema): bool
     {
-        return $this->configSetting("Enabled/".$Schema->id());
+        return $this->getConfigSetting("Enabled/".$Schema->id()) ?? false;
     }
 
     /**
@@ -552,14 +557,14 @@ class SocialMedia extends Plugin
      * @param Record $Resource Resource for which to get the view page URL.
      * @return string Returns the view page URL for the resource.
      */
-    protected function getViewPageUrl(Record $Resource)
+    protected function getViewPageUrl(Record $Resource): string
     {
         $AF = ApplicationFramework::getInstance();
         $Schema = new MetadataSchema($Resource->getSchemaId());
         $SafeResourceId = urlencode((string)$Resource->id());
 
         # get the view page
-        $ViewPageUrl = $Schema->viewPage();
+        $ViewPageUrl = $Schema->getViewPage();
 
         # replace the ID parameter with the actual resource ID
         $ViewPageUrl = preg_replace("%\\\$ID%", $SafeResourceId, $ViewPageUrl);
@@ -583,7 +588,7 @@ class SocialMedia extends Plugin
      * @return string|null Returns the field value or NULL if there isn't one.
      * @see GetImageFieldValue()
      */
-    protected function getSimpleFieldValue(Record $Resource, string $Setting)
+    protected function getSimpleFieldValue(Record $Resource, string $Setting): ?string
     {
         # load the resource's metadata schema
         $Schema = new MetadataSchema($Resource->getSchemaId());
@@ -706,9 +711,9 @@ class SocialMedia extends Plugin
      * @return MetadataField|null Returns the field for the setting or NULL
      *      if it isn't set.
      */
-    protected function getFieldForSetting(MetadataSchema $Schema, $Setting)
+    protected function getFieldForSetting(MetadataSchema $Schema, $Setting): ?MetadataField
     {
-        $FieldId = $this->configSetting($Setting."/".$Schema->id());
+        $FieldId = $this->getConfigSetting($Setting."/".$Schema->id());
 
         # return NULL if the field ID is not set
         if (is_null($FieldId) || !strlen($FieldId)) {
@@ -746,7 +751,7 @@ class SocialMedia extends Plugin
      * @return string|null Returns the formatted Twitter user name or NULL
      *      if no name available.
      */
-    protected function formatTwitterUsername(string $Username)
+    protected function formatTwitterUsername(string $Username): ?string
     {
         # don't format a blank user name
         if (!$this->isPropertySet($Username)) {
@@ -767,9 +772,10 @@ class SocialMedia extends Plugin
      * @li http://developers.facebook.com/docs/opengraph/creating-object-types/
      * @param string $Property The value identifier.
      * @param string $Content The metadata content.
+     * @return void
      * @see PrintTwitterTag()
      */
-    protected function printOpenGraphTag($Property, $Content)
+    protected function printOpenGraphTag($Property, $Content): void
     {
         # ignore blank properties
         if (!$this->isPropertySet($Content)) {
@@ -784,9 +790,10 @@ class SocialMedia extends Plugin
      * https://dev.twitter.com/docs/cards
      * @param string $Name The value identifier.
      * @param string $Content The metadata content.
+     * @return void
      * @see PrintOpenGraphTag()
      */
-    protected function printTwitterTag($Name, $Content)
+    protected function printTwitterTag($Name, $Content): void
     {
         # ignore blank properties
         if (!$this->isPropertySet($Content)) {
@@ -799,8 +806,9 @@ class SocialMedia extends Plugin
     /**
      * Print the Open Graph meta tags for the given image data.
      * @param array $Images Image data to put in Open Graph meta tags.
+     * @return void
      */
-    protected function printOpenGraphImages(array $Images)
+    protected function printOpenGraphImages(array $Images): void
     {
         # print the tags for each image
         foreach ($Images as $Image) {
@@ -811,8 +819,9 @@ class SocialMedia extends Plugin
     /**
      * Print the Twitter meta tags for the given image data.
      * @param array $Images Image data to put in Twitter meta tags.
+     * @return void
      */
-    protected function printTwitterImages(array $Images)
+    protected function printTwitterImages(array $Images): void
     {
         # print the tags for each image
         foreach ($Images as $Image) {
@@ -859,7 +868,7 @@ class SocialMedia extends Plugin
      * @see SITE_TWITTER
      * @see SITE_LINKEDIN
      */
-    public function getSharingUrl(Record $Resource, $Site)
+    public function getSharingUrl(Record $Resource, $Site): ?string
     {
         switch ($Site) {
             case self::SITE_FACEBOOK:
@@ -904,17 +913,17 @@ class SocialMedia extends Plugin
      * @return string|null Returns a sharing URL for Twitter for the resource
      *   or NULL if no twitter username was configured.
      */
-    protected function getSharingUrlForTwitter(Record $Resource)
+    protected function getSharingUrlForTwitter(Record $Resource): ?string
     {
         # add the basic parameters and get the twitter user name, which may not
         # be available
-        $RawTwitterUsername = $this->configSetting("TwitterUsername");
+        $RawTwitterUsername = $this->getConfigSetting("TwitterUsername");
         if (($RawTwitterUsername === null) || !strlen($RawTwitterUsername)) {
             return null;
         }
         $Parameters = ["url" => $this->getViewPageUrl($Resource)];
         $TwitterUsername = $this->formatTwitterUsername(
-            $this->configSetting("TwitterUsername")
+            $this->getConfigSetting("TwitterUsername")
         );
 
         # add the twitter user name, if available
@@ -959,19 +968,20 @@ class SocialMedia extends Plugin
      * share a given resource.
      * @param Record $Resource The resource to share.
      * @param integer $Size Size of button icons.
+     * @return void
      */
-    protected function displayShareButtonsWithCustomSize(Record $Resource, int $Size)
+    protected function displayShareButtonsWithCustomSize(Record $Resource, int $Size): void
     {
         $AF = ApplicationFramework::getInstance();
 
         # get list of requested share buttons
-        $ShareButtons = $this->configSetting("AvailableShareButtons") ?? [];
+        $ShareButtons = $this->getConfigSetting("AvailableShareButtons") ?? [];
 
         # if twitter was requested but no username configured, then we cannot
         # use it, so disable it
         $TwitterIndex = array_search(SocialMedia::SITE_TWITTER, $ShareButtons);
         if ($TwitterIndex !== false) {
-            $TwitterUsername = $this->configSetting("TwitterUsername");
+            $TwitterUsername = $this->getConfigSetting("TwitterUsername");
             if (is_null($TwitterUsername) || strlen($TwitterUsername) == 0) {
                 unset($ShareButtons[$TwitterIndex]);
             }

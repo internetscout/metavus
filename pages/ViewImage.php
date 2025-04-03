@@ -11,6 +11,9 @@
 namespace Metavus;
 
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
 
 /**
 * Output the bytes of the file to the browser.
@@ -46,7 +49,7 @@ function Set404() : void
 
 # close the session to avoid serializing image loads
 session_write_close();
-$GLOBALS["AF"]->SuppressHTMLOutput();
+$AF->SuppressHTMLOutput();
 
 # make sure required parameters are specified
 if (!isset($_GET["RI"]) || !isset($_GET["FI"]) ||
@@ -128,7 +131,7 @@ if (in_array($ImageSize, ["t", "p", "f"])) {
 # send file to user, but unbuffered to avoid memory issues
 putenv('no-gzip=1');
 header("Content-Type: ".$Image->mimeType());
-$GLOBALS["AF"]->addUnbufferedCallback(
+$AF->addUnbufferedCallback(
     __NAMESPACE__.'\OutputFile',
     [$Filepath]
 );

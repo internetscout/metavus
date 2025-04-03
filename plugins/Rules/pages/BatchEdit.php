@@ -3,24 +3,27 @@
 #   FILE:  BatchEdit.php (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Retrieve rule settings from form.
- * @return Array with rule settings for values and rule IDs for index.
+ * @return array Array with rule settings for values and rule IDs for index.
  */
-function getRuleList()
+function getRuleList(): array
 {
-    global $G_PluginManager;
+    $PluginMgr = PluginManager::getInstance();
 
     $List = [];
-    $RulesPlugin = $G_PluginManager->GetPlugin("Rules");
+    $RulesPlugin = $PluginMgr->GetPlugin("Rules");
     $Rules = $RulesPlugin->GetRules();
 
     foreach ($_POST as $Key => $Value) {
@@ -44,9 +47,11 @@ function getRuleList()
 # check that user should be on this page
 CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
+$AF = ApplicationFramework::getInstance();
 $AF->SuppressHTMLOutput();
 
-$RulesPlugin = $G_PluginManager->GetPlugin("Rules");
+$PluginMgr = PluginManager::getInstance();
+$RulesPlugin = $PluginMgr->GetPlugin("Rules");
 $Rules = getRuleList();
 $Action = StdLib::getArrayValue($_POST, "F_SelectionAction");
 

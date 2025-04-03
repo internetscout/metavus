@@ -12,8 +12,8 @@ namespace Metavus\Plugins\Collage;
 
 use Metavus\Image;
 use Metavus\Record;
+use Metavus\Plugins\Collage;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -37,8 +37,8 @@ class RecordImageCollage
         }
 
         # if record list is too short for a full collage, extend by merging with self
-        $Plugin = (PluginManager::getInstance())->getPlugin("Collage");
-        $NumberOfImages = $Plugin->getNumberOfImages();
+        $CollagePlugin = Collage::getInstance();
+        $NumberOfImages = $CollagePlugin->getNumberOfImages();
         $RecordIds = self::extendArray($RecordIds, $NumberOfImages);
 
         # randomize collage order
@@ -48,8 +48,8 @@ class RecordImageCollage
         $RecordIds = self::pruneRepeatedValues($RecordIds);
 
         # calculate height for collage assuming square tiles
-        $TileWidth = $Plugin->getConfigSetting("TileWidth");
-        $CollageHeight = $Plugin->getConfigSetting("NumRows") * $TileWidth;
+        $TileWidth = $CollagePlugin->getConfigSetting("TileWidth");
+        $CollageHeight = $CollagePlugin->getConfigSetting("NumRows") * $TileWidth;
 
         # generate/return actual html
         $CollageHtml = "<div class=\"col mv-p-collage-wrapper\" style=\"height:"
@@ -72,11 +72,11 @@ class RecordImageCollage
     {
         (ApplicationFramework::getInstance())->requireUIFile("RecordImageCollage.js");
 
-        $Plugin = (PluginManager::getInstance())->getPlugin("Collage");
-        $TileWidth = $Plugin->getConfigSetting("TileWidth");
-        $DialogWidth = $Plugin->getConfigSetting("DialogWidth");
-        $MaxViewportWidth = $Plugin->getConfigSetting("MaxExpectedViewportWidth");
-        $NumRows = $Plugin->getConfigSetting("NumRows");
+        $CollagePlugin = Collage::getInstance();
+        $TileWidth = $CollagePlugin->getConfigSetting("TileWidth");
+        $DialogWidth = $CollagePlugin->getConfigSetting("DialogWidth");
+        $MaxViewportWidth = $CollagePlugin->getConfigSetting("MaxExpectedViewportWidth");
+        $NumRows = $CollagePlugin->getConfigSetting("NumRows");
 
         $SupportingHtml = "<div id=\"mv-rollover-dialog\" style=\"display: none;\" "
                 ."data-tile-width=\"".$TileWidth."\" "
@@ -104,9 +104,11 @@ class RecordImageCollage
             return "";
         }
         $Screenshot = reset($Screenshot);
-        $Plugin = (PluginManager::getInstance())->getPlugin("Collage");
-        $TileWidth = $Plugin->getConfigSetting("TileWidth");
-        $ImageSize = Image::getNextLargestSize($TileWidth, $TileWidth);
+        $CollagePlugin = Collage::getInstance();
+        $TileWidth = $CollagePlugin->getConfigSetting("TileWidth");
+        $ImageSize = Image::isSizeNameValid("mv-image-collage")
+                ? "mv-image-collage"
+                : Image::getNextLargestSize($TileWidth, $TileWidth);
         $ImageUrl = $Screenshot->url($ImageSize);
 
         # entity-encoded text in data attributes is correctly handled by jquery-ui
@@ -123,8 +125,7 @@ class RecordImageCollage
             );
 
         return "<div class=\"mv-p-collage-tile\"".
-        " title=\"".htmlspecialchars($Title)." [click for detail]\"".
-        " data-title=\"".htmlspecialchars($Title)."\"".
+        " data-tooltip-content=\"".htmlspecialchars($Title)."\"".
         " data-description=\"".htmlspecialchars($Description)."\"".
         " data-url=\"".htmlspecialchars($Url)."\"".
         " data-fullrecord=\"".htmlspecialchars($FullRecordUrl)."\"".

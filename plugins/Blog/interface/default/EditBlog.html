@@ -3,9 +3,20 @@
 #   FILE:  EditBlog.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+
+use Metavus\HtmlButton;
+
+# ----- SETUP ----------------------------------------------------------------
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <?PHP if ($H_ConfigUI->errorsLogged()) {
@@ -14,12 +25,6 @@
 <form name="EditBlogForm" method="post"
       action="index.php?P=P_Blog_EditBlog">
   <?PHP $H_ConfigUI->DisplayFormTable(); ?>
-  <button type="submit" name="Submit" value="Save Changes"
-    class="btn btn-primary mv-button-iconed"><img
-    src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-    class="mv-button-icon" /> Save Changes</button>
-  <button type="submit" name="Submit" value="Cancel"
-    class="btn btn-danger mv-button-iconed"><img
-    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-    class="mv-button-icon" /> Cancel</button>
+  <?= $SaveButton->getHtml(); ?>
+  <?= $CancelButton->getHtml(); ?>
 </form>

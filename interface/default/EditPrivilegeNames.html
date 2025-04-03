@@ -3,18 +3,66 @@
 #   FILE:  EditPrivilegeNames.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\PrivilegeFactory;
-use Metavus\User;
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function PrintTextFormEntry($TextInputName, $TextInputValue, $TextInputId, $IsLast = false)
+/**
+* Print text form entries for privileges.
+* @param int $NumberOfEntries How many entries to print.
+*/
+function PrintTextFormEntries($NumberOfEntries): void
 {
-    global $AF;
+    global $Privileges;
+
+    # for each requested entry
+    $Index = 0;
+    foreach ($Privileges as $Privilege) {
+        # Determine if the privilege is predefined
+        if (!$Privilege->IsPredefined()) {
+            # print entry and increment index
+            PrintTextFormEntry(
+                "F_PermissionText".$Index,
+                $Privilege->Name(),
+                $Privilege->Id()
+            );
+            $Index++;
+        }
+    }
+
+    # Print remaining blank entries
+    for ($Index; $Index < $NumberOfEntries; $Index++) {
+        $IsLast = ($Index + 1 == $NumberOfEntries) ? true : false;
+        PrintTextFormEntry("F_PermissionText".$Index, "", "", $IsLast);
+    }
+}
+
+/**
+ * Print privilege edit row, with text entry and delete button
+ * @param string $TextInputName Name to use for input field
+ * @param string $TextInputValue Initial value to use for input field
+ * @param string $TextInputId Privilege ID
+ * @param boolean $IsLast If this is the last privilege field
+ * @return void
+ */
+function PrintTextFormEntry(
+    string $TextInputName,
+    string $TextInputValue,
+    string $TextInputId,
+    bool $IsLast = false
+): void {
+    $DeleteButton = new HtmlButton("Delete");
+    $DeleteButton->setIcon("Delete.svg");
+    $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+    $DeleteButton->addClass("DeletePrivilege");
+    $DeleteButton->setName($TextInputName . "_Delete");
     ?>
 
 <tr>
@@ -24,10 +72,7 @@ function PrintTextFormEntry($TextInputName, $TextInputValue, $TextInputId, $IsLa
             value="<?= $TextInputValue; ?>" />
 
         <?PHP if ($IsLast !== true) { ?>
-        <button type="submit" class="btn btn-primary btn-sm DeletePrivilege mv-button-iconed"
-            name="<?= $TextInputName; ?>_Delete"
-            value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-            class="mv-button-icon"/> Delete</button>
+            <?= $DeleteButton->getHtml(); ?>
         <?PHP } ?>
         <input type="hidden" id="<?= $TextInputName; ?>_InputId"
             name="<?= $TextInputName; ?>_InputId"
@@ -38,6 +83,10 @@ function PrintTextFormEntry($TextInputName, $TextInputValue, $TextInputId, $IsLa
     <?PHP
 }
 
+/**
+ * @param int $Default
+ * @return int
+ */
 function GetCorrectNumFormEntries($Default = 10)
 {
     global $Privileges;
@@ -50,13 +99,48 @@ function GetCorrectNumFormEntries($Default = 10)
     return $Default;
 }
 
-# ----- MAIN -----------------------------------------------------------------
+/**
+ * function to print any error messages at top of the page
+ * @param array|null $ErrorMessages
+ */
+function PrintErrorMessages($ErrorMessages): void
+{
+    # if error messages were passed from PreferencesComplete
+    if (isset($ErrorMessages) && is_array($ErrorMessages) &&
+        count($ErrorMessages) > 0) {
+        # print error messages
+        print("<ul><b>\n");
+        foreach ($ErrorMessages as $Message) {
+            printf("<li>%s</li>\n", $Message);
+        }
+        print("</ul></b>\n");
+    }
+}
 
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ErrorMessages)) {
+    $H_ErrorMessages = [];
+}
+
+$SaveButton = new HtmlButton("Save");
+$SaveButton->setIcon("Disk.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
+$AddPrivilegeButton = new HtmlButton("Add another privilege");
+$AddPrivilegeButton->setIcon("Plus.svg");
+$AddPrivilegeButton->setId("AddField");
+$AddPrivilegeButton->hide();
+$AddPrivilegeButton->setOnclick("window.location='#TableBottom';return false;");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Custom Privilege Names</h1>
 
-<?PHP PrintErrorMessages(); ?>
+<?PHP PrintErrorMessages($H_ErrorMessages); ?>
 
 <p>The <i>Edit Custom Privilege Flags</i></a> page allows system administrators
 to add, update, and remove site-specific privilege flags. Custom privilege flags
@@ -67,7 +151,7 @@ provide new functionality.</p>
 <form method="post" action="index.php?P=EditPrivilegeNamesComplete">
     <table class="table table-striped">
         <thead>
-            <tr class="thead-dark">
+            <tr class="table-dark">
                 <th>Privilege Name</th>
             </tr>
         </thead>
@@ -77,22 +161,11 @@ provide new functionality.</p>
     </table>
     <a id="TableBottom"></a>
 
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon"/> Save</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon"/> Cancel</button>
-    <button class="btn btn-danger mv-button-iconed" type="reset" value="Clear"
-        onclick="window.location.href=unescape(window.location.pathname);"
-    ><img src="<?= $AF->GUIFile('Broom.svg'); ?>" alt="" class="mv-button-icon"/> Clear</button>
-
+    <?= $SaveButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 </form>
 
-<button onclick="window.location='#TableBottom';return false;" id="AddField"
-    class="btn btn-primary mv-button-iconed" style="display: none;"><img
-    src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-    class="mv-button-icon"/> Add another privilege</button>
+<?= $AddPrivilegeButton->getHtml(); ?>
 <script type="text/javascript">
 
 (function(){

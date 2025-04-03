@@ -3,13 +3,12 @@
 #   FILE:  RecordFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -28,8 +27,8 @@ class RecordFactory extends ItemFactory
 
     /**
      * Class constructor.
-     * @param int $SchemaId ID of schema to load resources for.(OPTIONAL,
-     *       defaults to SCHEMAID_DEFAULT)
+     * @param int $SchemaId ID of schema to load resources for.
+     *         (OPTIONAL, defaults to SCHEMAID_DEFAULT)
      */
     public function __construct(int $SchemaId = MetadataSchema::SCHEMAID_DEFAULT)
     {
@@ -37,12 +36,18 @@ class RecordFactory extends ItemFactory
         $this->SchemaId = $SchemaId;
         $this->Schema = new MetadataSchema($this->SchemaId);
 
+        # get the mapped title (if set), and use it to determine the Name col
+        $MappedTitleField = $this->Schema->getFieldByMappedName("Title");
+        $ItemNameColumnName = !is_null($MappedTitleField) ?
+            $MappedTitleField->dBFieldName() :
+            null;
+
         # set up item factory base class
         parent::__construct(
             static::ITEM_CLASS,
             "Records",
             "RecordId",
-            null,
+            $ItemNameColumnName,
             false,
             "SchemaId = ".intval($this->SchemaId)
         );
@@ -230,7 +235,6 @@ class RecordFactory extends ItemFactory
 
             # make resource non-temporary
             $Resource->isTempRecord(false);
-            $Resource->queueSearchAndRecommenderUpdate();
             $NewResourceIds[] = $Resource->id();
         }
 
@@ -243,8 +247,9 @@ class RecordFactory extends ItemFactory
      * @param int|Qualifier $ObjectOrId Qualifier ID or object to clear or change.
      * @param int|Qualifier $NewObjectOrId New Qualifier ID or object.(OPTIONAL,
      *      defaults to NULL, which will clear old qualifier)
+     * @return void
      */
-    public function clearQualifier($ObjectOrId, $NewObjectOrId = null)
+    public function clearQualifier($ObjectOrId, $NewObjectOrId = null): void
     {
         # sanitize qualifier ID or retrieve from object
         $QualifierId = ($ObjectOrId instanceof Qualifier)
@@ -395,13 +400,15 @@ class RecordFactory extends ItemFactory
      * @return array Item IDs.
      */
     public function getItemIds(
-        string $Condition = null,
+        ?string $Condition = null,
         bool $IncludeTempItems = false,
-        string $SortField = null,
+        ?string $SortField = null,
         bool $SortAscending = true
     ): array {
+        $AF = ApplicationFramework::getInstance();
+
         if (!is_null($Condition)) {
-            $GLOBALS["AF"]->logMessage(
+            $AF->logMessage(
                 ApplicationFramework::LOGLVL_WARNING,
                 "Non-null Condition passed to RecordFactory::getItemIds() at "
                 .StdLib::getMyCaller()
@@ -411,7 +418,7 @@ class RecordFactory extends ItemFactory
         }
 
         if (!is_null($SortField)) {
-            $GLOBALS["AF"]->logMessage(
+            $AF->logMessage(
                 ApplicationFramework::LOGLVL_WARNING,
                 "Non-null SortField passed to RecordFactory::getItemIds() at "
                 .StdLib::getMyCaller()
@@ -444,7 +451,7 @@ class RecordFactory extends ItemFactory
     public function getRecordIdsSortedBy(
         $Field,
         bool $Ascending = true,
-        int $Limit = null
+        ?int $Limit = null
     ): array {
         $Field = $this->schema()->getField($Field);
         switch ($Field->type()) {
@@ -646,7 +653,7 @@ class RecordFactory extends ItemFactory
     public function filterOutUnviewableRecords(array $RecordIds, User $User): array
     {
         # compute this user's class
-        $UserClass = $this->computeUserClass($User);
+        $UserClass = $this->Schema->computeUserClass($User);
 
         # load our permissions cache (self::$UserClassPermissionsCache)
         $this->loadUserPermsCache($UserClass, $RecordIds);
@@ -708,10 +715,13 @@ class RecordFactory extends ItemFactory
 
         # if record view permission check has any handlers that may
         #   modify our cached values
-        if ($GLOBALS["AF"]->isHookedEvent("EVENT_RESOURCE_VIEW_PERMISSION_CHECK")) {
+
+        $AF = ApplicationFramework::getInstance();
+
+        if ($AF->isHookedEvent("EVENT_RESOURCE_VIEW_PERMISSION_CHECK")) {
             # apply hooked functions to each value
             foreach (array_keys($Cache) as $Id) {
-                $SignalResult = $GLOBALS["AF"]->signalEvent(
+                $SignalResult = $AF->signalEvent(
                     "EVENT_RESOURCE_VIEW_PERMISSION_CHECK",
                     [
                         "Resource" => $Id,
@@ -791,7 +801,7 @@ class RecordFactory extends ItemFactory
      * call will no longer be valid.
      * @param array $RecordIds Records to check.
      * @param User $User User for whom the check is being performed.
-     * @return bool|string FALSE when the fNVR() result does not expire, a date in
+     * @return false|string FALSE when the fNVR() result does not expire, a date in
      *   SQL format giving the expiration time otherwise.
      */
     public function getViewCacheExpirationDate(array $RecordIds, User $User)
@@ -803,7 +813,7 @@ class RecordFactory extends ItemFactory
 
         $Timestamp = false;
 
-        $UserClass = $this->computeUserClass($User);
+        $UserClass = $this->Schema->computeUserClass($User);
         $QueryBase = "SELECT MIN(ExpirationDate) AS Date FROM UserPermsCache WHERE "
             ." ExpirationDate IS NOT NULL AND "
             ." UserClass='".$UserClass."'"
@@ -836,7 +846,7 @@ class RecordFactory extends ItemFactory
     /**
      * Find Ids of records with values that match those specified.(Only
      * works for Text, Paragraph, Number, Timestamp, Date, Flag, Url,
-     * Point, and User fields.)
+     * Point, User, and Reference fields.)
      * @param array $ValuesToMatch Array with metadata field IDs (or other values
      *       that can be resolved by MetadataSchema::GetCanonicalFieldIdentifier())
      *       for the index.Values to search for can be:
@@ -890,6 +900,7 @@ class RecordFactory extends ItemFactory
      *           strings (all field types)
      *           arrays of strings (all but Point fields)
      *           a User object, a UserId, or an array of either
+     *           a Record object, a RecordId, or an array of either
      *       When an array is provided to search for multiple values only the == and != operators
      *           are supported.
      * @param bool $AllRequired TRUE to AND conditions together, FALSE to OR them
@@ -948,7 +959,7 @@ class RecordFactory extends ItemFactory
             || count($this->recordsWhereUserComparisonsMatterForViewing($User)) == 0) ?
             false : true;
         $UserClass = $PermissionsAreUnique ?
-            "UID_".$User->id() : $this->computeUserClass($User);
+            "UID_".$User->id() : $this->Schema->computeUserClass($User);
 
         $CacheKey = $this->SchemaId.".".$UserClass;
 
@@ -1008,7 +1019,7 @@ class RecordFactory extends ItemFactory
             } else {
                 # otherwise (for background update), queue the update
                 # callback and return -1
-                $GLOBALS["AF"]->QueueUniqueTask(
+                ApplicationFramework::getInstance()->queueUniqueTask(
                     [$this, "updateAssociatedVisibleRecordCount"],
                     [$ValueId, $UserId]
                 );
@@ -1027,11 +1038,12 @@ class RecordFactory extends ItemFactory
      * @param int $ValueId ControlledNameId to update.
      * @param int|null $UserId UserId to update or NULL for the anonymous
      *   user.
+     * @return void
      */
     public function updateAssociatedVisibleRecordCount(
         int $ValueId,
         $UserId
-    ) {
+    ): void {
         $User = ($UserId === null) ?
             User::getAnonymousUser() : new User($UserId);
 
@@ -1042,7 +1054,7 @@ class RecordFactory extends ItemFactory
             || count($this->recordsWhereUserComparisonsMatterForViewing($User)) == 0) ?
             false : true;
         $UserClass = $PermissionsAreUnique ?
-            "UID_".$User->id() : $this->computeUserClass($User);
+            "UID_".$User->id() : $this->Schema->computeUserClass($User);
 
         $this->DB->Query(
             "SELECT RecordId FROM RecordNameInts "
@@ -1097,8 +1109,9 @@ class RecordFactory extends ItemFactory
     /**
      * Clear cache of visible resources associated with a ControlledName.
      * @param array $ValueIds CNIds to clear the cache for.
+     * @return void
      */
-    public function clearVisibleRecordCountForValues(array $ValueIds)
+    public function clearVisibleRecordCountForValues(array $ValueIds): void
     {
         if (count($ValueIds) == 0) {
             throw new Exception("No values provided");
@@ -1116,8 +1129,9 @@ class RecordFactory extends ItemFactory
      * Clear database visibility caches for all the CNames referenced
      * by a specified resource.
      * @param Record $Resource Resource to snag values from.
+     * @return void
      */
-    public function clearVisibleRecordCount($Resource)
+    public function clearVisibleRecordCount($Resource): void
     {
         # get all the CName and Option fields
         $Fields = $this->schema()->getFields(
@@ -1154,8 +1168,9 @@ class RecordFactory extends ItemFactory
     /**
      * Clear internal caches. This is primarily intended for situations where
      * memory may have run low.
+     * @return void
      */
-    public function clearCaches()
+    public function clearCaches(): void
     {
         self::clearStaticCaches();
     }
@@ -1164,14 +1179,14 @@ class RecordFactory extends ItemFactory
 
     /**
      * Clear internal static caches.
+     * @return void
      */
-    public static function clearStaticCaches()
+    public static function clearStaticCaches(): void
     {
         self::$VisibleResourceCountCache = [];
         self::$VisibleResourceCountFieldsLoaded = [];
         self::$UserClassPermissionsCache = [];
         self::$PerUserPermissionsCache = [];
-        self::$UserClassCache = [];
         self::$UserComparisonResourceCache = [];
         self::$UserComparisonFieldCache = [];
         self::$RecordSchemaCache = null;
@@ -1241,8 +1256,10 @@ class RecordFactory extends ItemFactory
      * @param User $User User to use for check
      * @return array of ResourceIds (subset of $ResourceIds) that $User can view
      */
-    public static function multiSchemaFilterNonViewableRecords(array $RecordIds, User $User)
-    {
+    public static function multiSchemaFilterNonViewableRecords(
+        array $RecordIds,
+        User $User
+    ): array {
         $ViewableRecords = [];
 
         $MultiSchemaList = self::buildMultiSchemaRecordList($RecordIds);
@@ -1297,11 +1314,11 @@ class RecordFactory extends ItemFactory
         return false;
     }
 
-
     /**
      * Clear the cache of viewable resources.
+     * @return void
      */
-    public static function clearViewingPermsCache()
+    public static function clearViewingPermsCache(): void
     {
         $DB = new Database();
         $DB->query("DELETE FROM UserPermsCache");
@@ -1320,7 +1337,6 @@ class RecordFactory extends ItemFactory
     private static $VisibleResourceCountFieldsLoaded;
     private static $UserClassPermissionsCache;
     private static $PerUserPermissionsCache;
-    private static $UserClassCache;
     private static $UserComparisonResourceCache;
     private static $UserComparisonFieldCache;
     private static $RecordSchemaCache = null;
@@ -1328,13 +1344,14 @@ class RecordFactory extends ItemFactory
     /**
      * Generate SQL to find resources with values that match those specified.(Only
      * works for Text, Paragraph, Number, Timestamp, Date, Flag, Url,
-     * Point, and User fields.)
+     * Point, User, and Reference fields.)
      * @param array $ValuesToMatch Array with metadata field IDs (or other values
      *       that can be resolved by MetadataSchema::GetCanonicalFieldIdentifier())
-     *       for the index.Values to search for can be:
+     *       for the index. Values to search for can be:
      *           strings (all field types)
      *           arrays of strings (all but Point fields)
      *           a User object, a UserId, or an array of either
+     *           a Record object, a RecordId, or an array of either
      *       When an array is provided to search for multiple values only the == and != operators
      *           are supported.
      * @param bool $AllRequired TRUE to AND conditions together, FALSE to OR them
@@ -1384,8 +1401,10 @@ class RecordFactory extends ItemFactory
                 case MetadataSchema::MDFTYPE_EMAIL:
                     $ValidOps = ["=", "REGEXP"];
                     break;
+
                 case MetadataSchema::MDFTYPE_POINT:
                 case MetadataSchema::MDFTYPE_USER:
+                case MetadataSchema::MDFTYPE_REFERENCE:
                     $ValidOps = ["="];
                     break;
 
@@ -1525,6 +1544,42 @@ class RecordFactory extends ItemFactory
                     }
                     break;
 
+                case MetadataSchema::MDFTYPE_REFERENCE:
+                    # convert to array if needed
+                    if (!is_array($Value)) {
+                        $Value = [ $Value ];
+                    }
+
+                    # build the list of RecordIds to search for
+                    $TgtValues = [];
+
+                    # ensure each provided record is valid
+                    foreach ($Value as $RecordOrId) {
+                        if ($RecordOrId instanceof Record) {
+                            $TgtValues[] = $RecordOrId->id();
+                        } elseif (is_numeric($RecordOrId) && Record::itemExists((int)$RecordOrId)) {
+                            $TgtValues[] = $RecordOrId;
+                        } else {
+                            throw new InvalidArgumentException(
+                                "Invalid record ID provided for Reference field."
+                            );
+                        }
+                    }
+
+                    # if no records were specified
+                    if (!count($TgtValues)) {
+                        # then nothing matches
+                        $Condition .= $LinkingTerm."(FALSE)";
+                    } else {
+                        # add conditional to match specified records
+                        $Condition .= $LinkingTerm."("
+                            ."`".$this->ItemIdColumnName."` IN (SELECT SrcRecordId FROM "
+                            ."ReferenceInts WHERE FieldId=".intval($FieldId)
+                            ." AND DstRecordId IN ("
+                            .implode(",", $TgtValues).")) )";
+                    }
+                    break;
+
                 default:
                     throw new InvalidArgumentException(
                         "Unsupported field type: ".$Fields[$FieldId]->TypeAsName()
@@ -1541,11 +1596,12 @@ class RecordFactory extends ItemFactory
      * Populate the UserClassPermissionsCache for a specified user class.
      * @param string $UserClass User class to use.
      * @param array $RecordIds RecordIds to load.
+     * @return void
      */
     private function loadUserPermsCache(
         string $UserClass,
         array $RecordIds
-    ) {
+    ): void {
         # once per page-load, clear out expired entries in the database cache
         static $StaleEntriesHaveBeenExpired = false;
         if (!$StaleEntriesHaveBeenExpired) {
@@ -1607,8 +1663,9 @@ class RecordFactory extends ItemFactory
      * Persistently store values in the UserPermsCache
      * @param array $Values Values to store where each row is an array in the
      *   form [Id, UserClass, CanView, ExpirationDate]
+     * @return void
      */
-    private function saveUserPermsCacheValues($Values)
+    private function saveUserPermsCacheValues($Values): void
     {
         $QueryBase = "INSERT INTO UserPermsCache "
             ."(RecordId, UserClass, CanView, ExpirationDate) VALUES ";
@@ -1655,54 +1712,6 @@ class RecordFactory extends ItemFactory
                 $QueryBase.implode(",", $QueryValues).$QuerySuffix
             );
         }
-    }
-
-    /**
-     * Compute a UserClass based on the privilege flags
-     * (i.e.PRIV_SYSADMIN, etc) used in the current schema (i.e.,
-     * appearing in conditions within ViewingPrivileges).
-     * @param User $User User to compute a user class for
-     * @return string user class
-     */
-    private function computeUserClass(User $User): string
-    {
-        # put the anonymous user into their own user class, otherwise
-        # use the UserId for a key into the ClassCache
-        $UserId = $User->isAnonymous() ? "XX-ANON-XX" : $User->id();
-
-        $CacheKey = $this->SchemaId.".".$UserId;
-
-        # check if we have a cached UserClass for this User
-        if (!isset(self::$UserClassCache[$CacheKey])) {
-            # assemble a list of the privilege flags (PRIV_SYSADMIN,
-            # etc) that are checked when evaluating the UserCanView for
-            # all fields in this schema
-            $RelevantPerms = [];
-
-            foreach ($this->Schema->getFields() as $Field) {
-                $RelevantPerms = array_merge(
-                    $RelevantPerms,
-                    $Field->ViewingPrivileges()->PrivilegeFlagsChecked()
-                );
-            }
-            $RelevantPerms = array_unique($RelevantPerms);
-
-            # whittle the list of all privs checked down to just the
-            # list of privs that users in this class have
-            $PermsInvolved = [];
-            foreach ($RelevantPerms as $Perm) {
-                if ($User->hasPriv($Perm)) {
-                    $PermsInvolved[] = $Perm;
-                }
-            }
-
-            # generate a string by concatenating all the involved
-            # permissions then hashing the result (hashing gives
-            # a fixed-size string for storing in the database)
-            self::$UserClassCache[$CacheKey] = md5(implode("-", $PermsInvolved));
-        }
-
-        return self::$UserClassCache[$CacheKey];
     }
 
     /**
@@ -1796,9 +1805,10 @@ class RecordFactory extends ItemFactory
      * Log a warning when a 'Resource' function is called instead of a 'Record' function
      * @param string $CalledFn Name of the function called
      * @param string $CallerInfo Information about the call site
+     * @return void
      * @codeCoverageIgnore
      */
-    private function logResourceFunctionWarning(string $CalledFn, string $CallerInfo)
+    private function logResourceFunctionWarning(string $CalledFn, string $CallerInfo): void
     {
         $CorrectFn = str_replace(
             ["Resource", "resource"],
@@ -1806,7 +1816,7 @@ class RecordFactory extends ItemFactory
             $CalledFn
         );
 
-        $GLOBALS["AF"]->logMessage(
+        ApplicationFramework::getInstance()->logMessage(
             ApplicationFramework::LOGLVL_WARNING,
             "Use of RecordFactory::".$CalledFn
             ." (should be ".$CorrectFn.") at "
@@ -1821,6 +1831,7 @@ class RecordFactory extends ItemFactory
      * @param int $ResourceIndex Record number for error messages.
      * @param MetadataField $Field Field ti populate.
      * @param mixed $XmlData XML data produced by the simplexml library.
+     * @return void
      */
     private function importImagesFromXml(
         string $BaseDir,
@@ -1828,7 +1839,7 @@ class RecordFactory extends ItemFactory
         int $ResourceIndex,
         MetadataField $Field,
         $XmlData
-    ) {
+    ): void {
         if (!property_exists($XmlData, "image")) {
             $this->logErrorMessage("<image> tag not found (in the "
                                    .$Field->name()." field in record #"
@@ -1917,6 +1928,7 @@ class RecordFactory extends ItemFactory
      * @param int $ResourceIndex Record number for error messages.
      * @param MetadataField $Field Field ti populate.
      * @param mixed $XmlData XML data produced by the simplexml library.
+     * @return void
      */
     private function importFilesFromXml(
         string $BaseDir,
@@ -1924,7 +1936,7 @@ class RecordFactory extends ItemFactory
         int $ResourceIndex,
         MetadataField $Field,
         $XmlData
-    ) {
+    ): void {
         if (!property_exists($XmlData, "file")) {
             $this->logErrorMessage(
                 "<file> tag not found (in the "

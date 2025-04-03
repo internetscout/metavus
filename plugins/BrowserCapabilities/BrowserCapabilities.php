@@ -3,14 +3,15 @@
 #   FILE:  BrowserCapabilities
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\Plugin;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 /**
  * Plugin to wrap PHP's get_browser() function.
@@ -19,17 +20,18 @@ class BrowserCapabilities extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Browser Capabilities";
         $this->Version = "1.1.0";
         $this->Description = "Provides information about "
              ."the user's browser and its capabilities.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
 
         $this->CfgSetup["EnableDeveloper"] = [
@@ -46,39 +48,6 @@ class BrowserCapabilities extends Plugin
             "Developer Support",
             [ PRIV_SYSADMIN ]
         );
-    }
-
-    /**
-     * Upgrade from a previous version.
-     * @param string $PreviousVersion Previous version
-     * @return string|null error message on error or NULL if no errors occurred
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        # ugprade from versions < 1.0.1 to 1.0.1
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            $OldCachePath = getcwd() . "/tmp/caches/BrowserCapabilities";
-
-            # see if the old cache directory still exists
-            if (file_exists($OldCachePath)) {
-                # remove the old cache directory
-                $Result = RemoveFromFilesystem($OldCachePath);
-
-                # could not remove the old cache directory
-                if (!$Result) {
-                    $Message = "Could not remove the old cache directory (";
-                    $Message .= $OldCachePath . ").";
-
-                    return $Message;
-                }
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.0.2", "<")) {
-            $this->configSetting("EnableDeveloper", false);
-        }
-
-        return null;
     }
 
     /**
@@ -109,7 +78,7 @@ class BrowserCapabilities extends Plugin
     /**
      * Inject a callback into the application framework.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         ApplicationFramework::getInstance()->setBrowserDetectionFunc([
             $this,
@@ -148,7 +117,7 @@ class BrowserCapabilities extends Plugin
      * @param string|null $UserAgent Custom user agent string to use
      * @return string|null String giving browser name, or NULL on failure.
      */
-    public function getBrowserName($UserAgent = null)
+    public function getBrowserName($UserAgent = null): ?string
     {
         $Capabilities = $this->getBrowser($UserAgent);
 
@@ -160,7 +129,7 @@ class BrowserCapabilities extends Plugin
      * @param string|null $UserAgent Custom user agent string to use
      * @return array Capabilities.
      */
-    public function getBrowser($UserAgent = null)
+    public function getBrowser($UserAgent = null): array
     {
         if (strlen((string)ini_get('browscap')) == 0) {
             if (is_null($UserAgent)) {
@@ -186,7 +155,7 @@ class BrowserCapabilities extends Plugin
 
             return ["browser" => $Name];
         } else {
-            return get_browser($UserAgent, true);
+            return (array) get_browser($UserAgent, true);
         }
     }
 
@@ -197,7 +166,7 @@ class BrowserCapabilities extends Plugin
      * @param string $UserAgent UserAgent to use.
      * @return bool TRUE if all constraints are satisfied, FALSE otherwise.
      */
-    public function browserCheck(array $Constraints, $UserAgent = null)
+    public function browserCheck(array $Constraints, $UserAgent = null): bool
     {
         static $CapabilityMap;
 

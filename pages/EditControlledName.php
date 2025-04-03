@@ -3,9 +3,10 @@
 #   FILE:  EditControlledName.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\ControlledName;
 use Metavus\ControlledNameFactory;
@@ -33,7 +34,7 @@ if (isset($_POST["Submit"]) && $_POST["Submit"] == "Cancel" && !isset($_POST["F_
 
 # get the schema ID or use the default one if not specified
 $SchemaId = StdLib::getFormValue("SC", MetadataSchema::SCHEMAID_DEFAULT);
-$F_ControlledName = StdLib::getFormValue("F_ControlledName", "");
+$H_ControlledName = StdLib::getFormValue("F_ControlledName", "");
 
 $Submit = StdLib::getFormValue("Submit", "");
 
@@ -95,9 +96,6 @@ switch ($Submit) {
 
                     $CN->destroy(true);
                 } else {
-                    # assume changeless until proven guilty
-                    $Modified = false;
-
                     # if the user requested a remap
                     if (count($Remap) > 0) {
                         # pull out the Id of the target cname
@@ -106,12 +104,21 @@ switch ($Submit) {
                         # if the id is valid, perform a remapping
                         $CNFact = new ControlledNameFactory($CN->FieldId());
                         if ($CNFact->ItemExists($OtherId)) {
+                            # save resources as affected before remapping,
+                            # because after remapping, resources are moved
+                            # and GetAssociatedResources returns empty
+                            $AffectedResourceIds = array_merge(
+                                $AffectedResourceIds,
+                                $CN->GetAssociatedResources()
+                            );
+
                             # perform the remapping
                             $CN->RemapTo($OtherId);
-
-                            $Modified = true;
                         }
                     } else {
+                        # assume changeless until proven guilty
+                        $Modified = false;
+
                         # handle name changes
                         if ($CN->Name() != $ControlledName) {
                             $Modified = true;
@@ -120,7 +127,7 @@ switch ($Submit) {
 
                         # handle qualifier changes
                         if (!empty($QualifierId)) {
-                            if ($CN->QualifierId != $QualifierId) {
+                            if ($CN->QualifierId() != $QualifierId) {
                                 $Modified = true;
                                 $CN->QualifierId($QualifierId);
                             }
@@ -129,18 +136,22 @@ switch ($Submit) {
                         # handle variant changes
                         if ($CN->VariantName() != $VariantName) {
                             $Modified = true;
-                            $CN->VariantName($VariantName);
+                            # if user submitted empty variant name,
+                            # clear variant name by passing false
+                            $CN->VariantName(
+                                strlen($VariantName) > 0 ? $VariantName : false
+                            );
                         }
-                    }
 
-                    # if this CName was modified, add it to our list of changed names
-                    # and gather its list of ResourceIds.
-                    if ($Modified) {
-                        $H_ModifiedCNames[$CN->Name()] = $CN->VariantName();
-                        $AffectedResourceIds = array_merge(
-                            $AffectedResourceIds,
-                            $CN->GetAssociatedResources()
-                        );
+                        # if this CName was modified, add it to our list of changed names
+                        # and gather its list of ResourceIds.
+                        if ($Modified) {
+                            $H_ModifiedCNames[$CN->Name()] = $CN->VariantName();
+                            $AffectedResourceIds = array_merge(
+                                $AffectedResourceIds,
+                                $CN->GetAssociatedResources()
+                            );
+                        }
                     }
                 }
             }
@@ -188,7 +199,7 @@ if (preg_match("/^Search (.*)/", $Submit, $Matches)) {
 
     # if the F_ControlledName is empty (because the user just pushed
     # "search"), then return all CNames in the given field
-    $SearchString = strlen($F_ControlledName) ? $F_ControlledName : "*";
+    $SearchString = strlen($H_ControlledName) ? $H_ControlledName : "*";
     $H_MatchingControlledNames = $CNFact->ControlledNameSearch($SearchString);
     $H_NumResults = count($H_MatchingControlledNames);
     $H_SearchEntered = true;

@@ -97,19 +97,11 @@ class Graph
     }
 
     /**
-     * Determine if graph creation succeeded.
-     * @return int Graph::OK on success, other on failure.
-     */
-    public function status(): int
-    {
-        return $this->Status;
-    }
-
-    /**
      * Set X axis label.
      * @param string $Label X axis label value.
+     * @return void
      */
-    public function xLabel(string $Label)
+    public function xLabel(string $Label): void
     {
         $this->XLabel = $Label;
     }
@@ -117,8 +109,9 @@ class Graph
     /**
      * Set Y axis label.
      * @param string $Label Y axis label value.
+     * @return void
      */
-    public function yLabel(string $Label)
+    public function yLabel(string $Label): void
     {
         $this->YLabel = $Label;
     }
@@ -126,8 +119,9 @@ class Graph
     /**
      * Set label font size.
      * @param int $Size Font size in points.
+     * @return void
      */
-    public function labelFontSize(int $Size)
+    public function labelFontSize(int $Size): void
     {
         $this->LabelFontSize = $Size;
     }
@@ -135,8 +129,9 @@ class Graph
     /**
      * Set top margin.
      * @param int $Margin Top margin in pixels.
+     * @return void
      */
-    public function topMargin(int $Margin)
+    public function topMargin(int $Margin): void
     {
         $this->TopMargin = $Margin;
     }
@@ -144,8 +139,9 @@ class Graph
     /**
      * Set right side margin.
      * @param int $Margin Right margin in pixels.
+     * @return void
      */
-    public function rightMargin(int $Margin)
+    public function rightMargin(int $Margin): void
     {
         $this->RightMargin = $Margin;
     }
@@ -153,8 +149,9 @@ class Graph
     /**
      * Set bottom margin.
      * @param int $Margin New bottom margin in pixels.
+     * @return void
      */
-    public function bottomMargin(int $Margin)
+    public function bottomMargin(int $Margin): void
     {
         $this->BottomMargin = $Margin;
     }
@@ -162,8 +159,9 @@ class Graph
     /**
      * Set left margin.
      * @param int $Margin New left margin in pixels.
+     * @return void
      */
-    public function leftMargin(int $Margin)
+    public function leftMargin(int $Margin): void
     {
         $this->LeftMargin = $Margin;
     }
@@ -171,8 +169,9 @@ class Graph
     /**
      * Set graph width.
      * @param int $Width Width in pixels.
+     * @return void
      */
-    public function width(int $Width)
+    public function width(int $Width): void
     {
         $this->Width = $Width;
     }
@@ -180,8 +179,9 @@ class Graph
     /**
      * Set graph height.
      * @param int $Height Height in pixels.
+     * @return void
      */
-    public function height(int $Height)
+    public function height(int $Height): void
     {
         $this->Height = $Height;
     }
@@ -190,8 +190,9 @@ class Graph
      * Set graph legend.
      * @param array $Legend Updated legend text as an array of strings, with
      *   each element giving the name of one data set.
+     * @return void
      */
-    public function legend(array $Legend)
+    public function legend(array $Legend): void
     {
         $this->Legend = $Legend;
     }
@@ -199,8 +200,9 @@ class Graph
     /**
      * Determine default granularity for bar charts.
      * @param int $Scale Scale one of Graph::DAILY, Graph::WEEKLY, or Graph::MONTHLY
+     * @return void
      */
-    public function scale(int $Scale)
+    public function scale(int $Scale): void
     {
         $this->Scale = $Scale;
     }
@@ -209,16 +211,18 @@ class Graph
      * Set graph title.
      * @param string $Title HTML fragment giving the title
      *       element (e.g., <h3>Shiny graph</h3).
+     * @return void
      */
-    public function title(string $Title)
+    public function title(string $Title): void
     {
         $this->Title = $Title;
     }
 
     /**
      * Generate HTML/CSS/Javascript to display a graph.
+     * @return void
      */
-    public function display()
+    public function display(): void
     {
         if ($this->Status == self::NO_DATA) {
             print $this->Title;
@@ -438,8 +442,9 @@ class Graph
      * @param array $Value Array of new values.
      * If no entry exists in $Array for $Key, create one.  If an entry does exist,
      * perform element-wise addition to update that entry.
+     * @return void
      */
-    private function addToArray(&$Array, int $Key, array $Value)
+    private function addToArray(&$Array, int $Key, array $Value): void
     {
         if (!isset($Array[$Key])) {
             $Array[$Key] = $Value;

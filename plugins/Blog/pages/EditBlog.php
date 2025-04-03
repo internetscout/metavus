@@ -8,13 +8,15 @@
 #
 
 use Metavus\FormUI;
+use Metavus\Plugins\Blog;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 CheckAuthorization(PRIV_SYSADMIN);
 
-$BlogPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+# instantiate blog plugin
+$BlogPlugin = Blog::getInstance();
 $AF = ApplicationFramework::getInstance();
 
 $H_BlogId = StdLib::getFormValue("BI", StdLib::getFormValue("F_BlogId"));

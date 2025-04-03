@@ -26,10 +26,29 @@
                 <Field>Resource Type</Field>
                 <Value>Collection</Value>
             </Parameter>
-            <Parameter>
-                <Field>Classification</Field>
-                <Value>book</Value>
-            </Parameter>
+            <Set>
+                <Parameter>
+                    <Field>Classification</Field>
+                    <Value>^Best books</Value>
+                </Parameter>
+                <Parameter>
+                    <Field>Classification</Field>
+                    <Value>^Books and reading</Value>
+                </Parameter>
+                <Parameter>
+                    <Field>Classification</Field>
+                    <Value>^Electronic books</Value>
+                </Parameter>
+                <Parameter>
+                    <Field>Classification</Field>
+                    <Value>^Illumination of books and manuscripts, Medieval</Value>
+                </Parameter>
+                <Parameter>
+                    <Field>Classification</Field>
+                    <Value>^Prohibited books</Value>
+                </Parameter>
+                <Logic>OR</Logic>
+            </Set>
             <Logic>AND</Logic>
         </SelectionCriteria>
     </Resource>

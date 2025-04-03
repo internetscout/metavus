@@ -3,12 +3,16 @@
 #   FILE:  DeleteRule.php (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\Plugins\Rules\Rule;
 use Metavus\Plugins\Rules\RuleFactory;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
 
 # if rule was not specified
 $PFactory = new RuleFactory();
@@ -31,7 +35,7 @@ if (!isset($_GET["ID"])) {
         # if delete was confirmed
         if (isset($_POST["Submit"]) && ($_POST["Submit"] == "Delete")) {
             # hook function to delete rule after HTML is displayed
-            $GLOBALS["AF"]->AddPostProcessingCall(function ($Id) {
+            $AF->AddPostProcessingCall(function ($Id) {
                         $Rule = new Rule($Id);
                         $Rule->destroy();
             }, $_GET["ID"]);
@@ -41,7 +45,7 @@ if (!isset($_GET["ID"])) {
         } elseif (isset($_POST["Submit"]) && ($_POST["Submit"] == "Cancel")) {
             # else if delete was cancelled
             # return to rule list
-            $GLOBALS["AF"]->SetJumpToPage("P_Rules_ListRules");
+            $AF->SetJumpToPage("P_Rules_ListRules");
         }
     } else {
         # else assume that confirmation is needed

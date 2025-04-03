@@ -10,6 +10,8 @@
 
 namespace Metavus\Plugins\Folders;
 
+use Metavus\RecordFactory;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 /**
@@ -22,7 +24,7 @@ class Folder extends \Metavus\Folder
      * support for them is available.
      * @return string URL for viewing folder.
      */
-    public function getSharingUrl()
+    public function getSharingUrl() : string
     {
         $AF = ApplicationFramework::getInstance();
 

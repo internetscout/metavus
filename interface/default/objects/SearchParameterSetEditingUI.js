@@ -2,7 +2,7 @@
  * FILE:  SearchParameterSetEditingUI.js
  *
  * Part of the Metavus digital collections platform
- * Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+ * Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
  * http://metavus.net
  *
  * Javascript routines for the SearchParameterSetEditingUI.
@@ -177,7 +177,7 @@
     /**
      * Handle form submissions.
      */
-    function handleFormSubmission() {
+    function handleFormSubmission(Event) {
         // remove the template rows before submission
         $(".mv-speui-template-row").remove();
 
@@ -191,6 +191,19 @@
                 ValueElement = $("input.mv-quicksearch-value", $(element).next());
             ValueElement.val(Operator + ValueElement.val());
         });
+
+        // prevent submission if an invalid value is selected
+        var hasInvalid = false;
+        $(".mv-speui-field-value-select :selected").each(function() {
+            if ($(this).val().includes("INVALID")) {
+                hasInvalid = true;
+            }
+        });
+
+        if (hasInvalid) {
+            alert("An invalid value is selected for the Search Parameters. Please select a different value.");
+            Event.preventDefault();
+        }
     }
 
     // do UI setup

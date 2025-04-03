@@ -6,16 +6,13 @@
 #   Copyright 2003-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\Qualifier;
 use Metavus\QualifierFactory;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -37,8 +34,13 @@ $FormFields = [
         "Placeholder" => "",
         "Required" => true,
         "ValidateFunction" => function ($FieldName, $FieldValue) {
-                return ((new QualifierFactory())->NameIsInUse($FieldValue))
-                            ? "Field name already in use." : null;
+                # pass true to nameIsInUse so a case-insensitive string
+                # comparison is used to check if the new qualifier's name
+                # is already in use
+                return (
+                    (new QualifierFactory())->nameIsInUse($FieldValue, true)
+                )
+                            ? "Qualifier name already in use." : null;
         }
     ],
     "Namespace" => [
@@ -119,7 +121,10 @@ switch ($ButtonPushed) {
                 FormUI::LogError("Name cannot be empty.");
                 $Valid = false;
             }
-            if ($QualifierFactory->NameIsInUse(trim($NewName)) && $NewName != $Qualifier->Name()) {
+            # pass true to nameIsInUse so a case-insensitive string comparison
+            # is used to check if the new qualifier's name is already in usee
+            if ($QualifierFactory->nameIsInUse(trim($NewName), true)
+                    && $NewName != $Qualifier->Name()) {
                 FormUI::LogError($NewName." is already in use.");
                 $Valid = false;
             }

@@ -3,7 +3,7 @@
 #   FILE:  ObserverSupportTrait.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -34,7 +34,7 @@ trait ObserverSupportTrait
     public static function registerObserver(
         int $Events,
         callable $ObserverFunc,
-        int $ItemId = null
+        ?int $ItemId = null
     ): void {
         static::$Observers[] = [
             "Events" => $Events,
@@ -57,7 +57,7 @@ trait ObserverSupportTrait
     protected function notifyObserversWithArgs(
         int $Event,
         array $Args,
-        int $ItemId = null
+        ?int $ItemId = null
     ): void {
         foreach (self::$Observers as $Observer) {
             if ($Event & $Observer["Events"]) {

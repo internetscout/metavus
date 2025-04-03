@@ -6,11 +6,14 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\Record;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
+$AF = ApplicationFramework::getInstance();
 $ResourceId = (isset($_GET["F_ResourceId"])) ? intval($_GET["F_ResourceId"]) : null;
 $Rating = (isset($_GET["F_Rating"])) ? intval($_GET["F_Rating"]) : null;
 

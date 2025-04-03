@@ -3,7 +3,7 @@
 #   FILE:  MetadataSchema.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -103,7 +103,8 @@ class MetadataSchema extends ItemFactory
             "FieldId",
             "FieldName",
             false,
-            "SchemaId = ".intval($SchemaId)
+            "SchemaId = ".intval($SchemaId),
+            "Metavus\\MetadataField::getField"
         );
 
         # make sure specified schema ID is valid
@@ -143,16 +144,17 @@ class MetadataSchema extends ItemFactory
      *       when there may be multiple constants with the same value.(OPTIONAL)
      * @return string|null Constant name or NULL if no matching value found.
      */
-    public static function getConstantName($Value, string $Prefix = null)
+    public static function getConstantName($Value, ?string $Prefix = null)
     {
         # retrieve all constants for class
-        $Reflect = new ReflectionClass(get_class());
+        $Reflect = new ReflectionClass(get_called_class());
         $Constants = $Reflect->getConstants();
 
         # for each constant
         foreach ($Constants as $CName => $CValue) {
             # if value matches and prefix (if supplied) matches
-            if (($CValue == $Value) && (($Prefix === null) || (strpos($CName, $Prefix) === 0))) {
+            if (($CValue == $Value)
+                    && (($Prefix === null) || (strpos($CName, $Prefix) === 0))) {
                 # return name to caller
                 return $CName;
             }
@@ -181,11 +183,11 @@ class MetadataSchema extends ItemFactory
      */
     public static function create(
         string $Name,
-        PrivilegeSet $AuthorPrivs = null,
-        PrivilegeSet $EditPrivs = null,
-        PrivilegeSet $ViewPrivs = null,
+        ?PrivilegeSet $AuthorPrivs = null,
+        ?PrivilegeSet $EditPrivs = null,
+        ?PrivilegeSet $ViewPrivs = null,
         string $ViewPage = "",
-        string $ResourceName = null
+        ?string $ResourceName = null
     ): MetadataSchema {
 
         # supply privilege settings if none provided
@@ -248,8 +250,9 @@ class MetadataSchema extends ItemFactory
     /**
      * Destroy metadata schema.Schema may no longer be used after this
      * method is called.
+     * @return void
      */
-    public function delete()
+    public function delete(): void
     {
         # delete resources associated with schema
         $RFactory = new RecordFactory($this->Id);
@@ -319,7 +322,7 @@ class MetadataSchema extends ItemFactory
      * @param string $NewValue New name for schema.(OPTIONAL)
      * @return string Current schema name.
      */
-    public function name(string $NewValue = null): string
+    public function name(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::clearStaticCaches();
@@ -334,7 +337,7 @@ class MetadataSchema extends ItemFactory
      * @param string $NewValue New abbreviated name for schema.(OPTIONAL)
      * @return string Current schema abbreviated name.
      */
-    public function abbreviatedName(string $NewValue = null): string
+    public function abbreviatedName(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::clearStaticCaches();
@@ -351,7 +354,7 @@ class MetadataSchema extends ItemFactory
      * @param string $NewValue New resource name for schema.(OPTIONAL)
      * @return string Returns the current resource name.
      */
-    public function resourceName(string $NewValue = null): string
+    public function resourceName(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             self::clearStaticCaches();
@@ -414,29 +417,41 @@ class MetadataSchema extends ItemFactory
     }
 
     /**
-     * Get/set name of page to go to for viewing resources using this schema.
-     * @param string $NewValue New name for schema. (OPTIONAL)
-     * @return string Current schema name.
-     */
-    public function viewPage(string $NewValue = null): string
+    * Get the URL of the page for viewing resources that belong to this schema.
+    * @return string The URL of the view page.
+    */
+    public function getViewPage(): string
     {
-        if ($NewValue !== null) {
-            self::clearStaticCaches();
-        }
-        return $this->DB->updateValue("ViewPage", $NewValue);
+        return $this->DB->updateValue("ViewPage");
     }
 
     /**
-     * Get/set name of page to go to for editing resources using this schema.
-     * @param string $NewValue New resource editing page for schema. (OPTIONAL)
-     * @return string Current schema resource editing page.
+     * Set the URL of the page for viewing resources that belong to this schema.
+     * @param string $NewValue The new URL to set for the view page.
      */
-    public function editPage(string $NewValue = null): string
+    public function setViewPage(string $NewValue): void
     {
-        if ($NewValue !== null) {
-            self::clearStaticCaches();
-        }
-        return $this->DB->updateValue("EditPage", $NewValue);
+        self::clearStaticCaches();
+        $this->DB->updateValue("ViewPage", $NewValue);
+    }
+
+    /**
+    * Get the URL of the page for editing resources that belong to this schema.
+    * @return string The URL of the edit page.
+    */
+    public function getEditPage(): string
+    {
+        return $this->DB->updateValue("EditPage");
+    }
+
+    /**
+     * Set the URL of the page for editing resources that belong to this schema.
+     * @param string $NewValue The new URL to set for the edit page.
+     */
+    public function setEditPage(string $NewValue): void
+    {
+        self::clearStaticCaches();
+        $this->DB->updateValue("EditPage", $NewValue);
     }
 
     /**
@@ -454,7 +469,7 @@ class MetadataSchema extends ItemFactory
      * @param PrivilegeSet $NewValue New PrivilegeSet value.(OPTIONAL)
      * @return PrivilegeSet PrivilegeSet that allows authoring.
      */
-    public function authoringPrivileges(PrivilegeSet $NewValue = null): PrivilegeSet
+    public function authoringPrivileges(?PrivilegeSet $NewValue = null): PrivilegeSet
     {
         # if new privileges supplied
         if ($NewValue !== null) {
@@ -473,7 +488,7 @@ class MetadataSchema extends ItemFactory
      * @param PrivilegeSet $NewValue New PrivilegeSet value.(OPTIONAL)
      * @return PrivilegeSet PrivilegeSet that allows editing.
      */
-    public function editingPrivileges(PrivilegeSet $NewValue = null): PrivilegeSet
+    public function editingPrivileges(?PrivilegeSet $NewValue = null): PrivilegeSet
     {
         # if new privileges supplied
         if ($NewValue !== null) {
@@ -492,7 +507,7 @@ class MetadataSchema extends ItemFactory
      * @param PrivilegeSet $NewValue New PrivilegeSet value.(OPTIONAL)
      * @return PrivilegeSet Privilege set object that allows viewing.
      */
-    public function viewingPrivileges(PrivilegeSet $NewValue = null): PrivilegeSet
+    public function viewingPrivileges(?PrivilegeSet $NewValue = null): PrivilegeSet
     {
         # if new privileges supplied
         if ($NewValue !== null) {
@@ -600,6 +615,54 @@ class MetadataSchema extends ItemFactory
     }
 
     /**
+     * Compute a user class (opaque string) based on the privileges of the
+     * specified user and which privilege flags are required by the schema for
+     * viewing records.
+     * @param User $User User to compute a user class for
+     * @return string user class
+     */
+    public function computeUserClass(User $User): string
+    {
+        # put the anonymous user into their own user class, otherwise
+        # use the UserId for a key into the ClassCache
+        $UserId = $User->isAnonymous() ? "XX-ANON-XX" : $User->id();
+
+        $CacheKey = $this->Id.".".$UserId;
+
+        # check if we have a cached UserClass for this User
+        if (!isset(self::$UserClassCache[$CacheKey])) {
+            # assemble a list of the privilege flags (PRIV_SYSADMIN,
+            # etc) that are checked when evaluating the UserCanView for
+            # all fields in this schema
+            $RelevantPerms = [];
+
+            foreach ($this->getFields() as $Field) {
+                $RelevantPerms = array_merge(
+                    $RelevantPerms,
+                    $Field->ViewingPrivileges()->PrivilegeFlagsChecked()
+                );
+            }
+            $RelevantPerms = array_unique($RelevantPerms);
+
+            # whittle the list of all privs checked down to just the
+            # list of privs that users in this class have
+            $PermsInvolved = [];
+            foreach ($RelevantPerms as $Perm) {
+                if ($User->hasPriv($Perm)) {
+                    $PermsInvolved[] = $Perm;
+                }
+            }
+
+            # generate a string by concatenating all the involved
+            # permissions then hashing the result (hashing gives
+            # a fixed-size string for storing in the database)
+            self::$UserClassCache[$CacheKey] = md5(implode("-", $PermsInvolved));
+        }
+
+        return self::$UserClassCache[$CacheKey];
+    }
+
+    /**
      * Get the resource ID GET parameter for the view page for the schema.
      * @return string|null Returns the resource ID GET parameter for the view page
      *       for the schema or NULL if GET parameter could not be parsed.
@@ -607,7 +670,7 @@ class MetadataSchema extends ItemFactory
     public function getViewPageIdParameter()
     {
         # get the query/GET parameters for the view page
-        $Query = parse_url($this->viewPage(), PHP_URL_QUERY);
+        $Query = parse_url($this->getViewPage(), PHP_URL_QUERY);
 
         # the URL couldn't be parsed
         if (!is_string($Query)) {
@@ -638,7 +701,7 @@ class MetadataSchema extends ItemFactory
     public function pathMatchesViewPage(string $Path): bool
     {
         # get the query/GET parameters for the view page
-        $Query = parse_url($this->viewPage(), PHP_URL_QUERY);
+        $Query = parse_url($this->getViewPage(), PHP_URL_QUERY);
 
         # can't perform matching if the URL couldn't be parsed
         if (!is_string($Query)) {
@@ -752,12 +815,6 @@ class MetadataSchema extends ItemFactory
             return false;
         }
 
-        # list of methods that require an array for their argument
-        $MethodsThatNeedArrays = [
-            "userPrivilegeRestrictions",
-            "UserPrivilegeRestrictions",
-        ];
-
         # load XML from file
         libxml_use_internal_errors(true);
         $XmlData = simplexml_load_file($FileName);
@@ -846,8 +903,17 @@ class MetadataSchema extends ItemFactory
                                     # condense down any extraneous whitespace
                                     $Value = preg_replace("/\s+/", " ", trim($Value));
 
+                                    // @phpstan-ignore-next-line
+                                    $ArgType = StdLib::getArgumentType([$Field, $MethodName], 0);
+
+                                    # convert string "FALSE" to boolean
+                                    if ($ArgType == "bool"
+                                            && strtoupper($Value) === "FALSE") {
+                                            $Value = false;
+                                    }
+
                                     # convert to array if needed
-                                    if (in_array($MethodName, $MethodsThatNeedArrays)) {
+                                    if ($ArgType == "array") {
                                         $Value = [ $Value ];
                                     }
 
@@ -904,7 +970,7 @@ class MetadataSchema extends ItemFactory
                 # for each field with privileges
                 foreach ($PrivilegesToSet as $FieldId => $Privileges) {
                     # load the field for which to set the privileges
-                    $Field = new MetadataField($FieldId);
+                    $Field = MetadataField::getField($FieldId);
 
                     # for each set of privileges for field
                     foreach ($Privileges as $MethodName => $Value) {
@@ -1139,7 +1205,7 @@ class MetadataSchema extends ItemFactory
 
         # if field is not already loaded
         if (!isset(self::$FieldCache[$FieldId])) {
-            self::$FieldCache[$FieldId] = new MetadataField($FieldId);
+            self::$FieldCache[$FieldId] = MetadataField::getField($FieldId);
         }
 
         # error out if field was from a different schema
@@ -1167,7 +1233,7 @@ class MetadataSchema extends ItemFactory
     }
 
     /**
-     * Check whether field with specified name exists.
+     * Check whether field with specified name or ID exists.
      * @param string|int $Field Name or ID of field.
      * @return boolean TRUE if field with specified name exists, otherwise FALSE.
      */
@@ -1176,6 +1242,73 @@ class MetadataSchema extends ItemFactory
         return is_numeric($Field)
                 ? $this->itemExists((int)$Field)
                 : $this->nameIsInUse($Field);
+    }
+
+    /**
+     * Check whether a field exists that has a name that would be normalized to
+     * the same database column name as the name specified in the parameter.
+     * @param string $FieldName Field name to check that when normalized for use
+     *         as a database column does not collide with the name of any other
+     *         field normalized to a database column.
+     * @param bool $IgnoreCase Inherited from parent class ItemFactory, must
+     *         be TRUE or an Exception will be thrown. $IgnoreCase must be TRUE,
+     *         so case-insensitive string comparison is used, to prevent a
+     *         field from being created whose name differs only by
+     *         capitalization from that of an existing field.
+     * @return bool TRUE if there is a field whose database column name is
+     *         the same as the column name that would be assigned to the new
+     *         field, otherwise return FALSE.
+     * @throws InvalidArgumentException If IgnoreCase parameter is false.
+     */
+    public function nameIsInUse($FieldName, $IgnoreCase = true): bool
+    {
+        if ($IgnoreCase === false) {
+            throw new InvalidArgumentException("IgnoreCase must be TRUE.");
+        }
+
+        # get the database column name for the named field
+        $NormalizedFieldName = MetadataField::normalizeFieldNameForDB(
+            $FieldName,
+            $this->Id
+        );
+
+        # the ID of the field with the same column name will be NULL
+        # if none is found
+        if (is_null($this->getFieldIdByDbName($NormalizedFieldName))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get the ID of the field in this schema, if any, whose database column
+     * name case-insensitively matches the database column name specified
+     * in the parameter.
+     * @param string $DbFieldName database column name with the database column
+     *         names for each field in the schema.
+     * @return int|NULL ID of field in this schema with a database column name
+     *         that case-insensitively matches the database column name that
+     *         is given in the parameter. Return NULL if no such field exists.
+     */
+    public function getFieldIdByDbName(string $DbFieldName): ?int
+    {
+        # true is passed to getFieldNames so that disabled fields are not
+        # ignored
+        $Fields = $this->getFields(null, null, true);
+
+        # column name comparison is case-insensitive
+        $DbFieldName = strtolower($DbFieldName);
+
+        # check for potential column name collisions
+        foreach ($Fields as $Field) {
+            $FieldName = strtolower($Field->dBFieldName());
+
+            if ($DbFieldName == $FieldName) {
+                return $Field->id();
+            }
+        }
+        return null;
     }
 
     /**
@@ -1214,7 +1347,7 @@ class MetadataSchema extends ItemFactory
      */
     public function getFields(
         $FieldTypes = null,
-        int $OrderType = null,
+        ?int $OrderType = null,
         bool $IncludeDisabledFields = false,
         bool $IncludeTempFields = false
     ): array {
@@ -1298,8 +1431,8 @@ class MetadataSchema extends ItemFactory
      *
      */
     public function getFieldNames(
-        int $FieldTypes = null,
-        int $OrderType = null,
+        ?int $FieldTypes = null,
+        ?int $OrderType = null,
         bool $IncludeDisabledFields = false,
         bool $IncludeTempFields = false
     ): array {
@@ -1339,10 +1472,10 @@ class MetadataSchema extends ItemFactory
      */
     public function getFieldsAsOptionList(
         string $OptionListName,
-        int $FieldTypes = null,
+        ?int $FieldTypes = null,
         $SelectedFieldId = null,
         bool $IncludeNullOption = true,
-        array $AddEntries = null,
+        ?array $AddEntries = null,
         bool $AllowMultiple = false,
         bool $Disabled = false
     ): string {
@@ -1380,10 +1513,10 @@ class MetadataSchema extends ItemFactory
      */
     public function getFieldsAsOptionListObject(
         string $OptionListName,
-        int $FieldTypes = null,
+        ?int $FieldTypes = null,
         $SelectedFieldId = null,
         bool $IncludeNullOption = true,
-        array $AddEntries = null,
+        ?array $AddEntries = null,
         bool $AllowMultiple = false,
         bool $Disabled = false
     ): HtmlOptionList {
@@ -1462,8 +1595,9 @@ class MetadataSchema extends ItemFactory
     /**
      * Remove all metadata field associations for a given qualifier.
      * @param int|Qualifier $QualifierIdOrObject Qualifier object or ID.
+     * @return void
      */
-    public function removeQualifierAssociations($QualifierIdOrObject)
+    public function removeQualifierAssociations($QualifierIdOrObject): void
     {
         # sanitize qualifier ID or grab it from object
         $QualifierIdOrObject = is_object($QualifierIdOrObject)
@@ -1676,7 +1810,7 @@ class MetadataSchema extends ItemFactory
      * @throws InvalidArgumentException If field argument supplied could
      *       not be interpreted.
      */
-    public static function getCanonicalFieldIdentifier($Field, int $SchemaId = null): int
+    public static function getCanonicalFieldIdentifier($Field, ?int $SchemaId = null): int
     {
         # check to make sure any specified schema is valid
         self::loadFieldInfoCaches();
@@ -1779,8 +1913,8 @@ class MetadataSchema extends ItemFactory
     }
 
     /**
-     * Retrieve printable representation for field value.Handling of the
-     * $Field argument is the same as GetCanonicalFieldIdentifier().This
+     * Retrieve printable representation for field value. Handling of the
+     * $Field argument is the same as GetCanonicalFieldIdentifier(). This
      * method should only be used in situations where a static method is
      * needed and there are no concerns about field information changing
      * during invocation.
@@ -1801,7 +1935,7 @@ class MetadataSchema extends ItemFactory
             $FieldType = self::$FieldInfoCache[$FieldId]["Type"];
             switch ($FieldType) {
                 case self::MDFTYPE_FLAG:
-                    $Field = new MetadataField($FieldId);
+                    $Field = MetadataField::getField($FieldId);
                     $PrintableValue = $Value
                             ? $Field->flagOnLabel()
                             : $Field->flagOffLabel();
@@ -1819,7 +1953,7 @@ class MetadataSchema extends ItemFactory
                         $PrintableValue = (new ControlledName($Value))->name();
                     # else use message indicating unknown term
                     } else {
-                        $PrintableValue = "(unknown controlled name)";
+                        $PrintableValue = "(unknown controlled name ID: ".$Value.")";
                     }
                     break;
 
@@ -1834,7 +1968,21 @@ class MetadataSchema extends ItemFactory
                         $PrintableValue = (new Classification($Value))->name();
                     # else use message indicating unknown term
                     } else {
-                        $PrintableValue = "(unknown classification)";
+                        $PrintableValue = "(unknown classification ID: ".$Value.")";
+                    }
+                    break;
+
+                case self::MDFTYPE_USER:
+                    if (strval(intval($Value)) !== $Value) {
+                        # use literal value
+                        $PrintableValue = $Value;
+                    # else if ID appears to be for valid user
+                    } elseif (User::itemExists((int)$Value)) {
+                        # use user corresponding to ID
+                        $PrintableValue = (new User($Value))->name();
+                    # else use message indicating unknown user
+                    } else {
+                        $PrintableValue = "(unknown user ID: ".$Value.")";
                     }
                     break;
 
@@ -1877,7 +2025,7 @@ class MetadataSchema extends ItemFactory
 
         # try to grab the specified field
         try {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
         } catch (Exception $e) {
             # field no longer exists, so there are no values to translate
             return $ReturnValues;
@@ -1928,7 +2076,7 @@ class MetadataSchema extends ItemFactory
 
     /**
      * Get IDs for all existing metadata schemas.
-     * @return array Returns an array of schema IDs.
+     * @return array(int) Returns an array of schema IDs.
      */
     public static function getAllSchemaIds(): array
     {
@@ -2023,8 +2171,9 @@ class MetadataSchema extends ItemFactory
      * Allow external dependencies, i.e., the current list of owners that are
      * available, to be injected.
      * @param callable $Callback Retrieval callback.
+     * @return void
      */
-    public static function setOwnerListRetrievalFunction(callable $Callback)
+    public static function setOwnerListRetrievalFunction(callable $Callback): void
     {
         if (is_callable($Callback)) {
             self::$OwnerListRetrievalFunction = $Callback;
@@ -2035,8 +2184,9 @@ class MetadataSchema extends ItemFactory
      * Disable owned fields that have an owner that is unavailable and
      * re-enable fields if an owner has returned and the field was flagged to
      * be re-enabled.
+     * @return void
      */
-    public static function normalizeOwnedFields()
+    public static function normalizeOwnedFields(): void
     {
         # if an owner list retrieval function and default schema exists
         if (self::$OwnerListRetrievalFunction &&
@@ -2091,8 +2241,9 @@ class MetadataSchema extends ItemFactory
     /**
      * Update the field comparison ordering cache that is used for sorting
      * fields.
+     * @return void
      */
-    protected function updateFieldCompareOrders()
+    protected function updateFieldCompareOrders(): void
     {
         $Index = 0;
 
@@ -2163,24 +2314,27 @@ class MetadataSchema extends ItemFactory
 
     /**
      * Clear internal caches.
+     * @return void
      */
-    public static function clearStaticCaches()
+    public static function clearStaticCaches(): void
     {
         self::$FieldCache = null;
-        self::$FieldMappings = null;
         self::$FieldInfoCache = null;
-        self::$SchemaInfoCache = null;
-        self::$SchemaNamesCache = null;
+        self::$FieldMappings = null;
         self::$FieldNameCache = [];
         self::$FieldsBySchema = [];
         self::$GetFieldsCache = [];
+        self::$SchemaInfoCache = null;
+        self::$SchemaNamesCache = null;
+        self::$UserClassCache = [];
     }
 
     /**
      * Export schema to XML file.
      * @param string $FileName Full name of file to which to write XML.
+     * @return void
      */
-    public function exportToXmlFile(string $FileName)
+    public function exportToXmlFile(string $FileName): void
     {
         # set up XML writer
         $XOut = new XMLWriter();
@@ -2198,8 +2352,13 @@ class MetadataSchema extends ItemFactory
         # end XML document
         $XOut->endDocument();
 
+        $XmlData = $XOut->flush();
+        if (is_int($XmlData)) {
+            throw new Exception("XOut->flush() returned int (should be impossible).");
+        }
+
         # format XML nicely
-        $NiceXml = StdLib::formatXmlDocumentNicely($XOut->flush());
+        $NiceXml = StdLib::formatXmlDocumentNicely($XmlData);
         if ($NiceXml === false) {
             throw new Exception("Unable to format generated XML.");
         }
@@ -2260,7 +2419,12 @@ class MetadataSchema extends ItemFactory
         }
 
         # return generated XML to caller
-        return $XOut->flush();
+        $XmlData = $XOut->flush();
+        if (is_int($XmlData)) {
+            throw new Exception("XOut->flush() returned int (should be impossible).");
+        }
+
+        return $XmlData;
     }
 
 
@@ -2278,13 +2442,14 @@ class MetadataSchema extends ItemFactory
     private $ViewPage;
 
     private static $FieldCache = null;
-    private static $FieldMappings = null;
     private static $FieldInfoCache = null;
+    private static $FieldMappings = null;
     private static $FieldNameCache = [];
     private static $FieldsBySchema = [];
+    private static $GetFieldsCache = [];
     private static $SchemaInfoCache = null;
     private static $SchemaNamesCache = null;
-    private static $GetFieldsCache = [];
+    private static $UserClassCache = [];
 
     protected static $OwnerListRetrievalFunction;
 
@@ -2300,8 +2465,9 @@ class MetadataSchema extends ItemFactory
 
     /**
      * Ensure cache of schema information is loaded.
+     * @return void
      */
-    private static function loadSchemaInfoCache()
+    private static function loadSchemaInfoCache(): void
     {
         if (self::$SchemaInfoCache === null) {
             $DB = new Database();
@@ -2319,8 +2485,9 @@ class MetadataSchema extends ItemFactory
      * field, FieldNameCache with a mapping of field names to field id
      * numbers, and FieldsBySchema with a mapping of SchemaId to FieldIds for
      * that schema.
+     * @return void
      */
-    private static function loadFieldInfoCaches()
+    private static function loadFieldInfoCaches(): void
     {
         if (self::$FieldInfoCache === null) {
             self::$FieldNameCache = [];
@@ -2375,8 +2542,9 @@ class MetadataSchema extends ItemFactory
 
     /**
      * Ensure cache of standard field mapping information is loaded.
+     * @return void
      */
-    private static function loadFieldMappingsCache()
+    private static function loadFieldMappingsCache(): void
     {
         # if standard field mappings have not yet been loaded
         if (self::$FieldMappings === null) {

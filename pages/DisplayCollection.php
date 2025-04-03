@@ -135,3 +135,6 @@ foreach (array_keys($SchemasInUse) as $SchemaId) {
 
 # load categories to display for items
 $H_LinkedCategories = loadLinkedCategories($H_Items);
+
+# signal full record page view
+$AF->signalEvent("EVENT_FULL_RECORD_VIEW", ["ResourceId" => $H_Collection->id()]);

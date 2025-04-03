@@ -2,7 +2,7 @@
 #
 #   FILE:  Page.php (Pages plugin)
 #
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu/cwis/
 #
 # @scout:phpstan
@@ -13,6 +13,7 @@ use Metavus\Image;
 use Metavus\ImageFactory;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\Pages;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\TabbedContentUI;
@@ -55,7 +56,7 @@ class Page extends Record
      * @return Page Page object.
      * @throws \Exception If bad metadata schema ID parameter is provided.
      */
-    public static function create(int $SchemaId = null): Page
+    public static function create(?int $SchemaId = null): Page
     {
         # bail out of erroneous schema ID was provided
         if (($SchemaId !== null) && ($SchemaId != PageFactory::$PageSchemaId)) {
@@ -105,8 +106,7 @@ class Page extends Record
         parent::set($Field, $NewValue, $Reset);
 
         if ($Field->name() == "Clean URL") {
-            PluginManager::getInstance()
-                ->getPlugin("Pages", true)
+            Pages::getInstance(true)
                 ->clearCaches();
         }
     }
@@ -115,13 +115,12 @@ class Page extends Record
      * Remove page (and accompanying associations) from database and
      * delete any associated files.
      */
-    public function destroy()
+    public function destroy(): void
     {
         $this->DB->query("DELETE FROM Pages_Privileges WHERE PageId = ".$this->id());
 
         parent::destroy();
-        PluginManager::getInstance()
-            ->getPlugin("Pages", true)
+        Pages::getInstance(true)
             ->clearCaches();
     }
 
@@ -203,7 +202,7 @@ class Page extends Record
      * @return PrivilegeSet|null Current viewing privilege setting or NULL if no
      *       viewing privileges have been set.
      */
-    public function viewingPrivileges(PrivilegeSet $NewValue = null)
+    public function viewingPrivileges(?PrivilegeSet $NewValue = null)
     {
         # if new privilege setting was supplied
         if ($NewValue !== null) {
@@ -376,7 +375,7 @@ class Page extends Record
      *       temporary. (OPTIONAL)
      * @return bool TRUE if resource is temporary record, or FALSE otherwise.
      */
-    public function isTempRecord(bool $NewSetting = null): bool
+    public function isTempRecord(?bool $NewSetting = null): bool
     {
         $OldId = $this->id();
         $Result = parent::isTempRecord($NewSetting);

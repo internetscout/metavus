@@ -515,10 +515,10 @@ class Parsedown
                 ),
             );
 
-            if($name === 'ol') 
+            if($name === 'ol')
             {
                 $listStart = stristr($matches[0], '.', true);
-                
+
                 if($listStart !== '1')
                 {
                     $Block['element']['attributes'] = array('start' => $listStart);
@@ -658,7 +658,7 @@ class Parsedown
     #
     # Setext
 
-    protected function blockSetextHeader($Line, array $Block = null)
+    protected function blockSetextHeader($Line, ?array $Block = null)
     {
         if ( ! isset($Block) or isset($Block['type']) or isset($Block['interrupted']))
         {
@@ -796,7 +796,7 @@ class Parsedown
     #
     # Table
 
-    protected function blockTable($Line, array $Block = null)
+    protected function blockTable($Line, ?array $Block = null)
     {
         if ( ! isset($Block) or isset($Block['type']) or isset($Block['interrupted']))
         {

@@ -3,19 +3,19 @@
 #   FILE:  UserFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 /**
- * CWIS-specific user factory class.
+ * Metavus-specific user factory class.
  */
 class UserFactory extends \ScoutLib\UserFactory
 {
@@ -74,7 +74,7 @@ class UserFactory extends \ScoutLib\UserFactory
                 # iterate over all the resources
                 foreach ($ResourceIds as $ResourceId) {
                     # if we're running low on memory, nuke the resource cache
-                    if ($GLOBALS["AF"]->GetFreeMemory() / $MemLimit
+                    if (StdLib::getFreeMemory() / $MemLimit
                         < self::$LowMemoryThresh) {
                         $ResourceCache = [];
                     }
@@ -263,7 +263,7 @@ class UserFactory extends \ScoutLib\UserFactory
         string $PasswordAgain,
         string $EMail,
         string $EMailAgain,
-        array $IgnoreErrorCodes = null
+        ?array $IgnoreErrorCodes = null
     ) {
         # add the user to the APUsers table
         $PUser = parent::createNewUser(
@@ -341,7 +341,7 @@ class UserFactory extends \ScoutLib\UserFactory
             $NewUser->set("Has No Password", true);
         }
 
-        $GLOBALS["AF"]->signalEvent(
+        ApplicationFramework::getInstance()->signalEvent(
             "EVENT_USER_ADDED",
             [
                 "UserId" => $NewUser->id(),

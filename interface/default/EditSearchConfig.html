@@ -3,14 +3,31 @@
 #   FILE:  EditSearchConfig.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle("Edit Search Configuration");
-
 ?>
 
 <h1>Search Configuration</h1>
@@ -19,12 +36,6 @@ PageTitle("Edit Search Configuration");
 
 <form method="post" action="index.php?P=EditSearchConfig">
     <?PHP $H_FormUI->DisplayFormTable(); ?>
-
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon" /> Save Changes</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
-
+    <?= $SaveButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

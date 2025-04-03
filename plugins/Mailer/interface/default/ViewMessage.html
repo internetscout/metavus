@@ -3,12 +3,13 @@
 #   FILE:  ViewMessage.html (Mailer plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-PageTitle("View Queued Message");
+use Metavus\HtmlButton;
 
+# ----- SETUP ----------------------------------------------------------------
 if (count($H_Errors)) {
     print "<ul class='mv-form-error'>";
     foreach ($H_Errors as $Error) {
@@ -26,19 +27,26 @@ foreach (["SS", "TID"] as $Param) {
 }
 
 $Email = $H_StoredEmail->GetEmail();
+
+$SendButton = new HtmlButton("Send");
+$SendButton->setIcon("Check.svg");
+$SendButton->setLink("index.php?P=P_Mailer_ViewMessage&ID=" . $H_StoredEmail->Id() . "&A=Send");
+
+$DeleteButton = new HtmlButton("Delete");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->setLink("index.php?P=P_Mailer_ViewMessage&ID=" . $H_StoredEmail->Id() . "&A=Delete");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->setLink("index.php?P=P_Mailer_ListQueuedEmail$Params");
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("View Queued Message");
 ?>
 <div style="float: right">
-  <a class="btn btn-primary mv-button-iconed"
-     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Send<?=
-        $Params; ?>"><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-        class="mv-button-icon" /> Send</a>
-  <a class="btn btn-primary mv-button-iconed"
-     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Delete<?=
-        $Params; ?>"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete</a>
-  <a class="btn btn-primary mv-button-iconed"
-     href="index.php?P=P_Mailer_ListQueuedEmail<?= $Params ?>"><img
-    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> Cancel</a>
+    <?= $SendButton->getHtml(); ?>
+    <?= $DeleteButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 </div>
 <table style="table-layout: fixed; width: 100%">
   <tr>
@@ -62,15 +70,7 @@ $Email = $H_StoredEmail->GetEmail();
 </table>
 
 <div style="float: right">
-  <a class="btn btn-primary mv-button-iconed"
-     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Send<?=
-        $Params; ?>"><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-        class="mv-button-icon" /> Send</a>
-  <a class="btn btn-primary mv-button-iconed"
-     href="index.php?P=P_Mailer_ViewMessage&amp;ID=<?= $H_StoredEmail->Id(); ?>&amp;A=Delete<?=
-        $Params; ?>"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete</a>
-<a class="btn btn-primary mv-button-iconed"
-     href="index.php?P=P_Mailer_ListQueuedEmail<?= $Params ?>"><img
-    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt="" class="mv-button-icon" /> Cancel</a>
+    <?= $SendButton->getHtml(); ?>
+    <?= $DeleteButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 </div>

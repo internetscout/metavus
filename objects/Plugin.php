@@ -9,7 +9,6 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
@@ -20,6 +19,25 @@ use ScoutLib\StdLib;
 abstract class Plugin extends \ScoutLib\Plugin
 {
     # ---- PUBLIC INTERFACE --------------------------------------------------
+
+    # configuration setting types
+    const FTYPE_DATETIME = FormUI::FTYPE_DATETIME;
+    const FTYPE_FILE = FormUI::FTYPE_FILE;
+    const FTYPE_FLAG = FormUI::FTYPE_FLAG;
+    const FTYPE_IMAGE = FormUI::FTYPE_IMAGE;
+    const FTYPE_METADATAFIELD = FormUI::FTYPE_METADATAFIELD;
+    const FTYPE_NUMBER = FormUI::FTYPE_NUMBER;
+    const FTYPE_OPTION = FormUI::FTYPE_OPTION;
+    const FTYPE_PARAGRAPH = FormUI::FTYPE_PARAGRAPH;
+    const FTYPE_POINT = FormUI::FTYPE_POINT;
+    const FTYPE_PRIVILEGES = FormUI::FTYPE_PRIVILEGES;
+    const FTYPE_SEARCHPARAMS = FormUI::FTYPE_SEARCHPARAMS;
+    const FTYPE_TEXT = FormUI::FTYPE_TEXT;
+    const FTYPE_URL = FormUI::FTYPE_URL;
+    const FTYPE_USER = FormUI::FTYPE_USER;
+    # configuration setting pseudo-types
+    const FTYPE_GROUPEND = FormUI::FTYPE_GROUPEND;
+    const FTYPE_HEADING = FormUI::FTYPE_HEADING;
 
     /**
      * Retrieve current list of administration menu entries for plugins.
@@ -96,21 +114,6 @@ abstract class Plugin extends \ScoutLib\Plugin
         return false;
     }
 
-    # ---- PROTECTED INTERFACE -----------------------------------------------
-
-    /**
-     * Add administration menu entry for plugin.
-     * @param string $Label Label for display of menu entry.
-     * @param string $Link URL or page that menu entry should link to when displayed.
-     * @param array|PrivilegeSet $Privs Privilege(s) required to see entry.
-     */
-    protected function addAdminMenuEntry(string $Link, string $Label, $Privs)
-    {
-        $BaseName = $this->getBaseName();
-        self::$AdminMenuEntries[$BaseName][$Link] = $Label;
-        self::$AdminMenuPrivileges[$BaseName][$Link] = $Privs;
-    }
-
     /**
      * Load fields into metadata schema from XML file.  The XML file is
      * assumed to be in install/MetadataSchema--SCHEMANAME.xml under the
@@ -119,7 +122,7 @@ abstract class Plugin extends \ScoutLib\Plugin
      * @return string|null Error message or NULL if load succeeded.
      * @throws Exception If no XML file found.
      */
-    protected function addMetadataFieldsFromXml($Schema)
+    public function addMetadataFieldsFromXml($Schema): ?string
     {
         # load schema
         if (!($Schema instanceof MetadataSchema)) {
@@ -161,12 +164,28 @@ abstract class Plugin extends \ScoutLib\Plugin
         return null;
     }
 
+    # ---- PROTECTED INTERFACE -----------------------------------------------
+
+    /**
+     * Add administration menu entry for plugin.
+     * @param string $Label Label for display of menu entry.
+     * @param string $Link URL or page that menu entry should link to when displayed.
+     * @param array|PrivilegeSet $Privs Privilege(s) required to see entry.
+     * @return void
+     */
+    protected function addAdminMenuEntry(string $Link, string $Label, $Privs): void
+    {
+        $BaseName = $this->getBaseName();
+        self::$AdminMenuEntries[$BaseName][$Link] = $Label;
+        self::$AdminMenuPrivileges[$BaseName][$Link] = $Privs;
+    }
+
     /**
      * Delete any metadata fields owned by plugin from specified schema.
      * @param int $SchemaId ID of schema to drop fields from.
      * @return string|null Error message or NULL if drop succeeded.
      */
-    protected function deleteMetadataFields(int $SchemaId)
+    protected function deleteMetadataFields(int $SchemaId): ?string
     {
         # load schema
         $Schema = new MetadataSchema($SchemaId);

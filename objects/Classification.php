@@ -3,13 +3,12 @@
 #   FILE:  Classification.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use Metavus\RecordFactory;
@@ -38,8 +37,9 @@ class Classification extends Item
      *       Use Classification::NOPARENT for new Classification with no parent
      *       (i.e. at top level of hierarchy).  (OPTIONAL - only required if
      *       full classification name is not supplied)
+     * @return Classification
      */
-    public static function create(string $Name, int $FieldId, int $ParentId = null)
+    public static function create(string $Name, int $FieldId, ?int $ParentId = null): Classification
     {
         # initialize state for creation
         self::$SegmentsCreated = 0;
@@ -203,7 +203,7 @@ class Classification extends Item
      *       (DO NOT USE)
      * @return string Segment name.
      */
-    public function name(string $NewValue = null): string
+    public function name(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             throw new InvalidArgumentException("Illegal argument supplied.");
@@ -275,7 +275,7 @@ class Classification extends Item
      * @param string $NewValue New segment name.  (OPTIONAL)
      * @return string Segment name.
      */
-    public function segmentName(string $NewValue = null)
+    public function segmentName(?string $NewValue = null)
     {
         return $this->DB->updateValue("SegmentName", $NewValue);
     }
@@ -287,7 +287,7 @@ class Classification extends Item
      * @param string $NewValue New link string.
      * @return string Current link string.
      */
-    public function linkString(string $NewValue = null)
+    public function linkString(?string $NewValue = null)
     {
         return $this->DB->updateValue("LinkString", $NewValue);
     }
@@ -348,8 +348,9 @@ class Classification extends Item
      * Rebuild classification full name and recalculate depth in hierarchy.
      * This is a DB-intensive and recursive function, and so should not be
      * called without some forethought.
+     * @return void
      */
-    public function recalcDepthAndFullName()
+    public function recalcDepthAndFullName(): void
     {
         # start with full classification name set to our segment name
         $FullClassName = $this->segmentName();
@@ -392,8 +393,9 @@ class Classification extends Item
 
     /**
      * Update the LastAssigned timestamp for this classification.
+     * @return void
      */
-    public function updateLastAssigned()
+    public function updateLastAssigned(): void
     {
         $this->DB->query("UPDATE Classifications SET LastAssigned=NOW() "
                          ."WHERE ClassificationId=".intval($this->Id));
@@ -427,7 +429,7 @@ class Classification extends Item
         $this->DB->updateIntValue("FullResourceCount", $FullResourceCount);
 
         if (!isset(self::$FieldSchemaIds[$this->fieldId()])) {
-            $Field = new MetadataField($this->fieldId());
+            $Field = MetadataField::getField($this->fieldId());
             self::$FieldSchemaIds[$this->fieldId()] = $Field->schemaId();
         }
         $SchemaId = self::$FieldSchemaIds[$this->fieldId()];
@@ -564,8 +566,9 @@ class Classification extends Item
 
     /**
      * Clear any and all internal class caches.
+     * @return void
      */
-    public static function clearCaches()
+    public static function clearCaches(): void
     {
         self::$IdCache = [];
         self::$RFactories = [];

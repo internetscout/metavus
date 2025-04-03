@@ -3,15 +3,13 @@
 #   FILE:  AddClassification.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Classification;
-use Metavus\ClassificationFactory;
-use Metavus\FormUI;
-use Metavus\MetadataField;
-use Metavus\Qualifier;
+namespace Metavus;
+
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
@@ -42,8 +40,11 @@ function segmentValidateFunc(
         $NewFullName = $ParentClass->Name()." -- ".$FieldValue;
     }
     # if classification already exists return error
+    # pass true to nameIsInUse so a case-insensitive string
+    # comparison is used to check if the new classification's name
+    # is already in use
     $CFactory = new ClassificationFactory($FieldId);
-    if ($CFactory->NameIsInUse($NewFullName)) {
+    if ($CFactory->nameIsInUse($NewFullName, true)) {
         return "A classification with that name is already in use.";
     }
 
@@ -58,7 +59,7 @@ function segmentValidateFunc(
  */
 function getQualifiers(int $FieldId): array
 {
-    $Field = new MetadataField($FieldId);
+    $Field = MetadataField::getField($FieldId);
 
     $Items[-1] = "--";
     if ($Field->HasItemLevelQualifiers()) {
@@ -90,7 +91,7 @@ function getFormFieldDefinitions(int $FieldId, int $ParentId): array
     }
 
     # Get field and field name using field id.
-    $FieldName = (new MetadataField($FieldId))->GetDisplayName();
+    $FieldName = (MetadataField::getField($FieldId))->GetDisplayName();
 
     return [
         "ClassificationType" => [
@@ -109,7 +110,7 @@ function getFormFieldDefinitions(int $FieldId, int $ParentId): array
             "Type" => FormUI::FTYPE_TEXT,
             "Label" => "Segment Name",
             "Placeholder" => "Segment Name",
-            "ValidateFunction" => "segmentValidateFunc",
+            "ValidateFunction" => "Metavus\\segmentValidateFunc",
             "Required" => true,
         ],
         "QualifierId" => [
@@ -120,9 +121,6 @@ function getFormFieldDefinitions(int $FieldId, int $ParentId): array
         ],
     ];
 }
-
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 

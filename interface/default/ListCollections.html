@@ -3,7 +3,7 @@
 #   FILE:  ListCollections.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -24,12 +24,15 @@ $User = User::getCurrentUser();
 $CollectionSchemaId = MetadataSchema::getSchemaIdForName("Collections");
 $CSchema = new MetadataSchema($CollectionSchemaId);
 if ($CSchema->userCanAuthor($User)) {
-    $AddCollectionLink = str_replace('$ID', "NEW", $CSchema->editPage());
+    $AddCollectionLink = str_replace('$ID', "NEW", $CSchema->getEditPage());
     $AddCollectionLink .= "&SC=".$CollectionSchemaId;
 }
 
 $AF = ApplicationFramework::getInstance();
 
+$EditButton = new HtmlButton("Edit");
+$EditButton->setIcon("Pencil.svg");
+$EditButton->setSize(HtmlButton::SIZE_SMALL);
 
 # ----- DISPLAY --------------------------------------------------------------
 
@@ -63,13 +66,13 @@ if (count($H_Collections) == 0) {
         $Icon = (count($Icons) > 0) ? array_pop($Icons) : null;
 
         # build collection-related links
-        $EditLink = str_replace('$ID', $CollectionId, $CSchema->editPage());
+        $EditLink = str_replace('$ID', $CollectionId, $CSchema->getEditPage());
         $LinkOpenTag = "<a href=\"index.php?P=DisplayCollection&ID="
                 .$CollectionId."\">";
 
         # ----- DISPLAY (LOOP) -------------------------------------------
         # begin tile
-        ?><div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-tile-collection"
+        ?><div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-collection-tile"
                 title="<?= $Description ?>"><div><div><?PHP
 
         # display icon if available, otherwise display larger title
@@ -87,9 +90,8 @@ if (count($H_Collections) == 0) {
 
         # display edit button if appropriate
 if ($Collection->userCanEdit($User)) {
-    ?><div><a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $EditLink; ?>"
-            ><img class="mv-button-icon" src="<?= $AF->GUIFile("Pencil.svg"); ?>"> Edit</a>
-    </div><?PHP
+    $EditButton->setLink($EditLink);
+    ?><div><?= $EditButton->getHtml(); ?></div><?PHP
 }
 
         # end tile

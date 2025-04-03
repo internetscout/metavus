@@ -6,16 +6,19 @@
 #   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\MetadataSchema;
 use Metavus\Qualifier;
 use Metavus\QualifierFactory;
 use Metavus\RecordFactory;
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
 * Get list of qualifiers to remove.
+* @return array remove list
 */
 function GetRemoveList()
 {
@@ -35,7 +38,7 @@ function GetRemoveList()
 /**
 * Remove list value.
 */
-function RemoveListValue()
+function RemoveListValue(): void
 {
     $Schema = new MetadataSchema();
     $RFactory = new RecordFactory();
@@ -53,10 +56,10 @@ function RemoveListValue()
 
 /**
 * Add list value.
-* @param str $NewName Name of new qualifier.
-* @param str $NewNamespace Namespace of new qualifier.
-* @param str $NewUrl Url of new qualifer.
-* @return str Error message is there is any, or NULL if none.
+* @param string $NewName Name of new qualifier.
+* @param string $NewNamespace Namespace of new qualifier.
+* @param string $NewUrl Url of new qualifer.
+* @return string|null Error message is there is any, or NULL if none.
 */
 function AddListValue($NewName, $NewNamespace, $NewUrl)
 {
@@ -67,9 +70,12 @@ function AddListValue($NewName, $NewNamespace, $NewUrl)
     $NewNamespace = addslashes($NewNamespace);
     $NewUrl = addslashes($NewUrl);
 
-    # first check to see if it already exists
+    # first check to see if a qualifier with the new name already exists
+    # (pass true to nameIsInUse so a case-insensitive string
+    # comparison is used to check if the new qualifier's name
+    # is already in use)
     if (!empty($NewName)) {
-        if ($QualifierFactory->NameIsInUse($NewName)) {
+        if ($QualifierFactory->nameIsInUse($NewName, true)) {
             return "<b>Error: </b>".$NewName." already exists";
         }
 
@@ -86,7 +92,7 @@ function AddListValue($NewName, $NewNamespace, $NewUrl)
 /**
 * Update list value.
 */
-function UpdateListValue()
+function UpdateListValue(): void
 {
     foreach ($_POST as $Var => $Value) {
         if (preg_match("/qid_[0-9]+/", $Var)) {
@@ -115,7 +121,7 @@ function UpdateListValue()
         if (preg_match("/qu_[0-9]+/", $Var)) {
             $Value = trim($Value);
             $QualifierUrl = addslashes($Value);
-            if (!empty($QualifierName) && isset($QualifierId)) {
+            if (!empty($QualifierName) && isset($QualifierId) && isset($QualifierNamespace)) {
                 # create new qualifier
                 $Qualifier = new Qualifier($QualifierId);
                 $Qualifier->Name($QualifierName);
@@ -161,6 +167,8 @@ if (isset($_POST["Submit"])) {
 
 $ErrorMessages = array();
 
+$AF = ApplicationFramework::getInstance();
+
 # check for Cancel button from previous screen
 if ($Submit == "Cancel") {
     # cancel from confirm delete
@@ -196,4 +204,4 @@ if ($Submit == "Cancel") {
 }
 
 $_SESSION["ErrorMessages"] = $ErrorMessages;
-$GLOBALS["AF"]->SetJumpToPage("AddQualifier");
+ApplicationFramework::getInstance()->SetJumpToPage("AddQualifier");

@@ -3,18 +3,21 @@
 #   FILE:  ExportResources.php (ResourceExporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
+use Metavus\Plugins\ResourceExporter;
 use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
+use ScoutLib\PluginManager;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -25,11 +28,13 @@ use ScoutLib\StdLib;
  */
 function GetAvailableSources()
 {
+    $PluginMgr = PluginManager::getInstance();
+
     # start with empty list of sources
     $Sources = [];
 
     # if Folders plugin is available
-    if ($GLOBALS["G_PluginManager"]->PluginEnabled("Folders")) {
+    if ($PluginMgr->pluginReady("Folders")) {
         # retrieve folders
         $Folders = [];
         $FFactory = new FolderFactory(User::getCurrentUser()->Id());
@@ -142,14 +147,17 @@ function GetSelectedFields()
 
 /**
  * Get format parameters from POST data.
- * @return Array of format parameters.
+ * @return array List of format parameters.
  */
 function GetFormatParameters()
 {
-    $Plugin = $GLOBALS["G_PluginManager"]->GetPluginForCurrentPage();
-    $FormatParameterValues = [];
+    $Plugin = ResourceExporter::getInstance();
 
-    $Formats = $Plugin->GetFormats();
+    if (!($Plugin instanceof \Metavus\Plugins\ResourceExporter)) {
+        throw new Exception("Retrieved plugin is not ResourceExporter (should be impossible).");
+    }
+
+    $FormatParameterValues = [];
     $FormatParameters = $Plugin->GetExportParameters();
 
     foreach ($FormatParameters as $FormatName => $FormatParams) {
@@ -171,12 +179,20 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
-$GLOBALS["AF"]->RequireUIFile(
+$AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
+
+$AF->RequireUIFile(
     "jquery.cookie.js",
     ApplicationFramework::ORDER_FIRST
 );
 
-$Plugin = $GLOBALS["G_PluginManager"]->GetPluginForCurrentPage();
+$Plugin = ResourceExporter::getInstance();
+
+if (!($Plugin instanceof \Metavus\Plugins\ResourceExporter)) {
+    throw new Exception("Retrieved plugin is not ResourceExporter (should be impossible).");
+}
+
 $UserId = $User->Id();
 
 $H_FieldSetName = StdLib::getArrayValue(
@@ -189,7 +205,7 @@ $H_FieldSetName = StdLib::getArrayValue(
 $H_Action = strtoupper(StdLib::getFormValue("F_Submit", ""));
 
 if ($H_Action == "CANCEL") {
-    $GLOBALS["AF"]->SetJumpToPage("SysAdmin");
+    $AF->SetJumpToPage("SysAdmin");
     return;
 } elseif (!in_array($H_Action, ["SETUP", "EXPORT", "SAVE", "DELETE"])) {
     $H_Action = "SETUP";
@@ -207,13 +223,13 @@ if ($H_Action == "SAVE") {
     } elseif (!$Plugin->IsRegisteredFormat($Format)) {
         $H_ErrorMessages[] = "Export format was not recognized.";
     } else {
-        $ExportConfigs = $Plugin->ConfigSetting("ExportConfigs");
+        $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
         $ExportConfigs[$UserId][$H_FieldSetName] = [
             "FieldIds" => $FieldIds,
             "Format" => $Format,
             "FormatParams" => GetFormatParameters(),
         ];
-        $Plugin->ConfigSetting("ExportConfigs", $ExportConfigs);
+        $Plugin->setConfigSetting("ExportConfigs", $ExportConfigs);
     }
 
     $H_Action = "SETUP";
@@ -221,11 +237,11 @@ if ($H_Action == "SAVE") {
 } elseif ($H_Action == "DELETE") {
     $SelectedFieldSet = StdLib::getFormvalue("F_FieldSetName");
 
-    $ExportConfigs = $Plugin->ConfigSetting("ExportConfigs");
+    $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
     if (array_key_exists($UserId, $ExportConfigs)) {
         if (array_key_exists($SelectedFieldSet, $ExportConfigs[$UserId])) {
             unset($ExportConfigs[$UserId][$SelectedFieldSet]);
-            $Plugin->ConfigSetting("ExportConfigs", $ExportConfigs);
+            $Plugin->setConfigSetting("ExportConfigs", $ExportConfigs);
             unset($_POST["F_FieldSetName"]);
             unset($_COOKIE["ResourceExporter_FieldSetName"]);
             $H_FieldSetName = "";
@@ -279,9 +295,9 @@ if ($H_Action == "SAVE") {
     if (!$Plugin->IsRegisteredFormat($Format)) {
         $H_ErrorMessages[] = "Export format was not recognized.";
     } else {
-        $Formats = $Plugin->ConfigSetting("SelectedFormats");
+        $Formats = $Plugin->getConfigSetting("SelectedFormats");
         $Formats[$UserId] = $Format;
-        $Plugin->ConfigSetting("SelectedFormats", $Formats);
+        $Plugin->setConfigSetting("SelectedFormats", $Formats);
     }
 
     # retrieve and save export format parameters
@@ -334,7 +350,7 @@ if ($H_Action == "SETUP") {
     if (is_null($H_SelectedSource)) {
         # if folders is enabled, use the current user's selected folder
         # otherwise use the first available source
-        if ($GLOBALS["G_PluginManager"]->PluginEnabled("Folders")) {
+        if ($PluginMgr->pluginReady("Folders")) {
             $FFactory = new FolderFactory($User->Id());
             $H_SelectedSource = $FFactory->GetSelectedFolder()->Id();
         } else {
@@ -353,7 +369,7 @@ if ($H_Action == "SETUP") {
         $H_SchemaNames[$SchemaId] = $Schema->Name();
     }
 
-    $ExportConfigs = $Plugin->ConfigSetting("ExportConfigs");
+    $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
     if (is_array($ExportConfigs) && array_key_exists($UserId, $ExportConfigs)) {
         $H_FieldSets = $ExportConfigs[$UserId];
         $H_AvailableFieldSets[-1] = "--";
@@ -392,5 +408,5 @@ if ($H_Action == "SETUP") {
 
     # retrieve values for format list
     $H_FormatParameters = $Plugin->GetExportParameters();
-    $H_FormatParameterValues = $Plugin->ConfigSetting("FormatParameterValues");
+    $H_FormatParameterValues = $Plugin->getConfigSetting("FormatParameterValues");
 }

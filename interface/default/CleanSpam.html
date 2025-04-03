@@ -3,16 +3,31 @@
 #   FILE:  CleanSpam.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\MessageFactory;
-use Metavus\MessageUI;
-use Metavus\Record;
+namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+$RemovePrivButton = new HtmlButton("Remove Post Privilege");
+$RemovePrivButton->setIcon("Ban.svg");
+$RemovePrivButton->makeSubmitButton();
+
+$CleanButton = new HtmlButton("Clean Spam");
+$CleanButton->setIcon("Broom.svg");
+$CleanButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle("Moderate Spam");
-
 ?>
 
 <?PHP if (isset($H_ErrorMessages)) { ?>
@@ -24,6 +39,15 @@ PageTitle("Moderate Spam");
 </ul>
     <?PHP return; ?>
 <?PHP } ?>
+
+<?PHP
+if (!isset($H_ResourceId)) {
+    throw new Exception("H_ResourceId not defined.");
+}
+if (!isset($H_TgtUser)) {
+    throw new Exception("H_TgtUser not defined.");
+}
+?>
 
 <h1>Moderate Spam</h1>
 
@@ -44,13 +68,7 @@ foreach ($Comments as $Comment) {
 <form name="updatemessage" method="post" action="index.php?P=CleanSpamComplete" />
     <input type="hidden" name="F_PosterId" value="<?= $H_TgtUser->Id(); ?>" />
     <input type="hidden" name="F_ResourceId" value="<?= $H_ResourceId; ?>" />
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
-        value="Remove Post Privilege"><img src="<?= $AF->GUIFile('Ban.svg'); ?>" alt=""
-        class="mv-button-icon" /> Remove Post Privilege</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="F_Submit"
-        value="Clean Spam"><img src="<?= $AF->GUIFile('Broom.svg'); ?>" alt=""
-        class="mv-button-icon" /> Clean Spam</button>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="F_Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $RemovePrivButton->getHtml() ?>
+    <?= $CleanButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

@@ -3,16 +3,17 @@
 #   FILE:  TransferFolders.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 use ScoutLib\UserFactory;
 
@@ -20,6 +21,7 @@ use ScoutLib\UserFactory;
  * Print JSON using given information in JsonHelper format, replaces use of JsonHelper
  * @param string $State to display, "OK" for success, "ERROR" for error
  * @param string $Message (optional) to display
+ * @return void
  */
 function printJson(string $State, string $Message = "")
 {
@@ -43,7 +45,7 @@ $User = User::getCurrentUser();
 $FolderID = StdLib::getArrayValue($_GET, "FID");
 $NewUserName = StdLib::getArrayValue($_POST, "username");
 $NewUserID = null;
-$Plugin = PluginManager::getInstance()->getPlugin("Folders");
+$Plugin = Folders::getInstance();
 $UserHasPriv = $User->HasPriv($Plugin->
         ConfigSetting("PrivsToTransferFolders"));
 $IsAjax = ApplicationFramework::ReachedViaAjax();
@@ -73,7 +75,7 @@ if ($FolderID == null || !$UserHasPriv || $NewUserName == null || $NewUserID == 
         }
     } else {
         if ($FolderID == null || $NewUserName == null) {
-            # error: not sufficient informations received
+            # error: not sufficient information received
             $ErrorID = 1;
         } elseif ($NewUserID == null) {
             # error: new user not found
@@ -101,6 +103,10 @@ if ($Folder->OwnerID() != $User->Id()) {
     }
     return;
 }
+
+# make sure that the new user id is of type int
+# (i.e., if the new user id was a string, then cast it to an int)
+$NewUserID = intval($NewUserID);
 
 if ($Folder->OwnerID() == $NewUserID) {
     if ($IsAjax) {

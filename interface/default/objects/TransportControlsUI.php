@@ -3,13 +3,12 @@
 #   FILE:  TransportControlsUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\StdLib;
 
@@ -27,8 +26,9 @@ class TransportControlsUI extends TransportControlsUI_Base
 
     /**
      * Generate and print HTML for transport controls.
+     * @return void
      */
-    public function display()
+    public function display(): void
     {
         # make sure all needed values have been set
         if (!isset($this->ItemCount)) {
@@ -86,13 +86,14 @@ class TransportControlsUI extends TransportControlsUI_Base
             $Message = $this->Message;
         } else {
             $ItemsLabel = StdLib::pluralize($this->itemTypeName());
-            $RangeStart = $this->startingIndex() + 1;
+            $RangeStart = min($this->startingIndex() + 1, $this->itemCount());
             $RangeEnd = min(
                 ($this->startingIndex() + $this->itemsPerPage()),
                 $this->itemCount()
             );
-            $Message = $ItemsLabel." <b>".$RangeStart."</b> - <b>".$RangeEnd
-                    ."</b> of <b>".$this->itemCount()."</b>";
+            $Message = $ItemsLabel." <b>".number_format($RangeStart)
+                    ."</b> - <b>".number_format($RangeEnd)
+                    ."</b> of <b>".number_format($this->itemCount())."</b>";
         }
         $FWTitleAttrib = "Go to next page";
         if (isset($TypeName)) {
@@ -111,7 +112,7 @@ class TransportControlsUI extends TransportControlsUI_Base
         <div class="container mv-transport-controls">
         <div class="row">
         <?PHP  if ($this->showAnyReverseButtons()) {  ?>
-            <div class="col-2 text-left">
+            <div class="col-2 text-start">
             <a class="btn btn-primary btn-sm"
                 href="<?= $this->goToStartLink() ?>"
                 title="<?= $GSTitleAttrib ?>">&#124;<span>&lt;</span></a><?PHP
@@ -133,7 +134,7 @@ class TransportControlsUI extends TransportControlsUI_Base
         <div class="col-<?= $NCols?> text-<?= $Align ?>"><?= $Message ?></div>
 
         <?PHP  if ($this->showAnyForwardButtons()) {  ?>
-            <div class="col-2 text-right">
+            <div class="col-2 text-end">
             <?PHP  if ($this->showForwardButton()) {  ?>
                 <a class="btn btn-primary btn-sm"
                         href="<?= $this->forwardLink() ?>"

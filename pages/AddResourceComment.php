@@ -3,7 +3,7 @@
 #   FILE:  AddResourceComment.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -15,11 +15,18 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 use Metavus\User;
 
+# ----- MAIN -----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+# tell AF not to cache this page because it is always a login prompt for every
+# resource, but we don't want such prompts (e.g., from bots spidering
+# FullRecord) to eat a bunch of space
+$AF->doNotCacheCurrentPage();
+
 if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) {
     return;
 }
-
-$AF = ApplicationFramework::getInstance();
 
 # assume we're not previewing the page until told in the form values
 $H_Preview = false;

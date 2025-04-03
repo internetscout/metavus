@@ -1,0 +1,50 @@
+<?PHP
+#
+#   FILE:  BlackboardTutorial.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+?>
+<h1>Embedding a resource in Blackboard</h1>
+
+<ol>
+  <li>Select a course to edit and navigate to the front page for that
+    course.</li>
+
+  <li>Select <i>Content</i> from the menu at left.<br/>
+    <?= $AF->gUIFileTag("Blackboard_Tutorial_1.jpg") ?></li>
+
+  <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
+    from the <i>Build Content</i> drop down menu.<br/>
+    <?= $AF->gUIFileTag("Blackboard_Tutorial_2.jpg") ?></li>
+
+  <li>Use the search box and/or the facets shown at right to locate
+    the resource(s) you want.</li>
+
+  <li>Use the <i>Select</i> buttons to make your resource selections.<br/>
+    <?= $AF->gUIFileTag("Blackboard_Tutorial_3.jpg") ?></li>
+
+  <li>When you've selected all the resources you want, press the <i>Send
+      to LMS</i> button to forward your selections back to Canvas.<br/>
+    <?= $AF->gUIFileTag("Blackboard_Tutorial_4.jpg") ?></li>
+
+  <li>Your selected resource(s) will now appear in the course content list.<br>
+    <?= $AF->gUIFileTag("Blackboard_Tutorial_5.jpg") ?></li>
+</ol>
+
+<style type="text/css">
+li + li {
+  margin-top: 0.75em;
+}
+</style>

@@ -3,19 +3,18 @@
 #   FILE:  UrlChecker.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
+use InvalidArgumentException;
 use Metavus\FormUI;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugin;
-use Metavus\Plugins\UrlChecker\Constraint;
 use Metavus\Plugins\UrlChecker\ConstraintList;
 use Metavus\Plugins\UrlChecker\HttpInfo;
 use Metavus\Plugins\UrlChecker\InvalidUrl;
@@ -59,23 +58,32 @@ class UrlChecker extends Plugin
      */
     private const RETRY_TIME_CHECKING = 5;
 
+    /**
+     * Status value for URLs that have not been checked
+     */
+    private const STATUS_NOT_CHECKED = -1;
+
+    /**
+     * Maximum number of redirects to follow.
+     */
+    private const MAX_REDIRECTS = 5;
+
     # ---- STANDARD PLUGIN INTERFACE -----------------------------------------
 
     /**
      * Register information about this plugin.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "URL Checker";
-        $this->Version = "2.1.24";
-        $this->Description =
-            "Periodically validates URL field values."
+        $this->Version = "2.1.27";
+        $this->Description = "Periodically validates URL field values."
             ."<i>System Administrator</i> or <i>Collection Administrator</i> privilege "
             ."is required to view the results.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = false;
 
         $this->CfgSetup["TaskPriority"] = [
@@ -113,8 +121,8 @@ class UrlChecker extends Plugin
             "Type" => "Flag",
             "Label" => "Verify SSL Certificates",
             "Help" => "Perform SSL certificate verification when connecting to "
-                ."https sites.If outbound SSL connections are not working "
-                ."correctly on your server for some reason (e.g.list of root "
+                ."https sites. If outbound SSL connections are not working "
+                ."correctly on your server for some reason (e.g. list of root "
                 ."CAs is not current), then disabling may avoid spurious "
                 ."'Could Not Connect' errors for https sites.",
             "Default" => true,
@@ -142,14 +150,26 @@ class UrlChecker extends Plugin
             "Default" => 250,
         ];
 
+        $this->CfgSetup["ChecksPerDomain"] = [
+            "Type" => "Number",
+            "Label" => "Checks Per Domain",
+            "Help" => "Number of URLs from the same domain to include in a "
+                ."batch of checks. Prevents hundreds of checks against the "
+                ."same domain in the same batch, which can trigger rate "
+                ."limits and bot mitigation on remote sites.",
+            "Default" => 5,
+            "MinVal" => 1,
+        ];
+
         $this->CfgSetup["CheckDelay"] = [
             "Type" => "Number",
             "Label" => "Check Delay",
             "Help" => "The number of minutes between tasks that start batches"
-                ." of URL checks.If the previous batch has not finished, nothing"
-                ." new will be queued.If no URLs need to be rechecked, nothing"
+                ." of URL checks. If the previous batch has not finished, nothing"
+                ." new will be queued. If no URLs need to be rechecked, nothing"
                 ." new will be queued.",
             "Default" => 15,
+            "Units" => "minutes",
         ];
 
         $this->CfgSetup["InvalidationThreshold"] = [
@@ -164,7 +184,8 @@ class UrlChecker extends Plugin
         $this->CfgSetup["ResourceRecheckTime"] = [
             "Type" => "Number",
             "Label" => "Resource Recheck Time",
-            "Help" => "How often to check resources for new URLs.",
+            "Help" => "How often to check resources for new URLs and "
+                ."recheck URLs where the last check was successful.",
             "MinVal" => 1,
             "Default" => 1,
             "Units" => "days",
@@ -173,18 +194,19 @@ class UrlChecker extends Plugin
         $this->CfgSetup["ValidUrlRecheckTime"] = [
             "Type" => "Number",
             "Label" => "Valid URL Recheck Time",
-            "Help" => "How long to wait between checks of a URL that "
-                ."is considered valid",
+            "Help" => "How long to wait between re-checking a URL that "
+                ."failed at least one check but has not yet hit the "
+                ."Invalidation Threshold.",
             "MinVal" => 1,
-            "Default" => 1,
-            "Units" => "days",
+            "Default" => 6,
+            "Units" => "hours",
         ];
 
         $this->CfgSetup["InvalidUrlRecheckTime"] = [
             "Type" => "Number",
             "Label" => "Invalid URL Recheck Time",
-            "Help" => "How long to wait between checks of URL that "
-                ."is considered invalid",
+            "Help" => "How long to wait between re-checking a URL that "
+                ."has hit the Invalidation Threshold.",
             "MinVal" => 1,
             "Default" => 7,
             "Units" => "days",
@@ -195,7 +217,7 @@ class UrlChecker extends Plugin
      * Create the database tables necessary to use this plugin.
      * @return string|null NULL if everything went OK or an error message otherwise
      */
-    public function install()
+    public function install(): ?string
     {
         $Result = $this->createTables($this->SqlTables);
         if (!is_null($Result)) {
@@ -203,8 +225,8 @@ class UrlChecker extends Plugin
         }
 
         # set default settings
-        $this->configSetting("NextNormalUrlCheck", 0);
-        $this->configSetting("NextInvalidUrlCheck", 0);
+        $this->setConfigSetting("NextNormalUrlCheck", 0);
+        $this->setConfigSetting("NextInvalidUrlCheck", 0);
 
         # default to checking all URL fields
         $FieldsToCheck = [];
@@ -214,7 +236,7 @@ class UrlChecker extends Plugin
                 $FieldsToCheck[] = $Field->id();
             }
         }
-        $this->configSetting("FieldsToCheck", $FieldsToCheck);
+        $this->setConfigSetting("FieldsToCheck", $FieldsToCheck);
 
         # set up default release/withhold/autofix actions
         $this->configureDefaultActions();
@@ -224,9 +246,9 @@ class UrlChecker extends Plugin
 
     /**
      * Uninstall the plugin.
-     * @return NULL|string NULL if successful or an error message otherwise
+     * @return null|string NULL if successful or an error message otherwise
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         return $this->dropTables($this->SqlTables);
     }
@@ -234,8 +256,9 @@ class UrlChecker extends Plugin
     /**
      * Upgrade from a previous version.
      * @param string $PreviousVersion Previous version number.
+     * @return null|string Returns NULL on success and an error message otherwise.
      */
-    public function upgrade(string $PreviousVersion)
+    public function upgrade(string $PreviousVersion): ?string
     {
         # upgrade from versions < 2.0.0 to 2.0.0
         if (version_compare($PreviousVersion, "2.0.0", "<")) {
@@ -327,7 +350,7 @@ class UrlChecker extends Plugin
                 return "Could not create the settings table";
             }
 
-            # repair and optimize tables after the changes.if this isn't done,
+            # repair and optimize tables after the changes. if this isn't done,
             # weird ordering issues might pop up
             if (false === $DB->query("REPAIR TABLE UrlChecker_UrlHistory")) {
                 return "Could not repair the URL history table";
@@ -434,7 +457,7 @@ class UrlChecker extends Plugin
 
         # upgrade to version 2.1.4
         if (version_compare($PreviousVersion, "2.1.4", "<")) {
-            $this->configSetting(
+            $this->setConfigSetting(
                 "TaskPriority",
                 ApplicationFramework::PRIORITY_BACKGROUND
             );
@@ -466,15 +489,15 @@ class UrlChecker extends Plugin
             }
 
             # migrate the data to the settings for the plugin
-            $this->configSetting(
+            $this->setConfigSetting(
                 "EnableDeveloper",
                 (bool)StdLib::getArrayValue($OldSettings, "EnableDeveloper", false)
             );
-            $this->configSetting(
+            $this->setConfigSetting(
                 "NextNormalUrlCheck",
                 StdLib::getArrayValue($OldSettings, "NextNormalUrlCheck", 0)
             );
-            $this->configSetting(
+            $this->setConfigSetting(
                 "NextInvalidUrlCheck",
                 StdLib::getArrayValue($OldSettings, "NextInvalidUrlCheck", 0)
             );
@@ -500,19 +523,19 @@ class UrlChecker extends Plugin
 
             # reset the check times (invalid less than normal to make sure an
             # invalid check is performed first)
-            $this->configSetting("NextNormalUrlCheck", 1);
-            $this->configSetting("NextInvalidUrlCheck", 0);
+            $this->setConfigSetting("NextNormalUrlCheck", 1);
+            $this->setConfigSetting("NextInvalidUrlCheck", 0);
         }
 
         if (version_compare($PreviousVersion, "2.1.12", "<")) {
-            $this->configSetting("NumToCheck", 500);
+            $this->setConfigSetting("NumToCheck", 500);
         }
 
         if (version_compare($PreviousVersion, "2.1.13", "<")) {
             # If people have left the default in place,
             # change it to the new default.
-            if ($this->configSetting("NumToCheck") == 500) {
-                $this->configSetting("NumToCheck", 250);
+            if ($this->getConfigSetting("NumToCheck") == 500) {
+                $this->setConfigSetting("NumToCheck", 250);
             }
 
             # Default to checking all URL fields:
@@ -524,7 +547,7 @@ class UrlChecker extends Plugin
                     $FieldsToCheck[] = $Field->id();
                 }
             }
-            $this->configSetting("FieldsToCheck", $FieldsToCheck);
+            $this->setConfigSetting("FieldsToCheck", $FieldsToCheck);
         }
 
         if (version_compare($PreviousVersion, "2.1.14", "<")) {
@@ -540,7 +563,7 @@ class UrlChecker extends Plugin
                 ." DROP COLUMN Time"
             );
 
-             $this->configSetting("CheckDelay", 15);
+             $this->setConfigSetting("CheckDelay", 15);
         }
 
         if (version_compare($PreviousVersion, "2.1.16", "<")) {
@@ -549,14 +572,14 @@ class UrlChecker extends Plugin
             $Actions = ["Withhold", "Release"];
             foreach ($Actions as $Action) {
                 $NewSetting = [];
-                $Setting = $this->configSetting($Action."Configuration");
+                $Setting = $this->getConfigSetting($Action."Configuration");
                 if ($Setting !== null) {
                     $NewSetting = [MetadataSchema::SCHEMAID_DEFAULT => $Setting];
                 }
-                $this->configSetting($Action."Configuration", $NewSetting);
+                $this->setConfigSetting($Action."Configuration", $NewSetting);
             }
             # default to doing nothing when withholding resources
-            $this->configSetting("WithholdConfiguration", []);
+            $this->setConfigSetting("WithholdConfiguration", []);
         }
 
         if (version_compare($PreviousVersion, "2.1.17", "<")) {
@@ -620,8 +643,8 @@ class UrlChecker extends Plugin
             }
 
             # prior to r10147, UrlChecker was creating an INDEX (ResourceId, FieldId)
-            # that was automatically named ResourceId.Our col renaming will have changed
-            # such indexes to cover (RecordId, FieldId).If such an index exists, then we
+            # that was automatically named ResourceId. Our col renaming will have changed
+            # such indexes to cover (RecordId, FieldId). If such an index exists, then we
             # don't need to create anything
             $HaveIndexAlready = isset($Indexes["ResourceId"]) &&
                 $Indexes["ResourceId"][0] == "RecordId" &&
@@ -685,7 +708,7 @@ class UrlChecker extends Plugin
                 # Per MySQL's "RENAME TABLE Statement" at
                 #   https://dev.mysql.com/doc/refman/5.6/en/rename-table.html
                 # "To execute RENAME TABLE, there must be no active
-                #  transactions or tables locked with LOCK TABLES.With the
+                #  transactions or tables locked with LOCK TABLES. With the
                 #  transaction table locking conditions satisfied, the rename
                 #  operation is done atomically; no other session can access any
                 #  of the tables while the rename is in progress."
@@ -717,6 +740,13 @@ class UrlChecker extends Plugin
             );
         }
 
+        if (version_compare($PreviousVersion, "2.1.27", "<")) {
+            $Result = $this->createMissingTables($this->SqlTables);
+            if ($Result !== null) {
+                return $Result;
+            }
+        }
+
         return null;
     }
 
@@ -724,7 +754,7 @@ class UrlChecker extends Plugin
      * Handle plugin initialization.
      * @return null|string NULL on success, error string on failure.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $this->DB = new Database();
         $this->addAdminMenuEntry(
@@ -737,9 +767,9 @@ class UrlChecker extends Plugin
             "Release/Withhold Configuration",
             [ PRIV_COLLECTIONADMIN ]
         );
-        if ($this->configSetting("EnableDeveloper")) {
+        if ($this->getConfigSetting("EnableDeveloper")) {
             $this->addAdminMenuEntry(
-                "HiddenUrls",
+                "Results&H=1",
                 "Hidden URLs",
                 [ PRIV_COLLECTIONADMIN ]
             );
@@ -749,6 +779,16 @@ class UrlChecker extends Plugin
                 [ PRIV_COLLECTIONADMIN ]
             );
         }
+
+        \Metavus\Record::registerObserver(
+            \Metavus\Record::EVENT_SET,
+            [$this, "resourceModify"]
+        );
+        \Metavus\Record::registerObserver(
+            \Metavus\Record::EVENT_REMOVE,
+            [$this, "resourceDelete"]
+        );
+
         return null;
     }
 
@@ -759,14 +799,13 @@ class UrlChecker extends Plugin
     public function hookEvents(): array
     {
         $Events = [
-            "EVENT_RESOURCE_MODIFY" => "resourceModify",
-            "EVENT_RESOURCE_DELETE" => "resourceDelete",
             "EVENT_FIELD_ADDED" => "addField",
             "EVENT_PRE_FIELD_DELETE" => "removeField",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "handleConfigChange",
+            "EVENT_DAILY" => "dailyMaintenance",
         ];
 
-        if ($this->configSetting("EnableChecking")) {
+        if ($this->getConfigSetting("EnableChecking")) {
             $Events["EVENT_PERIODIC"] = "queueResourceCheckTasks";
         }
 
@@ -781,9 +820,9 @@ class UrlChecker extends Plugin
      * @return int Returns the amount of time before this should be called again, in
      *      minutes.
      */
-    public function queueResourceCheckTasks()
+    public function queueResourceCheckTasks(): int
     {
-        if (!$this->configSetting("EnableChecking")) {
+        if (!$this->getConfigSetting("EnableChecking")) {
             return self::RETRY_TIME_NOTHING_TO_CHECK;
         }
 
@@ -793,6 +832,9 @@ class UrlChecker extends Plugin
         }
 
         # come back later if there are URLs still being checked
+        if ($this->getQueuedTaskCount("checkUrl")) {
+            return self::RETRY_TIME_CHECKING;
+        }
         if ($this->getQueuedTaskCount("checkResourceUrls")) {
             return self::RETRY_TIME_CHECKING;
         }
@@ -801,7 +843,7 @@ class UrlChecker extends Plugin
         Database::clearCaches();
 
         # Get the list of failing URLs that need to be checked, and the list of
-        # resources that are due for a check.This will give us somewhere between
+        # resources that are due for a check. This will give us somewhere between
         #  0 and 2 * $NumToCheck elements.
         $Urls = $this->getNextUrlsToBeChecked();
         $Resources = $this->getNextResourcesToBeChecked();
@@ -809,12 +851,12 @@ class UrlChecker extends Plugin
         # If we have anything to do:
         if (count($Urls) > 0 || count($Resources) > 0) {
             # Divide our checks among Urls and Resources, with weighting
-            # determined by the number of each check type.If we've got
-            # equal numbers of both, then the split will be 50/50.If we've
+            # determined by the number of each check type. If we've got
+            # equal numbers of both, then the split will be 50/50. If we've
             # got N Url checks and 2N Resource checks, then 1/3 of the
             # checks will go to URLs and 2/3 to Resources.
 
-            $NumToCheck = $this->configSetting("NumToCheck");
+            $NumToCheck = $this->getConfigSetting("NumToCheck");
             $PctUrls = count($Urls) / (count($Urls) + count($Resources) );
 
             $Urls = array_slice(
@@ -830,14 +872,12 @@ class UrlChecker extends Plugin
                 true
             );
 
-            # Note: In the code below, we do not check our exclusion rules
-            # and queue a check for all resources / urls.This is
-            # because the CheckResourceUrls tasks queued by
-            # QueueResourceCheckTask() still need to run to do some
-            # bookkeeping in the database.
+            # (in the code below, tasks are queued for all Urls / Resources
+            # *without* first checking our exclusion rules and skipping tasks
+            # for excluded items because the underlying tasks still need to do
+            # some bookkeeping in the database)
             foreach ($Urls as $Url) {
-                $Resource = new Record($Url->RecordId);
-                $this->queueResourceCheckTask($Resource);
+                $this->queueTaskToRecheckFailingUrl($Url);
             }
 
             foreach ($Resources as $ResourceId => $CheckDate) {
@@ -846,26 +886,37 @@ class UrlChecker extends Plugin
             }
         }
 
-        return $this->configSetting("CheckDelay");
+        return $this->getConfigSetting("CheckDelay");
+    }
+
+    /**
+     * Perform daily maintenance.
+     */
+    public function dailyMaintenance(): void
+    {
+        $this->DB->query(
+            "DELETE FROM UrlChecker_TransparentUpgradeResultCache "
+            ."WHERE CheckDate < (NOW() - INTERVAL 7 DAY)"
+        );
     }
 
     /**
      * Get information/stats of the various data saved.
      * @return array of various information
      */
-    public function getInformation()
+    public function getInformation(): array
     {
         $this->removeStaleData();
 
         $Info = [];
 
         # database settings
-        $Info["EnableDeveloper"] = intval($this->configSetting("EnableDeveloper"));
-        $Info["NumToCheck"] = $this->configSetting("NumToCheck");
+        $Info["EnableDeveloper"] = intval($this->getConfigSetting("EnableDeveloper"));
+        $Info["NumToCheck"] = $this->getConfigSetting("NumToCheck");
 
         # hard-coded settings
         $Info["Timeout"] = self::CONNECTION_TIMEOUT;
-        $Info["Threshold"] = $this->configSetting("InvalidationThreshold");
+        $Info["Threshold"] = $this->getConfigSetting("InvalidationThreshold");
 
         # the number of resources checked so far
         $this->DB->query("SELECT COUNT(*) as NumChecked FROM UrlChecker_RecordHistory");
@@ -873,67 +924,102 @@ class UrlChecker extends Plugin
 
         # the number of resources that haven't been checked so far (don't count
         # resources with IDs < 0 since they're probably bad)
-        $this->DB->query("
-            SELECT COUNT(*) as NumResources
-            FROM Records
-            WHERE RecordId >= 0");
+        $this->DB->query(
+            "SELECT COUNT(*) as NumResources"
+                ." FROM Records"
+                ." WHERE RecordId >= 0"
+        );
         $Info["NumResourcesUnchecked"] = intval($this->DB->fetchField("NumResources"))
             - $Info["NumResourcesChecked"];
 
         # the number of the invalid URLs past the threshold and "not hidden"
-        $this->DB->query("
-            SELECT COUNT(*) as NumInvalid
-            FROM UrlChecker_UrlHistory
-            WHERE Hidden = 0
-            AND TimesInvalid >= ".$this->configSetting("InvalidationThreshold"));
+        $this->DB->query(
+            "SELECT COUNT(*) as NumInvalid"
+                ." FROM UrlChecker_UrlHistory"
+                ." WHERE Hidden = 0"
+                ." AND TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+        );
         $Info["NumInvalid"] = intval($this->DB->fetchField("NumInvalid"));
 
         # the number of the invalid URLs past the threshold and hidden
-        $this->DB->query("
-            SELECT COUNT(*) as NumInvalid
-            FROM UrlChecker_UrlHistory
-            WHERE Hidden = 1
-            AND TimesInvalid >= ".$this->configSetting("InvalidationThreshold"));
+        $this->DB->query(
+            "SELECT COUNT(*) as NumInvalid"
+                ." FROM UrlChecker_UrlHistory"
+                ." WHERE Hidden = 1"
+                ." AND TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+        );
         $Info["NumInvalidAndHidden"] = intval($this->DB->fetchField("NumInvalid"));
 
         # the number of possibly invalid urls
-        $this->DB->query("
-            SELECT COUNT(*) as NumInvalid
-            FROM UrlChecker_UrlHistory
-            WHERE TimesInvalid < ".$this->configSetting("InvalidationThreshold"));
+        $this->DB->query(
+            "SELECT COUNT(*) as NumInvalid"
+                ." FROM UrlChecker_UrlHistory"
+                ." WHERE TimesInvalid < ".$this->getConfigSetting("InvalidationThreshold")
+        );
         $Info["NumPossiblyInvalid"] = intval($this->DB->fetchField("NumInvalid"));
 
         # the number of "not hidden" invalid URLs for each status code
         $Info["InvalidUrlsForStatusCodes"] = [];
-        $this->DB->query("
-            SELECT StatusCode, COUNT(*) as NumInvalid
-            FROM UrlChecker_UrlHistory
-            WHERE Hidden = 0
-            AND TimesInvalid >= ".$this->configSetting("InvalidationThreshold")."
-            GROUP BY StatusCode");
+        $this->DB->query(
+            "SELECT StatusCode, SchemaId, COUNT(*) as NumInvalid"
+                ." FROM UrlChecker_UrlHistory URH"
+                ." LEFT JOIN Records R"
+                ." ON URH.RecordId = R.RecordId"
+                ." WHERE Hidden = 0"
+                ." AND TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+                ." GROUP BY StatusCode, SchemaId"
+        );
         while (false !== ($Row = $this->DB->fetchRow())) {
-            $Info["InvalidUrlsForStatusCodes"][intval($Row["StatusCode"])]
-                = intval($Row["NumInvalid"]);
+            $Key = $Row["SchemaId"]."-".$Row["StatusCode"];
+            $Info["InvalidUrlsForStatusCodes"][$Key] = intval($Row["NumInvalid"]);
         }
 
         # the number of "hidden" invalid URLs for each status code
         $Info["HiddenInvalidUrlsForStatusCodes"] = [];
-        $this->DB->query("
-            SELECT StatusCode, COUNT(*) as NumInvalid
-            FROM UrlChecker_UrlHistory
-            WHERE Hidden = 1
-            AND TimesInvalid >= ".$this->configSetting("InvalidationThreshold")."
-            GROUP BY StatusCode");
+        $this->DB->query(
+            "SELECT StatusCode, SchemaId, COUNT(*) as NumInvalid"
+                ." FROM UrlChecker_UrlHistory URH"
+                ." LEFT JOIN Records R"
+                ." ON URH.RecordId = R.RecordId"
+                ." WHERE Hidden = 1"
+                ." AND TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+                ." GROUP BY StatusCode, SchemaId"
+        );
+        // @phpstan-ignore-next-line
         while (false !== ($Row = $this->DB->fetchRow())) {
-            $Info["HiddenInvalidUrlsForStatusCodes"][intval($Row["StatusCode"])]
-                = intval($Row["NumInvalid"]);
+            $Key = $Row["SchemaId"]."-".$Row["StatusCode"];
+            $Info["HiddenInvalidUrlsForStatusCodes"][$Key] = intval($Row["NumInvalid"]);
         }
 
+        # schemas in the results
+        $this->DB->query(
+            "SELECT DISTINCT SchemaId AS SchemaId"
+                ." FROM Records WHERE RecordId IN"
+                ." (SELECT RecordId"
+                ." FROM UrlChecker_UrlHistory"
+                ." WHERE Hidden = 0"
+                ." AND TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+                .") ORDER BY SchemaId"
+        );
+        $Info["SchemaIds"] = $this->DB->fetchColumn("SchemaId");
+
+        $this->DB->query(
+            "SELECT DISTINCT SchemaId AS SchemaId "
+                ."FROM Records WHERE RecordId IN"
+                ." (SELECT RecordId"
+                ." FROM UrlChecker_UrlHistory"
+                ." WHERE Hidden = 1"
+                ." AND TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+                .") ORDER BY SchemaId"
+        );
+        $Info["HiddenSchemaIds"] = $this->DB->fetchColumn("SchemaId");
+
         # the last time a check was done
-        $this->DB->query("
-            SELECT *
-            FROM UrlChecker_RecordHistory
-            ORDER BY CheckDate DESC LIMIT 1");
+        $this->DB->query(
+            "SELECT *"
+                ." FROM UrlChecker_RecordHistory "
+                ." ORDER BY CheckDate DESC LIMIT 1"
+        );
         $Info["DateLastResourceChecked"] = $this->DB->fetchField("CheckDate");
 
         # the next time a check will be performed
@@ -950,11 +1036,11 @@ class UrlChecker extends Plugin
     /**
      * Check all of the URL metadata field values for the given resource.
      * @param int|Record $ResourceId ID of Resource to check.
-     * @param string $CheckDate Date resource was last checked.
+     * @param string|null $CheckDate Date resource was last checked.
      */
-    public function checkResourceUrls($ResourceId, $CheckDate)
+    public function checkResourceUrls($ResourceId, $CheckDate): void
     {
-        if (!$this->configSetting("EnableChecking")) {
+        if (!$this->getConfigSetting("EnableChecking")) {
             return;
         }
 
@@ -998,8 +1084,8 @@ class UrlChecker extends Plugin
 
         # Note: If TimeRequired is more than our MaxExecTime, then we'll
         # never think we have enough time and will get stuck in a
-        # loop of constantly requeueing ourself.To avoid that, cap
-        # our TimeRequired at 90% of max execution time.If this
+        # loop of constantly requeueing ourself. To avoid that, cap
+        # our TimeRequired at 90% of max execution time. If this
         # really and truly isn't enough, we'll end up orphaned (not
         # great, but better than choking the Task Queue).
         $AF = ApplicationFramework::getInstance();
@@ -1016,28 +1102,22 @@ class UrlChecker extends Plugin
             return;
         }
 
+        $this->pruneUrlHistoryForDisabledFields($Resource->id());
+
         foreach ($FieldsToCheck as $Field) {
+            # get all the URLs from this field
             $Urls = $this->getUrlsFromField($Resource, $Field);
 
-            # if this field has no urls, move along to the next one
-            if (count($Urls) == 0) {
-                continue;
-            }
+            # remove urls from the UrlHistory table if they are no longer
+            # associated with this record
+            $this->pruneUrlHistory($Resource->id(), $Field->id(), $Urls);
 
-            # clean out history entries for URLs that are no longer associated
-            # with this field and record
-            $EscapedUrls = array_map(
-                function ($x) {
-                    return "'".addslashes($x)."'";
-                },
-                $Urls
-            );
-            $this->DB->query(
-                " DELETE FROM UrlChecker_UrlHistory"
-                ." WHERE RecordId = '".intval($Resource->id())."'"
-                ." AND FieldId = '".intval($Field->id())."'"
-                ." AND Url NOT IN (".implode(",", $EscapedUrls).")"
-            );
+            # get the list of failing urls for this record and field
+            $FailingUrls = $this->getFailingUrls($Resource->id(), $Field->id());
+
+            # we don't need to re-check failing URLs here because we process
+            # them individually before checking resources
+            $Urls = array_diff($Urls, $FailingUrls);
 
             # check each url from this field
             foreach ($Urls as $Url) {
@@ -1050,72 +1130,49 @@ class UrlChecker extends Plugin
     }
 
     /**
+     * Check a given Url, updating failure information in the database based
+     *   on the result.
+     * @param int $RecordId Resource that owns this Url.
+     * @param int $FieldId Field that owns this Url.
+     * @param string $Url Url to check.
+     */
+    public function checkUrl(
+        int $RecordId,
+        int $FieldId,
+        string $Url
+    ): void {
+        # get the url's http status
+        $Start = time();
+        $HttpStatusInfo = $this->getHttpInformation($Url);
+        $CheckDuration = ceil(time() - $Start);
+
+        # save information about this URL to the database
+        $this->recordResultsOfUrlCheck(
+            $RecordId,
+            $FieldId,
+            $Url,
+            $HttpStatusInfo,
+            $CheckDuration
+        );
+    }
+
+    /**
      * Get the number of invalid URLs that match the given constraints
      * @param array $Constraints Array of constraints.
      * @return int The number of invalid URLs that match the constraints
      */
-    public function getInvalidCount($Constraints = [])
+    public function getInvalidCount($Constraints = []): int
     {
         $this->removeStaleData();
 
-        $ValidRelations = ["=", "!=", "<", ">", "<=", ">="];
-
-        # construct the where constraint
-        $Where = " WHERE URH.TimesInvalid >= "
-                   .$this->configSetting("InvalidationThreshold")." ";
-        $OuterGroup = "";
-        foreach ($Constraints as $ConstraintList) {
-            # skip invalid constraints
-            if (!($ConstraintList instanceof ConstraintList)) {
-                continue;
-            }
-
-            $InnerGroup = "";
-            foreach ($ConstraintList as $Constraint) {
-                $Key = $Constraint->Key;
-                $Value = $Constraint->Value;
-                $Relation = $Constraint->Relation;
-
-                # skip if the relation is invalid
-                if (!in_array($Relation, $ValidRelations)) {
-                    continue;
-                }
-
-                # Resource table constraint
-                if ($Key instanceof MetadataField &&
-                    $Key->status() == MetadataSchema::MDFSTAT_OK) {
-                    $LogicOperator = (strlen($InnerGroup)) ? "AND" : "";
-                    $InnerGroup .= " ".$LogicOperator." R.".$Key->dBFieldName();
-                    $InnerGroup .= " ".$Relation." '".addslashes($Value)."'";
-                } elseif (is_string($Key)) {
-                    # UrlChecker_History table constraint
-                    $LogicOperator = (strlen($InnerGroup)) ? "AND" : "";
-                    $InnerGroup .= " ".$LogicOperator." URH.".$Key;
-                    $InnerGroup .= " ".$Relation." '".addslashes($Value)."'";
-                }
-
-                # otherwise ignore the invalid key value
-            }
-
-            if (strlen($InnerGroup)) {
-                $OuterGroup .= (strlen($OuterGroup)) ? " OR " : "";
-                $OuterGroup .= " ( ".$InnerGroup." ) ";
-            }
-        }
-
-        if (strlen($OuterGroup)) {
-            $Where .= " AND ".$OuterGroup;
-        }
-
-        # get the url data
-        $this->DB->query("
-            SELECT COUNT(*) AS NumInvalid
-            FROM UrlChecker_UrlHistory URH
-            LEFT JOIN Records R
-            ON URH.RecordId = R.RecordId
-            ".$Where);
-
-        return intval($this->DB->fetchField("NumInvalid"));
+        return (int)$this->DB->queryValue(
+            "SELECT COUNT(*) AS NumInvalid "
+            ."FROM UrlChecker_UrlHistory URH "
+            ."LEFT JOIN Records R "
+            ."ON URH.RecordId = R.RecordId "
+            ."WHERE ".$this->sqlConditionFromConstraintList($Constraints),
+            "NumInvalid"
+        );
     }
 
     /**
@@ -1133,75 +1190,20 @@ class UrlChecker extends Plugin
         $OrderDirection = "DESC",
         $Limit = 15,
         $Offset = 0
-    ) {
+    ): array {
         $this->removeStaleData();
 
-        $ValidGetConstraints = [
+        # construct 'ORDER BY' clause
+        $ValidOrderCols = [
             "RecordId", "FieldId", "TimesInvalid", "Url", "CheckDate",
             "StatusCode", "ReasonPhrase", "FinalUrl", "FinalStatusCode",
             "FinalReasonPhrase", "Hidden"
         ];
-        $ValidRelations = ["=", "!=", "<", ">", "<=", ">="];
-
-        # construct the where constraint
-        $Where = " WHERE URH.TimesInvalid >= "
-                   .$this->configSetting("InvalidationThreshold")." ";
-        $OuterGroup = "";
-        $InnerGroup = "";
-        foreach ($Constraints as $ConstraintList) {
-            # skip invalid constraints
-            if (!($ConstraintList instanceof ConstraintList)) {
-                continue;
-            }
-
-            $InnerGroup = "";
-            foreach ($ConstraintList as $Constraint) {
-                $Key = $Constraint->Key;
-                $Value = $Constraint->Value;
-                $Relation = $Constraint->Relation;
-
-                # skip if the relation is invalid
-                if (!in_array($Relation, $ValidRelations)) {
-                    continue;
-                }
-
-                # Resource table constraint
-                if ($Key instanceof MetadataField &&
-                    $Key->status() == MetadataSchema::MDFSTAT_OK) {
-                    $LogicOperator = (strlen($InnerGroup)) ? "AND" : "";
-                    $InnerGroup .= " ".$LogicOperator." R.".$Key->dBFieldName();
-                    $InnerGroup .= " ".$Relation." '".addslashes($Value)."'";
-                } elseif (is_string($Key)) {
-                    # UrlChecker_History table constraint
-                    $LogicOperator = (strlen($InnerGroup)) ? "AND" : "";
-                    $InnerGroup .= " ".$LogicOperator." URH.".$Key;
-                    $InnerGroup .= " ".$Relation." '".addslashes($Value)."'";
-                }
-
-                # otherwise ignore the invalid key value
-            }
-
-            if (strlen($InnerGroup)) {
-                $OuterGroup .= (strlen($OuterGroup)) ? " OR " : "";
-                $OuterGroup .= " ( ".$InnerGroup." ) ";
-            }
-        }
-
-        # if there is at least one inner group, add an outer parentheses to
-        # group them together
-        if (strlen($InnerGroup)) {
-            $OuterGroup = " (".$OuterGroup.") ";
-        }
-
-        if (strlen($OuterGroup)) {
-            $Where .= " AND ".$OuterGroup;
-        }
 
         # valid UrlChecker_History table order
-        if (is_string($OrderBy) && in_array($OrderBy, $ValidGetConstraints)) {
+        if (is_string($OrderBy) && in_array($OrderBy, $ValidOrderCols)) {
             $OrderBy = "URH.".$OrderBy;
-        } elseif ($OrderBy instanceof MetadataField
-                && $OrderBy->status() == MetadataSchema::MDFSTAT_OK) {
+        } elseif ($OrderBy instanceof MetadataField) {
             # valid Resource table order
             $OrderBy = "R.".$OrderBy->dBFieldName();
         } else {
@@ -1213,13 +1215,14 @@ class UrlChecker extends Plugin
         if ($OrderDirection != "ASC" && $OrderDirection != "DESC") {
             $OrderDirection = "DESC";
         }
+
         # get the url data
         $this->DB->query(
             "SELECT URH.* FROM UrlChecker_UrlHistory URH"
             ." LEFT JOIN Records R"
             ." ON URH.RecordId = R.RecordId"
-            .$Where
-            ."ORDER BY ".$OrderBy." ".$OrderDirection
+            ." WHERE ".$this->sqlConditionFromConstraintList($Constraints)
+            ." ORDER BY ".$OrderBy." ".$OrderDirection
             ." LIMIT ".intval($Limit)
             ." OFFSET ".intval($Offset)
         );
@@ -1279,7 +1282,7 @@ class UrlChecker extends Plugin
         int $RecordId,
         int $FieldId,
         string $UrlHash
-    ) {
+    ): ?InvalidUrl {
         $this->DB->query(
             "SELECT *"
             ." FROM UrlChecker_UrlHistory"
@@ -1306,7 +1309,7 @@ class UrlChecker extends Plugin
      * @param Record $Resource Resource.
      * @return bool TRUE if the resource is released, FALSE otherwise
      */
-    public function isResourceReleased(Record $Resource)
+    public function isResourceReleased(Record $Resource): bool
     {
         # released resources are those anon users can view
         return $Resource->userCanView(User::getAnonymousUser());
@@ -1316,9 +1319,9 @@ class UrlChecker extends Plugin
      * Release a resource using the configured ReleaseAction.
      * @param Record $Resource Resource.
      */
-    public function releaseResource(Record $Resource)
+    public function releaseResource(Record $Resource): void
     {
-        $ReleaseActions = $this->configSetting("ReleaseConfiguration");
+        $ReleaseActions = $this->getConfigSetting("ReleaseConfiguration");
         if (isset($ReleaseActions[$Resource->getSchemaId()])) {
             # actions configured via the UI
             $Resource->applyListOfChanges(
@@ -1332,9 +1335,9 @@ class UrlChecker extends Plugin
      * Withhold the given resource using the configured WithholdAction.
      * @param Record $Resource Resource.
      */
-    public function withholdResource(Record $Resource)
+    public function withholdResource(Record $Resource): void
     {
-        $WithholdActions = $this->configSetting("WithholdConfiguration");
+        $WithholdActions = $this->getConfigSetting("WithholdConfiguration");
         if (isset($WithholdActions[$Resource->getSchemaId()])) {
             # actions configured via the UI
             $Resource->applyListOfChanges(
@@ -1348,18 +1351,18 @@ class UrlChecker extends Plugin
      * Apply automatic fix for a given Url.
      * @param string $Identifier Opaque Url Identifier.
      */
-    public function autofixUrl($Identifier)
+    public function autofixUrl($Identifier): void
     {
         $UrlInfo = $this->decodeUrlIdentifier($Identifier);
 
         $Resource = new Record($UrlInfo["RecordId"]);
 
-        $AutofixActions = $this->configSetting("AutofixConfiguration");
+        $AutofixActions = $this->getConfigSetting("AutofixConfiguration");
         $Changes = isset($AutofixActions[$Resource->getSchemaId()]) ?
             $AutofixActions[$Resource->getSchemaId()] : [];
 
         $FieldId = $UrlInfo["FieldId"];
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField($FieldId);
 
         $Url = $this->getInvalidUrl(
             $Resource->id(),
@@ -1413,7 +1416,7 @@ class UrlChecker extends Plugin
      * that it doesn't show up on the results page.
      * @param string $Identifier Url Identifier
      */
-    public function hideUrl(string $Identifier)
+    public function hideUrl(string $Identifier): void
     {
         $UrlInfo = $this->decodeUrlIdentifier($Identifier);
 
@@ -1442,7 +1445,7 @@ class UrlChecker extends Plugin
      * that it shows up on the results page.
      * @param string $Identifier Url Identifier
      */
-    public function unhideUrl(string $Identifier)
+    public function unhideUrl(string $Identifier): void
     {
         $UrlInfo = $this->decodeUrlIdentifier($Identifier);
 
@@ -1471,7 +1474,7 @@ class UrlChecker extends Plugin
      *   will show up on the results page.
      * @param \Metavus\Record $Record Subject record.
      */
-    public function unhideUrlsForRecord(\Metavus\Record $Record)
+    public function unhideUrlsForRecord(\Metavus\Record $Record): void
     {
         $FieldsToCheck = $this->getFieldsToCheck($Record->getSchemaId());
 
@@ -1496,16 +1499,88 @@ class UrlChecker extends Plugin
     }
 
     /**
-     * Get the list of records that are due to be checked or re-checked.The
+     * Query the status of a specified URL.
+     * @param string $Url URL to look up.
+     * @return int HTTP status code from the most recent failing check of the
+     *     specified URL or 0 for URLs that have no failures recorded.
+     */
+    public function getHttpStatusCodeForUrl(string $Url): int
+    {
+        # NOTE: UrlHistory *ONLY* records failing checks - it does not keep
+        # status information for URLs that are currently working
+        $StatusCode = $this->DB->queryValue(
+            "SELECT FinalStatusCode From UrlChecker_UrlHistory WHERE "
+            ."Url='".addslashes($Url)."'",
+            "FinalStatusCode"
+        );
+
+        return (int)$StatusCode;
+    }
+
+    /**
+     * Determine if a transparent (automatic, implicit, silent) http-to-https
+     * protocol upgrade of a URL will work. "Work" here means that the server
+     * supports https with a valid SSL configuration, that the https version
+     * of the page replies with 200 OK, and that the reply isn't a "Page Not
+     * Found" indicating that the 200 OK was probably a lie. (Transparent
+     * upgrades primarily occur in practice when a URL is used to load an
+     * embedded resource (image, iframe, object, etc) on a page that was
+     * loaded with https from a server that sent the
+     * `upgrade-insecure-requests` directive in the `Content-Security-Policy`
+     * header. So, <iframe src='http://...'> displayed on an https:// page. In
+     * that case, http-to-https protocol upgrades are performed transparently
+     * by the browser when loading the resource.)
+     * @param string $Url Url to check.
+     * @return bool TRUE when the https upgrade appears to work, FALSE
+     *     otherwise.
+     * @throws Exception if asked to check a non-http url
+     // phpcs:ignore
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/upgrade-insecure-requests
+     */
+    public function checkIfTransparentHttpsUpgradeWorksForUrl(string $Url): bool
+    {
+        # check that the provided url is actually an http url, error out if not
+        if (stripos($Url, "http://") !== 0) {
+            throw new Exception(
+                "Cannot check non-http URLs for transparent https upgrade."
+            );
+        }
+
+        # if we have a cached result for this URL, don't repeat the check
+        $CachedResult = $this->DB->queryValue(
+            "SELECT Result FROM UrlChecker_TransparentUpgradeResultCache "
+            ."WHERE Url='".addslashes($Url)."'",
+            "Result"
+        );
+        if ($CachedResult !== null) {
+            return (bool)$CachedResult;
+        }
+
+        # check the https version of this url
+        $Info = $this->getHttpInformation(str_ireplace("http://", "https://", $Url));
+
+        # if the final result was 200 OK and the page does not contain "Page Not Found"
+        # messages, then we've succeeded
+        $Result = ($Info->FinalStatusCode == 200 &&
+                   $this->hasValidContent($Info->FinalUrl)) ? true : false;
+
+        $this->DB->query(
+            "INSERT INTO UrlChecker_TransparentUpgradeResultCache (Url, Result, CheckDate) "
+                ."VALUES ('".$Url."', ".($Result ? "1" : "0").", NOW())"
+        );
+        return $Result;
+    }
+
+    /**
+     * Get the list of records that are due to be checked or re-checked. The
      *   length of the list will be limited by the "Resources to Check" config
-     *   setting.The plugin tracks the domains of URLs queued for a check
-     *   within a given page load and will only queue one check per
-     *   domain.This tracking includes URLs returned by this function as well
-     *   as those from getNextUrlsToBeChecked().
+     *   setting. The number of checks directed each domain are limited by the
+     *   "Checks Per Domain" config setting. Checks per Domain is applied to
+     *   both this function and as those from getNextUrlsToBeChecked().
      * @see getNextUrlsToBeChecked()
      * @return array Resources to check [ResourceId => CheckDate]
      */
-    public function getNextResourcesToBeChecked()
+    public function getNextResourcesToBeChecked(): array
     {
         $this->removeStaleData();
 
@@ -1516,149 +1591,105 @@ class UrlChecker extends Plugin
             return [];
         }
 
-        # assemble a list of schemas that we are checking
-        $SchemasChecked = [];
-        foreach ($FieldsChecked as $Field) {
-            if (!in_array($Field->schemaId(), $SchemasChecked)) {
-                $SchemasChecked[] = $Field->schemaId();
-            }
-        }
-
         # pull out the number of checks we want to do
-        $NumToCheck = $this->configSetting("NumToCheck");
+        $NumToCheck = $this->getConfigSetting("NumToCheck");
 
-        # start building the list of resources to check
-        $Resources = [];
+        # start with records that have never been checked
+        $Resources = $this->getRecordsThatHaveNotBeenCheckedYet($NumToCheck);
 
-        # get the list of RecordIds from schemas containing a field that we
-        # check where we've never checked a Url from the given record, limiting
-        # to 4 x NumToCheck rows to avoid hitting PHP's memory limit when the
-        # DB cache is large and there are a lot of resources to check
-
-        $this->DB->query(
-            "SELECT R.RecordId as RecordId"
-            ." FROM Records R"
-            ." LEFT JOIN UrlChecker_RecordHistory URH"
-            ." ON R.RecordId = URH.RecordId"
-            ." WHERE URH.RecordId IS NULL"
-            ." AND R.RecordId >= 0"
-            ." AND R.SchemaId IN (".implode(",", $SchemasChecked).")"
-            ." LIMIT ".intval(4 * $NumToCheck)
-        );
-        $RecordIds = $this->DB->fetchColumn("RecordId");
-
-        foreach ($RecordIds as $RecordId) {
-            $Record = new Record($RecordId);
-
-            if (!$this->shouldCheckDomainsFromRecordUrls($Record)) {
-                continue;
-            }
-
-            $Resources[$RecordId] = "N/A";
-
-            if (count($Resources) >= $NumToCheck) {
-                return $Resources;
-            }
+        # if we have enough, we can stop
+        if (count($Resources) >= $NumToCheck) {
+            return $Resources;
         }
 
-        # resources that need to be rechecked
-        $CheckDate = date(
-            StdLib::SQL_DATE_FORMAT,
-            (int)strtotime(
-                "-".$this->configSetting("ResourceRecheckTime")." days"
-            )
+        # otherwise add in records that need a recheck
+        $Resources += $this->getRecordsThatNeedToBeRechecked(
+            $NumToCheck - count($Resources)
         );
-        $this->DB->query(
-            "SELECT * FROM UrlChecker_RecordHistory"
-            ." WHERE CheckDate <= '".strval($CheckDate)."'"
-            ." ORDER BY CheckDate ASC"
-            ." LIMIT ".intval(4 * $NumToCheck)
-        );
-        $Rows = $this->DB->fetchRows();
-
-        foreach ($Rows as $Row) {
-            $Record = new Record($Row["RecordId"]);
-
-            if (!$this->shouldCheckDomainsFromRecordUrls($Record)) {
-                continue;
-            }
-
-            $Resources[$Row["RecordId"]] = $Row["CheckDate"] ;
-
-            if (count($Resources) >= $NumToCheck) {
-                break;
-            }
-        }
 
         return $Resources;
     }
 
     /**
      * Get the list of URLs that have at least one failure recorded and should
-     *   be re-checked.This will include potentially invalid URLs (i.e.those
+     *   be re-checked. This will include potentially invalid URLs (i.e. those
      *   that have failed fewer times than our configured Invalidation
      *   Threshold) that were last checked longer than our configured Valid
-     *   URL Recheck Time ago.It will also include invalid URLs (i.e.those
+     *   URL Recheck Time ago. It will also include invalid URLs (i.e. those
      *   that have failed more times than our configured Invalidation
      *   Threshold) that were last checked longer than our configured Invalid
-     *   URL Recheck Time ago.Result will be limited by the Resources to
-     *   Check setting.The plugin tracks the domains of URLs queued for a
+     *   URL Recheck Time ago. Result will be limited by the Resources to
+     *   Check setting. The plugin tracks the domains of URLs queued for a
      *   check within a given page load and will only queue one check per
-     *   domain.This tracking includes URLs returned by this function as well
+     *   domain. This tracking includes URLs returned by this function as well
      *   as those from getNextResourcesToBeChecked().
-     * @see getNextResourcessToBeChecked()
+     * @see getNextResourcesToBeChecked()
      * @return array InvalidUrl objects to be checked.
      */
-    public function getNextUrlsToBeChecked()
+    public function getNextUrlsToBeChecked(): array
     {
         $this->removeStaleData();
 
         $Urls = [];
 
+        $NumToCheck = $this->getConfigSetting("NumToCheck");
+        $ChecksPerDomain = $this->getConfigSetting("ChecksPerDomain");
+
+        # construct SQL condition to match URLs we should check
         $ValidCheckTime = date(
             StdLib::SQL_DATE_FORMAT,
             (int)strtotime(
-                "-".$this->configSetting("ValidUrlRecheckTime")." days"
+                "-".$this->getConfigSetting("ValidUrlRecheckTime")." hours"
             )
         );
         $InvalidCheckTime = date(
             StdLib::SQL_DATE_FORMAT,
             (int)strtotime(
-                "-".$this->configSetting("InvalidUrlRecheckTime")." days"
+                "-".$this->getConfigSetting("InvalidUrlRecheckTime")." days"
             )
         );
+        $Condition = "("
+            ."  TimesInvalid < ".intval($this->getConfigSetting("InvalidationThreshold"))
+            ."  AND CheckDate <= '".strval($ValidCheckTime)."'"
+            .") OR ("
+            ."  TimesInvalid >= ".intval($this->getConfigSetting("InvalidationThreshold"))
+            ."  AND CheckDate <= '".strval($InvalidCheckTime)."'"
+            .")";
 
-        $NumToCheck = $this->configSetting("NumToCheck");
-
-        # get list of records due to check, limiting to 4 x NumToCheck rows to
-        # avoid hitting PHP's memory limit when the DB cache is large and
-        # there are a lot of URLs to check
-        $this->DB->query(
-            "SELECT * FROM UrlChecker_UrlHistory"
-            ." WHERE ("
-            ."   TimesInvalid < ".intval($this->configSetting("InvalidationThreshold"))
-            ."   AND CheckDate <= '".strval($ValidCheckTime)."'"
-            ." ) OR ( "
-            ."   TimesInvalid >= ".intval($this->configSetting("InvalidationThreshold"))
-            ."   AND CheckDate <= '".strval($InvalidCheckTime)."'"
-            ." )"
-            ." ORDER BY CheckDate ASC"
-            ." LIMIT ".intval(4 * $NumToCheck)
+        # examine URLs in chunks of 1000 each
+        $BatchSize = 1000;
+        $NumUrls = $this->DB->queryValue(
+            "SELECT COUNT(*) AS Num FROM UrlChecker_UrlHistory"
+            ." WHERE ".$Condition,
+            "Num"
         );
+        for ($Offset = 0; $Offset < $NumUrls; $Offset += $BatchSize) {
+            $this->DB->query(
+                "SELECT * FROM UrlChecker_UrlHistory"
+                ." WHERE ".$Condition
+                ." ORDER BY CheckDate ASC"
+                ." LIMIT ".$BatchSize." OFFSET ".$Offset
+            );
+            $Rows = $this->DB->fetchRows();
 
-        foreach ($this->DB->fetchRows() as $Row) {
-            $Url = new InvalidUrl($Row);
-            $Host = parse_url($Url->Url, PHP_URL_HOST);
+            foreach ($Rows as $Row) {
+                $Url = new InvalidUrl($Row);
+                $Host = parse_url($Url->Url, PHP_URL_HOST);
 
-            # if we haven't queued any checks against this host while queuing
-            # our current batch of checks, then this one can be queued
-            if (!isset($this->DomainsQueuedForChecking[$Host])) {
-                $Urls[] = $Url;
-                $this->DomainsQueuedForChecking[$Host] = true;
-            }
+                if (!isset($this->DomainsQueuedForChecking[$Host])) {
+                    $this->DomainsQueuedForChecking[$Host] = 0;
+                }
 
-            if (count($Urls) >= $NumToCheck) {
-                break;
+                # if we haven't queued any checks against this host while queuing
+                # our current batch of checks, then this one can be queued
+                if ($this->DomainsQueuedForChecking[$Host] < $ChecksPerDomain) {
+                    $Urls[] = $Url;
+                    $this->DomainsQueuedForChecking[$Host] += 1;
+
+                    if (count($Urls) >= $NumToCheck) {
+                        return $Urls;
+                    }
+                }
             }
         }
 
@@ -1667,49 +1698,36 @@ class UrlChecker extends Plugin
 
     /**
      * Handle resource modification.
+     * @param int $Events \Metavus\Record::EVENT_ values OR'd together.
      * @param \Metavus\Record $Resource Resource that was modified.
      *   (needs to be \Metavus\Record here to distinguish from
      *   \Metavus\Plugins\UrlChecker\Record and because AF passes in a
      *   \Metavus\Record when signaling the events)
      */
-    public function resourceModify(\Metavus\Record $Resource)
+    public function resourceModify(int $Events, \Metavus\Record $Resource): void
     {
         # get the list of fields that we will check for this resource
         $FieldsToCheck = $this->getFieldsToCheck($Resource->getSchemaId());
 
+        $this->pruneUrlHistoryForDisabledFields($Resource->id());
+
         foreach ($FieldsToCheck as $Field) {
             $Urls = $this->getUrlsFromField($Resource, $Field);
 
-            # if this field has no urls, move along to the next one
-            if (count($Urls) == 0) {
-                continue;
-            }
-
-            # clean out history entries for URLs that are no longer associated
-            # with this field and record
-            $EscapedUrls = array_map(
-                function ($x) {
-                    return "'".addslashes($x)."'";
-                },
-                $Urls
-            );
-            $this->DB->query(
-                " DELETE FROM UrlChecker_UrlHistory"
-                ." WHERE RecordId = '".intval($Resource->id())."'"
-                ." AND FieldId = '".intval($Field->id())."'"
-                ." AND Url NOT IN (".implode(",", $EscapedUrls).")"
-            );
+            # remove urls no longer associated with this record
+            $this->pruneUrlHistory($Resource->id(), $Field->id(), $Urls);
         }
     }
 
     /**
      * Handle resource deletion.
+     * @param int $Events \Metavus\Record::EVENT_ values OR'd together.
      * @param \Metavus\Record $Resource Resource that is about to be deleted.
      *   (needs to be \Metavus\Record here to distinguish from
      *   \Metavus\Plugins\UrlChecker\Record and because AF passes in a
      *   \Metavus\Record when signaling the events)
      */
-    public function resourceDelete(\Metavus\Record $Resource)
+    public function resourceDelete(int $Events, \Metavus\Record $Resource): void
     {
         $this->DB->query(
             "DELETE FROM UrlChecker_UrlHistory"
@@ -1725,14 +1743,14 @@ class UrlChecker extends Plugin
      * Handle the addition of a new URL field, setting it to check by default.
      * @param int $FieldId ID of field.
      */
-    public function addField($FieldId)
+    public function addField($FieldId): void
     {
-        $FieldsToCheck = $this->configSetting("FieldsToCheck") ?? [];
+        $FieldsToCheck = $this->getConfigSetting("FieldsToCheck") ?? [];
 
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField($FieldId);
         if ($Field->type() == MetadataSchema::MDFTYPE_URL) {
             $FieldsToCheck[] = $FieldId;
-            $this->configSetting("FieldsToCheck", $FieldsToCheck);
+            $this->setConfigSetting("FieldsToCheck", $FieldsToCheck);
         }
     }
 
@@ -1741,9 +1759,9 @@ class UrlChecker extends Plugin
      *   fields to check.
      * @param int $FieldId ID of field.
      */
-    public function removeField($FieldId)
+    public function removeField($FieldId): void
     {
-        $FieldsToCheck = $this->configSetting("FieldsToCheck");
+        $FieldsToCheck = $this->getConfigSetting("FieldsToCheck");
 
         # if we're not checking any fields, bail because there's nothing to do
         if (!$FieldsToCheck) {
@@ -1754,7 +1772,7 @@ class UrlChecker extends Plugin
         $Key = array_search($FieldId, $FieldsToCheck);
         if ($Key !== false) {
             unset($FieldsToCheck[$Key]);
-            $this->configSetting("FieldsToCheck", $FieldsToCheck);
+            $this->setConfigSetting("FieldsToCheck", $FieldsToCheck);
 
             # and clean out any URL history for this field
             $this->DB->query(
@@ -1776,7 +1794,7 @@ class UrlChecker extends Plugin
         $ConfigSetting,
         $OldValue,
         $NewValue
-    ) {
+    ): void {
         if ($PluginName == $this->Name && $ConfigSetting == "DontCheck") {
             $this->queueUniqueTask(
                 "processChangedExclusionRules",
@@ -1791,10 +1809,10 @@ class UrlChecker extends Plugin
     /**
      * Process a change in exclusion rules
      */
-    public function processChangedExclusionRules()
+    public function processChangedExclusionRules(): void
     {
         # Clean out invalid URLs from resources that would now be skipped
-        #  by our exclusion rules.This is done to prevent them from
+        #  by our exclusion rules. This is done to prevent them from
         #  continuing to appear in the Results page after being excluded.
         $DB = new Database();
         $DB->query(
@@ -1844,10 +1862,123 @@ class UrlChecker extends Plugin
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+
+    /**
+     * Store the results of a URL check in the database.
+     * @param int $RecordId Resource that owns this Url.
+     * @param int $FieldId Field that owns this Url.
+     * @param string $Url Url that was checked.
+     * @param HttpInfo $HttpStatusInfo Check result produced by
+     *   self::getHttpInformation()
+     * @param float $CheckDuration How long the check took.
+     */
+    private function recordResultsOfUrlCheck(
+        int $RecordId,
+        int $FieldId,
+        string $Url,
+        HttpInfo $HttpStatusInfo,
+        float $CheckDuration
+    ) : void {
+        # SQL to clear failures history for our Url
+        $DeleteHistoryQuery = "DELETE FROM UrlChecker_UrlHistory"
+            ." WHERE RecordId = '".$RecordId."'"
+            ." AND FieldId = '".$FieldId."'"
+            ." AND Url = '".addslashes($Url)."'";
+
+        # remove old failure data, if any, if the url is ok
+        if ($HttpStatusInfo->StatusCode == self::STATUS_NOT_CHECKED
+                || ($HttpStatusInfo->StatusCode == 200
+                && $this->hasValidContent($Url))) {
+            $this->DB->query($DeleteHistoryQuery);
+            return;
+        }
+
+        # if this was a 3xx redirect to a page that is okay
+        if ($HttpStatusInfo->StatusCode >= 300 && $HttpStatusInfo->StatusCode < 400 &&
+            $HttpStatusInfo->FinalStatusCode == 200) {
+            # see if we're just switching http/https or adding/removing www.
+            $PrefixToStrip = "%^https?://(www\.)?%";
+            $Src = preg_replace($PrefixToStrip, "", $HttpStatusInfo->Url);
+            $Dst = preg_replace($PrefixToStrip, "", $HttpStatusInfo->FinalUrl);
+            if ($Src == $Dst) {
+                $this->DB->query($DeleteHistoryQuery);
+                return;
+            }
+        }
+
+        # start off assuming this is the first failure for this URL
+        $TimesInvalid = 1;
+        $Hidden = 0;
+
+        # look up existing failure information
+        $this->DB->query(
+            "SELECT * FROM UrlChecker_UrlHistory"
+            ." WHERE RecordId = '".intval($RecordId)."'"
+            ." AND FieldId = '".intval($FieldId)."'"
+            ." AND Url = '".addslashes($Url)."'"
+        );
+        $Row = $this->DB->fetchRow();
+
+        # if we found failure info for this URL and we're still getting the
+        # same status code
+        if ($Row !== false
+                && $Row["StatusCode"] == strval($HttpStatusInfo->StatusCode)
+                && $Row["FinalStatusCode"] == strval($HttpStatusInfo->FinalStatusCode)) {
+            # if the final URL at the end has not changed since last time,
+            # increment our failure count and retain the 'hidden' setting
+            if ($Row["FinalUrl"] == $HttpStatusInfo->FinalUrl) {
+                $TimesInvalid = intval($Row["TimesInvalid"]) + 1;
+                $Hidden = intval($Row["Hidden"]);
+            } elseif ($Row["StatusCode"][0] == "3" && $HttpStatusInfo->UsesCookies) {
+                # if the server uses cookies, and there is a redirect, the
+                # URL is likely to change every time a check takes place.
+                # we don't want this to reset our failure count every time.
+                # thus, increment our failure count if we're being redirected
+                # to the same host as last time
+                $DbUrl = @parse_url($Row["FinalUrl"], PHP_URL_HOST);
+                $NewUrl = @parse_url($HttpStatusInfo->FinalUrl, PHP_URL_HOST);
+                if ($DbUrl == $NewUrl) {
+                    $TimesInvalid = intval($Row["TimesInvalid"]) + 1;
+                    $Hidden = intval($Row["Hidden"]);
+                }
+            }
+        }
+
+        # if the final URL was served with a 200 response but it appears to be
+        # an error page, flag the final URL as invalid even though the response was 200
+        if ($HttpStatusInfo->FinalStatusCode == 200
+                && !$this->hasValidContent($HttpStatusInfo->FinalUrl)) {
+            $IsFinalUrlInvalid = 1;
+        } else {
+            $IsFinalUrlInvalid = 0;
+        }
+
+        # delete any existing row and create a new one with updated information
+        $this->DB->query("LOCK TABLES UrlChecker_UrlHistory WRITE");
+        $this->DB->query($DeleteHistoryQuery);
+        $this->DB->query(
+            "INSERT INTO UrlChecker_UrlHistory SET"
+            ." RecordId = '".intval($RecordId)."',"
+            ." FieldId = '".intval($FieldId)."',"
+            ." CheckDuration = '".intval($CheckDuration)."',"
+            ." Hidden = '".$Hidden."',"
+            ." TimesInvalid = ".intval($TimesInvalid).","
+            ." Url = '".addslashes($Url)."',"
+            ." StatusCode = '".intval($HttpStatusInfo->StatusCode)."',"
+            ." ReasonPhrase = '".addslashes($HttpStatusInfo->ReasonPhrase)."',"
+            ." IsFinalUrlInvalid = '".$IsFinalUrlInvalid."',"
+            ." FinalUrl = '".addslashes($HttpStatusInfo->FinalUrl)."',"
+            ." FinalStatusCode = '".intval($HttpStatusInfo->FinalStatusCode)."',"
+            ." FinalReasonPhrase = '".addslashes($HttpStatusInfo->FinalReasonPhrase)."'"
+        );
+        $this->DB->query("UNLOCK TABLES");
+    }
+
+
     /**
      * Load option values to be used on the config screen.
      */
-    private function loadConfigOptionValues()
+    private function loadConfigOptionValues(): void
     {
         if ($this->OptionValuesLoaded) {
             return;
@@ -1899,7 +2030,7 @@ class UrlChecker extends Plugin
     /**
      * Set up default release/withhold/autofix actions on plugin installation.
      */
-    private function configureDefaultActions()
+    private function configureDefaultActions(): void
     {
         # actions we need to configure
         $Actions = ["Withhold", "Release", "Autofix"];
@@ -1956,8 +2087,31 @@ class UrlChecker extends Plugin
 
         # save the list of changes we've computed
         foreach ($Actions as $Action) {
-            $this->configSetting($Action."Configuration", $NewSettings[$Action]);
+            $this->setConfigSetting($Action."Configuration", $NewSettings[$Action]);
         }
+    }
+
+    /**
+     * Convert an array of constraint lists to an SQL condition for use in a
+     * WHERE clause. Within each constraint list, constraints are ANDed
+     * together. Multiple lists are ORed together.
+     * @param array $Constraints Array of constraint lists.
+     * @return string SQL for use in a WHERE clause.
+     */
+    private function sqlConditionFromConstraintList(array $Constraints) : string
+    {
+        $Conditions = [];
+        foreach ($Constraints as $ConstraintList) {
+            if (!($ConstraintList instanceof ConstraintList)) {
+                throw new Exception(
+                    "Invalid constraint in constraint list."
+                );
+            }
+            $Conditions[] = "(".$ConstraintList->toSql().")";
+        }
+
+        return "URH.TimesInvalid >= ".$this->getConfigSetting("InvalidationThreshold")
+            ." AND (".implode(" OR ", $Conditions).")";
     }
 
     /**
@@ -1965,7 +2119,7 @@ class UrlChecker extends Plugin
      * @param Record $Resource Resource for the estimate.
      * @return int Expected number of seconds
      */
-    private function estimateCheckTime($Resource)
+    private function estimateCheckTime($Resource): int
     {
         $Fields = $this->getFieldsToCheck($Resource->getSchemaId());
 
@@ -1989,14 +2143,138 @@ class UrlChecker extends Plugin
     }
 
     /**
+     * Get the list of records that should be checked where we have never
+     * checked a field from that record.
+     * @param int $NumToCheck Number of records to retrieve.
+     * @return array Resources to check [ResourceId => "N/A"] (where N/A is a
+     * placeholder for a check date)
+     */
+    private function getRecordsThatHaveNotBeenCheckedYet($NumToCheck): array
+    {
+        $FieldsChecked = $this->getFieldsToCheck();
+
+        # assemble a list of schemas that we are checking
+        $SchemasChecked = [];
+        foreach ($FieldsChecked as $Field) {
+            if (!in_array($Field->schemaId(), $SchemasChecked)) {
+                $SchemasChecked[] = $Field->schemaId();
+            }
+        }
+
+        # start building the list of resources to check
+        $Resources = [];
+
+        # iterate over records in batches of 1000
+        $BatchSize = 1000;
+
+        # get the list of RecordIds from schemas containing a field that we
+        # check where we've never checked a Url from the given record
+        # (a LEFT JOIN produces a row for every row in the left table, with NULL
+        # filled in for columns where the ON did not match anything in the right
+        # table. Because of this, the URH.RecordId IS NULL finds rows in
+        # Records that had no corresponding row in URH. Including R.SchemaId
+        # restricts us to resources from schemas where we check one or more
+        # fields.)
+        $Source = "Records R LEFT JOIN UrlChecker_RecordHistory URH"
+            ." ON R.RecordId = URH.RecordId";
+        $Condition = "URH.RecordId IS NULL"
+            ." AND R.RecordId >= 0"
+            ." AND R.SchemaId IN (".implode(",", $SchemasChecked).")";
+
+        $NumRecords = $this->DB->queryValue(
+            "SELECT COUNT(*) AS Num FROM ".$Source ." WHERE ".$Condition,
+            "Num"
+        );
+        for ($Offset = 0; $Offset < $NumRecords; $Offset += $BatchSize) {
+            $this->DB->query(
+                "SELECT R.RecordId as RecordId"
+                ." FROM ".$Source." WHERE ".$Condition
+                ." LIMIT ".$BatchSize." OFFSET ".$Offset
+            );
+            $RecordIds = $this->DB->fetchColumn("RecordId");
+
+            foreach ($RecordIds as $RecordId) {
+                $Record = new Record($RecordId);
+                if ($this->shouldCheckDomainsFromRecordUrls($Record)) {
+                    $Resources[$RecordId] = "N/A";
+
+                    if (count($Resources) >= $NumToCheck) {
+                        return $Resources;
+                    }
+                }
+            }
+        }
+
+        return $Resources;
+    }
+
+    /**
+     * Get the list of records that need to be rechecked.
+     * @param int $NumToCheck Number of records to retrieve.
+     * @return array Resources to check [ResourceId => CheckDate]
+     */
+    private function getRecordsThatNeedToBeRechecked(int $NumToCheck): array
+    {
+        if ($NumToCheck <= 0) {
+            throw new InvalidArgumentException(
+                "NumToCheck must be positive. "
+                ."(Value given was ".$NumToCheck.")"
+            );
+        }
+
+        # build the list of resources to check
+        $Resources = [];
+
+        # iterate over records in batches of 1000
+        $BatchSize = 1000;
+
+        # resources that need to be rechecked
+        $CheckDate = date(
+            StdLib::SQL_DATE_FORMAT,
+            (int)strtotime(
+                "-".$this->getConfigSetting("ResourceRecheckTime")." days"
+            )
+        );
+        $Condition = "CheckDate <= '".strval($CheckDate)."'";
+
+        $NumRecords = $this->DB->queryValue(
+            "SELECT COUNT(*) AS Num FROM UrlChecker_RecordHistory"
+            ." WHERE ".$Condition,
+            "Num"
+        );
+        for ($Offset = 0; $Offset < $NumRecords; $Offset += $BatchSize) {
+            $this->DB->query(
+                "SELECT * FROM UrlChecker_RecordHistory"
+                ." WHERE ".$Condition
+                ." ORDER BY CheckDate ASC"
+                ." LIMIT ".$BatchSize." OFFSET ".$Offset
+            );
+            $Rows = $this->DB->fetchRows();
+
+            foreach ($Rows as $Row) {
+                $Record = new Record($Row["RecordId"]);
+                if ($this->shouldCheckDomainsFromRecordUrls($Record)) {
+                    $Resources[$Row["RecordId"]] = $Row["CheckDate"] ;
+
+                    if (count($Resources) >= $NumToCheck) {
+                        return $Resources;
+                    }
+                }
+            }
+        }
+
+        return $Resources;
+    }
+
+    /**
      * Determine whether or not the URLs for the given resource should be
      * checked.
      * @param Record $Resource Resource.
      * @return bool TRUE if the URLs should not be checked and FALSE otherwise
     */
-    private function shouldNotCheckUrls($Resource)
+    private function shouldNotCheckUrls($Resource): bool
     {
-        $Rules = $this->configSetting("DontCheck");
+        $Rules = $this->getConfigSetting("DontCheck");
 
         # if there are no exclusions, then nothing should be excluded
         if (!$Rules) {
@@ -2009,7 +2287,7 @@ class UrlChecker extends Plugin
             list($FieldId, $Flag) = explode(":", $Rule);
 
             try {
-                $Field = new MetadataField(intval($FieldId));
+                $Field = MetadataField::getField(intval($FieldId));
             } catch (Exception $e) {
                 # If the ID was invalid, causing an exception to be thrown,
                 # move along to the next rule.
@@ -2035,7 +2313,7 @@ class UrlChecker extends Plugin
             switch ($Field->type()) {
                 case MetadataSchema::MDFTYPE_FLAG:
                     # the rule matches if the field value equals the flag value
-                    # specified in the rule.the checks with empty() are used in case
+                    # specified in the rule. the checks with empty() are used in case
                     # NULLs are in the database, which are assumed to be "off"
                     if ($Value == $Flag) {
                         return true;
@@ -2056,7 +2334,10 @@ class UrlChecker extends Plugin
 
     /**
      * Determine if the URLs in a record should be checked based on which
-     * domains have already been queued for a check in the current batch.
+     * domains have already been queued for a check in the current batch. If
+     * any of the URLs contain a domain that has exceeded its check threshold
+     * then none of the URLs from this record will be checked. (Done this way
+     * to avoid needing to keep track of partially checked records.)
      * @param Record $Record Record to check URLs for.
      * @return bool TRUE when the given record should be checked, FALSE otherwise.
      *   when TRUE is returned, domains from this record's URLs will be added to
@@ -2071,6 +2352,8 @@ class UrlChecker extends Plugin
         if (count($FieldsToCheck) == 0) {
             return false;
         }
+
+        $ChecksPerDomain = $this->getConfigSetting("ChecksPerDomain");
 
         # list of hosts referenced by this record
         $Domains = [];
@@ -2090,7 +2373,8 @@ class UrlChecker extends Plugin
 
                 # if we've already queued a URL for checking that has the
                 # same domain, then this record should not be queued for checking
-                if (isset($this->DomainsQueuedForChecking[$Domain])) {
+                if (isset($this->DomainsQueuedForChecking[$Domain]) &&
+                    $this->DomainsQueuedForChecking[$Domain] >= $ChecksPerDomain) {
                     return false;
                 }
 
@@ -2102,7 +2386,10 @@ class UrlChecker extends Plugin
         # add the domains from this record to our list of domains that are
         # queued for checking
         foreach ($Domains as $Domain) {
-            $this->DomainsQueuedForChecking[$Domain] = true;
+            if (!isset($this->DomainsQueuedForChecking[$Domain])) {
+                $this->DomainsQueuedForChecking[$Domain] = 0;
+            }
+            $this->DomainsQueuedForChecking[$Domain] += 1;
         }
 
         # report that this record should be checked
@@ -2150,14 +2437,42 @@ class UrlChecker extends Plugin
                         }
                     }
 
+                    # go over the list of URLs and prepend the base path to all relative URLs
+                    $Urls = array_map(function ($Url) {
+                        # parse the current URL to get its components
+                        $UrlComponents = parse_url($Url);
+
+                        # do nothing if URL could not be parsed
+                        if ($UrlComponents === false) {
+                            return $Url;
+                        }
+
+                        # check if the current URL is a relative one
+                        if ((!isset($UrlComponents["scheme"]) && !isset($UrlComponents["host"]))
+                                && isset($UrlComponents["path"])
+                                && preg_match('%[a-z0-9_.\%+-]+%i', $UrlComponents["path"]) ) {
+                            # prepend the baseURL
+                            return ApplicationFramework::getInstance()->baseUrl()
+                                .$UrlComponents["path"];
+                        }
+
+                        # if the current URL isn't a relative one, then return it as is
+                        return $Url;
+                    }, $Urls);
+
                     # filter out URLs that contain an insertion keyword
                     # (e.g., for scaled images)
                     $Urls = array_filter(
                         $Urls,
                         function ($Url) {
-                            if (preg_match("%{{[A-Za-z0-9]+(\|[^}]+)?}}%", $Url)) {
+                            # if the current URL is not a syntactically valid URL
+                            # or it contains an insertion keyword, then filter it out
+                            if (!filter_var($Url, FILTER_VALIDATE_URL)
+                                    || preg_match("%{{[A-Za-z0-9]+(\|[^}]+)?}}%", $Url)) {
                                 return false;
                             }
+
+                            # otherwise, keep it
                             return true;
                         }
                     );
@@ -2172,7 +2487,7 @@ class UrlChecker extends Plugin
      * Update the resource history for the given resource.
      * @param Record $Resource The resource for which to update the history.
      */
-    private function updateResourceHistory($Resource)
+    private function updateResourceHistory($Resource): void
     {
         $this->DB->query(
             "INSERT INTO UrlChecker_RecordHistory"
@@ -2182,164 +2497,136 @@ class UrlChecker extends Plugin
     }
 
     /**
-     * Check a given Url, updating failure information in the database based
-     *   on the result.
-     * @param int $RecordId Resource that owns this Url.
-     * @param int $FieldId Field that owns this Url.
-     * @param string $Url Url to check.
+     * Remove URLs from the UrlHistory table that are no longer associated
+     * with a given record and field.
+     * @param int $RecordId Record to update history for.
+     * @param int $FieldId Field to update history for.
+     * @param array $UrlsToKeep List of URLs currently associated with the given
+     *   record and field.
      */
-    private function checkUrl(
+    private function pruneUrlHistory(
         int $RecordId,
         int $FieldId,
-        string $Url
-    ) {
-        # get the url's http status
-        $Start = time();
-        $Info = $this->getHttpInformation($Url);
-        $CheckDuration = ceil(time() - $Start);
-
-        # SQL to clear failures history for our Url
-        $DeleteHistoryQuery = "DELETE FROM UrlChecker_UrlHistory"
-            ." WHERE RecordId = '".$RecordId."'"
-            ." AND FieldId = '".$FieldId."'"
-            ." AND Url = '".addslashes($Url)."'";
-
-        # remove old failure data, if any, if the url is ok
-        if ($Info["StatusCode"] == -1 || ($Info["StatusCode"] == 200
-            && $this->hasValidContent($Url))) {
-            $this->DB->query($DeleteHistoryQuery);
+        array $UrlsToKeep
+    ): void {
+        # if this field has no urls, clean out all the history entries
+        # for this field and record
+        if (count($UrlsToKeep) == 0) {
+            $this->DB->query(
+                "DELETE FROM UrlChecker_UrlHistory"
+                ." WHERE RecordId = '".$RecordId."'"
+                ." AND FieldId = '".$FieldId."'"
+            );
             return;
         }
 
-        # if this was a 3xx redirect to a page that is okay
-        if ($Info["StatusCode"] >= 300 && $Info["StatusCode"] < 400 &&
-            $Info["FinalStatusCode"] == 200) {
-            # see if we're just switching http/https or adding/removing www.
-            $PrefixToStrip = "%^https?://(www\.)?%";
-            $Src = preg_replace($PrefixToStrip, "", $Info["Url"]);
-            $Dst = preg_replace($PrefixToStrip, "", $Info["FinalUrl"]);
-            if ($Src == $Dst) {
-                $this->DB->query($DeleteHistoryQuery);
-                return;
-            }
-        }
-
-        # look up existing failure information
-        $this->DB->query(
-            "SELECT * FROM UrlChecker_UrlHistory"
-            ." WHERE RecordId = '".intval($RecordId)."'"
-            ." AND FieldId = '".intval($FieldId)."'"
-            ." AND Url = '".addslashes($Url)."'"
+        # clean out history entries for URLs that are no longer associated
+        # with this field and record
+        $EscapedUrls = array_map(
+            function ($Url) {
+                return "'".addslashes($Url)."'";
+            },
+            $UrlsToKeep
         );
-
-        # try to use an existing TimesInvalid value if possible and the
-        # HTTP info is not too different
-        $TimesInvalid = 1;
-        $Hidden = 0;
-        if (false !== ($Row = $this->DB->fetchRow())
-            && $Row["StatusCode"] == strval($Info["StatusCode"])
-            && $Row["FinalStatusCode"] == strval($Info["FinalStatusCode"])) {
-            # the URL hasn't changed at all
-            if ($Row["FinalUrl"] == $Info["FinalUrl"]) {
-                $TimesInvalid = intval($Row["TimesInvalid"]) + 1;
-                $Hidden = intval($Row["Hidden"]);
-            } elseif ($Row["StatusCode"][0] == "3" && $Info["UsesCookies"]) {
-                # if the server uses cookies, and there is a redirect, the
-                # URL is likely to change every time a check takes place.
-                # thus, only check the host portions if those conditions are
-                # true
-                $DbUrl = @parse_url($Row["FinalUrl"]);
-                $NewUrl = @parse_url($Info["FinalUrl"]);
-
-                if ($DbUrl && $NewUrl && isset($DbUrl["host"]) && isset($NewUrl["host"])
-                    && $DbUrl["host"] == $NewUrl["host"]) {
-                    $TimesInvalid = intval($Row["TimesInvalid"]) + 1;
-                    $Hidden = intval($Row["Hidden"]);
-                }
-            }
-        }
-
-        if ($Info["FinalStatusCode"] == 200 && !$this->hasValidContent($Info["FinalUrl"])) {
-            $IsFinalUrlInvalid = 1;
-        } else {
-            $IsFinalUrlInvalid = 0;
-        }
-
-        # delete any existing row and create a new one with updated information
-        $this->DB->query("LOCK TABLES UrlChecker_UrlHistory WRITE");
-        $this->DB->query($DeleteHistoryQuery);
         $this->DB->query(
-            "INSERT INTO UrlChecker_UrlHistory SET"
-            ." RecordId = '".intval($RecordId)."',"
-            ." FieldId = '".intval($FieldId)."',"
-            ." CheckDuration = '".intval($CheckDuration)."',"
-            ." Hidden = '".$Hidden."',"
-            ." TimesInvalid = ".intval($TimesInvalid).","
-            ." Url = '".addslashes($Url)."',"
-            ." StatusCode = '".intval($Info["StatusCode"])."',"
-            ." ReasonPhrase = '".addslashes($Info["ReasonPhrase"])."',"
-            ." IsFinalUrlInvalid = '".$IsFinalUrlInvalid."',"
-            ." FinalUrl = '".addslashes($Info["FinalUrl"])."',"
-            ." FinalStatusCode = '".intval($Info["FinalStatusCode"])."',"
-            ." FinalReasonPhrase = '".addslashes($Info["FinalReasonPhrase"])."'"
+            " DELETE FROM UrlChecker_UrlHistory"
+            ." WHERE RecordId = '".$RecordId."'"
+            ." AND FieldId = '".$FieldId."'"
+            ." AND Url NOT IN (".implode(",", $EscapedUrls).")"
         );
-        $this->DB->query("UNLOCK TABLES");
     }
 
     /**
-     * Get an URL's status info.If there is no redirection, this will be the
-     * status line for the URL.If there are redirects, this will be the status
-     * line for the URL and the status line for the last URL after redirection.
-     * @param string $Url URL
-     * @return array an array with the same fields as an HttpInfo object
+     * Delete all history entries for disabled fields and this record.
+     * (Not part of pruneUrlHistory() because that function works on a per-field
+     * basis and is only called for enabled fields.)
+     * @param int $RecordId Record to update history for.
      */
-    private function getHttpInformation($Url)
+    private function pruneUrlHistoryForDisabledFields(int $RecordId): void
+    {
+        $this->DB->query(
+            "DELETE FROM UrlChecker_UrlHistory"
+            ." WHERE RecordId = '".$RecordId."'"
+            ." AND FieldId IN ("
+            ."  SELECT FieldId FROM MetadataFields WHERE Enabled=FALSE"
+            ." )"
+        );
+    }
+
+    /**
+     * Get the list of currently failing URLs for a given record and field.
+     * @param int $RecordId Record to check.
+     * @param int $FieldId Field to check.
+     * @return array Failing URLs.
+     */
+    private function getFailingUrls(
+        int $RecordId,
+        int $FieldId
+    ): array {
+        $this->DB->query(
+            "SELECT Url FROM UrlChecker_UrlHistory"
+                ." WHERE RecordId = '".$RecordId."'"
+                ." AND FieldId = '".$FieldId."'"
+        );
+
+        return $this->DB->fetchColumn("Url");
+    }
+
+
+
+    /**
+     * Get status info for a URL, following up to five redirects. If there is
+     * no redirection, this will be the status line for the URL. If there are
+     * redirects, this will be the status line for the URL and the status line
+     * for the last URL after redirection.
+     * @param string $Url URL
+     * @return HttpInfo Results of check
+     */
+    private function getHttpInformation($Url): HttpInfo
     {
         # information for the URL
-        list($Info, $Redirect) = $this->getHttpInformationAux($Url);
+        list($Info, $Redirect) = $this->getHttpInformationWithoutRedirect($Url);
 
         # information for redirects, if any
         if (!is_null($Redirect)) {
             $FinalUrl = "";
             $FinalInfo = [];
 
-            $MaxIterations = 5;
+            $MaxIterations = self::MAX_REDIRECTS;
             while (isset($Redirect) && --$MaxIterations >= 0) {
                 $FinalUrl = $Redirect;
                 list($FinalInfo, $Redirect) =
-                    $this->getHttpInformationAux($Redirect);
+                    $this->getHttpInformationWithoutRedirect($Redirect);
 
-                $Info["UsesCookies"] = $Info["UsesCookies"] || $FinalInfo["UsesCookies"];
+                $Info->UsesCookies = $Info->UsesCookies || $FinalInfo->UsesCookies;
 
                 if (is_null($Redirect)) {
                     unset($Redirect);
                 }
             }
 
-            $Info["FinalUrl"] = $FinalUrl;
-            $Info["FinalStatusCode"] = $FinalInfo["StatusCode"];
-            $Info["FinalReasonPhrase"] = $FinalInfo["ReasonPhrase"];
+            $Info->FinalUrl = $FinalUrl;
+            $Info->FinalStatusCode = $FinalInfo->StatusCode;
+            $Info->FinalReasonPhrase = $FinalInfo->ReasonPhrase;
         }
 
         return $Info;
     }
 
     /**
-     * Auxiliary function for self::GetHttpInformation().Gets the HTTP
-     * information on one URL.Note that this only supports HTTP and HTTPS.
+     * Get status info for a URL without following redirects.
+     * Note that this only supports HTTP and HTTPS.
      * @param string $Url URL
-     * @return array an array with the same fields as an HttpInfo object
+     * @return array Array where the first element is an HttpInfo object
+     *   giving the results of the check and the second is a null for
+     *   non-redirect responses or a string giving the a destination for
+     *   redirects
      */
-    private function getHttpInformationAux($Url)
+    private function getHttpInformationWithoutRedirect($Url): array
     {
-        # this should be an HttpInfo object but some versions of PHP
-        # segfault when using them, for an unknown reason
-        $Info = ["Url" => "", "StatusCode" => -1, "ReasonPhrase" => "",
-            "FinalUrl" => "", "FinalStatusCode" => -1, "FinalReasonPhrase" => "",
-            "UsesCookies" => false
-        ];
+        $Info = new HttpInfo();
 
-        # blank url (code defaults to -1, i.e., not checked)
+        # blank url (code defaults to self::STATUS_NOT_CHECKED)
         if (!strlen(trim($Url))) {
             return [$Info, null];
         }
@@ -2355,8 +2642,8 @@ class UrlChecker extends Plugin
         }
 
         # assume that we can't connect to the URL
-        $Info["Url"] = $Url;
-        $Info["StatusCode"] = 0;
+        $Info->Url = $Url;
+        $Info->StatusCode = 0;
 
         # make sure there are no spaces in the url and parse it
         $ParsedUrl = @parse_url(str_replace(" ", "%20", $Url));
@@ -2395,7 +2682,7 @@ class UrlChecker extends Plugin
 
         $Context = stream_context_create([
             "ssl" => [
-                "verify_peer" => $this->configSetting("VerifySSLCerts"),
+                "verify_peer" => $this->getConfigSetting("VerifySSLCerts"),
             ],
         ]);
 
@@ -2450,14 +2737,14 @@ class UrlChecker extends Plugin
             $Line = trim($Line);
 
             $StatusLine = new StatusLine($Line);
-            $Info["StatusCode"] = $StatusLine->getStatusCode();
-            $Info["ReasonPhrase"] = $StatusLine->getReasonPhrase();
+            $Info->StatusCode = $StatusLine->getStatusCode();
+            $Info->ReasonPhrase = $StatusLine->getReasonPhrase();
         } else {
             # the server responded with nothing so mark the URL as an internal
             # server error (500)
             fclose($Stream);
-            $Info["StatusCode"] = 500;
-            $Info["ReasonPhrase"] = "Internal Server Error";
+            $Info->StatusCode = 500;
+            $Info->ReasonPhrase = "Internal Server Error";
             return [$Info, null];
         }
 
@@ -2479,7 +2766,7 @@ class UrlChecker extends Plugin
 
             # a Set-Cookie header
             if (substr($Line, 0, 11) == "Set-Cookie:") {
-                $Info["UsesCookies"] = true;
+                $Info->UsesCookies = true;
             }
         }
 
@@ -2504,12 +2791,12 @@ class UrlChecker extends Plugin
 
     /**
      * Determine if a given URL has valid content, that is, if it doesn't match
-     * some rudimentary regular expressions.Checks for "Page Not Found"-type
+     * some rudimentary regular expressions. Checks for "Page Not Found"-type
      * strings.
      * @param string $Url URL
      * @return bool TRUE if the content for the given URL is valid, FALSE otherwise
      */
-    private function hasValidContent($Url)
+    private function hasValidContent($Url): bool
     {
         # set up stream options
         $Options = [
@@ -2557,10 +2844,13 @@ class UrlChecker extends Plugin
         # since fread might stop before getting 8KB, e.g., if a packet is
         # received or the server is slow, there is a chance that the file is
         # HTML, but it's opening tag won't have arrived in the first fread, and
-        # therefore won't be checked.this should be OK since it probably means
+        # therefore won't be checked. this should be OK since it probably means
         # the server is really slow and it shouldn't be checked anyway
         $Html = @fread($Handle, 8192);
-        if ($Html === false || strpos($Html, "<html") === false) {
+        if ($Html === false ||
+            (stripos($Html, "<html") === false &&
+             stripos($Html, "<!doctype html") === false)
+        ) {
             return true;
         }
 
@@ -2617,19 +2907,37 @@ class UrlChecker extends Plugin
     }
 
     /**
-     * Queue tasks that check individual resources.
+     * Queue a task to check non-failing URLs from a resource.
      * @param Record $Resource Resource to be checked.
      */
-    private function queueResourceCheckTask(Record $Resource)
+    private function queueResourceCheckTask(Record $Resource): void
     {
         $TaskDescription =
-           "Validate URLs associated with <a href=\"r".$Resource->id()."\"><i>"
-           .$Resource->getMapped("Title")."</i></a>";
+            "Validate good URLs associated with <a href=\"r".$Resource->id()."\"><i>"
+            .$Resource->getMapped("Title")."</i></a>";
 
         $this->queueUniqueTask(
             "checkResourceUrls",
             [$Resource->id(), $Resource->getCheckDate()],
-            $this->configSetting("TaskPriority"),
+            $this->getConfigSetting("TaskPriority"),
+            $TaskDescription
+        );
+    }
+
+    /**
+     * Queue a task to re-check a failing URL.
+     * @param InvalidUrl $Url Url to re-check.
+     */
+    private function queueTaskToRecheckFailingUrl(
+        InvalidUrl $Url
+    ): void {
+        $TaskDescription = "Re-check failing URL ".$Url->Url
+            ." (via Field ".$Url->FieldId." in Record ".$Url->RecordId.")";
+
+        $this->queueUniqueTask(
+            "checkUrl",
+            [$Url->RecordId, $Url->FieldId, $Url->Url],
+            $this->getConfigSetting("TaskPriority"),
             $TaskDescription
         );
     }
@@ -2637,7 +2945,7 @@ class UrlChecker extends Plugin
     /**
      * Remove any stale data from deleted resources or changed URLs.
      */
-    private function removeStaleData()
+    private function removeStaleData(): void
     {
         static $RemovedStaleData = false;
 
@@ -2673,33 +2981,30 @@ class UrlChecker extends Plugin
      * @param int $SchemaId Schema restriction (OPTIONAL, default none)
      * @return array of all the metadata fields in the given schema
      */
-    private function getFieldsToCheck($SchemaId = null)
+    private function getFieldsToCheck($SchemaId = null): array
     {
         static $Fields;
 
         if (!isset($Fields)) {
-            $FieldsToCheck = $this->configSetting("FieldsToCheck");
+            $FieldsToCheck = $this->getConfigSetting("FieldsToCheck");
 
             $Fields = [];
             foreach ($FieldsToCheck as $FieldId) {
                 if (MetadataSchema::fieldExistsInAnySchema($FieldId)) {
-                    $Fields[] = new MetadataField($FieldId);
+                    $Fields[] = MetadataField::getField($FieldId);
                 }
             }
         }
 
-        if ($SchemaId === null) {
-            return $Fields;
-        } else {
-            $Result = [];
-            foreach ($Fields as $Field) {
-                if ($Field->SchemaId() == $SchemaId) {
-                    $Result[] = $Field;
-                }
+        $Result = [];
+        foreach ($Fields as $Field) {
+            if ((is_null($SchemaId) || $Field->SchemaId() == $SchemaId)
+                    && $Field->enabled()) {
+                $Result[] = $Field;
             }
-
-            return $Result;
         }
+
+        return $Result;
     }
 
     /**
@@ -2762,6 +3067,14 @@ class UrlChecker extends Plugin
                 FinalStatusCode     SMALLINT,
                 FinalReasonPhrase   TEXT,
                 INDEX               Index_RF (RecordId, FieldId)
+            )",
+        "TransparentUpgradeResultCache" =>
+            "CREATE TABLE IF NOT EXISTS UrlChecker_TransparentUpgradeResultCache (
+                Url                 TEXT,
+                Result              INT,
+                CheckDate           TIMESTAMP,
+                PRIMARY KEY         (Url(32)),
+                INDEX               Index_C (CheckDate)
             )",
     ];
 }

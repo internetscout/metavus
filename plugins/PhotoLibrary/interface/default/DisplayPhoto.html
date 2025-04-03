@@ -1,0 +1,233 @@
+<?PHP
+#
+#   FILE:  DisplayPhoto.html (PhotoLibrary plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\PhotoLibrary;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get HTML tables to display photo detail info.
+ * @param Record $Record Record for photo.
+ * @return array HTML table objects with photo detail info.
+ */
+function getPhotoDetailInfoTables(Record $Record): array
+{
+    $DetailsTables = [];
+    $Plugin = PhotoLibrary::getInstance();
+    $Schema = new MetadataSchema($Plugin->configSetting("MetadataSchemaId"));
+
+    $FieldGroups = $Plugin->getPhotoDisplayFields();
+    foreach ($FieldGroups as $FieldGroup) {
+        $Details = [];
+        foreach ($FieldGroup as $FieldName) {
+            $Label = $FieldName;
+            $Value = $Record->get($FieldName);
+            if (is_null($Value) || (is_array($Value) && empty($Value))) {
+                continue;
+            }
+
+            $Field = $Schema->getField($FieldName);
+            switch ($Field->type()) {
+                case MetadataSchema::MDFTYPE_NUMBER:
+                    switch ($FieldName) {
+                        case "Height":
+                        case "Width":
+                            $Label = "Image ".$Label;
+                            $Value = $Value ? number_format($Value)."px" : "-";
+                            break;
+
+                        case "File Size in KB":
+                            $Label = "File Size";
+                            $Value = $Value ? number_format($Value)." KB" : "-";
+                            break;
+
+                        default:
+                            if (is_array($Value)) {
+                                $Value = join("<br/>\n", $Value);
+                            }
+                            break;
+                    }
+                    break;
+
+                case MetadataSchema::MDFTYPE_REFERENCE:
+                    foreach ($Value as $ReferenceId) {
+                        $RefRecord = new Record((int)$ReferenceId);
+                        $ReferenceUrl = $RefRecord->getViewPageUrl();
+                        $ReferenceTitle = htmlspecialchars($RefRecord->getMapped("Title"));
+                        $Value = "<a href=\"".$ReferenceUrl."\">".$ReferenceTitle."</a>";
+                    }
+                    break;
+
+                case MetadataSchema::MDFTYPE_OPTION:
+                case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
+                case MetadataSchema::MDFTYPE_TREE:
+                    $Urls = [];
+                    foreach ($Value as $ValueId => $ValueName) {
+                        $Urls[] = getSearchLinkedVersionOfValue(
+                            $ValueName,
+                            $Field
+                        );
+                    }
+                    $Value = join("<br/>\n", $Urls);
+                    break;
+
+                default:
+                    if (is_array($Value)) {
+                        $Value = join("<br/>\n", $Value);
+                    }
+                    break;
+            }
+            $Details[] = [ $Label, $Value ?? "-" ];
+        }
+
+        if (count($Details)) {
+            $DetailsTable = new HtmlTable();
+            $DetailsTable->setTableClass("table table-borderless bg-light");
+            $DetailsTable->addRowsWithHeaders($Details);
+            $DetailsTables[] = $DetailsTable;
+        }
+    }
+    return $DetailsTables;
+}
+
+/**
+ * Get version of string value surrounded by <a> tag linking it to search
+ * results for value.
+ * @param string $Value Value to link.
+ * @param MetadataField $Field Field from which the value comes from.
+ * @return string Value with search results link tag added.
+ */
+function getSearchLinkedVersionOfValue(
+    string $Value,
+    MetadataField $Field
+): string {
+    $SearchParams = new SearchParameterSet();
+    $SearchParams->addParameter("=".$Value, $Field);
+    $SearchUrl = "index.php?P=SearchResults&".$SearchParams->UrlParameterString();
+
+    # italicize controlled name and tree values
+    $AnchorValue = htmlspecialchars($Value);
+    if ($Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME
+            || $Field->type() == MetadataSchema::MDFTYPE_TREE) {
+        $AnchorValue = "<em>" . $AnchorValue . "</em>";
+    }
+    $Title = "Search for records where ".$Field->getDisplayName()
+                ." is \"".htmlspecialchars($Value)."\"";
+    return "<a href=\"".$SearchUrl."\" title=\"".htmlspecialchars($Title)."\">"
+            .$AnchorValue."</a>";
+}
+
+/**
+ * Get HTML to display a photo.
+ * @param Image $Photo Photo to display.
+ * @return string HTML
+ */
+function getPhotoHtml(Image $Photo): string
+{
+    # determine size of photo to display
+    $Plugin = PhotoLibrary::getInstance();
+    $ImageSizeName = $Plugin->getConfigSetting("ImageSize") ??
+        "mv-image-largesquare";
+
+    # if IIIFImageViewer plugin is ready, use it to generate a fancy viewer
+    $UseIIIF = PluginManager::getInstance()->pluginReady("IIIFImageViewer");
+    if ($UseIIIF) {
+        return \Metavus\Plugins\IIIFImageViewer::getInstance()
+            ->getHtmlForImageViewer($Photo->id(), $ImageSizeName);
+    }
+
+    # otherwise use Image's default html
+    return $Photo->getHtml($ImageSizeName);
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+
+# make sure CSS styles specific to our page are loaded
+$AF->requireUIFile("P_PhotoGallery.css");
+
+# if error then display error message and exit
+if (isset($H_ErrMsg)) {
+    ?><p><?= $H_ErrMsg ?></p><?PHP
+    return;
+}
+
+# verify that required incoming variables are set
+if (!isset($H_Photo)) {
+    throw new Exception("Variable \$H_Photo not set.");
+}
+if (!isset($H_Record)) {
+    throw new Exception("Variable \$H_Record not set.");
+}
+
+# set up photo details table
+$DetailsTables = getPhotoDetailInfoTables($H_Record);
+
+# set up record edit button
+FullRecordHelper::setRecord($H_Record);
+$FRHelper = FullRecordHelper::getInstance();
+$User = User::getCurrentUser();
+if ($H_Record->userCanEdit($User)) {
+    $EditLink = $H_Record->getEditPageUrl();
+}
+
+$DownloadOriginalImageButton = new HtmlButton("Download Original Image");
+$DownloadOriginalImageButton->setIcon("Download.svg");
+$DownloadOriginalImageButton->setLink("index.php?P=P_PhotoLibrary_DisplayPhoto&ID="
+    . $H_Record->id() . "&DL=1");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Display Photo");
+
+?>
+<div class="table">
+    <div class="row">
+     <div class="col"><?= getPhotoHtml($H_Photo) ?></div>
+        <div class="col">
+            <div class="row">
+                <h2 class="col"><?= $H_Record->getMapped("Title") ?></h2>
+                <div class="col-2 align-top">
+                    <?PHP foreach ($FRHelper->getButtonsForPage() as $Button) {
+                        print $FRHelper->getButtonHtml(
+                            $Button["Label"],
+                            $Button["Link"],
+                            $Button["Title"],
+                            $Button["IconName"],
+                            $Button["AdditionalCssClasses"],
+                            $Button["Attributes"]
+                        );
+                    }
+                    if (isset($EditLink)) {
+                        print $FRHelper->getButtonHtml("Edit", $EditLink, "Edit", "Pencil");
+                    }
+                    ?>
+                </div>
+            </div>
+            <div class="row"><?= $H_Record->getMapped("Description") ?></div>
+            <?PHP  foreach ($DetailsTables as $DetailsTable) {  ?>
+            <div class="row"><?= $DetailsTable->getHtml() ?></div>
+            <?PHP  }  ?>
+            <div class="row"><?= $DownloadOriginalImageButton->getHtml(); ?></div>
+        </div>
+    </div>
+</div>
+<?PHP /* (spacer added to fix gap between content area and footer - remove
+        once that issue is fixed in the Metavus default UI) */ ?>
+<p>&nbsp;</p>

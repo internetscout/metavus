@@ -3,10 +3,11 @@
 #   FILE:  EditMessageTemplate.html (Mailer plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\ItemListUI;
 use Metavus\User;
 use ScoutLib\PluginManager;
@@ -90,6 +91,18 @@ foreach ($Keywords as $Keyword => $Description) {
 }
 
 if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
+    $SaveButton = new HtmlButton("Save");
+    $SaveButton->setIcon("Disk.svg");
+
+    $DeleteButton = new HtmlButton("Delete");
+    $DeleteButton->setIcon("Delete.svg");
+
+    $TestButton = new HtmlButton("Test");
+    $TestButton->setIcon("MagicWand.svg");
+
+    $CancelButton = new HtmlButton("Cancel");
+    $CancelButton->setIcon("Cross.svg");
+
     # add appropriate content-area title
     if ($H_DisplayMode == "Adding") {
         PageTitle("Add Email Message Template");
@@ -238,24 +251,12 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
     <div class="container">
     <div class="row">
         <div class="col">
-            <button type="submit" name="Submit" value="Save"
-                class="btn btn-primary mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-                class="mv-button-icon" /> Save</button>
+            <?= $SaveButton->getHtml(); ?>
             <?PHP  if ($H_DisplayMode == "Editing") {  ?>
-            <button type="submit" name="Submit" value="Delete"
-                class="btn btn-danger mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-                class="mv-button-icon" /> Delete</button>
+                <?= $DeleteButton->getHtml(); ?>
             <?PHP  }  ?>
-            <button type="submit" name="Submit" value="Test"
-                class="btn btn-primary mv-button-iconed"><img
-                src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
-                class="mv-button-icon" /> Test</button>
-            <button type="submit" name="Submit" value="Cancel"
-                class="btn btn-danger mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-                class="mv-button-icon" /> Cancel</button>
+            <?= $TestButton->getHtml(); ?>
+            <?= $CancelButton->getHtml(); ?>
         </div>
         <div class="col" title="The test seed value is used to generate the random selection of
         resources used for test emails.The test resource IDs can be used to choose specific
@@ -280,6 +281,9 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
     <?PHP
 } elseif ($H_DisplayMode == "Listing") {
     # ----- STATE: LISTING -------------------------------------------------------
+    $AddTemplateButton = new HtmlButton("Add Template");
+    $AddTemplateButton->setIcon("Plus.svg");
+    $AddTemplateButton->makeSubmitButton();
 
     PageTitle("Email Message Templates");
     if (isset($H_Msgs)) {
@@ -329,11 +333,16 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
     );
 
     $ItemList->Display($H_Templates);
-    ?><button type="submit" name="Submit" value="Add Template"
-        class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Plus.svg'); ?>"
-        alt="" class="mv-button-icon" /> Add Template</button><?PHP
+    print $AddTemplateButton->getHtml();
 } elseif ($H_DisplayMode == "Confirm") {
     # ----- STATE: CONFIRMING DELETION --------------------------------------------
+    $ConfirmButton = new HtmlButton("Confirm");
+    $ConfirmButton->setIcon("Delete.svg");
+    $ConfirmButton->makeSubmitButton();
+
+    $CancelButton = new HtmlButton("Cancel");
+    $CancelButton->setIcon("Cross.svg");
+    $CancelButton->makeSubmitButton();
 
     PageTitle("Confirm Email Message Template Deletion");
     ?>
@@ -374,14 +383,8 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
         </tr>
         </tbody>
     </table>
-    <button type="submit" name="Submit" value="Confirm"
-        class="btn btn-danger mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Confirm</button>
-    <button type="submit" name="Submit" value="Cancel"
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $ConfirmButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
     <?PHP
 }
 

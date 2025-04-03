@@ -3,21 +3,22 @@
 #   FILE:  UpdateFolderName.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
 
-# check authorization and setup HTML suppression and page redirection
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
+# check authorization and setup HTML suppression and page redirection
 if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
     return;
 }
@@ -27,7 +28,11 @@ if (StdLib::getArrayValue($_GET, "Cancel")) {
     return;
 }
 # get the folders plugin
-$FoldersPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$FoldersPlugin = Folders::getInstance();
+
+if (!($FoldersPlugin instanceof \Metavus\Plugins\Folders)) {
+    throw new Exception("Retrieved plugin is not Folders (should be impossible).");
+}
 
 # set up variables
 $Errors = [];
@@ -48,8 +53,8 @@ PageTitle("Folders - Change Folder Name");
 
 # ----- MAIN -----------------------------------------------------------------
 
-#only move on if we have a valid folder
-if ($Folder) {
+# only move on if we have a valid folder
+if (isset($Folder) && isset($ResourceFolder)) {
     # continue only if the resource folder contains this folder, which implies
     # that the user owns the folder and it's a valid folder of resources
     if ($ResourceFolder->ContainsItem($Folder->Id())) {
@@ -67,5 +72,4 @@ if ($Folder) {
 # This page does not output any HTML
 ApplicationFramework::getInstance()->suppressHTMLOutput();
 
-/** @phpstan-ignore-next-line */
 $FoldersPlugin->ProcessPageResponse($Errors);

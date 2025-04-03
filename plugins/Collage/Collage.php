@@ -3,15 +3,15 @@
 #   FILE:  Collage.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2021-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\Image;
 use Metavus\MetadataSchema;
+use Metavus\Plugin;
 use Metavus\Plugins\Collage\RecordImageCollage;
 use Metavus\Record;
 use Metavus\RecordFactory;
@@ -19,7 +19,6 @@ use Metavus\SearchEngine;
 use Metavus\SearchParameterSet;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\Plugin;
 
 /**
  * Create an insertion keyword that can be used to request
@@ -31,8 +30,9 @@ class Collage extends Plugin
 
     /**
      * Set the plugin attributes.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Collage";
         $this->Version = "1.1.1";
@@ -40,49 +40,49 @@ class Collage extends Plugin
             "user defined search parameters for resource selection.";
         $this->Author = "Internet Scout";
         $this->Url = "http://metavus.net";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
         ];
         $this->EnabledByDefault = true;
         $this->CfgSetup["TileWidth"] = [
-            "Type" => "Number",
+            "Type" => self::FTYPE_NUMBER,
             "Label" => "Tile Length",
             "Help" => "Width/height (in pixels) for collage image tile.",
             "Default" => 150
         ];
         $this->CfgSetup["NumRows"] = [
-            "Type" => "Number",
+            "Type" => self::FTYPE_NUMBER,
             "Label" => "Number of Rows",
             "Help" => "How many rows of images should be in the collage.",
             "Default" => 3
         ];
         $this->CfgSetup["MaxExpectedViewportWidth"] = [
-            "Type" => "Number",
+            "Type" => self::FTYPE_NUMBER,
             "Label" => "Max Expected Screen Width",
             "Help" => "Maximum expected width of any given user's monitor.",
-            "Units" => "Pixels",
+            "Units" => "pixels",
             "Default" => 1920
         ];
         $this->CfgSetup["DialogWidth"] = [
-            "Type" => "Number",
+            "Type" => self::FTYPE_NUMBER,
             "Label" => "Dialog Width",
             "Help" => "Width for popup that displays when tile is clicked.",
-            "Units" => "Pixels",
+            "Units" => "pixels",
             "Default" => 600
         ];
         $this->CfgSetup["OrderPersistencePeriod"] = [
-            "Type" => "Number",
+            "Type" => self::FTYPE_NUMBER,
             "Label" => "Order Persistence Period",
-            "Units" => "Hours",
+            "Units" => "hours",
             "Help" => "Length of time between shuffling the images in the collage.",
             "Default" => 4,
             "MinVal" => 1
         ];
         $this->CfgSetup["RecordCacheDuration"] = [
-            "Type" => "Number",
+            "Type" => self::FTYPE_NUMBER,
             "Label" => "Record Cache Duration",
-            "Units" => "Minutes",
+            "Units" => "minutes",
             "Help" => "Length of time  to cache the list of records used in "
                 ."the collage for a given user.",
             "Default" => 30,
@@ -95,12 +95,17 @@ class Collage extends Plugin
      * Set up keyword for inserting resource collage
      * @return string|null error string or null on success
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         (ApplicationFramework::getInstance())->registerInsertionKeywordCallback(
             "RESOURCECOLLAGE-DISPLAYCOLLAGE",
             [$this, "getCollageHtml"],
             ["SchemaId"]
+        );
+
+        Record::registerObserver(
+            Record::EVENT_ADD | Record::EVENT_SET | Record::EVENT_REMOVE,
+            [$this, "resourceUpdated"]
         );
 
         return null;
@@ -113,9 +118,6 @@ class Collage extends Plugin
     public function hookEvents(): array
     {
         $Events = [
-            "EVENT_RESOURCE_ADD" => "resourceUpdated",
-            "EVENT_RESOURCE_MODIFY" => "resourceUpdated",
-            "EVENT_RESOURCE_DELETE" => "resourceUpdated",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "handleConfigChange",
         ];
 
@@ -125,7 +127,7 @@ class Collage extends Plugin
     /**
      * Set up configuration options.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $SchemaList = MetadataSchema::getAllSchemaNames();
         unset($SchemaList[MetadataSchema::SCHEMAID_USER]);
@@ -147,9 +149,11 @@ class Collage extends Plugin
 
     /**
      * Callback executed whenever a resource is updated, i.e., added or modified.
+     * @param int $Events Record::EVENT_* values OR'd together.
      * @param Record $Resource Just-updated resource.
+     * @return void
      */
-    public function resourceUpdated(Record $Resource)
+    public function resourceUpdated(int $Events, Record $Resource): void
     {
         $this->clearCaches();
     }
@@ -160,13 +164,14 @@ class Collage extends Plugin
      * @param string $ConfigSetting Setting to change.
      * @param mixed $OldValue Old value of setting.
      * @param mixed $NewValue New value of setting.
+     * @return void
      */
     public function handleConfigChange(
         string $PluginName,
         string $ConfigSetting,
         $OldValue,
         $NewValue
-    ) {
+    ): void {
         if ($PluginName == $this->Name) {
             $this->clearCaches();
         }
@@ -181,7 +186,7 @@ class Collage extends Plugin
      * @return string html for collage, may be empty if no resources have
      *  screenshots on this site.
      */
-    public function getCollageHtml(int $SchemaId)
+    public function getCollageHtml(int $SchemaId): string
     {
         # get the collage records for this Schema
         $RecordIds = $this->getRecordIdsForCollage($SchemaId);
@@ -211,9 +216,9 @@ class Collage extends Plugin
      */
     public function getNumberOfImages(): int
     {
-        $TileWidth = $this->configSetting("TileWidth");
-        $NumRows = $this->configSetting("NumRows");
-        $ViewportWidth = $this->configSetting("MaxExpectedViewportWidth");
+        $TileWidth = $this->getConfigSetting("TileWidth");
+        $NumRows = $this->getConfigSetting("NumRows");
+        $ViewportWidth = $this->getConfigSetting("MaxExpectedViewportWidth");
         return (int)ceil($ViewportWidth / $TileWidth) * $NumRows;
     }
 
@@ -267,9 +272,9 @@ class Collage extends Plugin
         $SearchParams->logic("AND");
         $SearchParams->itemTypes($SchemaId);
         $SearchParamsWithUserSet = clone $SearchParams;
-        if (!is_null($this->configSetting("DisplayResources_".$SchemaId))) {
+        if (!is_null($this->getConfigSetting("DisplayResources_".$SchemaId))) {
             $SearchParamsWithUserSet->addSet(
-                $this->configSetting("DisplayResources_".$SchemaId)
+                $this->getConfigSetting("DisplayResources_".$SchemaId)
             );
         }
 
@@ -286,7 +291,7 @@ class Collage extends Plugin
             $NumberOfImages
         );
 
-        # if we don't have enough usable resources, consider any resources with screenshots
+        # if not enough usable resources, consider any resources with screenshots
         if (count($RecordIds) < $NumberOfImages) {
             $SearchResults = $Engine->search($SearchParams);
             $RecordIds = array_keys($SearchResults);
@@ -320,7 +325,9 @@ class Collage extends Plugin
         $ValidImageCount = 0;
         $Results = [];
         $TileWidth = $this->getConfigSetting("TileWidth");
-        $ImageSize = Image::getNextLargestSize($TileWidth, $TileWidth);
+        $ImageSize = Image::isSizeNameValid("mv-image-collage")
+                ? "mv-image-collage"
+                : Image::getNextLargestSize($TileWidth, $TileWidth);
         foreach ($RecordIds as $RecordId) {
             $Record = new Record($RecordId);
             $Image = $Record->getMapped("Screenshot", true);
@@ -330,8 +337,13 @@ class Collage extends Plugin
                 continue;
             }
 
-            # check bounds of image against tile size
+            # skip record if desired version of image does not exist
             $ImageUrl = $Image->url($ImageSize);
+            if (!file_exists($ImageUrl)) {
+                continue;
+            }
+
+            # check bounds of image against tile size
             $ActualSize = getimagesize($ImageUrl);
             if ($ActualSize !== false
                      && ($ActualSize[0] >= $TileWidth)
@@ -354,7 +366,7 @@ class Collage extends Plugin
      * @param array $RecordIds IDs of records to be displayed in collage.
      * @return string|null Collage HTML or NULL if no cached value available.
      */
-    private function loadCollageHtmlFromCache(array $RecordIds)
+    private function loadCollageHtmlFromCache(array $RecordIds): ?string
     {
         $this->pruneCollageHtmlCache();
         $HtmlCacheKey = sha1(join("-", $RecordIds));
@@ -402,8 +414,9 @@ class Collage extends Plugin
 
     /**
      * Clear plugin caches.
+     * @return void
      */
-    private function clearCaches()
+    private function clearCaches(): void
     {
         # clear caches of record IDs
         $this->setConfigSetting("CollageRecordCache", null);

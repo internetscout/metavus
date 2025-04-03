@@ -10,6 +10,7 @@
 
 use Metavus\User;
 use Metavus\UserFactory;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
@@ -52,6 +53,7 @@ function RemovePostPrivilege(int $PosterId): void
 }
 
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
 # check that the user has the required Privs
 if (!CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
@@ -60,12 +62,12 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
 
 # extract values from POST
 $F_ResourceId = StdLib::getFormValue("F_ResourceId");
-$F_Submit = StdLib::getFormValue("F_Submit");
+$F_Submit = StdLib::getFormValue("Submit");
 $F_PosterId = StdLib::getFormValue("F_PosterId");
 
 # bounce them to UnauthorizedAccess if the required POST values weren't present
 if (is_null($F_ResourceId) || is_null($F_PosterId) || is_null($F_Submit)) {
-    $GLOBALS["AF"]->SetJumpToPage("UnauthorizedAccess");
+    $AF->SetJumpToPage("UnauthorizedAccess");
     return;
 }
 
@@ -82,6 +84,6 @@ if ($F_Submit == "Clean Spam") {
 }
 
 # and then redirect back to the Resource
-$GLOBALS["AF"]->SetJumpToPage(
+$AF->SetJumpToPage(
     "index.php?P=TrackUserComments"
 );

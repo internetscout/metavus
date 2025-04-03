@@ -3,13 +3,12 @@
 #   FILE:  ControlledNameFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\Database;
 use ScoutLib\ItemFactory;
 
@@ -25,7 +24,7 @@ class ControlledNameFactory extends ItemFactory
      * Constructor for ControlledNameFactory class.
      * @param int $FieldId ID of Controlled Name metadata field.  (OPTIONAL)
      */
-    public function __construct(int $FieldId = null)
+    public function __construct(?int $FieldId = null)
     {
         # save field ID for our later use
         $this->FieldId = $FieldId;

@@ -3,16 +3,24 @@
 #   FILE:  ChangeResourceNote.html (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-# ----- MAIN -----------------------------------------------------------------
+use Metavus\HtmlButton;
 
+# ----- SETUP ----------------------------------------------------------------
 $SafeFolderId = defaulthtmlentities($FolderId);
 $SafeItemId = defaulthtmlentities($ItemId);
 $SafeNote = defaulthtmlentities($Note);
 
+$ChangeResourceNoteButton = new HtmlButton("Change Resource Note");
+$ChangeResourceNoteButton->setIcon("Pencil.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <?PHP if ($SafeNote) { ?>
@@ -33,10 +41,6 @@ $SafeNote = defaulthtmlentities($Note);
     <textarea class="mv-folders-noteinput" name="ResourceNote"><?= $SafeNote; ?></textarea>
   </p>
 
-  <button type="submit" value="Change Resource Note"
-    class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Pencil.svg'); ?>"
-    alt="" class="mv-button-icon" /> Change Resource Note</button>
-  <button type="submit" name="Cancel" value="Cancel"
-    class="btn btn-danger mv-button-iconed"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
-    alt="" class="mv-button-icon" /> Cancel</button>
+  <?= $ChangeResourceNoteButton->getHtml(); ?>
+  <?= $CancelButton->getHtml(); ?>
 </form>

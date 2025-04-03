@@ -3,11 +3,34 @@
 #   FILE:  ListBlogs.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\ItemListUI;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_Checksum)) {
+    throw new Exception("Variable \$H_Checksum not set.");
+}
+if (!isset($H_BlogFields)) {
+    throw new Exception("Variable \$H_BlogFields not set.");
+}
+if (!isset($H_PageSize)) {
+    throw new Exception("Variable \$H_PageSize not set.");
+}
+if (!isset($H_Blogs)) {
+    throw new Exception("Variable \$H_Blogs not set.");
+}
+if (!isset($H_BlogsListSize)) {
+    throw new Exception("Variable \$H_BlogsListSize not set.");
+}
+if (!isset($H_PageOffset)) {
+    throw new Exception("Variable \$H_PageOffset not set.");
+}
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -18,7 +41,7 @@ PageTitle($PageTitle);
 $BaseLink = "index.php?P=P_Blog_ListBlogs&amp;CK=" . $H_Checksum;
 $EditLink = "index.php?P=P_Blog_EditBlog&amp;BI=\$ID";
 $DeleteLink = "index.php?P=P_Blog_DeleteBlog&amp;BI=\$ID";
-$AddNewBlogLink = "index.php?P=P_Blog_EditBlog&amp;BI=NEW";
+$AddNewBlogLink = "index.php?P=P_Blog_EditBlog&BI=NEW";
 
 # initiate and print the blog list
 $ListUI = new ItemListUI($H_BlogFields);

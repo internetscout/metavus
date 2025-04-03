@@ -3,17 +3,18 @@
 #   FILE:  RemoveItem.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\User;
 use Metavus\Record;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
@@ -24,7 +25,11 @@ if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
 }
 
 # get the folders plugin
-$FoldersPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$FoldersPlugin = Folders::getInstance();
+
+if (!($FoldersPlugin instanceof \Metavus\Plugins\Folders)) {
+    throw new Exception("Retrieved plugin is not Folders (should be impossible).");
+}
 
 # set up variables
 $ItemId = StdLib::getArrayValue($_GET, "ItemId");
@@ -51,10 +56,7 @@ if (Record::ItemExists($ItemId)) {
     # remove item only if the resource folder contains this folder, which implies
     # that the user owns the folder and it's a valid folder of resources
     if ($ResourceFolder->ContainsItem($Folder->Id())) {
-        # last operation was successful?
-        if ($ResourceFolder->ContainsItem($Folder->Id())) {
-            $Folder->RemoveItem($ItemId);
-        }
+        $Folder->RemoveItem($ItemId);
     } else {
         # report user doesn't own the folder
         array_push($Errors, 'E_FOLDERS_NOTFOLDEROWNER');
@@ -70,5 +72,4 @@ if (Record::ItemExists($ItemId)) {
 # This page does not output any HTML
 ApplicationFramework::getInstance()->suppressHTMLOutput();
 
-/** @phpstan-ignore-next-line */
 $FoldersPlugin->ProcessPageResponse($Errors);

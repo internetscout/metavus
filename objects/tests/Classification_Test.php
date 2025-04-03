@@ -3,7 +3,7 @@
 #   FILE:  Classification_Test.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2023 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -13,6 +13,7 @@ namespace Metavus;
 
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
 
 class Classification_Test extends \PHPUnit\Framework\TestCase
 {
@@ -57,6 +58,14 @@ class Classification_Test extends \PHPUnit\Framework\TestCase
         self::$Schema->viewingPrivileges(
             $ViewingPrivs
         );
+
+        $UFactory = new UserFactory();
+        $Users = $UFactory->GetUsersWithPrivileges(
+            PRIV_RESOURCEADMIN,
+            PRIV_COLLECTIONADMIN
+        );
+        $AdminUser = new User(key($Users));
+        User::getCurrentUser()->Login($AdminUser->name(), "", true);
     }
 
     /**
@@ -258,6 +267,7 @@ class Classification_Test extends \PHPUnit\Framework\TestCase
             $TestFirstChild,
             $TestParent
         ) {
+            $this->runTasks();
             $this->assertEquals($FirstCount, $TestFirstChild->resourceCount());
             $this->assertEquals($FirstFullCount, $TestFirstChild->fullResourceCount());
             $this->assertEquals($ParentCount, $TestParent->resourceCount());
@@ -275,7 +285,7 @@ class Classification_Test extends \PHPUnit\Framework\TestCase
         $PublishedCN = $RSFactory->getItemByName("Published");
         $UnpubCN = $RSFactory->getItemByName("Unpublished");
 
-        # set our test, temp record prepublishd, check that temps don't
+        # set our test, temp record prepublished, check that temps don't
         # appear in counts
         $Rec1->set($Field, $TestFirstChild);
         $Rec1->set("Record Status", $UnpubCN);
@@ -286,10 +296,10 @@ class Classification_Test extends \PHPUnit\Framework\TestCase
         $CheckCounts(0, 1, 0, 1);
 
         # publish it and see that it shows up everywhere
+        # (we need to manually trigger housekeeping to update counts for tree fields that
+        # in normal operation happens automatically in a post-processing call)
+        $WasPublic = $Rec1->userCanView(User::getAnonymousUser());
         $Rec1->set("Record Status", $PublishedCN);
-        $Rec1->updateAutoupdateFields(
-            MetadataField::UPDATEMETHOD_ONRECORDRELEASE
-        );
         $CheckCounts(1, 1, 1, 1);
 
         # ensure that duplicates don't show up when temp
@@ -312,6 +322,8 @@ class Classification_Test extends \PHPUnit\Framework\TestCase
         $Rec3 = Record::duplicate($Rec2->id());
         $Rec3->isTempRecord(false);
         $Rec3->set($Field, $TestGrandChild);
+
+        $this->runTasks();
 
         $this->assertEquals(1, $TestGrandChild->resourceCount());
         $this->assertEquals(1, $TestGrandChild->fullResourceCount());
@@ -344,6 +356,29 @@ class Classification_Test extends \PHPUnit\Framework\TestCase
         # test deletions that eat our parents
         $DelCount = $TestFirstChild->destroy(true);
         $this->assertEquals(2, $DelCount);
+    }
+
+    /**
+     * Run queued tasks.
+     */
+    private function runTasks()
+    {
+        $AF = ApplicationFramework::getInstance();
+        do {
+            $TaskList = $AF->getQueuedTaskList();
+            foreach ($TaskList as $Task) {
+                try {
+                    if ($Task["Parameters"]) {
+                        call_user_func_array($Task["Callback"], $Task["Parameters"]);
+                    } else {
+                        call_user_func($Task["Callback"]);
+                    }
+                } catch (Exception $ex) {
+                    // do nothing
+                }
+                $AF->deleteTask($Task["TaskId"]);
+            }
+        } while (count($TaskList) > 0);
     }
 
     protected static $Schema = null;

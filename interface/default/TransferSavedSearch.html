@@ -1,0 +1,80 @@
+<?PHP
+#   FILE:  TransferSavedSearch.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\SavedSearchMailings;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (isset($H_Error)) {
+    ?>
+    <div class="alert alert-danger">
+        <p><?= $H_Error; ?></p>
+    </div>
+    <?PHP
+    return;
+}
+
+# checks to see if required incoming variables are set
+/** @var $H_OriginalSearch SavedSearch */
+if (!isset($H_MailingsEnabled)) {
+    throw new Exception("Required variable \$H_MailingsEnabled is not initialized");
+}
+if (!isset($H_OriginalSearch)) {
+    throw new Exception("Required variable \$H_OriginalSearch is not initialized");
+}
+if (!isset($H_SearchId)) {
+    throw new Exception("Required variable \$H_SearchId is not initialized");
+}
+
+$TransferButton = new HtmlButton("Transfer");
+$TransferButton->setIcon("Exchange.svg");
+$TransferButton->makeSubmitButton();
+
+$FormFields = [
+    "SearchName" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Search Name",
+        "Value" => $H_OriginalSearch->searchName()
+    ],
+    "SearchCriteria" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Search Criteria",
+        "ReadOnly" => true,
+        "Content" => $H_OriginalSearch->getSearchGroupsAsTextDescription()
+    ]
+];
+if ($H_MailingsEnabled) {
+    $FormFields["Email"] = [
+        "Type" => FormUI::FTYPE_OPTION,
+        "Label" => "Email Frequency",
+        "Options" => SavedSearchMailings::getFrequencyOptions(User::getCurrentUser()),
+        "Value" => $H_OriginalSearch->frequency(),
+    ];
+}
+$FormFields["TargetUser"] = [
+    "Type" => FormUI::FTYPE_USER,
+    "Label" => "Target User",
+    "AllowMultiple" => true
+];
+$FormUI = new FormUI($FormFields);
+$FormUI->addHiddenField("ID", $H_SearchId);
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Transfer Saved Search");
+?>
+
+<h1>Transfer Saved Search</h1>
+<form method="post" action="index.php?P=TransferSavedSearch">
+    <?PHP $FormUI->displayFormTable(); ?>
+    <?= $TransferButton->getHtml() ?>
+</form>

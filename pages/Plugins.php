@@ -3,23 +3,23 @@
 #   FILE:  Plugins.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+namespace Metavus;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
 
-# check that the user has sufficient privileges
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
-    return;
-}
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
-* Enable or disable plugin, enabling prequisite plugins as needed.
+* Enable or disable plugin, enabling prerequisite plugins as needed.
 * @param Plugin $Plugin Plugin.
 * @param bool $Enable TRUE to enable, or FALSE to disable.
 * @param array $StatusMsgs Current list of status messages.
-* @param Plugin $Dependent Plugin that depends on this one, that is causing
+* @param Plugin|null $Dependent Plugin that depends on this one, that is causing
 *       it to be enabled.  (OPTIONAL)
 * @return array List of status messages (potentially updated).
 */
@@ -27,7 +27,7 @@ function togglePlugin(
     Plugin $Plugin,
     bool $Enable,
     array $StatusMsgs,
-    Plugin $Dependent = null
+    ?Plugin $Dependent = null
 ): array {
     # if plugin is to be enabled
     if ($Enable) {
@@ -63,11 +63,18 @@ function togglePlugin(
     return $StatusMsgs;
 }
 
+# ----- MAIN -----------------------------------------------------------------
+# check that the user has sufficient privileges
+if (!CheckAuthorization(PRIV_SYSADMIN)) {
+    return;
+}
+
 $H_ErrMsgs = [];
 $H_StatusMsgs = [];
 
 # if form was submitted
 if (isset($_POST["SUBMITTED"])) {
+    $AF = ApplicationFramework::getInstance();
     # load current enabled state of all plugins
     # (needed in case one is auto-enabled because of a dependency)
     $Plugins = $GLOBALS["G_PluginManager"]->GetPlugins();
@@ -96,18 +103,19 @@ if (isset($_POST["SUBMITTED"])) {
         }
     }
 
+
     # if plugin enabled/disabled status has changed
     if (isset($PEnabledChange)) {
         # clear page cache
-        $GLOBALS["AF"]->ClearPageCache();
-        $GLOBALS["AF"]->ClearObjectLocationCache();
+        $AF->ClearPageCache();
+        $AF->ClearObjectLocationCache();
     }
 
     # save any resulting status messages before page is reloaded
     $_SESSION["PluginManagerStatusMessages"] = $StatusMsgs;
 
     # reload page so that correct set of plugins are loaded
-    $GLOBALS["AF"]->SetJumpToPage("Plugins");
+    $AF->SetJumpToPage("Plugins");
 } else {
     # load any status or error messages
     $H_ErrMsgs = $GLOBALS["G_PluginManager"]->GetErrorMessages();

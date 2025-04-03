@@ -3,18 +3,17 @@
 #   FILE:  BatchEdit.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2014-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\FormUI;
+use Metavus\HtmlButton;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\Folders\Folder;
-use Metavus\PrivilegeSet;
 use Metavus\User;
 use ScoutLib\Plugin;
 use ScoutLib\ApplicationFramework;
@@ -23,8 +22,9 @@ class BatchEdit extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Batch Editing";
         $this->Version = "1.0.2";
@@ -33,7 +33,7 @@ class BatchEdit extends Plugin
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "Folders" => "1.0.7"
         ];
         $this->EnabledByDefault = true;
@@ -43,14 +43,14 @@ class BatchEdit extends Plugin
      * Set up configuration options.
      * @return NULL on success, error string otherwise.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         # (can't use AF::getPageName() because page name is not yet set when
         # we are called)
         $OnConfigPage = (isset($_GET["P"]) && $_GET["P"] == "PluginConfig" &&
                          isset($_GET["PN"]) && $_GET["PN"] == $this->getBaseName());
 
-        $AllowedFields = !$OnConfigPage ? $this->configSetting("CachedFieldList") : null;
+        $AllowedFields = !$OnConfigPage ? $this->getConfigSetting("CachedFieldList") : null;
         if (is_null($AllowedFields)) {
             $AllowedFields = [];
 
@@ -73,7 +73,7 @@ class BatchEdit extends Plugin
                     }
                 }
             }
-            $this->configSetting("CachedFieldList", $AllowedFields);
+            $this->setConfigSetting("CachedFieldList", $AllowedFields);
         }
 
         $this->CfgSetup["AllowedFields"] = [
@@ -102,24 +102,6 @@ class BatchEdit extends Plugin
     }
 
     /**
-     * Upgrade from a previous version.
-     * @param string $PreviousVersion Previous version of the plugin.
-     * @return null|string Returns NULL on success and an error message otherwise.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        # upgrade from versions < 1.0.1 to 1.0.1
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            if (is_array($this->configSetting("RequiredPrivs"))) {
-                $RequiredPrivs = new PrivilegeSet();
-                $RequiredPrivs->addPrivilege($this->configSetting("RequiredPrivs"));
-                $this->configSetting("RequiredPrivs", $RequiredPrivs);
-            }
-        }
-        return null;
-    }
-
-    /**
      * Hook the events into the application framework.
      * @return array An array of events to be hooked into the application framework.
      */
@@ -135,10 +117,11 @@ class BatchEdit extends Plugin
     /**
      * Handle field addition.
      * @param int $FieldId Identifier of newly added field.
+     * @return void
      */
-    public function handleFieldAdded(int $FieldId)
+    public function handleFieldAdded(int $FieldId): void
     {
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField($FieldId);
         if ($Field->schemaId() == MetadataSchema::SCHEMAID_USER) {
             return;
         }
@@ -151,19 +134,20 @@ class BatchEdit extends Plugin
             return;
         }
 
-        $AllowedFields = $this->configSetting("AllowedFields");
+        $AllowedFields = $this->getConfigSetting("AllowedFields");
         $AllowedFields[] = $FieldId;
 
-        $this->configSetting("AllowedFields", $AllowedFields);
+        $this->setConfigSetting("AllowedFields", $AllowedFields);
     }
 
     /**
      * Handle field deletion.
      * @param int $FieldId Identifier of field that is about to be deleted.
+     * @return void
      */
-    public function handlePreFieldDelete($FieldId)
+    public function handlePreFieldDelete($FieldId): void
     {
-        $AllowedFields = $this->configSetting("AllowedFields");
+        $AllowedFields = $this->getConfigSetting("AllowedFields");
 
         if (!in_array($FieldId, $AllowedFields)) {
             return;
@@ -171,7 +155,7 @@ class BatchEdit extends Plugin
 
         $AllowedFields = array_diff($AllowedFields, [$FieldId]);
 
-        $this->configSetting("AllowedFields", $AllowedFields);
+        $this->setConfigSetting("AllowedFields", $AllowedFields);
     }
 
     /**
@@ -180,8 +164,9 @@ class BatchEdit extends Plugin
      * @param string $PageName Name of currently loaded page.
      * @param string $Location Location where HTML can be inserted.
      * @param mixed $Context Context containing page-defined context data.
+     * @return void
      */
-    public function insertButton($PageName, $Location, $Context = null)
+    public function insertButton($PageName, $Location, $Context = null): void
     {
         $AF = ApplicationFramework::getInstance();
 
@@ -194,7 +179,7 @@ class BatchEdit extends Plugin
             return;
         }
 
-        if (!$this->configSetting("RequiredPrivs")->meetsRequirements($User)) {
+        if (!$this->getConfigSetting("RequiredPrivs")->meetsRequirements($User)) {
             return;
         }
 
@@ -203,14 +188,12 @@ class BatchEdit extends Plugin
             return;
         }
 
-        $Url = "index.php?P=P_BatchEdit_Edit&amp;FI=".$Context["FolderId"];
-        $CssClasses = "btn btn-primary btn-sm bulk-edit-button mv-button-iconed";
-        $Icon = "<img src='".$AF->GUIFile('MagicWand.svg')."' alt='' class='mv-button-icon' />";
-        if ($PageName == "P_Folders_ManageFolders") {
-            print '<a href="'.$Url.'" class="'.$CssClasses.'">'.$Icon.' Batch</a>';
-        } elseif ($PageName == "P_Folders_ViewFolder") {
-            print '<a href="'.$Url.'" class="'.$CssClasses.'">'.$Icon.' Batch Edit</a>';
-        }
+        $Button = new HtmlButton($PageName == "P_Folders_ManageFolders" ? "Batch" : "Batch Edit");
+        $Button->setIcon("MagicWand.svg");
+        $Button->setSize(HtmlButton::SIZE_SMALL);
+        $Button->addClass("bulk-edit-button");
+        $Button->setLink("index.php?P=P_BatchEdit_Edit&FI={$Context["FolderId"]}");
+        print $Button->getHtml();
     }
 
     # fields that can be batch edited

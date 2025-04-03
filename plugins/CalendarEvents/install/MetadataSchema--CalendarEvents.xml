@@ -39,6 +39,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
         <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
@@ -96,6 +97,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
         <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
@@ -108,6 +110,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordChange</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
         <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
         <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
@@ -120,6 +123,7 @@
         <Owner>CalendarEvents</Owner>
         <Editable>0</Editable>
         <Optional>0</Optional>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
         <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
         <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
@@ -154,6 +158,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordChange</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <CopyOnResourceDuplication>0</CopyOnResourceDuplication>
         <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
         <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>

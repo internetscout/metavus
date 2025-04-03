@@ -1,0 +1,55 @@
+/**
+ *  FILE:  P_PhotoGallery.scss
+ *
+ *  Styles specific to the PhotoLibrary plugin.
+ *
+ *  Part of the Metavus digital collections platform
+ *  Copyright 2023 Edward Almasy and Internet Scout Research Group
+ *  http://metavus.net
+ *
+ */
+
+/* ----- 7: LOCAL (PAGE-SPECIFIC) STYLES ---------------------------------- */
+
+#page-p_photolibrary_displaygallery .mv-body {
+    div.mv-search-facets {
+        font-size: 1.2rem;
+    }
+    .mv-collection-tile {
+        img:not(.mv-button-icon) {
+            height: 200px;
+            width: 200px;
+            margin-top: 0;
+            object-fit: cover;
+        }
+        h3 {
+            font-style: italic;
+            font-size: 1.2rem;
+            margin-bottom: 0;
+        }
+        > div {
+            align-items: start;
+        }
+        > div > div {
+            padding-bottom: 8px;
+        }
+    }
+    .mv-transport-controls:first-of-type {
+        margin-bottom: 10px;
+    }
+    /* (faceted search column) */
+    .col-2 {
+        padding-left: 20px;
+    }
+}
+
+#page-p_photolibrary_displayphoto .mv-body {
+    /* (photo title and description) */
+    h2, p {
+        padding-left: 0px;
+    }
+    /* (photo information column) */
+    .table > .row > .col:nth-of-type(2) {
+        padding-right: 35px;
+    }
+}

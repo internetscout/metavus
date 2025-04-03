@@ -6,6 +6,7 @@
 #   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\SecureLoginHelper;
 use Metavus\User;
@@ -13,20 +14,22 @@ use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
 
 # retrieve user currently logged in
+$AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 
 /**
-* This function is used to handle the result of the page.
-* Depending on whether this page was reached by AJAX or not,
-* it either sets JumpToPage or emits an AjaxMessage
-* @param string $JumpToPage The page to jump to
-* @param string $AjaxMessage The message to return through AJAX call
-*/
-function RespondToUser($JumpToPage, $AjaxMessage)
+ * This function is used to handle the result of the page.
+ * Depending on whether this page was reached by AJAX or not,
+ * it either sets JumpToPage or emits an AjaxMessage
+ * @param string $JumpToPage The page to jump to
+ * @param string $AjaxMessage The message to return through AJAX call
+ */
+function RespondToUser($JumpToPage, $AjaxMessage): void
 {
     # print message if reached by AJAX, otherwise set the appropriate JumpToPage
+    $AF = ApplicationFramework::getInstance();
     if (ApplicationFramework::reachedViaAjax()) {
-        $GLOBALS["AF"]->beginAjaxResponse();
+        $AF->beginAjaxResponse();
         $Response = [
             "Status" => $AjaxMessage,
             "Redirect" => $JumpToPage
@@ -34,7 +37,7 @@ function RespondToUser($JumpToPage, $AjaxMessage)
 
         print json_encode($Response);
     } else {
-        $GLOBALS["AF"]->setJumpToPage($JumpToPage);
+        $AF->setJumpToPage($JumpToPage);
     }
 }
 
@@ -60,7 +63,7 @@ if (isset($_POST["F_UserName"]) && isset($_POST["F_Password"])) {
     }
 
     # allow plugins to override authentication by a signal
-    $SignalResult = $GLOBALS["AF"]->SignalEvent(
+    $SignalResult = $AF->SignalEvent(
         "EVENT_USER_AUTHENTICATION",
         [
             "UserName" => $UserName,
@@ -92,10 +95,11 @@ if ($LoginResult === User::U_OKAY) {
     }
 
     # signal successful user login
-    $GLOBALS["AF"]->SignalEvent(
+    $AF->SignalEvent(
         "EVENT_USER_LOGIN",
         [
             "UserId" => $User->Id(),
+            // @phpstan-ignore variable.undefined
             "Password" => $Password,
         ]
     );
@@ -125,10 +129,10 @@ if ($LoginResult === User::U_OKAY) {
         $ReturnPage = isset($_POST["HTTP_REFERER"])
             ? $_POST["HTTP_REFERER"]
             : $_SERVER["HTTP_REFERER"];
-        $UnmappedReturnPage = $GLOBALS["AF"]->getUncleanRelativeUrlWithParamsForPath($ReturnPage);
+        $UnmappedReturnPage = $AF->getUncleanRelativeUrlWithParamsForPath($ReturnPage);
         $QueryString = parse_url($UnmappedReturnPage, PHP_URL_QUERY);
-        if ($QueryString !== null) {
-            parse_str($QueryString, $QueryVars);
+        if ($QueryString !== null && $QueryString !== false) {
+            parse_str((string) $QueryString, $QueryVars);
             if (isset($QueryVars["P"])) {
                 # go to front page if page is on "Do Not Return To" list
                 if (in_array($QueryVars["P"], $DoNotReturnToPages)) {
@@ -139,7 +143,7 @@ if ($LoginResult === User::U_OKAY) {
     }
 
     # give any hooked filters a chance to modify return page
-    $SignalResult = $GLOBALS["AF"]->SignalEvent(
+    $SignalResult = $AF->SignalEvent(
         "EVENT_USER_LOGIN_RETURN",
         array("ReturnPage" => $ReturnPage)
     );
@@ -150,10 +154,11 @@ if ($LoginResult === User::U_OKAY) {
     return;
 } elseif ($LoginResult == User::U_NOTACTIVATED) {
     # go to "needs activation" page
+    // @phpstan-ignore variable.undefined
     $ReturnPage = "index.php?P=UserNotActivated&UN=".urlencode($UserName);
     RespondToUser($ReturnPage, "Redirect");
     return;
-} elseif (isset($Password)
+} elseif (isset($Password) && isset($UserName)
         && (preg_match("/^[0-9A-F]{6}([0-9A-F]{4})?$/", $Password) == 1)) {
     # login failed, but password looks like it was a reset or an
     # activation code

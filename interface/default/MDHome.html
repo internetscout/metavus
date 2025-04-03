@@ -3,19 +3,20 @@
 #   FILE:  MDHome.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
-use Metavus\MetadataSchema;
-use Metavus\TransportControlsUI;
-use Metavus\User;
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function PrintOurMenuEntry()
+function PrintOurMenuEntry(): void
 {
     $Args = func_get_args();
     $Label = array_shift($Args);
@@ -28,7 +29,30 @@ function PrintOurMenuEntry()
     }
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_CollectionStats)) {
+    throw new Exception("H_CollectionStats not defined.");
+}
+if (!isset($H_RecentlyAdded)) {
+    throw new Exception("H_RecentlyAdded not defined.");
+}
+if (!isset($H_RecentlyModified)) {
+    throw new Exception("H_RecentlyModified not defined.");
+}
+if (!isset($G_StatsUpdateTime)) {
+    throw new Exception("G_StatsUpdateTime not defined.");
+}
+
+$TotalNumberOfResourcesFormatted = number_format($H_CollectionStats["TotalNumberOfResources"]);
+$NumberOfReleasedResourcesFormatted =
+    number_format($H_CollectionStats["NumberOfReleasedResources"]);
+$NumberOfRatedResourcesFormatted = number_format($H_CollectionStats["NumberOfRatedResources"]);
+$TotalNumberOfClassificationsFormatted =
+    number_format($H_CollectionStats["TotalNumberOfClassifications"]);
+$TotalNumberOfControlledNamesFormatted =
+    number_format($H_CollectionStats["TotalNumberOfControlledNames"]);
+$TotalSearchTermsFormatted = number_format($H_CollectionStats["TotalSearchTerms"]);
+
 
 # build link to search for recently modified resources
 $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
@@ -59,9 +83,8 @@ $RecentlyAddedSearchLink = "index.php?P=SearchResults"
     ."=".$DateOfRecordCreation->Id();
 
 # retrieve local collection stats (if any)
-global $G_CollectionStats;
-$LocalStats = (isset($G_CollectionStats) && array_key_exists("LocalStats", $G_CollectionStats))
-        ? $G_CollectionStats["LocalStats"] : [];
+$LocalStats = array_key_exists("LocalStats", $H_CollectionStats)
+        ? $H_CollectionStats["LocalStats"] : [];
 
 $ModResourceList = new ItemListUI([
     "Date Last Modified" => [
@@ -83,7 +106,7 @@ $ModResourceList = new ItemListUI([
 ]);
 $ModResourceList->AddActionButton(
     "Edit",
-    $Schema->editPage(),
+    $Schema->getEditPage(),
     "pencil.png"
 );
 $ModResourceList->fieldsSortableByDefault(false);
@@ -102,6 +125,14 @@ $NewResourceList->AddTopButton(
     $RecentlyAddedSearchLink
 );
 
+$AF = ApplicationFramework::getInstance();
+
+$UpdateCollectionStatsButton = new HtmlButton("Update Now");
+$UpdateCollectionStatsButton->setIcon("RefreshArrow.svg");
+$UpdateCollectionStatsButton->setOnclick("window.location=`index.php?P=MDHome&US=1`;");
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Metadata Tool");
 ?>
 
 <div class="mv-content-sectioned">
@@ -112,7 +143,7 @@ $NewResourceList->AddTopButton(
     <?PHP
     PrintOurMenuEntry(
         "Add New Resource",
-        str_replace('$ID', "NEW", $Schema->editPage()),
+        str_replace('$ID', "NEW", $Schema->getEditPage()),
         PRIV_RESOURCEADMIN,
         PRIV_COLLECTIONADMIN
     );
@@ -150,31 +181,31 @@ $NewResourceList->AddTopButton(
     <tbody>
         <tr>
             <th>Number of Classifications</th>
-            <td><?PHP PrintTotalNumberOfClassifications(); ?></td>
+            <td><?= $TotalNumberOfClassificationsFormatted; ?></td>
         </tr>
         <tr>
             <th>Number of Controlled Names</th>
-            <td><?PHP PrintTotalNumberOfControlledNames(); ?></td>
+            <td><?= $TotalNumberOfControlledNamesFormatted; ?></td>
         </tr>
     </tbody>
     <tbody>
         <tr>
             <th>Publicly-Visible Resources</th>
-            <td><?PHP PrintNumberOfReleasedResources(); ?></td>
+            <td><?= $NumberOfReleasedResourcesFormatted; ?></td>
         </tr>
         <tr>
             <th>Resources Rated</th>
-            <td><?PHP PrintNumberOfRatedResources(); ?></td>
+            <td><?= $NumberOfRatedResourcesFormatted; ?></td>
         </tr>
         <tr>
             <th>Total Number of Resources</th>
-            <td><?PHP PrintTotalNumberOfResources(); ?></td>
+            <td><?= $TotalNumberOfResourcesFormatted; ?></td>
         </tr>
     </tbody>
     <tbody>
         <tr>
             <th>Total Distinct Resource Search Terms</th>
-            <td><?PHP PrintTotalSearchTerms(); ?></td>
+            <td><?= $TotalSearchTermsFormatted; ?></td>
         </tr>
         <?PHP foreach ($LocalStats as $Label => $Value) { ?>
         <tr>
@@ -191,10 +222,7 @@ $NewResourceList->AddTopButton(
         <tr>
           <td>&nbsp;</td>
           <td>
-            <button class="btn btn-primary mv-button-iconed"
-                onclick="window.location=`index.php?P=MDHome&amp;US=1`;"><img
-                src="<?= $AF->GUIFile('RefreshArrow.svg'); ?>" alt=""
-                class="mv-button-icon" /> Update Now</button>
+            <?= $UpdateCollectionStatsButton->getHtml(); ?>
           </td>
         </tr>
     </tbody>

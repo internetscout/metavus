@@ -6,14 +6,18 @@
 #   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\ItemListUI;
 use Metavus\Record;
 use Metavus\RecordFactory;
 use ScoutLib\StdLib;
 
-checkAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN);
+CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN);
 
+if (!isset($H_ListChecksum)) {
+    throw new Exception("Required variable \$H_ListChecksum is not initialized");
+}
 $BaseLink = "index.php?P=TrackUserComments&amp;CK=".$H_ListChecksum;
 $EditLink = "index.php?P=AddResourceComment&amp;MI=\$ID";
 
@@ -59,8 +63,20 @@ $SpammerLinkFunc = function ($Item) {
 };
 $ListUI->addActionButton("Spammer", $SpammerLinkFunc, "cross.png");
 $ListUI->heading("Track User Comments");
+if (!isset($H_ItemsPerPage)) {
+    throw new Exception("Required variable \$H_ItemsPerPage is not initialized");
+}
 $ListUI->itemsPerPage($H_ItemsPerPage);
 $ListUI->fieldsSortableByDefault(false);
+if (!isset($H_Messages)) {
+    throw new Exception("Required variable \$H_Messages is not initialized");
+}
+if (!isset($H_MessageCount)) {
+    throw new Exception("Required variable \$H_MessageCount is not initialized");
+}
+if (!isset($H_StartingIndex)) {
+    throw new Exception("Required variable \$H_StartingIndex is not initialized");
+}
 $ListUI->display($H_Messages, $H_MessageCount, $H_StartingIndex);
 
 ?>

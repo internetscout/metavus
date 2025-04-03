@@ -6,17 +6,31 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
 
-?>
+if (!isset($H_RebuildIsComplete)) {
+    throw new Exception("Variable \$H_RebuildIsComplete not set.");
+}
 
-<?PHP if ($H_RebuildIsComplete) { ?>
+if ($H_RebuildIsComplete) { ?>
 <h1>Search Database Rebuild Complete</h1>
 
 <p>The search database has been rebuilt successfully.</p>
 
-<?PHP } else { ?>
+    <?PHP return;
+}
+if (!isset($H_PercentRebuildComplete)) {
+    throw new Exception("Variable \$H_PercentRebuildComplete not set.");
+}
+if (!isset($H_EstimatedTimeRemaining)) {
+    throw new Exception("Variable \$H_EstimatedTimeRemaining not set.");
+}
+if (!isset($H_EstimatedTimeOfCompletion)) {
+    throw new Exception("Variable \$H_EstimatedTimeOfCompletion not set.");
+}
+?>
 <h1>Rebuilding Search Database</h1>
 
 <table class="table table-striped">
@@ -35,5 +49,3 @@
         </tr>
     </tbody>
 </table>
-
-<?PHP } ?>

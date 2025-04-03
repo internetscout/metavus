@@ -1,52 +1,68 @@
+<?PHP
+#
+#   FILE:  MaintainanceMode.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+# ----- SETUP ----------------------------------------------------------------
+$H_MaintTitle = $H_MaintTitle ?? "Scheduled Maintenance";
+$H_MaintMessage = $H_MaintMessage
+        ?? "Briefly unavailable for scheduled maintenance.<br/>"
+        ." Please check back in a minute.";
+
+# ----- DISPLAY --------------------------------------------------------------
+?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
                       "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 <head>
-
-<title>Scheduled Maintenance</title>
+<title><?= $H_MaintTitle ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-
 <style type="text/css">
 <!--
-	body {
-		margin: 0;
-		padding: 0;
-		font: 12px/1.5 verdana, arial, helvetica, sans-serif;
-		text-align: center; /* Takes care of horizontal alignment in Internet Explorer */
-		background-color: #ECECEC;
-	}
-	#content {
-		position: relative; /* Needed for Safari */
-		margin: auto; /* Takes care of horizontal alignment in standards compliant browsers */
-		text-align: center;
-		width: 600px;
-		background-color: #F6F8FA;
-		border: 2px solid #FFFFFF;
+    body {
+        margin: 0;
+        padding: 0;
+        font: 12px/1.5 verdana, arial, helvetica, sans-serif;
+        text-align: center; /* For horizontal alignment in IE */
+        background-color: #ECECEC;
+    }
+    #content {
+        position: relative; /* For Safari */
+        margin: auto; /* For horizontal alignment in standards-compliant browsers */
+        text-align: center;
+        width: 600px;
+        background-color: #F6F8FA;
+        border: 2px solid #FFFFFF;
         -moz-border-radius: 10px;
         border-radius: 10px;
         padding: 32px 50px 17px 50px;
-	}
-	p {
-		margin: 0;
-		color: #999999;
+    }
+    p {
+        margin: 0;
+        color: #999999;
         font-size: 1.4em;
         padding-bottom: 10px;
-		line-height: 1.3em;
-	}
-	p a, a:visited {
-		color: #95999D;
-		text-decoration: none;
-	}
-	p a:hover {
-		text-decoration: underline;
-	}
-	h1 {
-		margin: 0;
-		font-size: 24px;
-		letter-spacing: 10px;
-		line-height: 1.5em;
-	}
+        line-height: 1.3em;
+    }
+    p a, a:visited {
+        color: #95999D;
+        text-decoration: none;
+    }
+    p a:hover {
+        text-decoration: underline;
+    }
+    h1 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: 10px;
+        line-height: 1.5em;
+    }
     hr {
         border: 1px solid #E5E9ED;
         margin: 15px 80px 23px 80px;
@@ -56,53 +72,51 @@
 <script type="text/javascript">
 <!--
 function getWindowHeight() {
-	var windowHeight = 0;
-	if (typeof(window.innerHeight) == 'number') {
-		windowHeight = window.innerHeight;
-	}
-	else {
-		if (document.documentElement && document.documentElement.clientHeight) {
-			windowHeight = document.documentElement.clientHeight;
-		}
-		else {
-			if (document.body && document.body.clientHeight) {
-				windowHeight = document.body.clientHeight;
-			}
-		}
-	}
-	return windowHeight;
+    var windowHeight = 0;
+    if (typeof(window.innerHeight) == 'number') {
+        windowHeight = window.innerHeight;
+    }
+    else {
+        if (document.documentElement && document.documentElement.clientHeight) {
+            windowHeight = document.documentElement.clientHeight;
+        }
+        else {
+            if (document.body && document.body.clientHeight) {
+                windowHeight = document.body.clientHeight;
+            }
+        }
+    }
+    return windowHeight;
 }
 function setContent() {
-	if (document.getElementById) {
-		var windowHeight = getWindowHeight();
-		if (windowHeight > 0) {
-			var contentElement = document.getElementById('content');
-			var contentHeight = contentElement.offsetHeight;
-			if (windowHeight - contentHeight > 0) {
-				contentElement.style.position = 'relative';
-				contentElement.style.top = ((windowHeight / 2) - (contentHeight / 2)) + 'px';
-			}
-			else {
-				contentElement.style.position = 'static';
-			}
-		}
-	}
+    if (document.getElementById) {
+        var windowHeight = getWindowHeight();
+        if (windowHeight > 0) {
+            var contentElement = document.getElementById('content');
+            var contentHeight = contentElement.offsetHeight;
+            if (windowHeight - contentHeight > 0) {
+                contentElement.style.position = 'relative';
+                contentElement.style.top = ((windowHeight / 2) - (contentHeight / 2)) + 'px';
+            }
+            else {
+                contentElement.style.position = 'static';
+            }
+        }
+    }
 }
 window.onload = function() {
-	setContent();
+    setContent();
 }
 window.onresize = function() {
-	setContent();
+    setContent();
 }
 //-->
 </script>
-
 </head>
 
 <body>
 <div id="content">
-  <p>Briefly unavailable for scheduled maintenance.<br/>
-  Please check back in a minute.</p>
+  <p><?= $H_MaintMessage ?></p>
 </div>
 </body>
 

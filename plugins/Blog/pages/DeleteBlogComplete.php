@@ -9,11 +9,12 @@
 
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
+use Metavus\Plugins\Blog;
 
 CheckAuthorization(PRIV_SYSADMIN);
 
 if ($_POST["Submit"] == "Delete") {
-    $BlogPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+    $BlogPlugin = Blog::getInstance();
     $BlogId = intval($_POST["F_BlogId"]);
     $BlogPlugin->DeleteBlog($BlogId);
 }

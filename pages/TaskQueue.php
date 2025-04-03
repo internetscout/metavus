@@ -19,10 +19,12 @@ if (!CheckAuthorization(PRIV_SYSADMIN)) {
     return;
 }
 
+$AF = ApplicationFramework::getInstance();
+
 # if task execution enable/disable requested
 if (isset($_GET["CE"])) {
     # save new task execution state
-    $GLOBALS["AF"]->taskExecutionEnabled(
+    $AF->taskExecutionEnabled(
         StdLib::getFormValue("F_TaskExecutionEnabled", true),
         true
     );
@@ -30,7 +32,7 @@ if (isset($_GET["CE"])) {
 
 # refresh the page every 30 seconds if appropriate. this must come after the
 # code that sets whether or not task execution is enabled
-if ($GLOBALS["AF"]->taskExecutionEnabled()) {
+if ($AF->taskExecutionEnabled()) {
     header("Refresh: 30; url=".$H_PageUrl);
 }
 
@@ -41,23 +43,23 @@ if (isset($_GET["AC"]) && isset($_GET["ID"])) {
 
     # re-queue orphaned task if requested
     if ($Action == "REQUEUE") {
-        $GLOBALS["AF"]->ReQueueOrphanedTask($TaskId);
+        $AF->ReQueueOrphanedTask($TaskId);
     # re-queue all orphaned tasks if requested
     } elseif ($Action == "REQUEUEALL") {
-        $OrphanedTasks = $GLOBALS["AF"]->GetOrphanedTaskList();
+        $OrphanedTasks = $AF->GetOrphanedTaskList();
         foreach ($OrphanedTasks as $Id => $Task) {
             $NewPriority = max(1, ($Task["Priority"] - 1));
-            $GLOBALS["AF"]->ReQueueOrphanedTask($Id, $NewPriority);
+            $AF->ReQueueOrphanedTask((int) $Id, (int) $NewPriority);
         }
     # remove orphaned task if requested
     } elseif ($Action == "DELETE") {
-        $GLOBALS["AF"]->DeleteTask($TaskId);
+        $AF->DeleteTask($TaskId);
     # run task in foreground if requested
     } elseif ($Action == "RUN") {
         # if this is a periodic event
         if (!is_numeric($TaskId)) {
             # attempt to retrieve task
-            $PTasks = $GLOBALS["AF"]->GetKnownPeriodicEvents();
+            $PTasks = $AF->GetKnownPeriodicEvents();
 
             # if specified task found
             if (isset($PTasks[$TaskId])) {
@@ -77,7 +79,7 @@ if (isset($_GET["AC"]) && isset($_GET["ID"])) {
             }
         } else {
             # attempt to retrieve task
-            $Task = $GLOBALS["AF"]->GetTask($TaskId);
+            $Task = $AF->GetTask((int) $TaskId);
 
             # if specified task found
             if ($Task) {
@@ -91,7 +93,7 @@ if (isset($_GET["AC"]) && isset($_GET["ID"])) {
                     }
 
                     # remove task from queue
-                    $GLOBALS["AF"]->DeleteTask($TaskId);
+                    $AF->DeleteTask((int) $TaskId);
                 }
             }
         }

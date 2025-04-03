@@ -3,13 +3,13 @@
 #   FILE:  Plugin.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
+use Exception;
 use InvalidArgumentException;
 
 /**
@@ -20,11 +20,35 @@ abstract class Plugin
     # ----- PUBLIC INTERFACE -------------------------------------------------
 
     /**
+     * Get universal instance of class.
+     * @param bool $IgnoreReadyState If TRUE, the plugin will be returned
+     *      even if it is not marked as ready for use.  (Defaults to FALSE.)
+     * @return static Class instance.
+     * @throws Exception if $IgnoreReadyState is FALSE and the plugin is not
+     *      marked as ready for use.
+     */
+    public static function getInstance(bool $IgnoreReadyState = false)
+    {
+        $ClassName = get_called_class();
+        if (!isset(self::$Instances[$ClassName])) {
+            self::$Instances[$ClassName] = new static();
+        }
+
+        $Plugin = self::$Instances[$ClassName];
+        if (!$IgnoreReadyState && !$Plugin->isReady()) {
+            throw new Exception("Attempt to retrieve plugin that is not ready"
+                    ." for use at ".StdLib::getMyCaller());
+        }
+        return $Plugin;
+    }
+
+    /**
      * Set the plugin attributes.  At minimum this method MUST set $this->Name
      * and $this->Version.  This is called when the plugin is loaded, and is
      * normally the only method called for disabled plugins (except for
      * setUpConfigOptions(), which is called for pages within the plugin
      * configuration interface).
+     * @return void
      */
     abstract public function register();
 
@@ -39,7 +63,7 @@ abstract class Plugin
      *      string or array of strings containing error message(s) indicating
      *      why config setup failed.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         return null;
     }
@@ -49,10 +73,10 @@ abstract class Plugin
      * all plugins have been loaded but before any methods for this plugin
      * (other than register()) have been called.
      * @return null|string NULL if initialization was successful, otherwise a
-     *      string or array of strings containing error message(s) indicating
-     *      why initialization failed.
+     *      string containing an error message indicating why initialization
+     *      failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         return null;
     }
@@ -64,7 +88,7 @@ abstract class Plugin
      * @return Array of method names to hook indexed by the event constants
      *       or names to hook them to.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [];
     }
@@ -76,7 +100,7 @@ abstract class Plugin
      * in all caps (for example "MyPlugin_EVENT_MY_EVENT").
      * @return Array with event names for the index and event types for the values.
      */
-    public function declareEvents()
+    public function declareEvents(): array
     {
         return [];
     }
@@ -87,7 +111,7 @@ abstract class Plugin
      * @return null|string NULL if installation succeeded, otherwise a string
      *      containing an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
         return null;
     }
@@ -100,8 +124,39 @@ abstract class Plugin
      * @return null|string NULL if upgrade succeeded, otherwise a string containing
      *       an error message indicating why upgrade failed.
      */
-    public function upgrade(string $PreviousVersion)
+    public function upgrade(string $PreviousVersion): ?string
     {
+        # get list of upgrade files
+        $UpgradeFiles = static::getUpgradeFiles($PreviousVersion, $this->Version);
+
+        # load upgrade files
+        foreach ($UpgradeFiles as $UpgradeClass => $UpgradeFile) {
+            # load file
+            require_once($UpgradeFile);
+
+            # check that expected upgrade class is available
+            if (!class_exists($UpgradeClass)) {
+                return "Expected class \"".$UpgradeClass
+                        ."\" not found in plugin upgrade file \""
+                        .$UpgradeFile."\".";
+            }
+        }
+
+        # perform upgrades
+        foreach ($UpgradeFiles as $UpgradeClass => $UpgradeFile) {
+            $PluginUpgrade = new $UpgradeClass();
+            if (!($PluginUpgrade instanceof PluginUpgrade)) {
+                return "Class \"".$UpgradeClass
+                        ."\" in plugin upgrade file \"".$UpgradeFile
+                        ."\" was not an instance of PluginUpgrade.";
+            }
+            $Result = $PluginUpgrade->performUpgrade();
+            if ($Result !== null) {
+                return $Result;
+            }
+        }
+
+        # report success to caller
         return null;
     }
 
@@ -110,7 +165,7 @@ abstract class Plugin
      * @return null|string NULL if uninstall succeeded, otherwise a string containing
      *       an error message indicating why uninstall failed.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         return null;
     }
@@ -146,6 +201,8 @@ abstract class Plugin
      */
     public static function getBaseName(): string
     {
+        # split our fully-qualified class name into segments
+        #       and return last segment to caller
         $Pieces = explode("\\", get_called_class());
         return array_pop($Pieces);
     }
@@ -177,7 +234,7 @@ abstract class Plugin
      * @param string $SettingName Name of configuration setting.
      * @param mixed $NewValue New value for setting.
      */
-    public static function setConfigSetting(string $SettingName, $NewValue)
+    public static function setConfigSetting(string $SettingName, $NewValue): void
     {
         # if caller requested that setting be cleared
         $BaseName = static::getBaseName();
@@ -236,7 +293,7 @@ abstract class Plugin
      * @return string Type of setting, as specified by the plugin, or NULL if
      *       no setting available by that name.
      */
-    final public function getConfigSettingType(string $SettingName)
+    final public function getConfigSettingType(string $SettingName): ?string
     {
         return isset($this->CfgSetup[$SettingName])
             ? $this->CfgSetup[$SettingName]["Type"] : null;
@@ -249,7 +306,7 @@ abstract class Plugin
      *       defined by plugin, or NULL if no setting available with the
      *       specified name.
      */
-    final public function getConfigSettingParameters(string $SettingName)
+    final public function getConfigSettingParameters(string $SettingName): array
     {
         return isset($this->CfgSetup[$SettingName])
             ? $this->CfgSetup[$SettingName] : null;
@@ -263,7 +320,7 @@ abstract class Plugin
      * @param string|int|array $Value New override Value.
      * @see Plugin::configSetting()
      */
-    final public function configSettingOverride(string $SettingName, $Value)
+    final public function configSettingOverride(string $SettingName, $Value): void
     {
         # check that setting name was valid
         if (!isset($this->CfgSetup[$SettingName])) {
@@ -282,7 +339,7 @@ abstract class Plugin
      *       (OPTIONAL)
      * @return bool TRUE if plugin is ready for use, otherwise FALSE.
      */
-    public function isReady(bool $NewValue = null): bool
+    public function isReady(?bool $NewValue = null): bool
     {
         # if new ready status was supplied
         if ($NewValue !== null) {
@@ -310,7 +367,7 @@ abstract class Plugin
      *       defaults to TRUE)
      * @return bool TRUE if plugin is enabled, otherwise FALSE.
      */
-    public function isEnabled(bool $NewValue = null, bool $Persistent = true): bool
+    public function isEnabled(?bool $NewValue = null, bool $Persistent = true): bool
     {
         # if new enabled status was suppled
         if ($NewValue !== null) {
@@ -337,7 +394,7 @@ abstract class Plugin
      *       not installed.  (OPTIONAL)
      * @return bool TRUE if plugin is installed, otherwise FALSE.
      */
-    public function isInstalled(bool $NewValue = null): bool
+    public function isInstalled(?bool $NewValue = null): bool
     {
         # if new install status was supplied
         if ($NewValue !== null) {
@@ -366,7 +423,7 @@ abstract class Plugin
      * @param string $NewValue New installed version.  (OPTIONAL)
      * @return string Current installed version.
      */
-    public function installedVersion(string $NewValue = null): string
+    public function installedVersion(?string $NewValue = null): string
     {
         # if new version was supplied
         if ($NewValue !== null) {
@@ -445,83 +502,11 @@ abstract class Plugin
     }
 
     /**
-     * Class constructor -- FOR PLUGIN MANAGER USE ONLY.  Plugins should
-     * always be retrieved via PluginManager::GetPlugin(), rather than
-     * instantiated directly.  Plugin child classes should perform any
-     * needed setup in initialize(), rather than using a constructor.
-     */
-    final public function __construct()
-    {
-        # make sure we are being called from the plugin manager
-        StdLib::checkMyCaller(
-            "ScoutLib\PluginManager",
-            "Attempt to create plugin object at %FILE%:%LINE%."
-            . "  (Plugins can only be instantiated by PluginManager.)"
-        );
-
-        # register plugin
-        $this->register();
-
-        # load plugin info from database if necessary
-        if (!isset(self::$PluginInfoCache)) {
-            $DB = new Database();
-            $DB->query("SELECT * FROM PluginInfo");
-            while ($Row = $DB->fetchRow()) {
-                self::$PluginInfoCache[$Row["BaseName"]] = $Row; // @phpstan-ignore-line
-            }
-        }
-
-        # add plugin to database if not already in there
-        $BaseName = static::getBaseName();
-        if (!isset(self::$PluginInfoCache[$BaseName])) {
-            if (!isset($DB)) {
-                $DB = new Database();
-            }
-            $Attribs = $this->getAttributes();
-
-            # lock tables to prevent inserting multiple rows
-            $DB->query("LOCK TABLES PluginInfo WRITE");
-
-            # re-run query just for this plugin in case our cache was stale
-            $DB->query("SELECT * FROM PluginInfo WHERE BaseName = '"
-                       . addslashes($BaseName) . "'");
-
-            # insert row if needed and re-run query
-            if ($DB->numRowsSelected() == 0) {
-                $DB->query(
-                    "INSERT INTO PluginInfo"
-                    . " (BaseName, Version, Enabled)"
-                    . " VALUES ('" . addslashes($BaseName) . "', "
-                    . " '" . addslashes(
-                        $Attribs["Version"]
-                    ) . "', "
-                    . " " . ($Attribs["EnabledByDefault"] ? 1 : 0) . ")"
-                );
-                $DB->query("SELECT * FROM PluginInfo WHERE BaseName = '"
-                           . addslashes($BaseName) . "'");
-            }
-
-            # update cache and release lock
-            self::$PluginInfoCache[$BaseName] = $DB->fetchRow();
-            $DB->query("UNLOCK TABLES");
-        }
-
-        # set internal value
-        $Info = self::$PluginInfoCache[$BaseName];
-        $this->Enabled = $Info["Enabled"];
-        $this->Installed = $Info["Installed"];
-        $this->InstalledVersion = $Info["Version"];
-        self::$Cfg[$BaseName] = !is_null($Info["Cfg"]) ?
-            unserialize($Info["Cfg"]) :
-            null;
-    }
-
-    /**
      * Set the application framework to be referenced within plugins.
      * (This is set by the plugin manager.)
      * @param ApplicationFramework $AF Application framework instance.
      */
-    final public static function setApplicationFramework(ApplicationFramework $AF)
+    final public static function setApplicationFramework(ApplicationFramework $AF): void
     {
         self::$AF = $AF;
     }
@@ -579,21 +564,79 @@ abstract class Plugin
 
     # ----- PRIVATE INTERFACE ------------------------------------------------
 
-    /** Plugin configuration values. */
-    private static $Cfg;
-    /** Plugin configuration override values. */
-    private static $CfgOver;
-    /** Whether the plugin is enabled. */
-    private $Enabled = false;
-    /** Whether the plugin is installed. */
-    private $Installed = false;
-    /** Version that was last installed. */
-    private $InstalledVersion = false;
-    /** Whether the plugin is currently ready for use. */
-    private $Ready = false;
+    private $Enabled = false;           # whether plugin is enabled
+    private $Installed = false;         # whether plugin has been installed
+    private $InstalledVersion = false;  # version last installed
+    private $Ready = false;             # whether plugin is ready for use
 
-    /** Cache of setting values from database. */
-    private static $PluginInfoCache;
+    private static $Cfg;                # configuration values
+    private static $CfgOver;            # configuration override values
+    private static $Instances;          # instantiated plugins
+    private static $PluginInfoCache;    # cache of setting values from DB
+
+    /**
+     * Class constructor.  Plugins should be retrieved via getInstance(),
+     * rather than instantiated directly.  Plugin child classes should perform
+     * any needed setup in initialize(), rather than using a constructor.
+     */
+    private function __construct()
+    {
+        # register plugin
+        $this->register();
+
+        # load plugin info from database if necessary
+        if (!isset(self::$PluginInfoCache)) {
+            $DB = new Database();
+            $DB->query("SELECT * FROM PluginInfo");
+            while ($Row = $DB->fetchRow()) {
+                self::$PluginInfoCache[$Row["BaseName"]] = $Row;
+            }
+        }
+
+        # add plugin to database if not already in there
+        $BaseName = static::getBaseName();
+        if (!isset(self::$PluginInfoCache[$BaseName])) {
+            if (!isset($DB)) {
+                $DB = new Database();
+            }
+            $Attribs = $this->getAttributes();
+
+            # lock tables to prevent inserting multiple rows
+            $DB->query("LOCK TABLES PluginInfo WRITE");
+
+            # re-run query just for this plugin in case our cache was stale
+            $DB->query("SELECT * FROM PluginInfo WHERE BaseName = '"
+                       . addslashes($BaseName) . "'");
+
+            # insert row if needed and re-run query
+            if ($DB->numRowsSelected() == 0) {
+                $DB->query(
+                    "INSERT INTO PluginInfo"
+                    . " (BaseName, Version, Enabled)"
+                    . " VALUES ('" . addslashes($BaseName) . "', "
+                    . " '" . addslashes(
+                        $Attribs["Version"]
+                    ) . "', "
+                    . " " . ($Attribs["EnabledByDefault"] ? 1 : 0) . ")"
+                );
+                $DB->query("SELECT * FROM PluginInfo WHERE BaseName = '"
+                           . addslashes($BaseName) . "'");
+            }
+
+            # update cache and release lock
+            self::$PluginInfoCache[$BaseName] = $DB->fetchRow();
+            $DB->query("UNLOCK TABLES");
+        }
+
+        # set internal value
+        $Info = self::$PluginInfoCache[$BaseName];
+        $this->Enabled = $Info["Enabled"];
+        $this->Installed = $Info["Installed"];
+        $this->InstalledVersion = $Info["Version"];
+        self::$Cfg[$BaseName] = (!is_null($Info["Cfg"]) && trim($Info["Cfg"]) !== "") ?
+            unserialize($Info["Cfg"]) :
+            null;
+    }
 
     /**
      * Create database tables.  (Intended for use in Plugin::install() methods.)
@@ -602,25 +645,16 @@ abstract class Plugin
      *       used for the index (i.e. "MyTable" instead of "MyPlugin_MyTable").
      * @param Database $DB Database object to use.  (OPTIONAL)
      * @return string|null Error message or NULL if creation succeeded.
+     * @deprecated
+     * @see Database::createTables()
      */
-    protected function createTables(array $Tables, Database $DB = null)
+    protected function createTables(array $Tables, ?Database $DB = null): ?string
     {
         if ($DB === null) {
             $DB = new Database();
         }
-        foreach ($Tables as $TableName => $TableSql) {
-            $Result = $DB->query($TableSql);
-            if ($Result === false) {
-                $BaseName = static::getBaseName();
-                if (strpos($TableName, $BaseName) !== 0) {
-                    $TableName = $BaseName."_".$TableName;
-                }
-                return "Unable to create ".$TableName." database table."
-                    ."  (ERROR: ".$DB->queryErrMsg().")";
-            }
-        }
-
-        return null;
+        $Tables = $this->normalizeTableDefsForLegacyMethods($Tables);
+        return $DB->createTables($Tables);
     }
 
     /**
@@ -628,39 +662,57 @@ abstract class Plugin
      * methods.)  This will not error out if the table creation SQL includes
      * tables that already exist.
      * @param array $Tables Array of table creation SQL, with table names for
-     *       the index.  The class prefix may be omitted from the tables names
-     *       used for the index (i.e. "MyTable" instead of "MyPlugin_MyTable").
+     *      the index.  The class prefix may be omitted from the tables names
+     *      used for the index (i.e. "MyTable" instead of "MyPlugin_MyTable").
      * @return string|null Error message or NULL if creation succeeded.
+     * @deprecated
+     * @see Database::createMissingTables()
      */
-    protected function createMissingTables(array $Tables)
+    protected function createMissingTables(array $Tables): ?string
     {
         $DB = new Database();
-        $SqlErrorsWeCanIgnore = [
-            "/CREATE TABLE /i" => "/Table '[a-z0-9_]+' already exists/i"
-        ];
-        $DB->setQueryErrorsToIgnore($SqlErrorsWeCanIgnore);
-        return $this->createTables($Tables, $DB);
+        $Tables = $this->normalizeTableDefsForLegacyMethods($Tables);
+        return $DB->createMissingTables($Tables);
     }
 
     /**
      * Drop database tables.  (Intended for use in Plugin::uninstall() methods.)
+     * (This method as implemented here currently will not return an error message,
+     * but callers should still check for and potentially handle an error message
+     * because child classes or future updates to this method may do so.)
      * @param array $Tables Array of table creation SQL, with table names for
-     *       the index.  The class prefix may be omitted from the tables names
-     *       used for the index (i.e. "MyTable" instead of "MyPlugin_MyTable").
+     *      the index.  The class prefix may be omitted from the tables names
+     *      used for the index (i.e. "MyTable" instead of "MyPlugin_MyTable").
      * @return string|null Error message or NULL if table drops succeeded.
+     * @deprecated
+     * @see Database::dropTables()
      */
-    protected function dropTables(array $Tables)
+    protected function dropTables(array $Tables): ?string
     {
         $DB = new Database();
+        $Tables = $this->normalizeTableDefsForLegacyMethods($Tables);
+        return $DB->dropTables($Tables);
+    }
+
+    /**
+     * Normalize table definitions in old format, for use in deprecated
+     * legacy methods.
+     * @param array $Tables Array of table creation SQL, with table names for
+     *      the index.
+     * @return array Array of table creation SQL, with class prefixes (i.e.
+     *      plugin base names) added to the index where not already present.
+     */
+    private function normalizeTableDefsForLegacyMethods(array $Tables): array
+    {
+        $BaseName = static::getBaseName();
+        $NormalizedTables = [];
         foreach ($Tables as $TableName => $TableSql) {
-            $BaseName = static::getBaseName();
             if (strpos($TableName, $BaseName) !== 0) {
                 $TableName = $BaseName."_".$TableName;
             }
-            $DB->query("DROP TABLE IF EXISTS " . $TableName);
+            $NormalizedTables[$TableName] = $TableSql;
         }
-
-        return null;
+        return $NormalizedTables;
     }
 
     /**
@@ -678,10 +730,10 @@ abstract class Plugin
      */
     protected function queueTask(
         string $MethodName,
-        array $Parameters = null,
+        ?array $Parameters = null,
         int $Priority = ApplicationFramework::PRIORITY_LOW,
         string $Description = ""
-    ) {
+    ): void {
         $this->callAFTaskMethod(
             "queueUniqueTask",
             $MethodName,
@@ -708,7 +760,7 @@ abstract class Plugin
      */
     protected function queueUniqueTask(
         string $MethodName,
-        array $Parameters = null,
+        ?array $Parameters = null,
         int $Priority = ApplicationFramework::PRIORITY_LOW,
         string $Description = ""
     ): bool {
@@ -736,9 +788,9 @@ abstract class Plugin
      */
     protected function getQueuedTaskCount(
         string $MethodName,
-        array $Parameters = null,
-        int $Priority = null,
-        string $Description = null
+        ?array $Parameters = null,
+        ?int $Priority = null,
+        ?string $Description = null
     ): int {
         return (int)$this->callAFTaskMethod(
             "getQueuedTaskCount",
@@ -789,9 +841,68 @@ abstract class Plugin
      * Set all configuration values (only for use by PluginManager).
      * @param array $NewValues Array of new configuration values.
      */
-    final public function setAllCfg($NewValues)
+    final public function setAllCfg($NewValues): void
     {
         self::$Cfg[static::getBaseName()] = $NewValues;
     }
     /** @endcond */
+
+    /**
+     * Get list of available upgrade files for upgrading from specified
+     * old plugin version to specfied new plugin version.
+     * @param string $OldVersion Old version number if canonical format.
+     * @param string $NewVersion New version number if canonical format.
+     * @return array<string, string> Names of upgrade files with leading
+     *      paths, indexed by fully-qualified names of upgrade classes.
+     */
+    protected static function getUpgradeFiles(
+        string $OldVersion,
+        string $NewVersion
+    ): array {
+        # get list of all core upgrade files for this plugin
+        $PluginName = static::getBaseName();
+        $CoreUpgradeFilePattern = "plugins/".$PluginName
+                ."/install/PluginUpgrade_*.php";
+        $CoreUpgradeFiles = glob($CoreUpgradeFilePattern);
+        if ($CoreUpgradeFiles === false) {
+            $CoreUpgradeFiles = [];
+        }
+
+        # get list of all local upgrade files for this plugin
+        $LocalUpgradeFilePattern = "local/".$CoreUpgradeFilePattern;
+        $LocalUpgradeFiles = glob($LocalUpgradeFilePattern);
+        if ($LocalUpgradeFiles === false) {
+            $LocalUpgradeFiles = [];
+        }
+
+        # add list of local upgrade files to end of list of core upgrade files
+        $AllUpgradeFiles = array_merge($CoreUpgradeFiles, $LocalUpgradeFiles);
+
+        # for all upgrade files found for this plugin
+        $PluginClass = get_called_class();
+        $UpgradeFiles = [];
+        foreach ($AllUpgradeFiles as $UpgradeFile) {
+            # extract upgrade version number from upgrade file name
+            # (trim off leading path, "PluginUpgrade_", and ".php")
+            $UpgradeVersion = substr(basename($UpgradeFile, ".php"), 14);
+            # (convert underscores to periods)
+            $UpgradeVersion = str_replace("_", ".", $UpgradeVersion);
+
+            # if version is within upgrade range
+            if (version_compare($UpgradeVersion, $OldVersion, ">")
+                    && (version_compare($UpgradeVersion, $NewVersion, "<="))) {
+                # add file to list (with fully-qualified upgrade class name for index)
+                # (local versions will replace core versions if both are
+                #       present, because they appear later in list of files)
+                $UpgradeClass = $PluginClass."\\".basename($UpgradeFile, ".php");
+                $UpgradeFiles[$UpgradeClass] = $UpgradeFile;
+            }
+        }
+
+        # sort resulting upgrade file list by version number
+        # (sort array by keys, using a "natural order" comparison)
+        uksort($UpgradeFiles, "strnatcmp");
+
+        return $UpgradeFiles;
+    }
 }

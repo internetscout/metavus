@@ -6,10 +6,9 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -17,6 +16,8 @@ PageTitle("PHP Configuration Info");
 
 # require certain privileges to view the page
 CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN, PRIV_COLLECTIONADMIN);
+
+$AF = ApplicationFramework::getInstance();
 
 # if being reloaded within iframe
 if (isset($_GET["IF"])) {

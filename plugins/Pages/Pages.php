@@ -3,7 +3,7 @@
 #   FILE:  Pages.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -16,14 +16,13 @@ use Metavus\MetadataSchema;
 use Metavus\Plugin;
 use Metavus\Plugins\Pages\Page;
 use Metavus\Plugins\Pages\PageFactory;
+use Metavus\Plugins\SecondaryNavigation;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\User;
-use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\PluginManager;
-use ScoutLib\StdLib;
 
 /**
  * Free-form content page plugin.
@@ -36,7 +35,7 @@ class Pages extends Plugin
      * Set the plugin attributes.At minimum this method MUST set $this->Name
      * and $this->Version.This is called when the plugin is initially loaded.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Pages";
         $this->Version = "2.0.15";
@@ -45,7 +44,7 @@ class Pages extends Plugin
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->InitializeAfter = ["SecondaryNavigation"];
         $this->EnabledByDefault = true;
 
@@ -78,7 +77,7 @@ class Pages extends Plugin
      * @return null|string NULL if initialization was successful, otherwise
      *      an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $AF = ApplicationFramework::getInstance();
         $this->DB = new Database();
@@ -95,10 +94,10 @@ class Pages extends Plugin
         }
 
         # give page factory our metadata schema ID
-        PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
+        PageFactory::$PageSchemaId = $this->getConfigSetting("MetadataSchemaId");
 
         # see if our help pages need updating
-        if (version_compare($this->configSetting("VersionOfLastUpdate"), CWIS_VERSION, "<")) {
+        if (version_compare($this->getConfigSetting("VersionOfLastUpdate"), CWIS_VERSION, "<")) {
             $Result = $this->loadHelpPages();
             if ($Result !== null) {
                 return $Result;
@@ -106,16 +105,16 @@ class Pages extends Plugin
         }
 
         # if we have migrated about page content to load, do so
-        if (!is_null($this->configSetting("MigratedAboutContent"))) {
+        if (!is_null($this->getConfigSetting("MigratedAboutContent"))) {
             $this->loadAboutPage();
         }
 
         # set up clean URL mappings for current pages
-        $CleanUrls = $this->configSetting("CleanUrlCache");
+        $CleanUrls = $this->getConfigSetting("CleanUrlCache");
         if (is_null($CleanUrls)) {
             $PFactory = new PageFactory();
             $CleanUrls = $PFactory->getCleanUrls();
-            $this->configSetting("CleanUrlCache", $CleanUrls);
+            $this->setConfigSetting("CleanUrlCache", $CleanUrls);
         }
 
         foreach ($CleanUrls as $PageId => $Urls) {
@@ -156,7 +155,7 @@ class Pages extends Plugin
         $PluginMgr = PluginManager::getInstance();
         if ($PluginMgr->pluginEnabled("SecondaryNavigation") &&
             User::getCurrentUser()->isLoggedIn()) {
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
+            $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
 
             $ListPrivs = new PrivilegeSet();
             $ListPrivs->addSubset($Schema->editingPrivileges());
@@ -164,9 +163,9 @@ class Pages extends Plugin
             $ListPrivs->usesAndLogic(false);
 
             $AuthoringPrivs = $Schema->authoringPrivileges();
-            $NewPageUrl = str_replace('$ID', "NEW&SC=".$Schema->id(), $Schema->editPage());
+            $NewPageUrl = str_replace('$ID', "NEW&SC=".$Schema->id(), $Schema->getEditPage());
 
-            $SecondaryNav = $PluginMgr->getPlugin("SecondaryNavigation");
+            $SecondaryNav = SecondaryNavigation::getInstance();
             $SecondaryNav->offerNavItem(
                 "Page List",
                 "index.php?P=P_Pages_ListPages",
@@ -191,7 +190,7 @@ class Pages extends Plugin
      * @return null|string NULL if installation succeeded, otherwise a string
      *      containing an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
         # if User::getCurrentUser() isn't a CWUser (now Metavus\User), then we're
         # being run from the install during a site upgrade, and the RecordUserInts
@@ -214,7 +213,7 @@ class Pages extends Plugin
         }
 
         # set the AbbreviatedName for Pages schema
-        $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
+        $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
         $Schema->abbreviatedName("W");
 
         # pre-load help pages
@@ -230,280 +229,14 @@ class Pages extends Plugin
     }
 
     /**
-     * Upgrade this plugin from a previous version.
-     * @param string $PreviousVersion String contining previous version number.
-     * @return null|string NULL if successful or error message string if not.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        $DB = new Database();
-
-        if (!$DB->tableExists("Records")) {
-            return "Records table does not exist";
-        }
-
-        # ugprade from versions < 1.0.1 to 1.0.1
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            $PrivilegeToAuthor = $this->configSetting("PrivilegeToAuthor");
-            $PrivilegeToEdit = $this->configSetting("PrivilegeToEdit");
-
-            # if authoring privilege is an array because it hasn't been edited
-            # since the plugin was installed
-            if (is_array($PrivilegeToAuthor)) {
-                $this->configSetting(
-                    "PrivilegeToAuthor",
-                    array_shift($PrivilegeToAuthor)
-                );
-            }
-
-            # if editing privilege is an array because it hasn't been edited
-            # since the plugin was installed
-            if (is_array($PrivilegeToEdit)) {
-                $this->configSetting("PrivilegeToEdit", array_shift($PrivilegeToEdit));
-            }
-        }
-
-        # upgrade from versions < 1.0.2 to 1.0.2
-        if (version_compare($PreviousVersion, "1.0.2", "<")) {
-            # add clean URL column to database
-            $Result = $DB->query("ALTER TABLE Pages_Pages"
-                    ." ADD COLUMN CleanUrl TEXT");
-            if ($Result === false) {
-                return "Upgrade failed adding"
-                    ." \"CleanUrl\" column to database.";
-            }
-        }
-
-        # upgrade from versions < 1.0.5 to 1.0.5
-        if (version_compare($PreviousVersion, "1.0.5", "<")) {
-            # convert content column in database to larger type
-            $Result = $DB->query("ALTER TABLE Pages_Pages"
-                    ." MODIFY COLUMN PageContent MEDIUMTEXT");
-            if ($Result === false) {
-                return "Upgrade failed converting"
-                    ." \"PageContent\" column to MEDIUMTEXT.";
-            }
-        }
-
-        # upgrade from versions < 2.0.0 to 2.0.0
-        if (version_compare($PreviousVersion, "2.0.0", "<")) {
-            # switch to metadata-schema-based storage of pages
-            $Result = $this->upgradeToMetadataPageStorage();
-            if ($Result !== null) {
-                return $Result;
-            }
-        }
-
-        # upgrade from versions < 2.0.1 to 2.0.1
-        if (version_compare($PreviousVersion, "2.0.1", "<")) {
-            # set the AbbreviatedName for Pages schema
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            $Schema->abbreviatedName("W");
-        }
-
-        # upgrade from versions < 2.0.2 to 2.0.2
-        if (version_compare($PreviousVersion, "2.0.2", "<")) {
-            # add Summary metadata field
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            if ($Schema->addFieldsFromXmlFile(Pages::schemaDefinitionFile(), $this->Name)
-                == false) {
-                return "Error Loading Metadata Fields from XML: ".implode(
-                    " ",
-                    $Schema->errorMessages("AddFieldsFromXmlFile")
-                );
-            }
-
-            # populate Summary field for all pages
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $PFactory = new PageFactory();
-            $Ids = $PFactory->getItemIds();
-            foreach ($Ids as $Id) {
-                $Page = new Page($Id);
-                $Page->set("Summary", $Page->getSummary());
-            }
-        }
-
-        # upgrade from versions < 2.0.3 to 2.0.3
-        if (version_compare($PreviousVersion, "2.0.3", "<")) {
-            # regenerate page summaries to reflect changes to summary generation
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $PFactory = new PageFactory();
-            $Ids = $PFactory->getItemIds();
-            foreach ($Ids as $Id) {
-                $Page = new Page($Id);
-                $Page->set("Summary", $Page->getSummary(
-                    $this->configSetting("SummaryLength")
-                ));
-            }
-        }
-
-        # upgrade from versions < 2.0.4 to 2.0.4
-        if (version_compare($PreviousVersion, "2.0.4", "<")) {
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $Result = $this->loadHelpPages();
-            if ($Result !== null) {
-                return $Result;
-            }
-        }
-
-        if (version_compare($PreviousVersion, "2.0.5", "<")) {
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            $Result = $Schema->addFieldsFromXmlFile(
-                Pages::schemaDefinitionFile(),
-                $this->Name
-            );
-
-            if ($Result == false) {
-                return "Error Loading Metadata Fields from XML: "
-                    .implode(" ", $Schema->errorMessages("AddFieldsFromXmlFile"));
-            }
-
-            PageFactory::$PageSchemaId = $Schema->id();
-            $PFactory = new PageFactory();
-
-            # set hashes for previously loaded pages
-            $ContentHashes = [
-                "help/collections"
-                    => "7c2dbd3394a13c743c76c8d893dc95358e4f81c5b12d32a592ceb2d93aec5bb2",
-                "help/collections/customizing_metadata_fields"
-                    => "dd018590a21d89f95205c9012065186d365f079b113e9d760d3303761cde6667",
-                "help/collections/metadata_field_editor"
-                    => "70dbcc9fc8f8956c952c3a64b84a22fd23d0c395adcc19c9f0cda2bf78639d8d",
-                "help/collections/permissions"
-                    => "e0fca33ae31ddf37f6966df9601e52164ea7413e252c29bc8a1f4381f618bbf3",
-                "help/metadata/updating_controlled_names"
-                    => "82e34db618c255eb9a57878fe45cb00ce338eb3879a6733d4e28c28c167c3e4d",
-                "help/metadata/updating_option_lists"
-                    => "c690c83c83168d491432135b6dc750b2cbabee665e839bc787cfbe21a67b365a",
-                "help/users/user_access_privilege_flags"
-                    => "63c612c3a63e28909365eff85f5630b97739b26622f1f665b1aef9a565ad9cb0"
-            ];
-
-            foreach ($ContentHashes as $Url => $ContentHash) {
-                $Matches = $PFactory->getIdsOfMatchingRecords(
-                    ["Clean URL" => $Url]
-                );
-
-                if (count($Matches) == 0) {
-                    continue;
-                }
-
-                $Page = new Record(array_shift($Matches));
-                $Page->set("Initial Content Hash", $ContentHash);
-            }
-
-            # (updates will happen in initialize)
-        }
-
-        if (version_compare($PreviousVersion, "2.0.6", "<")) {
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-
-            $ParagraphFields = $Schema->getFields(MetadataSchema::MDFTYPE_PARAGRAPH);
-            foreach ($ParagraphFields as $Field) {
-                $Field->allowHTML(true);
-            }
-        }
-
-        # upgrade from versions < 2.0.7 to 2.0.7
-        if (version_compare($PreviousVersion, "2.0.7", "<")) {
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $PFactory = new PageFactory();
-            $Ids = $PFactory->getItemIds();
-            foreach ($Ids as $Id) {
-                $Page = new Page($Id);
-                $UpdatedContent = preg_replace(
-                    '/<h2 class="cw-tab-start">/',
-                    '<h2 class="mv-tab-start">',
-                    $Page->get("Content")
-                );
-                $Page->set("Content", $UpdatedContent);
-            }
-        }
-
-        # upgrade from versions < 2.0.8 to 2.0.8
-        if (version_compare($PreviousVersion, "2.0.8", "<")) {
-            $PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $PSchema = new MetadataSchema($PageSchemaId);
-            $PSchema->getField("Added By Id")->updateMethod(
-                MetadataField::UPDATEMETHOD_ONRECORDCREATE
-            );
-            $PSchema->getField("Last Modified By Id")->updateMethod(
-                MetadataField::UPDATEMETHOD_ONRECORDCHANGE
-            );
-        }
-
-        # upgrade from versions < 2.0.9 to 2.0.9
-        if (version_compare($PreviousVersion, "2.0.9", "<")) {
-            $Result = $this->loadSchemaFieldsFromFile();
-            if ($Result !== null) {
-                return $Result;
-            }
-        }
-
-        if (version_compare($PreviousVersion, "2.0.10", "<")) {
-            # rewrite links in Pages content to use updated URLs for preview images
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $PFactory = new PageFactory();
-            $Ids = $PFactory->getItemIds();
-            foreach ($Ids as $Id) {
-                $Page = new Page($Id);
-                $UpdatedContent = preg_replace(
-                    '%local/data/images/previews/Preview--([0-9]+)\.([a-z]+)%',
-                    'local/data/caches/images/scaled/img_\1_300x300.\2',
-                    $Page->get("Content")
-                );
-                $Page->set("Content", $UpdatedContent);
-            }
-        }
-
-        if (version_compare($PreviousVersion, "2.0.11", "<")) {
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            if ($Schema->fieldExists("Images")) {
-                $FieldId = $Schema->getFieldIdByName("Images");
-                $Schema->stdNameToFieldMapping("Screenshot", $FieldId);
-            }
-        }
-
-        if (version_compare($PreviousVersion, "2.0.12", "<")) {
-            # rewrite links in Pages content to use the IMAGEURL keyword
-            # (the set() will rewrite urls)
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
-            $Ids = (new PageFactory())->getItemIds();
-            foreach ($Ids as $Id) {
-                $Page = new Page($Id);
-                $Page->set("Content", $Page->get("Content"));
-            }
-        }
-
-        if (version_compare($PreviousVersion, "2.0.13", "<")) {
-            # clear caches to force the list of page URLs to be updated
-            $this->clearCaches();
-        }
-
-        if (version_compare($PreviousVersion, "2.0.14", "<")) {
-            # set our item class name
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            $Schema->setItemClassName("Metavus\\Plugins\\Pages\\Page");
-        }
-
-        if (version_compare($PreviousVersion, "2.0.15", "<")) {
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            $Schema->editPage("index.php?P=P_Pages_EditPage&ID=\$ID");
-        }
-
-        # report success to caller
-        return null;
-    }
-
-    /**
      * Perform any work needed when the plugin is uninstalled.
      * @return null|string NULL if uninstall succeeded, otherwise a string
      *      containing an error message indicating why uninstall failed.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         # delete all pages
-        PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
+        PageFactory::$PageSchemaId = $this->getConfigSetting("MetadataSchemaId");
         $PFactory = new PageFactory();
         $Ids = $PFactory->getItemIds();
         foreach ($Ids as $Id) {
@@ -512,7 +245,7 @@ class Pages extends Plugin
         }
 
         # delete our metadata schema
-        $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
+        $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
         $Schema->delete();
 
         # remove tables from database
@@ -559,7 +292,7 @@ class Pages extends Plugin
         $User = User::getCurrentUser();
 
         # build up list of nav items to add
-        $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
+        $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
         if ($Schema->userCanAuthor($User) || $Schema->userCanEdit($User)) {
             $MyNavItems["Page List"] = "index.php?P=P_Pages_ListPages";
         }
@@ -601,20 +334,20 @@ class Pages extends Plugin
         string $ConfigSetting,
         $OldValue,
         $NewValue
-    ) {
+    ): void {
         # only worried about changes to our settings
         if ($PluginName != $this->Name) {
             return;
         }
 
         # update image field settings if they've changed
-        $SchemaId = $this->configSetting("MetadataSchemaId");
+        $SchemaId = $this->getConfigSetting("MetadataSchemaId");
         $Schema = new MetadataSchema($SchemaId);
         $ImageField = $Schema->getField("Images");
 
         # regenerate all page summaries if summary length has changed
         if ($ConfigSetting == "SummaryLength") {
-            PageFactory::$PageSchemaId = $this->configSetting("MetadataSchemaId");
+            PageFactory::$PageSchemaId = $this->getConfigSetting("MetadataSchemaId");
             $PFactory = new PageFactory();
             $Ids = $PFactory->getItemIds();
             foreach ($Ids as $Id) {
@@ -627,9 +360,9 @@ class Pages extends Plugin
     /**
      * Clear internal caches.
      */
-    public function clearCaches()
+    public function clearCaches(): void
     {
-        $this->configSetting("CleanUrlCache", null);
+        $this->setConfigSetting("CleanUrlCache", null);
     }
 
     # ---- CALLABLE METHODS --------------------------------------------------
@@ -637,7 +370,7 @@ class Pages extends Plugin
     /**
      * Plugin command for refreshing help page content.
      */
-    public function commandUpdateHelpPages()
+    public function commandUpdateHelpPages(): void
     {
         $this->loadHelpPages();
     }
@@ -648,20 +381,18 @@ class Pages extends Plugin
      */
     public function getAllowedInsertionKeywords(): array
     {
-        $Setting = $this->configSetting("AllowedInsertionKeywords");
+        $Setting = $this->getConfigSetting("AllowedInsertionKeywords");
         $Keywords = !is_null($Setting) ?
             preg_split('%[\s,{}]+%', $Setting, -1, PREG_SPLIT_NO_EMPTY) :
             false;
         return ($Keywords === false) ? [] : $Keywords;
     }
 
-    # ---- PRIVATE METHODS ---------------------------------------------------
-
     /**
      * Set up our metadata schema.
      * @return null|string NULL upon success, or error string upon failure.
      */
-    private function setUpSchema()
+    public function setUpSchema(): ?string
     {
         # setup the default privileges for authoring and editing
         $AuthorPrivs = new PrivilegeSet();
@@ -678,9 +409,9 @@ class Pages extends Plugin
             "index.php?P=P_Pages_DisplayPage&ID=\$ID"
         );
         $Schema->setItemClassName("Metavus\\Plugins\\Pages\\Page");
-        $this->configSetting("MetadataSchemaId", $Schema->id());
+        $this->setConfigSetting("MetadataSchemaId", $Schema->id());
         PageFactory::$PageSchemaId = $Schema->id();
-        $Schema->editPage("index.php?P=P_Pages_EditPage&ID=\$ID");
+        $Schema->setEditPage("index.php?P=P_Pages_EditPage&ID=\$ID");
 
         # load fields into schema and return result back to caller
         return $this->loadSchemaFieldsFromFile();
@@ -690,9 +421,9 @@ class Pages extends Plugin
      * Load (or update) our metadata fields from an XML file.
      * @return null|string NULL upon success, or error string upon failure.
      */
-    private function loadSchemaFieldsFromFile()
+    public function loadSchemaFieldsFromFile(): ?string
     {
-        $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
+        $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
         if ($Schema->addFieldsFromXmlFile(Pages::schemaDefinitionFile(), $this->Name) == false) {
             return "Error Loading Metadata Fields from XML: ".implode(
                 " ",
@@ -706,14 +437,14 @@ class Pages extends Plugin
      * Load and/or update help pages.
      * @return null|string NULL upon success, or error string upon failure.
      */
-    private function loadHelpPages()
+    public function loadHelpPages(): ?string
     {
         $HelpPageContentFile = __DIR__."/install/HelpPages.xml";
 
         # if the help page content has not changed since we last loaded it, no
         # need to do anything
         $CurrentHash = md5_file($HelpPageContentFile);
-        if ($this->configSetting("HelpPagesHash") == $CurrentHash) {
+        if ($this->getConfigSetting("HelpPagesHash") == $CurrentHash) {
             return null;
         }
 
@@ -746,17 +477,19 @@ class Pages extends Plugin
 
         # update our stored hash for HelpPages.xml and the CWIS version when
         # we last loaded this content
-        $this->configSetting("HelpPagesHash", $CurrentHash);
-        $this->configSetting("VersionOfLastUpdate", CWIS_VERSION);
+        $this->setConfigSetting("HelpPagesHash", $CurrentHash);
+        $this->setConfigSetting("VersionOfLastUpdate", CWIS_VERSION);
 
         # report success
         return null;
     }
 
+    # ---- PRIVATE METHODS ---------------------------------------------------
+
     /**
      * Load the about page, potentially migrating content if necessary.
      */
-    private function loadAboutPage()
+    private function loadAboutPage(): void
     {
         $AboutPageContentFile = __DIR__."/install/AboutPage.xml";
 
@@ -771,82 +504,13 @@ class Pages extends Plugin
 
         $AboutPage = new Page(array_shift($PageIds));
 
-        if (!is_null($this->configSetting("MigratedAboutContent"))) {
+        if (!is_null($this->getConfigSetting("MigratedAboutContent"))) {
             $AboutPage->set(
                 "Content",
-                $this->configSetting("MigratedAboutContent")
+                $this->getConfigSetting("MigratedAboutContent")
             );
-            $this->configSetting("MigratedAboutContent", null);
+            $this->setConfigSetting("MigratedAboutContent", null);
         }
-    }
-
-    /**
-     * Migrate data from database-based format to metadata-schema-based format.
-     * @return null|string NULL upon success, or error string upon failure.
-     */
-    private function upgradeToMetadataPageStorage()
-    {
-        $DB = new Database();
-
-        # bail out if conversion has already been done or is under way
-        if (!$DB->tableExists("Pages_Pages") ||
-            !$DB->query("RENAME TABLE Pages_Pages TO Pages_Pages_OLD")) {
-            return null;
-        }
-
-        # set up metadata schema
-        $Result = $this->setUpSchema();
-        if ($Result !== null) {
-            return $Result;
-        }
-
-        # load old privilege information
-        $DB->query("SELECT * FROM Pages_Privileges");
-        $OldPrivs = [];
-        while ($Row = $DB->fetchRow()) {
-            $OldPrivs[$Row["PageId"]][] = $Row["Privilege"];
-        }
-
-        # create new privileges table
-        $DB->query("DROP TABLE Pages_Privileges");
-        $DB->query(
-            "CREATE TABLE IF NOT EXISTS Pages_Privileges (
-                    PageId              INT NOT NULL,
-                    ViewingPrivileges   BLOB,
-                    INDEX       (PageId))"
-        );
-
-        # for each page in database
-        $DB->query("SELECT * FROM Pages_Pages_OLD");
-        while ($Row = $DB->fetchRow()) {
-            # add new record for page
-            $Page = Page::create();
-
-            # transfer page values
-            $Page->set("Title", $Row["PageTitle"]);
-            $Page->set("Content", $Row["PageContent"]);
-            $Page->set("Clean URL", $Row["CleanUrl"]);
-            $Page->set("Creation Date", $Row["CreatedOn"]);
-            $Page->set("Added By Id", $Row["AuthorId"]);
-            $Page->set("Date Last Modified", $Row["UpdatedOn"]);
-            $Page->set("Last Modified By Id", $Row["EditorId"]);
-
-            # set viewing privileges
-            $PrivSet = new PrivilegeSet();
-            if (isset($OldPrivs[$Row["PageId"]])) {
-                $PrivSet->addPrivilege($OldPrivs[$Row["PageId"]]);
-            }
-            $Page->viewingPrivileges($PrivSet);
-
-            # make page permanent
-            $Page->isTempRecord(false);
-        }
-
-        # drop content table from database
-        $DB->query("DROP TABLE IF EXISTS Pages_Pages_OLD");
-
-        # report success to caller
-        return null;
     }
 
     private $DB;
@@ -858,7 +522,12 @@ class Pages extends Plugin
             INDEX       (PageId))",
     ];
 
-    private static function schemaDefinitionFile()
+    /**
+     * Get the location of the schema definition XML file.
+     * @return string Path to definition file.
+     */
+
+    public static function schemaDefinitionFile(): string
     {
         return __DIR__."/install/MetadataSchema--".static::getBaseName().".xml";
     }

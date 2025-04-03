@@ -3,13 +3,12 @@
 #   FILE:  ControlledName.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2001-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2001-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -126,7 +125,7 @@ class ControlledName extends Item
      * @param int $NewValue ID of new MetadataField.  (OPTIONAL)
      * @return int ID of associated MetadataField.
      */
-    public function fieldId(int $NewValue = null): int
+    public function fieldId(?int $NewValue = null): int
     {
         return $this->DB->UpdateIntValue("FieldId", $NewValue);
     }
@@ -239,8 +238,9 @@ class ControlledName extends Item
      * Change all currently associated Resources to be instead associated with
      * another ControlledName.
      * @param int $NewNameId ID of ControlledName to remap resources to.
+     * @return void
      */
-    public function remapTo(int $NewNameId)
+    public function remapTo(int $NewNameId): void
     {
         # Get a list of resources associated with the new name
         $this->DB->query("SELECT RecordId FROM RecordNameInts "
@@ -275,8 +275,9 @@ class ControlledName extends Item
 
     /**
      * Update the LastAssigned timestamp for this classification.
+     * @return void
      */
-    public function updateLastAssigned()
+    public function updateLastAssigned(): void
     {
         $this->DB->query("UPDATE ControlledNames SET LastAssigned=NOW() "
                          ."WHERE ControlledNameId=".intval($this->Id));
@@ -287,8 +288,9 @@ class ControlledName extends Item
      * This must be the last use of this object.
      * @param bool $DeleteIfHasResources Remove ControlledName even if Resources are
      *       currently associated with it.  (OPTIONAL, defaults to FALSE)
+     * @return void
      */
-    public function destroy(bool $DeleteIfHasResources = false)
+    public function destroy(bool $DeleteIfHasResources = false): void
     {
         $DB = &$this->DB;
 
@@ -312,8 +314,9 @@ class ControlledName extends Item
      * name) for specified class.  This may be overridden in a child class, if
      * different values are needed.
      * @param string $ClassName Class to set values for.
+     * @return void
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         parent::setDatabaseAccessValues($ClassName);
         self::$ItemNameColumnNames[$ClassName] = "ControlledName";

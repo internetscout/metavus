@@ -1,0 +1,101 @@
+<?PHP
+#
+#   FILE:  PageCacheStats.html  (Developer plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
+
+# ----- SETUP ----------------------------------------------------------------
+
+const DATE_FORMAT = "D, M j, Y g:ia";
+
+# set up table with basic cache stats
+$AF = ApplicationFramework::getInstance();
+$CacheInfo = $AF->getPageCacheExtendedInfo();
+$BasicStats = [
+    [
+        "Number of Pages",
+        number_format($CacheInfo["NumberOfEntries"]),
+    ],
+    [
+        "Oldest Page in Cache",
+        date(DATE_FORMAT, $CacheInfo["OldestTimestamp"]),
+    ],
+    [
+        "Newest Page in Cache",
+        date(DATE_FORMAT, $CacheInfo["NewestTimestamp"]),
+    ],
+];
+$BasicStatsTable = new HtmlTable();
+$BasicStatsTable->setTableClass("table table-striped");
+$BasicStatsTable->addRows($BasicStats);
+
+# set up item list for page cache counts
+$Fields = [
+    "Page" => [
+        "DefaultSortField" => true,
+    ],
+    "Count" => [
+        "ValueFunction" => function ($Value, $Field) {
+            return number_format($Value[$Field]);
+        },
+        "DefaultToDescendingSort" => true,
+        "AlignRight" => true,
+    ],
+    "AverageSize" => [
+        "Heading" => "Average Size",
+        "ValueFunction" => function ($Value, $Field) {
+            return sprintf("%.1f KB", $Value[$Field] / 1024);
+        },
+        "DefaultToDescendingSort" => true,
+        "AlignRight" => true,
+    ],
+    "OldestTimestamp" => [
+        "Heading" => "Oldest Entry",
+        "ValueFunction" => function ($Value, $Field) {
+            return date(DATE_FORMAT, $Value[$Field]);
+        },
+    ],
+    "NewestTimestamp" => [
+        "Heading" => "Newest Entry",
+        "ValueFunction" => function ($Value, $Field) {
+            return date(DATE_FORMAT, $Value[$Field]);
+        },
+    ],
+];
+$CPList = new ItemListUI($Fields);
+$CPList->setHeading("Cached Pages");
+
+# sort cached page counts
+$PageInfo = $CacheInfo["PageInfo"];
+$SortIndex = $_GET["SF"] ?? "Page";
+$SortDescending = $_GET["RS"]
+        ?? ($Fields[$SortIndex]["DefaultToDescendingSort"]
+        ?? false);
+$SortFunc = function ($A, $B) use ($SortIndex, $SortDescending) {
+    return $SortDescending
+            ? $B[$SortIndex] <=> $A[$SortIndex]
+            : $A[$SortIndex] <=> $B[$SortIndex];
+};
+usort($PageInfo, $SortFunc);
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Page Cache Statistics");
+
+?>
+
+<h1>Page Cache Info</h1>
+<?= $BasicStatsTable->getHtml() ?>
+
+<?= $CPList->getHtml($PageInfo) ?>
+<br/>

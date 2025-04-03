@@ -13,9 +13,10 @@ use Metavus\InterfaceConfiguration;
 use Metavus\SecureLoginHelper;
 use Metavus\SystemConfiguration;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
-
+$AF = ApplicationFramework::getInstance();
 # set up secure login for non-HTTPS connections
 $UseSecureLogin = isset($_SERVER["HTTPS"]) ? false : true;
 if ($UseSecureLogin) {
@@ -30,7 +31,7 @@ if ($UseSecureLogin) {
         #  the RSAKey js object will be defined before the js above
         #  the login form tries to use it)
         foreach (["prng4.js", "rng.js", "jsbn.js", "rsa.js", "base64.js"] as $FileName) {
-            $GLOBALS["AF"]->IncludeUIFile($FileName);
+            ApplicationFramework::getInstance()->IncludeUIFile($FileName);
         }
         # the HTML below will define a CryptPw javascript function
         # to encrypt the user-supplied password, pad it with 2 random bytes,

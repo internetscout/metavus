@@ -3,20 +3,22 @@
 #   FILE:  ListEvents.html (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\ItemListUI;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
+# ----- SETUP ----------------------------------------------------------------
 # button links and field definition
-$BaseLink = "index.php?P=P_CalendarEvents_ListEvents&amp;CK=".$H_ListChecksum;
-$TitleLink = "index.php?P=P_CalendarEvents_Event&amp;EventId=\$ID";
-$EditLink = "index.php?P=EditResource&amp;ID=\$ID";
-$DeleteLink = "index.php?P=EditResource&amp;ID=\$ID&amp;Submit=Delete";
-$NewEventLink = "index.php?P=EditResource&amp;ID=NEW&amp;SC=".$H_SchemaId;
+$BaseLink = "index.php?P=P_CalendarEvents_ListEvents&CK=".$H_ListChecksum;
+$TitleLink = "index.php?P=P_CalendarEvents_Event&EventId=\$ID";
+$EditLink = "index.php?P=EditResource&ID=\$ID";
+$DeleteLink = "index.php?P=EditResource&ID=\$ID&Submit=Delete";
+$NewEventLink = "index.php?P=EditResource&ID=NEW&SC=".$H_SchemaId;
 $ListFields = [
     "Events: Title" => [
         "MaxLength" => 32,
@@ -42,6 +44,10 @@ $ListFields = [
         }
     ]
 ];
+
+$SearchButton = new HtmlButton("Search");
+$SearchButton->setIcon("MagnifyingGlass.svg");
+$SearchButton->setSize(HtmlButton::SIZE_SMALL);
 
 # retrieve existing search text
 $SearchText = defaulthtmlentities(StdLib::getFormValue("F_SearchText"));
@@ -106,6 +112,7 @@ $ListUI->addActionButton("Delete", $DeleteLink, 'Delete.svg');
 $ListUI->addTopButton("Add Event", $NewEventLink, 'Plus.svg');
 $ListUI->itemsPerPage($H_EventsPerPage);
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <div class="container">
@@ -120,9 +127,7 @@ $ListUI->itemsPerPage($H_EventsPerPage);
         ?>
         <input type="text" name="F_SearchText" id="SearchText" size="15" value="<?=
             $SearchText ?>"/>
-        <button type="submit" value="Go" class="btn btn-primary btn-sm mv-button-iconed"><img
-            src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
-            class="mv-button-icon" /> Search</button>
+        <?= $SearchButton->getHtml(); ?>
       </form>
     </div>
   </div>

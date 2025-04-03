@@ -3,16 +3,31 @@
 #   FILE:  ImportData.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\FormUI;
+namespace Metavus;
 
-# ----- MAIN -----------------------------------------------------------------
+use Exception;
 
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+
+$ImportButton = new HtmlButton("Begin Import");
+$ImportButton->setIcon("MagicWand.svg");
+$ImportButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle("Import Data");
-
 ?>
 
 <h1>Import Data</h1>
@@ -67,6 +82,7 @@ recommender system will work correctly.</p>
 
 <p>Example (to be used with "Title" selected as <i>Unique Field</i>):</p>
 
+<?PHP /* @codingStandardsIgnoreStart */ ?>
 <pre>
 Title	Format	Subject
 Record One	HTML	Biology
@@ -76,6 +92,7 @@ Record Three	HTML	Chemistry
 Record Three	PPTX
 Record Three	DOCX
 </pre>
+<?PHP /* @codingStandardsIgnoreEnd */ ?>
 
 <p>Important considerations when importing resource records are:</p>
 
@@ -94,10 +111,6 @@ Record Three	DOCX
 <form method="post" enctype="multipart/form-data" action="index.php?P=ImportData">
     <?PHP $H_FormUI->DisplayFormTable(); ?>
 
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Begin Import"><img src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
-        class="mv-button-icon" /> Begin Import</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $ImportButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

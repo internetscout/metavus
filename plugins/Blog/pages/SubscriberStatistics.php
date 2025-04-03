@@ -7,6 +7,8 @@
 #   http://metavus.net
 #
 
+use Metavus\Plugins\Blog;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Graph;
 use Metavus\TransportControlsUI;
 use ScoutLib\PluginManager;
@@ -21,7 +23,7 @@ if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
 PageTitle("Blog Subscription Information");
 
 $PluginMgr = PluginManager::getInstance();
-$MyPlugin = $PluginMgr->getPluginForCurrentPage();
+$MyPlugin = Blog::getInstance();
 
 # set up pagination
 $H_ItemsPerPage = 30;
@@ -39,8 +41,8 @@ $H_Subscribers = array_slice($H_Subscribers, $H_StartingIndex, $H_ItemsPerPage);
 # if we have subscriber metrics, make a plot of them
 if ($PluginMgr->pluginEnabled("MetricsRecorder")) {
     # pull our data out of metrics recorder
-    $Recorder = $PluginMgr->getPlugin("MetricsRecorder");
-    $Data = $Recorder->GetEventData(
+    $MetricsRecorder = MetricsRecorder::getInstance();
+    $Data = $MetricsRecorder->GetEventData(
         "Blog",
         "NumberOfSubscribers",
         date("Y-m-d", strtotime('-24 months'))

@@ -3,12 +3,12 @@
 #   FILE:  Item.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2016-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
+# @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -70,6 +70,8 @@ abstract class Item
 
     /**
      * Destroy item.  Item object should no longer be used after this call.
+     * @return void|int|array May return number of items destroyed or list of
+     *      IDs of items that were destroyed.
      */
     public function destroy()
     {
@@ -104,7 +106,7 @@ abstract class Item
      * @param string $NewValue New name.  (OPTIONAL)
      * @return string Current name.
      */
-    public function name(string $NewValue = null): string
+    public function name(?string $NewValue = null): string
     {
         $NameColumn = strlen($this->ItemNameColumnName)
             ? $this->ItemNameColumnName
@@ -119,7 +121,7 @@ abstract class Item
      * @return string|false Creation date in the format "YYYY-MM-DD HH:MM:SS",
      *       or FALSE if date is unknown..
      */
-    public function dateCreated(string $NewValue = null)
+    public function dateCreated(?string $NewValue = null)
     {
         return $this->DB->updateDateValue("DateCreated", $NewValue);
     }
@@ -130,7 +132,7 @@ abstract class Item
      * @param int $NewValue New user ID.
      * @return int|false ID of user who created item, or FALSE if unknown.
      */
-    public function createdBy(int $NewValue = null)
+    public function createdBy(?int $NewValue = null)
     {
         return $this->DB->updateIntValue("CreatedBy", $NewValue);
     }
@@ -142,7 +144,7 @@ abstract class Item
      * @return string|false Modification date in the format "YYYY-MM-DD HH:MM:SS",
      *       or FALSE if date is unknown..
      */
-    public function dateLastModified(string $NewValue = null)
+    public function dateLastModified(?string $NewValue = null)
     {
         return $this->DB->updateDateValue("DateLastModified", $NewValue);
     }
@@ -153,7 +155,7 @@ abstract class Item
      * @param int $NewValue New user ID.
      * @return int|false ID of user who last modified item, or FALSE if unknown.
      */
-    public function lastModifiedBy(int $NewValue = null)
+    public function lastModifiedBy(?int $NewValue = null)
     {
         return $this->DB->updateIntValue("LastModifiedBy", $NewValue);
     }
@@ -222,15 +224,15 @@ abstract class Item
      * @param string $MethodName Name of method to call.
      * @param array $MethodArgs Arguments to pass to specified method.
      */
-    public static function callMethod($Id, $MethodName, ...$MethodArgs)
+    public static function callMethod($Id, $MethodName, ...$MethodArgs): void
     {
         $ClassName = get_called_class();
-        if (![$ClassName, "itemExists"]($Id)) {
-            throw new InvalidArgumentException("Attempt to call method "
-                    .$ClassName."::".$MethodName." for nonexistent ID (".$Id.").");
+        if (method_exists($ClassName, $MethodName)
+                && [$ClassName, "itemExists"]($Id)) {
+            $Item = new $ClassName($Id);
+            // @phpstan-ignore-next-line
+            call_user_func_array([$Item, $MethodName], $MethodArgs);
         }
-        $Item = new $ClassName($Id);
-        call_user_func_array([$Item, $MethodName], $MethodArgs);
     }
 
 
@@ -298,7 +300,7 @@ abstract class Item
      * different values are needed.
      * @param string $ClassName Class to set values for.
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         if (!isset(self::$ItemIdColumnNames[$ClassName])) {
             $BaseClassName = basename(str_replace("\\", "/", $ClassName));

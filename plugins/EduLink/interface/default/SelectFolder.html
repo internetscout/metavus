@@ -1,0 +1,164 @@
+<?PHP
+#
+#   FILE:  SelectFolder.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\EduLink;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get HTML for the grid of folders.
+ * @param string $LaunchId LTI Launch Id for this request.
+ * @param array $FolderIds Folders to display.
+ * @return string HTML.
+ */
+function getFolderSelectionHtml(string $LaunchId, array $FolderIds) : string
+{
+    $Result = '<div>'
+        .'<div class="row mv-tileset">';
+
+    foreach ($FolderIds as $Id) {
+        $Result .= getFolderTileHtml($LaunchId, $Id);
+    }
+
+    $Result .= '</div></div>';
+    return $Result;
+}
+
+/**
+ * Get HTML for a folder.
+ * @param string $LaunchId LTI Launch Id for this request.
+ * @param int $FolderId Folder to display.
+ * @return string HTML.
+ */
+function getFolderTileHtml(string $LaunchId, int $FolderId)
+{
+    static $ViewFolderUrl = false;
+    static $RFactory = false;
+
+    if ($ViewFolderUrl === false) {
+        $AF = ApplicationFramework::getInstance();
+        $ViewFolderUrl = $AF->baseUrl()."index.php"
+            ."?P=P_EduLink_ViewFolder"
+            ."&L=".$LaunchId;
+    }
+
+    if ($RFactory === false) {
+        $RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
+    }
+
+    $Folder = new Folder($FolderId);
+    $CoverImageId = $Folder->getCoverImageId();
+    $FolderNote = $Folder->note();
+
+    $ItemIds = RecordFactory::buildMultiSchemaRecordList(
+        $Folder->getItemIds()
+    );
+
+    $ResourceIds = $ItemIds[MetadataSchema::SCHEMAID_DEFAULT] ?? [];
+    if (count($ResourceIds) > 0) {
+        $ResourceIds = $RFactory->filterOutUnviewableRecords(
+            $ResourceIds,
+            User::getAnonymousUser()
+        );
+    }
+
+    $NumResources = count($ResourceIds);
+
+    # use the tile set styles for layout
+    # see Metavus.scss, look for the comment about 'TILE SET'
+    $Result = '<div '
+        .'class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-user-tile">'
+        .'<div>'
+        .'<a class="btn btn-primary mv-p-edulink-folder-button"'
+        .' href="'.$ViewFolderUrl."&amp;F=".$FolderId.'">'
+        .'<div class="mv-p-edulink-tile">'
+        .'<div class="mv-p-edulink-tile-content">';
+
+    $Result .= "<h3>".$Folder->name()."</h3>";
+
+
+    if ($CoverImageId !== false) {
+        $Image = new Image($CoverImageId);
+        $Result .= $Image->getHtml("mv-image-thumbnail");
+    }
+
+    if (strlen($FolderNote) > 0) {
+        $Result .= "<p>".nl2br($FolderNote)."</p>";
+    }
+
+    $Result .= "<p><i>".$NumResources." resource"
+        .($NumResources >= 2 ? "s" : "")."</i></p>"
+        .'</div></div></a>'
+        .'</div>'
+        .'</div>';
+
+    return $Result;
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_FolderIds)) {
+    throw new Exception("H_FolderIds not defined.");
+}
+if (!isset($H_LaunchId)) {
+    throw new Exception("H_LaunchId not defined.");
+}
+if (!isset($H_OwnerId)) {
+    throw new Exception("H_LaunchId not defined.");
+}
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+
+$SelectPublisherUrl = $AF->baseUrl()
+    ."index.php?P=P_EduLink_SelectPublisher&L=".$H_LaunchId;
+
+# ----- DISPLAY --------------------------------------------------------------
+
+include($AF->gUIFile("EduLink-StdPageStart.html"));
+
+if (isset($H_Error)) {
+    print "<div style='alert alert-danger'>"
+        ."<p><b>ERROR:</b> ".$H_Error."</p>"
+        ."</div>";
+
+    include($AF->gUIFile("EduLink-StdPageEnd.html"));
+    return;
+}
+
+if (count($H_FolderIds) == 0) {
+    $IntConfig = InterfaceConfiguration::getInstance();
+
+    print "<p>You have no folders that contain publicly visible resources.</p>"
+        ."<p>Visit <a href='".$AF->baseUrl()."' target='_blank'>"
+        .$IntConfig->getString("PortalName")."</a>"
+        ." to create and manage folders.</p>"
+        ."<p>You can also return to "
+        ."<a href='".$AF->baseUrl()."index.php?P=P_EduLink_LTIHome"
+        ."&amp;L=".$H_LaunchId."'>Select Resources</a>"
+        ." to incorporate resources individually.</p>";
+
+    include($AF->gUIFile("EduLink-StdPageEnd.html"));
+    return;
+}
+?>
+
+<h2>Collections from <i><?= (new User($H_OwnerId))->getBestName() ?></i></h2>
+
+<?= getFolderSelectionHtml($H_LaunchId, $H_FolderIds) ?>
+
+<?PHP
+include($AF->gUIFile("EduLink-StdPageEnd.html"));

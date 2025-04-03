@@ -3,7 +3,7 @@
 #   FILE:  DeleteFolder.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -21,7 +21,7 @@ if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
 }
 
 # canceled deletion
-if (StdLib::getArrayValue($_GET, "Cancel")) {
+if (StdLib::getArrayValue($_GET, "Submit") !== "Delete") {
     return;
 }
 

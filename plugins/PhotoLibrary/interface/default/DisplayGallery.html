@@ -1,0 +1,116 @@
+<?PHP
+#
+#   FILE:  DisplayGallery.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use Exception;
+use ScoutLib\ApplicationFramework;
+
+# ----- CONFIGURATION --------------------------------------------------------
+
+# height/width constraint for images (must match value in SCSS)
+$ImageSizeInPx = 250;
+
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (isset($H_Error)) {
+    print '<p class="alert alert-danger">'.$H_Error."</p>";
+    return;
+}
+
+# verify that required incoming variables are set
+if (!isset($H_ItemIds)) {
+    throw new Exception("Variable \$H_ItemIds not set.");
+}
+if (!isset($H_SearchParams)) {
+    throw new Exception("Variable \$H_SearchParams not set.");
+}
+if (!isset($H_BaseLink)) {
+    throw new Exception("Variable \$H_BaseLink not set.");
+}
+
+# initialize convenience values
+$AF = ApplicationFramework::getInstance();
+$User = User::getCurrentUser();
+
+# make sure CSS styles specific to our page are loaded
+$AF->requireUIFile("P_PhotoGallery.css");
+
+# determine which version of images to use to match SCSS size
+$ImageSizeName = Image::getNextLargestSize($ImageSizeInPx, $ImageSizeInPx);
+
+# get HTML for transport controls (if any)
+$TransportControlsHtml = isset($H_TransportUI) ? $H_TransportUI->getHtml() : "";
+
+# create edit button with settings that are the same for all items
+$EditButton = new HtmlButton("Edit");
+$EditButton->setIcon("Pencil.svg");
+$EditButton->setSize(HtmlButton::SIZE_SMALL);
+
+# set up facet interface
+$PseudoSearchScores = array_fill_keys($H_ItemIds, 1);
+$FacetUI = new SearchFacetUI($H_SearchParams, $PseudoSearchScores);
+$FacetUI->setBaseLink($H_BaseLink);
+$FacetUI->setAllFacetsOpenByDefault();
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Display Photo Gallery");
+
+?>
+<h1>Photo Library</h1>
+<div class="d-flex">
+    <div class="col">
+        <?= $TransportControlsHtml ?>
+        <div class="row mv-tileset"><?PHP
+        foreach ($H_ItemIds as $ItemId) {
+            # ----- SETUP (WITHIN LOOP) --------------------------------------
+            # retrieve basic item info
+            $Item = new Record($ItemId);
+            $Title = htmlspecialchars($Item->getMapped("Title"));
+            $Screenshots = $Item->getMapped("Screenshot", true);
+
+            # skip item with no photo available
+            if (($Screenshots === null) || (count($Screenshots) == 0)) {
+                continue;
+            }
+
+            # use first photo in field
+            $Screenshot = array_pop($Screenshots);
+
+            # build item-related links and HTML
+            $EditButton->setLink($Item->getEditPageUrl());
+            $EditButtonHtml = $Item->userCanEdit($User) ? $EditButton->getHtml() : "";
+            $FullRecordLink = htmlspecialchars($Item->getViewPageUrl());
+            $ImageSrc = $Screenshot->url($ImageSizeName);
+
+            # ----- DISPLAY (WITHIN LOOP) ------------------------------------
+            ?>
+            <div class="col-12 col-md-6 col-lg-4 col-xl-4 col-xxl-3 mv-collection-tile"
+                    title="<?= $Title ?>">
+                <div><?= $EditButtonHtml ?>
+                    <div>
+                        <div>
+                            <a href="<?= $FullRecordLink ?>">
+                                <img src="<?= $ImageSrc ?>">
+                            </a>
+                        </div>
+                        <h3><a href="<?= $FullRecordLink ?>"><?= $Title ?></a></h3>
+                    </div>
+                </div>
+            </div>
+            <?PHP
+        }
+        ?></div>
+        <?= $TransportControlsHtml ?>
+    </div>
+    <div class="col-2"><?= $FacetUI->getHtml() ?></div>
+</div>

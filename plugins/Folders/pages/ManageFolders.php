@@ -3,9 +3,10 @@
 #   FILE:  ManageFolders.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\Plugins\Folders\FolderDisplayUI;
 use Metavus\Plugins\Folders\Folder;
@@ -17,12 +18,12 @@ use Metavus\User;
 /**
  * Print each folder.This function also passes the previous and subsequent
  * items to the folder printing function to facilitate item bubbling.
- * @param Folder $ResourceFolderId Root resource folder
+ * @param int $ResourceFolderId Root resource folder id
  * @param array $Folders Folders to print
  * @param Folder $SelectedFolder Currently selected folder
  * @return void
  */
-function PrintFolders($ResourceFolderId, array $Folders, \Metavus\Folder $SelectedFolder)
+function PrintFolders(int $ResourceFolderId, array $Folders, \Metavus\Folder $SelectedFolder)
 {
     # we want to be able to get next and previous values, so use numeric indices
     $Folders = array_values($Folders);

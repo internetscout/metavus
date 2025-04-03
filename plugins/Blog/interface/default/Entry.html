@@ -3,16 +3,18 @@
 #   FILE:  Entry.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\HtmlButton;
 use Metavus\User;
 use Metavus\Message;
 use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
+use Metavus\Plugins\SocialMedia;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -29,9 +31,10 @@ function Blog_PrintComments(Entry $Entry): void
 }
 
 /**
-* Print a comment.
-* @param Message $Comment Comment to print.
-*/
+ * Print a comment.
+ * @param Message $Comment Comment to print.
+ * @throws Exception
+ */
 function Blog_PrintComment(Message $Comment): void
 {
     $AF = ApplicationFramework::getInstance();
@@ -39,7 +42,7 @@ function Blog_PrintComment(Message $Comment): void
     # retrieve user currently logged in
     $User = User::getCurrentUser();
 
-    $Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+    $Blog = Blog::getInstance();
     $Author = new User(intval($Comment->PosterId()));
     $CanEditComment = $Blog->UserCanEditComment($User, $Comment);
     $CanDeleteComment = $Blog->UserCanDeleteComment($User, $Comment);
@@ -59,6 +62,17 @@ function Blog_PrintComment(Message $Comment): void
     $SafePostedDateForParsing = defaulthtmlentities(
         Blog_FormatTimestampForParsing($Comment->DatePosted())
     );
+
+    $EditCommentButton = new HtmlButton("Edit");
+    $EditCommentButton->setSize(HtmlButton::SIZE_SMALL);
+    $EditCommentButton->setIcon("Pencil.svg");
+    $EditCommentButton->setLink("index.php?P=P_Blog_Comment&ID=$SafeEntryId"
+        . "&CommentId=$SafeCommentId");
+
+    $DeleteCommentButton = new HtmlButton("Delete");
+    $DeleteCommentButton->setSize(HtmlButton::SIZE_SMALL);
+    $DeleteCommentButton->setIcon("Delete.svg");
+    $DeleteCommentButton->setName("F_Action");
     ?>
   <article itemprop="comment" itemscope="itemscope" itemtype="http://schema.org/UserComments"
       class="blog-comment" id="comment-<?= $SafeCommentId; ?>">
@@ -70,6 +84,7 @@ function Blog_PrintComment(Message $Comment): void
             ?><a href="index.php?P=EditUser&amp;ID=<?= $SafePosterId; ?>"><?PHP
         } ?>
         <span itemprop="name" class="blog-name"><?= $SafePosterName; ?></span>
+
         <?PHP if ($CanEditUsers) {
             ?></a><?PHP
         } ?>
@@ -78,19 +93,14 @@ function Blog_PrintComment(Message $Comment): void
           class="blog-date"><?= $SafePostedDate ?></time>
       <ul class="blog-actions list-inline">
         <?PHP if ($CanEditComment) { ?>
-          <li class="list-inline-item"><a class="btn btn-primary btn-sm mv-button-iconed"
-            href="index.php?P=P_Blog_Comment&amp;ID=<?= $SafeEntryId; ?>&amp;CommentId=<?=
-            $SafeCommentId; ?>"><img class="mv-button-icon"
-            src="<?= $AF->GUIFile('Pencil.svg') ?>"/> Edit</a></li>
+          <li class="list-inline-item"><?= $EditCommentButton->getHtml(); ?></li>
         <?PHP } ?>
         <?PHP if ($CanDeleteComment) { ?>
           <li class="list-inline-item">
             <form method="post" action="index.php?P=P_Blog_Comment" class="blog-delete">
               <input type="hidden" name="F_EntryId" value="<?= $SafeEntryId; ?>" />
               <input type="hidden" name="F_CommentId" value="<?= $SafeCommentId; ?>" />
-              <button class="btn btn-primary btn-sm mv-button-iconed" name="F_Action"
-                value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-                class="mv-button-icon" /> Delete</button>
+              <?= $DeleteCommentButton->getHtml(); ?>
             </form>
           </li>
         <?PHP } ?>
@@ -119,13 +129,17 @@ function Blog_FormatTimestampForParsing($Timestamp)
 }
 
 /**
-* Print the comment for for the given blog entry.
-* @param Entry $Entry Blog entry.
-*/
+ * Print the comment for the given blog entry.
+ * @param Entry $Entry Blog entry.
+ * @throws Exception
+ */
 function Blog_PrintCommentForm(Entry $Entry): void
 {
-    $AF = ApplicationFramework::getInstance();
     $SafeEntryId = defaulthtmlentities($Entry->Id());
+
+    $PostCommentButton = new HtmlButton("Post Comment");
+    $PostCommentButton->setIcon("Check.svg");
+    $PostCommentButton->setName("F_Action");
 
     ?>
   <form method="post" action="index.php?P=P_Blog_Comment" class="blog-comment-form"
@@ -137,10 +151,7 @@ function Blog_PrintCommentForm(Entry $Entry): void
         placeholder="Add a comment"></textarea>
 
     <div class="blog-actions">
-      <button name="F_Action" value="Post"
-        class="btn btn-primary blog-first_submit mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-        class="mv-button-icon" /> Post Comment</button>
+      <?= $PostCommentButton->getHtml(); ?>
     </div>
   </form>
   <script type="text/javascript">
@@ -208,7 +219,22 @@ function Blog_PrintEntryMetrics(array $Metrics): void
     <?PHP
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Blog)) {
+    throw new Exception("H_Blog not defined.");
+}
+if (!isset($H_State)) {
+    throw new Exception("H_State not defined.");
+}
+$BlogEntryFound = ($H_State == "OK" || $H_State == "Not Email Blog");
+if ($BlogEntryFound) {
+    if (!isset($H_Entry)) {
+        throw new Exception("H_Entry not defined.");
+    }
+    if (!isset($H_Metrics)) {
+        throw new Exception("H_Metrics not defined.");
+    }
+}
 
 $AF = ApplicationFramework::getInstance();
 
@@ -218,10 +244,9 @@ $User = User::getCurrentUser();
 $CanAddComments = $H_Blog->UserCanPostComment($User);
 $CanViewMetrics = $H_Blog->UserCanViewMetrics($User);
 $IsLoggedIn = $User->IsLoggedIn();
-$PluginMgr = PluginManager::getInstance();
-$Blog = $PluginMgr->getPluginForCurrentPage();
+$Blog = Blog::getInstance();
 
-if ($H_State == "OK" || $H_State == "Not Email Blog") {
+if ($BlogEntryFound) {
     $SafeId = defaulthtmlentities($H_Entry->Id());
     $SafeUrl = defaulthtmlentities($H_Entry->EntryUrl());
     $SafeTitle = $H_Entry->TitleForDisplay();
@@ -235,7 +260,6 @@ if ($H_State == "OK" || $H_State == "Not Email Blog") {
     $Body = $H_Entry->get(Blog::BODY_FIELD_NAME);
     $Categories = $H_Entry->CategoriesForDisplay();
     $BlogName = $H_Entry->BlogName();
-    $BlogUrl = $Blog->BlogUrl();
 
     $NotificationsEnabled = $H_Blog->NotificationsCouldBeSent();
     $UserIsLoggedIn = $User->IsLoggedIn();
@@ -243,18 +267,80 @@ if ($H_State == "OK" || $H_State == "Not Email Blog") {
             $H_Blog->UserIsSubscribedToNotifications($User);
     $DisplayNotificationButton = $H_Blog->NotificationsCouldBeSent(null, $User);
     $NotificationButtonEnabled = $H_Blog->NotificationsCouldBeSent($H_Entry, $User);
-    $EntryFromEmailBlog = ($H_Entry->GetBlogId() == $H_Blog->ConfigSetting(
+    $EntryFromEmailBlog = ($H_Entry->GetBlogId() == $H_Blog->getConfigSetting(
         "EmailNotificationBlog"
     ));
+
+    if ($NotificationButtonEnabled) {
+        $NotificationButtonHovertext = "Send e-mail notifications to subscribers "
+            ."about this blog entry";
+    } else {
+        $NotificationButtonHovertext =
+            $H_Entry->userCanView(User::getAnonymousUser()) ?
+            "E-mail notifications have already been sent for this blog entry" :
+            "Cannot send notifications for unpublished entries.";
+    }
+
+    # if there were no images present in the body but the post has images,
+    # automatically prepend the first image
+    if (!preg_match('%<div class="mv-form-image-(right|left)"[^>]*>%', $Body)) {
+        $Images = $H_Entry->images();
+        if (count($Images) > 0) {
+            $Image = reset($Images);
+            $ImageUrl = $Image->url("mv-image-preview");
+            $SafeAltText = htmlspecialchars(
+                $Image->AltText(),
+                ENT_QUOTES |  ENT_HTML5
+            );
+            $Html = '<div class="mv-form-image-right">'
+                .'<img src="'.$ImageUrl.'" alt="'.$SafeAltText.'"/>'
+                .'</div>';
+            $Body = $Html.$Body;
+        }
+    }
+
+    $UnsubscribeButton = new HtmlButton("Unsubscribe");
+    $UnsubscribeButton->setIcon("BellMinus.svg");
+    $UnsubscribeButton->setTitle("Unsubscribe from new blog entry e-mail");
+    $UnsubscribeButton->setLink("index.php?P=P_Blog_Unsubscribe");
+
+    $SubscribeButton = new HtmlButton("Subscribe");
+    $SubscribeButton->setIcon("BellPlus.svg");
+    $SubscribeButton->setTitle("Subscribe to receive e-mail when new blog entries are posted");
+    $SubscribeButton->setLink("index.php?P=P_Blog_Subscribe");
+
+    $TestEmailButton = new HtmlButton("Test Email");
+    $TestEmailButton->setIcon("NotifyEmail.svg");
+    $TestEmailButton->setTitle("Send test e-mail for this blog entry");
+    $TestEmailButton->setLink("index.php?P=P_Blog_SendTestNotification&ID=$SafeId");
+
+    $NotifySubscribersButton = new HtmlButton("Notify Subscribers");
+    $NotifySubscribersButton->setIcon("NotifyEmail.svg");
+    $NotifySubscribersButton->setTitle($NotificationButtonHovertext);
+    $SubscribeLink = "index.php?P=P_Blog_ConfirmNotifySubscribers&ID=$SafeId";
+
+    $EditBlogEntryButton = new HtmlButton("Edit");
+    $EditBlogEntryButton->setIcon("Pencil.svg");
+    $EditBlogEntryButton->setTitle("Edit blog entry");
+    $EditBlogEntryButton->setLink(str_replace(
+        '$ID',
+        $SafeId,
+        $H_Entry->getSchema()->getEditPage()
+    ));
+
+    $SeeMoreButton = new HtmlButton("See More $BlogName");
+    $SeeMoreButton->setIcon("Other.svg");
+    $SeeMoreButton->setSize(HtmlButton::SIZE_SMALL);
+    $SeeMoreButton->setLink($Blog->BlogUrl());
 
     PageTitle(strip_tags($H_Entry->TitleForDisplay()));
 } else {
     PageTitle("Blog Entry Not Found");
 }
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
-
-<?PHP if ($H_State == "OK" || $H_State == "Not Email Blog") { ?>
+<?PHP if ($BlogEntryFound) { ?>
   <article class="blog-entry blog-full">
     <link itemprop="url" href="<?= $SafeUrl; ?>" />
     <header class="blog-header">
@@ -272,43 +358,23 @@ if ($H_State == "OK" || $H_State == "Not Email Blog") {
           <div class="col text-right">
             <?PHP if ($NotificationsEnabled && $EntryFromEmailBlog) { ?>
                 <?PHP if ($UserIsSubscribed) { ?>
-                <a class="btn btn-primary mv-button-iconed"
-                   title="Unsubscribe from new blog entry e-mail"
-                   href="index.php?P=P_Blog_Unsubscribe"><img
-                    src="<?= $AF->GUIFile('BellMinus.svg'); ?>"
-                    alt="" class="mv-button-icon" /> Unsubscribe</a>
+                    <?= $UnsubscribeButton->getHtml(); ?>
                 <?PHP } else { ?>
-                <a class="btn btn-primary mv-button-iconed"
-                   title="Subscribe to receive e-mail when new blog entries are posted"
-                   href="index.php?P=P_Blog_Subscribe"><img
-                    src="<?= $AF->GUIFile('BellPlus.svg'); ?>"
-                    alt="" class="mv-button-icon" /> Subscribe</a>
+                    <?= $SubscribeButton->getHtml(); ?>
                 <?PHP } ?>
             <?PHP } ?>
             <?PHP if ($H_Entry->UserCanEdit($User)) { ?>
-                <?PHP if ($DisplayNotificationButton) { ?>
-                    <?PHP if ($NotificationButtonEnabled && $EntryFromEmailBlog) { ?>
-                  <a class="btn btn-primary mv-button-iconed"
-                     title="Send e-mail notifications to subscribers about this blog entry"
-                     href="index.php?P=P_Blog_ConfirmNotifySubscribers&amp;ID=<?=
-                        $SafeId; ?>"><img
-                        src="<?= $AF->GUIFile('NotifyEmail.svg'); ?>"
-                        alt="" class="mv-button-icon" /> Notify Subscribers</a>
+                <?PHP if ($DisplayNotificationButton && $EntryFromEmailBlog) { ?>
+                    <?PHP if ($NotificationButtonEnabled) { ?>
+                        <?= $TestEmailButton->getHtml(); ?>
+                        <?PHP $NotifySubscribersButton->setLink($SubscribeLink); ?>
+                        <?= $NotifySubscribersButton->getHtml(); ?>
                     <?PHP } else { ?>
-                        <?PHP if ($EntryFromEmailBlog) { ?>
-                    <button class="btn btn-primary mv-button-disabled mv-button-iconed"
-                       title="E-mail notifications have already been sent for this blog entry"
-                        ><img src="<?= $AF->GUIFile('NotifyEmail.svg'); ?>" alt=""
-                            class="mv-button-icon" /> Notify Subscribers</button>
-                        <?PHP } ?>
+                        <?PHP $NotifySubscribersButton->addClass("mv-button-disabled"); ?>
+                        <?= $NotifySubscribersButton->getHtml(); ?>
                     <?PHP } ?>
                 <?PHP } ?>
-              <a class="btn btn-primary mv-button-iconed"
-                  href="<?= str_replace('$ID', $SafeId, $H_Entry->getSchema()->editPage()); ?>"
-                  title="Edit blog entry">
-                  <img class="mv-button-icon"
-                        src="<?= $AF->GUIFile("Pencil.svg") ?>"
-                        alt="Edit blog entry" /> Edit</a>
+                <?= $EditBlogEntryButton->getHtml(); ?>
             <?PHP } ?>
             <?PHP  $AF->SignalEvent(
                 "EVENT_HTML_INSERTION_POINT",
@@ -365,12 +431,10 @@ if ($H_State == "OK" || $H_State == "Not Email Blog") {
     ?>
 
     <section class="share">
-      <?PHP $PluginMgr->getPlugin("SocialMedia")->DisplayShareButtons($H_Entry); ?>
+      <?PHP SocialMedia::getInstance()->DisplayShareButtons($H_Entry); ?>
     </section>
 
-    <a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $BlogUrl ?>"><img
-        src="<?= $AF->GUIFile('Other.svg'); ?>" alt=""
-        class="mv-button-icon" /> See More <?= $BlogName; ?></a>
+    <?= $SeeMoreButton->getHtml(); ?>
 
     <?PHP if ($CanViewMetrics) { ?>
       <section id="metrics">
@@ -421,7 +485,7 @@ if ($H_State == "OK" || $H_State == "Not Email Blog") {
 <?PHP } else { ?>
   <h1>Blog Entry Not Found</h1>
 
-  <p>The blog entry could not be found.Please
+  <p>The blog entry could not be found. Please
     <a href="index.php?P=LeaveFeedback">contact the administrator</a> if you
     believe this is an error.</p>
 

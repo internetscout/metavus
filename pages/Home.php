@@ -64,19 +64,27 @@ function loadCollections()
 }
 
 /**
- * Load news items for display.
- * @param string $BlogName Name of blog from which to load news.
+ * Load news items for display.  Assumes that Blog plugin is ready.
  * @return array News items (Entry instances).
  */
-function loadNews(string $BlogName): array
+function loadNews(): array
 {
     $PluginMgr = PluginManager::getInstance();
+    $BlogPlugin = $PluginMgr->getPlugin("Blog");
     $IntConfig = InterfaceConfiguration::getInstance();
 
-    $BlogPlugin = $PluginMgr->getPlugin("Blog");
-    $NewsBlogId = $BlogPlugin->getBlogIdByName($BlogName);
-
+    $NewsBlogId = $IntConfig->getInt("NewsBlogId");
     $MaxNewsItems = $IntConfig->getInt("NumAnnounceOnHomePage");
+
+    $AllBlogs = $BlogPlugin->getAvailableBlogs();
+    if (!isset($AllBlogs[$NewsBlogId])) {
+        # (fall back to blog named "News" if available to provide legacy behavior)
+        $NewsBlogId = $BlogPlugin->getBlogIdByName("News");
+        if ($NewsBlogId === false) {
+            return [];
+        }
+    }
+
     $EFactory = new EntryFactory($NewsBlogId);
     $NewsItemIds = $EFactory->getRecordIdsSortedBy(
         "Date of Publication",
@@ -115,17 +123,13 @@ function loadEvents(): array
 
 # ----- MAIN -----------------------------------------------------------------
 
-# configuration settings
-$NewsBlogName = "News";
-
 # load news if enabled
 $SysConfig = SystemConfiguration::getInstance();
 $IntConfig = InterfaceConfiguration::getInstance();
 $PluginMgr = PluginManager::getInstance();
 if ($IntConfig->getBool("AnnouncementsEnabled")
-        && $PluginMgr->pluginReady("Blog")
-        && ($PluginMgr->getPlugin("Blog")->getBlogIdByName($NewsBlogName) !== false)) {
-    $H_NewsItems = loadNews($NewsBlogName);
+        && $PluginMgr->pluginReady("Blog")) {
+    $H_NewsItems = loadNews();
 }
 
 # load collection info
@@ -134,7 +138,7 @@ $H_Collections = loadCollections();
 # load events if enabled and NumEventsOnHomePage > 0
 
 if ($IntConfig->getBool("EventsEnabled")
-        && $PluginMgr->pluginEnabled("CalendarEvents")
+        && $PluginMgr->pluginReady("CalendarEvents")
         && $IntConfig->getInt("NumEventsOnHomePage") > 0) {
     $H_Events = loadEvents();
 }

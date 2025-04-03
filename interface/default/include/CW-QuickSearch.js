@@ -321,20 +321,35 @@ $(document).ready(function() {
 
     // custom event to set form selections
     $(".mv-quicksearchset").on("mv:setselections", function(event, selections) {
-        var tgtNumLists = selections.length + 1;
+        var tgtNumLists = selections.length;
+
+        // if we allow multiples, then we want to leave one blank list
+        // at the end for further selections
+        if ($(".mv-quicksearch-template", this).length > 0) {
+            tgtNumLists++;
+        }
 
         // if we didn't have enough, add more
-        while ($(qsRowSelector, $(this)).length < tgtNumLists) {
-            // add a new quicksearch row after the last such row in our container
-            $(qsRowSelector, $(this)).last().clone(true).insertAfter($(qsRowSelector, $(this)).last());
+        while ($(qsRowSelector, this).length < tgtNumLists) {
+            // copy the template row
+            var newRow = $(".mv-quicksearch-template", this)
+                .clone()
+                .removeAttr('style')
+                .removeClass('mv-quicksearch-template');
+
+            // add the new row at the end
+            newRow.insertAfter($(qsRowSelector, this).last());
+
+            // hook up the incrementeal search event handlers
+            QuickSearch(newRow);
         }
         // if we had too many, delete the extras
-        while ($(qsRowSelector, $(this)).length > tgtNumLists) {
-            $(qsRowSelector, $(this)).last().remove();
+        while ($(qsRowSelector, this).length > tgtNumLists) {
+            $(qsRowSelector, this).last().remove();
         }
 
         // set desired values
-        $(qsRowSelector, $(this)).each(function(index, element) {
+        $(qsRowSelector, this).each(function(index, element) {
             var tgtVal = '', tgtName = '';
             if (index < selections.length) {
                 tgtVal = selections[index].tid;

@@ -1,0 +1,162 @@
+<?PHP
+#
+#   FILE:  BlackboardSetup.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\HtmlTable;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+# --- Blackboard
+
+/**
+ * Get configuration instructions for Blackboard.
+ * @return string Instructions in HTML.
+ */
+function getBlackboardInstructions() : string
+{
+    $Plugin = EduLink::getInstance();
+    $AF = ApplicationFramework::getInstance();
+
+    $BaseUrl = $AF->baseUrl();
+
+    $HtmlTable = new HtmlTable();
+    $HtmlTable->isPseudoTable(true);
+    $HtmlTable->addRows([
+        [
+            "1. If you do not already have one, create an account on "
+                ."<a href='https://developer.blackboard.com'>https://developer.blackboard.com</a>.",
+            ""
+        ],
+        [
+            "2. Log in and select &quot;My Applications&quot; from the top navigation.",
+            "<img src='".$AF->gUIFile("Blackboard_Setup_1.jpg")."'/>",
+        ],
+        [
+            "3. Click the <i>(+)</i> icon at right below &quot;My Applications&quot;, then select "
+                ."the &quot;Mannual Registration&quot; entry from the menu that appears.",
+            "<img src='".$AF->gUIFile("Blackboard_Setup_2.jpg")."'/>",
+        ],
+        [
+            "4. Toggle the slider at right of &quot;My Integration supports LTI 1.3&quot;, enter "
+                ."the parameters below, then press <i>Register Application</i>. Then press "
+                ."<i>Done</i>.",
+            "<img src='".$AF->gUIFile("Blackboard_Setup_3.jpg")."'/>",
+        ],
+        [
+            "5. Click the ellipsis at right of your newly registered application, then select "
+                ."<i>Manage Placements</i> from the menu. Next, click the <i>Register</i> button.",
+            "<img src='".$AF->gUIFile("Blackboard_Setup_4.jpg")."'/>",
+        ],
+        [
+            "6. In the <i>Placement Name</i>, enter <code>".$Plugin->getConfigSetting("ServiceName")
+                ."</code>. In <i>target link URI</i>, enter <code>".$BaseUrl."</code>. In the "
+                ."<i>Type</i> menu, select <i>Deep Linking content tool</i>. Then, press the "
+                ."<i>Register placement</i> button. Then press <i>Done</i> on the placement list page.",
+            "<img src='".$AF->gUIFile("Blackboard_Setup_5.jpg")."'/>",
+
+        ],
+        [
+            "7. Copy the <i>Application ID</i> listed on Blackboard's Developer site "
+                ."for your newly configured LTI tool into the corresponding box below, "
+                ."then press Register.",
+            ""
+        ]
+    ]);
+
+    return $HtmlTable->getHtml();
+}
+
+# ----- SETUP ----------------------------------------------------------------
+$RegisterButton = new HtmlButton("Register");
+$RegisterButton->addSemanticClass("btn-outline-primary");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+if (!is_null($H_Error)) {
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+    return;
+}
+
+if (!is_null($H_Status)) {
+    print "<p class='alert alert-primary'>".$H_Status."</p>";
+    return;
+}
+?>
+
+<h1>Blackboard Setup</h1>
+
+<?PHP if (!is_null($H_Plugin->getBlackboardClientId())) {  ?>
+  <div class='alert alert-danger'>
+       <p>A registration for blackboard already exists. You can edit or delete it from
+       the <a href='index.php?P=P_EduLink_ListRegistrations'>LTI Registrations</a> list.
+       Instructions below are displayed for reference, but you will not be able to re-register
+       Blackboard without deleting the existing registration.</p>
+       </div>
+<?PHP } ?>
+
+<?PHP $H_FormUI->displayErrorBlock(); ?>
+
+<form id="mv-p-edulink-tool-form" method="post" enctype="multipart/form-data"
+      action="index.php?P=P_EduLink_BlackboardSetup">
+  <?PHP $H_FormUI->displayFormTable(); ?>
+  <?PHP if (is_null($H_Plugin->getBlackboardClientId())) {  ?>
+        <?= $RegisterButton->getHtml(); ?>
+  <?PHP } ?>
+</form>
+
+<div>&nbsp;</div>
+
+<style type="text/css">
+pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+table.mv-itemlistui td {
+    word-break: break-all;
+}
+
+#mv-p-edulink-tool-form .mv-form-fieldtype-customcontent th {
+    text-align: left;
+}
+
+#mv-p-edulink-tool-form .mv-form-fieldtype-customcontent li + li {
+    margin-top: 0.75em;
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardSettings > th,
+#mv-p-edulink-tool-form #row-F_BlackboardInstructions > th
+{
+    display: none;
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardInstructions .row {
+    margin-left: calc(-0.25 * var(--bs-gutter-x));
+    margin-right: calc(-0.25 * var(--bs-gutter-x));
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardInstructions .row:nth-of-type(even) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+#mv-p-edulink-tool-form #row-F_BlackboardSettings td
+{
+    padding: 0;
+}
+</style>

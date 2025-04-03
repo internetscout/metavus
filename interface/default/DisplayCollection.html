@@ -3,7 +3,7 @@
 #   FILE:  DisplayCollection.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -12,7 +12,6 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -35,13 +34,21 @@ $AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 
 # retrieve collection info
-$EditCollectionLink = $H_Collection->getEditPageUrl();
 $CollectionName = $H_Collection->get("Name");
 $CollectionDescription = $H_Collection->get("Description");
 
 # get HTML for transport controls (if any)
 $TransportControlsHtml = isset($H_TransportUI) ? $H_TransportUI->getHtml() : "";
 
+$EditCollectionButton = new HtmlButton("Edit");
+$EditCollectionButton->setIcon("Pencil.svg");
+$EditCollectionButton->setSize(HtmlButton::SIZE_SMALL);
+$EditCollectionButton->addClass("float-end");
+$EditCollectionButton->setLink($H_Collection->getEditPageUrl());
+
+$EditResourceButton = new HtmlButton("Edit");
+$EditResourceButton->setIcon("Pencil.svg");
+$EditResourceButton->setSize(HtmlButton::SIZE_SMALL);
 
 # ----- DISPLAY --------------------------------------------------------------
 
@@ -50,9 +57,7 @@ PageTitle("Display Collection: ".$CollectionName);
 ?>
 
 <?PHP  if ($H_Collection->userCanEdit($User)) {  ?>
-<a class="btn btn-primary btn-sm mv-button-iconed" style="float:right;"
-    href="<?= $EditCollectionLink ?>">
-    <img class="mv-button-icon" src="<?= $AF->gUIFile("Pencil.svg") ?>"> Edit</a>
+    <?= $EditCollectionButton->getHtml(); ?>
 <?PHP  }  ?>
 <h1><?= htmlspecialchars($CollectionName) ?></h1>
 <div><?= $CollectionDescription ?></div>
@@ -67,7 +72,6 @@ if (count($H_Items) == 0) {
 <?= $TransportControlsHtml ?>
 <div>
     <div class="row mv-tileset"><?PHP
-    $SearchUrlBase = ApplicationFramework::baseUrl()."index.php?P=SearchResults";
     foreach ($H_Items as $ItemId => $Item) {
         # ----- SETUP (WITHIN LOOP) --------------------------------------
         # retrieve basic item info
@@ -89,14 +93,13 @@ if (count($H_Items) == 0) {
 
         # ----- DISPLAY (WITHIN LOOP) ------------------------------------
         # begin tile structure
-        ?><div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-tile-collection"
+        ?><div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 mv-collection-tile"
         title="<?= $Title ?>"><div><?PHP
 
         # display edit button if appropriate
         if ($Item->userCanEdit($User)) {
-            ?><a class="btn btn-primary btn-sm mv-button-iconed"
-                href="<?= $EditLink ?>"><img class="mv-button-icon" src="<?=
-                    $AF->gUIFile("Pencil.svg") ?>"> Edit</a><?PHP
+            $EditResourceButton->setLink($EditLink);
+            print $EditResourceButton->getHtml();
         }
 
         # continue tile structure

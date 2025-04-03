@@ -8,10 +8,12 @@
 #
 
 use Metavus\Graph;
+use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
+use Metavus\Plugins\MetricsRecorder;
+use Metavus\Plugins\MetricsReporter;
 use Metavus\Plugins\SocialMedia;
 use Metavus\RecordFactory;
-use ScoutLib\PluginManager;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -39,13 +41,11 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
-$PluginMgr = PluginManager::getInstance();
-
 # grab ahold of the relevant metrics objects
-$Recorder = $PluginMgr->getPlugin("MetricsRecorder");
-$Reporter = $PluginMgr->getPlugin("MetricsReporter");
+$MetricsRecorderPlugin = MetricsRecorder::getInstance();
+$MetricsReporterPlugin = MetricsReporter::getInstance();
 
-$Blog = $PluginMgr->getPlugin("Blog");
+$Blog = Blog::getInstance();
 
 $Now = time();
 
@@ -69,7 +69,7 @@ $H_ViewData = [
     "Year" => []
 ];
 
-foreach ($Recorder->GetEventData(
+foreach ($MetricsRecorderPlugin->GetEventData(
     "Blog",
     "ViewEntry",
     null,
@@ -77,7 +77,7 @@ foreach ($Recorder->GetEventData(
     null,
     null,
     null,
-    $Reporter->ConfigSetting("PrivsToExcludeFromCounts"),
+    $MetricsReporterPlugin->getConfigSetting("PrivsToExcludeFromCounts"),
     0,
     null
 ) as $Event) {
@@ -125,7 +125,7 @@ $ShareTypeMap = [
     "gp" => 4 # old data covering shares on Google+
 ];
 
-foreach ($Recorder->GetEventData(
+foreach ($MetricsRecorderPlugin->GetEventData(
     "SocialMedia",
     "ShareResource",
     null,
@@ -133,7 +133,7 @@ foreach ($Recorder->GetEventData(
     null,
     null,
     null,
-    $Reporter->ConfigSetting("PrivsToExcludeFromCounts"),
+    $MetricsReporterPlugin->getConfigSetting("PrivsToExcludeFromCounts"),
     0,
     null
 ) as $Event) {

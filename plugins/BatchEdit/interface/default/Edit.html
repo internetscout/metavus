@@ -3,14 +3,20 @@
 #   FILE:  Edit.html (BatchEdit plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\Plugins\Folders\FolderDisplayUI;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\User;
 
+# ----- SETUP ----------------------------------------------------------------
+$SubmitButton = new HtmlButton("Apply All Changes");
+$SubmitButton->setIcon("Check.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <style type="text/css">
       .bulk-edit-button { display: none !important; }
@@ -19,7 +25,7 @@ use Metavus\User;
 <h1>Batch Editing</h1>
 
 <?PHP
-if (count($H_Plugin->ConfigSetting("AllowedFields")) == 0) {
+if (count($H_Plugin->getConfigSetting("AllowedFields")) == 0) {
     print "<div class=\"alert alert-warning\">"
             ."<p>No fields are set to be editable via Batch Edit.</p></div>";
     if ($H_User->HasPriv(PRIV_SYSADMIN)) {
@@ -53,17 +59,17 @@ if (isset($_POST["Submit"]) && $_POST["Submit"] == "Apply All Changes") {
       method="post">
     <table>
   <?PHP foreach ($H_Editors as $SchemaId => $Editor) { ?>
-    <tr><td colspan="4"><h2 style="margin-bottom: 5px"
-        ><?= $H_Schemas[$SchemaId]->Name(); ?></h2></td></tr>
+        <?PHP $Editor->displayErrorBlock(); ?>
+        <tr><td colspan="4"><h2 style="margin-bottom: 5px">
+            <?= $H_Schemas[$SchemaId]->Name(); ?></h2></td>
+        </tr>
         <?PHP $Editor->DisplayAsRows(); ?>
   <?PHP } ?>
   <tr><td colspan="4">&nbsp;</td></tr>
   <tr>
     <td colspan="4">
       <span>
-        <button type="submit" name="Submit" value="Apply All Changes"
-            class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Check.svg'); ?>"
-            alt="" class="mv-button-icon" /> Apply All Changes</button>
+        <?= $SubmitButton->getHtml(); ?>
       </span>
     </td>
   </tr>

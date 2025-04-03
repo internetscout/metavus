@@ -3,25 +3,24 @@
 #   FILE:  Preferences.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-use Metavus\FormUI;
-use Metavus\MetadataField;
-use Metavus\MetadataSchema;
-use Metavus\RecordEditingUI;
-use Metavus\User;
-use Metavus\UserEditingUI;
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Validate a potential new password for a specified user.
  * @param string $NewPassword New password to check.
- * @return null|string NULL on success, error string describing the problem otherwise.
+ * @return ?string NULL on success, error string describing the problem otherwise.
  */
-function validateUserPassword(string $NewPassword)
+function validateUserPassword(string $NewPassword): ?string
 {
     # retrieve user currently logged in
     $User = User::getCurrentUser();
@@ -165,8 +164,6 @@ $FormFields += [
         "Value" => $User->get("EMail"),
     ],
 
-
-
     "HEADING-Password" => [
         "Type" => FormUI::FTYPE_HEADING,
         "Label" => "Password",
@@ -230,21 +227,37 @@ $H_UserEditingUI = new UserEditingUI(
     $FormFields
 );
 
-$UpdateSuccessful = false;
-if (isset($_POST["Submit"]) && $_POST["Submit"] == "Save") {
-    if ($H_UserEditingUI->validateFieldInput() == 0) {
-        $H_UserEditingUI->saveChanges();
-        changeUserPasswordIfNecessary($H_UserEditingUI);
-        changeUserEmailIfNecessary($H_UserEditingUI);
+# if a button in the EditingUI was pushed, process its actions
+switch ($H_UserEditingUI->getSubmitButtonValue()) {
+    case "Upload":
+        $H_UserEditingUI->handleUploads();
+        break;
 
-        $UpdateSuccessful = !UserEditingUI::errorsLogged();
-    }
+    case "Delete":
+        $H_UserEditingUI->handleDeletes();
+        break;
+
+    default:
+        break;
 }
 
-# if we've processed some changes and nothing went wrong, jump to home page
-if ($UpdateSuccessful) {
-    $GLOBALS["AF"]->SetJumpToPage(
-        $H_ReturnTo,
-        4 * $H_UserEditingUI->statusMessageCount()
-    );
+# handle button press for top-level form
+$ButtonPushed = $_POST["Submit"] ?? null;
+switch ($ButtonPushed) {
+    case "Save":
+        if ($H_UserEditingUI->validateFieldInput() == 0) {
+            $H_UserEditingUI->saveChanges();
+            changeUserPasswordIfNecessary($H_UserEditingUI);
+            changeUserEmailIfNecessary($H_UserEditingUI);
+
+            $UpdateSuccessful = !UserEditingUI::errorsLogged();
+            if ($UpdateSuccessful) {
+                ApplicationFramework::getInstance()
+                    ->setJumpToPage($H_ReturnTo);
+            }
+        }
+        break;
+
+    default:
+        break;
 }

@@ -3,19 +3,23 @@
 #   FILE:  Home.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use Metavus\User;
 
 # ----- SETUP ----------------------------------------------------------------
+
+# verify that required variables are set
+if (!isset($H_Collections)) {
+    throw new Exception("Variable \$H_Collections not set.");
+}
 
 # configuration settings
 $NewsBlogName = "News";
@@ -24,16 +28,42 @@ $IntCfg = InterfaceConfiguration::getInstance();
 $FeaturedItemsSectionTitle = htmlspecialchars(
     $IntCfg->getString("FeaturedItemsSectionTitle")
 );
+$CollectionsSectionTitle = htmlspecialchars(
+    $IntCfg->getString("CollectionsSectionTitle")
+);
+$HideCollectionMonograms = $IntCfg->getBool("HideCollectionMonograms");
 
 # initialize convenience values
 $AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 $PluginMgr = PluginManager::getInstance();
 
-# verify that the collections variable is set
-if (!isset($H_Collections)) {
-    throw new Exception("Variable \$H_Collections not set.");
+# get HTML for image collage (if any)
+$ImageCollageHtml = $PluginMgr->pluginEnabled("Collage")
+        ? $PluginMgr->getPlugin("Collage")->getCollageHtml($CollageSchemaId)
+        : "";
+
+# if no image collage, get HTML for hero image
+if (!strlen($ImageCollageHtml)) {
+    $HeroImageIds = $IntCfg->getArray("HeroImage");
+    if (count($HeroImageIds) > 0) {
+        $HeroImageId = array_pop($HeroImageIds);
+        $HeroImage = new Image($HeroImageId);
+        $HeroHtml = "<img src=\""
+                .$HeroImage->getFullPathForOriginalImage()."\" alt=\""
+                .htmlspecialchars($HeroImage->altText())."\">";
+    } else {
+        $HeroHtml = "<img src=\""
+                .$AF->gUIFile("Metavus--Hero-Image--1920x426.jpg")."\" alt=\"\"/>";
+    }
 }
+
+# get HTML for featured items list
+$NumItems = $IntCfg->getInt("NumResourcesOnHomePage");
+$FeaturedItemsHtml = $AF->formatInsertionKeyword(
+    "P-FEATUREDITEMS-DISPLAYFEATUREDITEMS",
+    ["NumItems" => $NumItems]
+);
 
 # retrieve news item list page link
 $NewsPageLink = "";
@@ -45,18 +75,6 @@ if (isset($H_NewsItems)) {
     }
 }
 
-# get HTML for image collage (if any)
-$ImageCollageHtml = $PluginMgr->pluginEnabled("Collage")
-        ? $PluginMgr->getPlugin("Collage")->getCollageHtml($CollageSchemaId)
-        : "";
-
-# get HTML for featured items list
-$NumItems = $IntCfg->getInt("NumResourcesOnHomePage");
-$FeaturedItemsHtml = $AF->formatInsertionKeyword(
-    "P-FEATUREDITEMS-DISPLAYFEATUREDITEMS",
-    ["NumItems" => $NumItems]
-);
-
 
 # ----- DISPLAY --------------------------------------------------------------
 
@@ -64,18 +82,15 @@ PageTitle("Home");
 
 ?>
 <div class="container-fluid">
-  <div class="row no-gutters d-none d-lg-flex">
+  <div class="row g-0 d-none d-lg-flex">
     <?PHP if (strlen($ImageCollageHtml)) {
         print $ImageCollageHtml;
     } else { ?>
-    <div class="col mv-p-collage-wrapper">
-      <div class="mv-p-collage">
-        <div>
-          <img src="<?= $AF->gUIFile("Metavus--Hero-Image--1920x426.jpg") ?>"
-          alt=""/>
-        </div>
+    <div class="col">
+      <div class="mv-hero-container">
+        <?= $HeroHtml ?>
       </div>
-    </div>
+      </div>
     <?PHP } ?>
   </div>
 
@@ -96,7 +111,8 @@ PageTitle("Home");
     <div class="col-12 col-lg-4">
       <?PHP if (is_array($H_Collections)) { ?>
       <div class="mv-section-header">
-        <h2><a href="index.php?P=ListCollections">Collections</a></h2>
+        <h2><a href="index.php?P=ListCollections"><?=
+                $CollectionsSectionTitle ?></a></h2>
       </div>
       <div class="mv-collection-list">
             <?PHP
@@ -106,14 +122,16 @@ PageTitle("Home");
                 foreach ($H_Collections as $CollectionId => $Collection) {
                     # ----- SETUP (LOOP) ---------------------------------------------
                     $Name = htmlspecialchars($Collection->get("Name"));
-                    $Size = $Collection->getSize();
+                    $Size = $Collection->getVisibleSize();
                     $Monogram = $Collection->getMonogram();
                     $Color = $Collection->getColor();
                     $Link = "index.php?P=DisplayCollection&amp;ID=".$CollectionId;
                     # ----- DISPLAY (LOOP) -------------------------------------------
                     ?><div class="mv-collection">
+                        <?PHP  if (!$HideCollectionMonograms) {  ?>
                         <div class="mv-collection-tag" style="background-color:<?=
                                 $Color ?>;"><?= $Monogram ?></div>
+                        <?PHP  }  ?>
                         <div class="mv-collection-name"><a href="<?=
                                 $Link ?>"><?= $Name ?></a></div>
                         <div class="mv-collection-items"><?= $Size ?> items</div>

@@ -3,13 +3,12 @@
 #   FILE:  PluginCaller.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2018-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2024 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 
 /**
@@ -42,6 +41,7 @@ class PluginCaller
      * accept whatever arguments are appropriate for the specified method
      * and returns values as appropriate for the specified method.
      * @param array $Args Method arguments.
+     * @return mixed Whatever value is returned by the called method.
      */
     public function callPluginMethod(...$Args)
     {

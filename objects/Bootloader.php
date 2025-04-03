@@ -3,7 +3,7 @@
 #   FILE:  Bootloader.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -15,6 +15,8 @@ use ScoutLib\Database;
 use ScoutLib\Email;
 use ScoutLib\PluginManager;
 
+require_once("lib/ScoutLib/AFTaskManagerTrait.php");
+require_once("lib/ScoutLib/AFUrlManagerTrait.php");
 require_once("lib/ScoutLib/ApplicationFramework.php");
 require_once("lib/ScoutLib/Database.php");
 require_once("lib/ScoutLib/StdLib.php");
@@ -40,12 +42,16 @@ class Bootloader
 
     # directories to search for class files
     private $ObjectDirectories = [
-        "interface/%ACTIVEUI%/objects",
-        "interface/%DEFAULTUI%/objects",
-        "objects",
-        "lib",
-        "lib/Parsedown",
-        "lib/other",
+        "interface/%ACTIVEUI%/objects" => "",
+        "interface/%DEFAULTUI%/objects" => "",
+        "objects" => "",
+        "lib" => "",
+        "lib/Parsedown" => "",
+        "lib/other" => "",
+        "lib/PHPMailer/src" => "PHPMailer\\PHPMailer",
+        "lib/PSR/simple-cache/src" => "Psr\\SimpleCache",
+        "lib/Scrapbook/src" => "MatthiasMullie\\Scrapbook",
+        "lib/scssphp/src" => "ScssPhp\\ScssPhp",
     ];
 
     # additional directories to search for user interface files
@@ -58,6 +64,8 @@ class Bootloader
         "lib/jquery-ui/",
         "lib/Bootstrap/css/",
         "lib/Bootstrap/js/",
+        "lib/FilePond/js/",
+        "lib/FilePond/css/",
     ];
 
     # standard hookable events
@@ -135,8 +143,9 @@ class Bootloader
 
     /**
      * Bring operating environment up to readiness.
+     * @return void
      */
-    public function boot()
+    public function boot(): void
     {
         if ($this->BootComplete) {
             throw new Exception("Environment already loaded.");
@@ -154,6 +163,8 @@ class Bootloader
             # (set time zone to prevent PHP local time zone warning from E_STRICT)
         }
 
+        $this->adjustIPAddressForCloudflare();
+
         # load environmental files not loaded via any other mechanism
         require_once("include/StdLib.php");
 
@@ -166,7 +177,7 @@ class Bootloader
         $this->setUpGlobalUser();
         $this->setUpWebServerEnvironment();
         $this->setUpEmailDeliverySettings();
-        $this->CreateTempDirectories();
+        $this->createTempDirectories();
         $this->setSoftwareVersion();
         $this->setUpPeriodicTasks();
         $this->setUpSearchAndRecommender();
@@ -195,8 +206,9 @@ class Bootloader
     * Tag the current page in the page cache as being associated with the
     * specified resource.
     * @param int $ResourceId ID of resource.
+    * @return void
     */
-    public function tagPageCacheForViewingResource($ResourceId)
+    public function tagPageCacheForViewingResource($ResourceId): void
     {
         $this->AF->AddPageCacheTag($ResourceId);
     }
@@ -204,8 +216,9 @@ class Bootloader
     /**
     * Clear appropriate entries from page cache when a resource is modified.
     * @param Record $Resource Resource that was modified.
+    * @return void
     */
-    public function clearPageCacheForModifiedResource($Resource)
+    public function clearPageCacheForModifiedResource($Resource): void
     {
         $this->AF->ClearPageCacheForTag($Resource->id());
         $this->AF->ClearPageCacheForTag("ResourceList".$Resource->getSchemaId());
@@ -230,8 +243,9 @@ class Bootloader
 
     /**
      * Load basic configuration information.
+     * @return void
      */
-    private function loadBasicConfigInfo()
+    private function loadBasicConfigInfo(): void
     {
         # if configuration file available in expected location
         if (file_exists("local/config.php")) {
@@ -245,8 +259,9 @@ class Bootloader
 
     /**
      * Set up access to configured SQL database.
+     * @return void
      */
-    private function setUpDatabaseAccess()
+    private function setUpDatabaseAccess(): void
     {
         # set up database access
         Database::setGlobalServerInfo(
@@ -270,12 +285,18 @@ class Bootloader
         Database::setSlowQueryLoggingFn(
             ["\\ScoutLib\\ApplicationFramework", "logSlowDBQuery"]
         );
+
+        # set up logging of database cache pruning activity
+        Database::setCachePruneLoggingFn(
+            ["\\ScoutLib\\ApplicationFramework", "logDBCachePrune"]
+        );
     }
 
     /**
      * Initialize the application framework.
+     * @return void
      */
-    private function initializeApplicationFramework()
+    private function initializeApplicationFramework(): void
     {
         # initialize application framework
         ApplicationFramework::defaultNamespacePrefix("Metavus");
@@ -285,11 +306,9 @@ class Bootloader
                 $GLOBALS["G_Config"]["LocalNamespacePrefix"]
             );
         }
-        foreach ($this->ObjectDirectories as $Dir) {
-            ApplicationFramework::addObjectDirectory($Dir);
+        foreach ($this->ObjectDirectories as $Dir => $NamespacePrefix) {
+            ApplicationFramework::addObjectDirectory($Dir, $NamespacePrefix);
         }
-        ApplicationFramework::addObjectDirectory("lib/PHPMailer/src", "PHPMailer\\PHPMailer");
-        ApplicationFramework::addObjectDirectory("lib/scssphp/src", "ScssPhp\\ScssPhp");
         $this->AF = ApplicationFramework::getInstance();
         $GLOBALS["AF"] = $this->AF;
 
@@ -302,7 +321,7 @@ class Bootloader
         }
 
         $this->AF->logFile("local/logs/metavus.log");
-        $this->AF->RegisterEvent($this->HookableEvents);
+        $this->AF->registerEvent($this->HookableEvents);
         $this->AF->addIncludeDirectories($this->IncludeDirectories);
         $this->AF->doNotUrlFingerprint("%lib/CKEditor%");
 
@@ -316,8 +335,9 @@ class Bootloader
 
     /**
     * Make sure all needed temporary directories are available.
+    * @return void
     */
-    private function createTempDirectories()
+    private function createTempDirectories(): void
     {
         $Cwd = getcwd();
         $Directories = ["tmp", "tmp/caches"];
@@ -337,9 +357,10 @@ class Bootloader
     }
 
     /**
-     * Set up constants for predefined privilieges.
+     * Set up constants for predefined privileges.
+     * @return void
      */
-    private function definePrivilegeConstants()
+    private function definePrivilegeConstants(): void
     {
         # set up constants for predefined privileges
         define("PRIV_SYSADMIN", 1);
@@ -359,8 +380,9 @@ class Bootloader
 
     /**
      * Set up various backward compatibility measures.
+     * @return void
      */
-    private function setUpBackwardCompatibility()
+    private function setUpBackwardCompatibility(): void
     {
         # class_alias for PrivilegeSet to alleviate issues caused when
         # retrieving serialized objects created without namespace (in database)
@@ -372,8 +394,6 @@ class Bootloader
         # set legacy global variables
         $GLOBALS["DB"] = new Database();
         $GLOBALS["G_PluginManager"] = PluginManager::getInstance();
-        $GLOBALS["G_User"] = User::getCurrentUser();
-        $GLOBALS["User"] = $GLOBALS["G_User"];
 
         # set up handlers for legacy events
         $this->AF->registerInsertionKeywordCallback(
@@ -386,7 +406,7 @@ class Bootloader
                 $SignalResult = $this->AF->signalEvent(
                     "EVENT_APPEND_HTML_TO_FIELD_DISPLAY",
                     [
-                        "Field" => new \Metavus\MetadataField($FieldId),
+                        "Field" => \Metavus\MetadataField::getField($FieldId),
                         "Resource" => new \Metavus\Record($RecordId),
                         "Context" => "EDIT",
                         "Html" => null,
@@ -406,7 +426,7 @@ class Bootloader
                 $SignalResult = $this->AF->signalEvent(
                     "EVENT_APPEND_HTML_TO_FIELD_DISPLAY",
                     [
-                        "Field" => new \Metavus\MetadataField($FieldId),
+                        "Field" => \Metavus\MetadataField::getField($FieldId),
                         "Resource" => new \Metavus\Record($RecordId),
                         "Context" => "DISPLAY",
                         "Html" => null,
@@ -420,8 +440,9 @@ class Bootloader
 
     /**
      * Set up global user instance and configure user-related settings.
+     * @return void
      */
-    private function setUpGlobalUser()
+    private function setUpGlobalUser(): void
     {
         $SysConfig = SystemConfiguration::getInstance();
 
@@ -443,9 +464,16 @@ class Bootloader
         User::setCurrentUser($User);
 
         # if user is logged in
-        if ($User->IsLoggedIn()) {
+        if ($User->isLoggedIn()) {
             # do not cache page
             $this->AF->DoNotCacheCurrentPage();
+
+            # set up hook to clear login before running background tasks
+            $LoginClearFunc = function () {
+                $User = User::getAnonymousUser();
+                User::setCurrentUser($User);
+            };
+            $this->AF->registerPreTaskExecutionCallback($LoginClearFunc);
         }
 
         # enable error display if logged in with admin privileges
@@ -469,8 +497,9 @@ class Bootloader
     /**
      * Set up email delivery settings.  IMPORTANT:  The active user interface
      * must be set before calling this method.
+     * @return void
      */
-    private function setUpEmailDeliverySettings()
+    private function setUpEmailDeliverySettings(): void
     {
         $SysConfig = SystemConfiguration::getInstance();
         $IntConfig = InterfaceConfiguration::getInstance();
@@ -479,17 +508,17 @@ class Bootloader
         if (!$SysConfig->isSet("EmailDeliverySettings")) {
             $SysConfig->setString(
                 "EmailDeliverySettings",
-                Email::DefaultDeliverySettings()
+                Email::defaultDeliverySettings()
             );
         }
 
         # set email delivery settings
-        Email::DefaultDeliverySettings(
+        Email::defaultDeliverySettings(
             $SysConfig->getString("EmailDeliverySettings")
         );
 
         # set default "From" address for emails
-        Email::DefaultFrom(trim($IntConfig->getString("PortalName"))
+        Email::defaultFrom(trim($IntConfig->getString("PortalName"))
                 ." <".trim($IntConfig->getString("AdminEmail")).">");
 
         # if we have a valid saved email line ending setting
@@ -501,17 +530,18 @@ class Bootloader
         $LineEndingSetting = $SysConfig->getString("EmailLineEnding");
         if (isset($LineEndings[$LineEndingSetting])) {
             # use the saved setting for email line endings
-            Email::LineEnding($LineEndings[$LineEndingSetting]);
+            Email::lineEnding($LineEndings[$LineEndingSetting]);
         } else {
             # otherwise default to CRLF for email line endings
-            Email::LineEnding($LineEndings["CRLF"]);
+            Email::lineEnding($LineEndings["CRLF"]);
         }
     }
 
     /**
      * Load software version number and set software version constants.
+     * @return void
      */
-    private function setSoftwareVersion()
+    private function setSoftwareVersion(): void
     {
         # load software version number (if not already loaded)
         if (!defined("METAVUS_VERSION")) {
@@ -542,8 +572,9 @@ class Bootloader
 
     /**
      * Set up search and recommender engines.
+     * @return void
      */
-    private function setUpSearchAndRecommender()
+    private function setUpSearchAndRecommender(): void
     {
         $SysConfig = SystemConfiguration::getInstance();
 
@@ -551,7 +582,7 @@ class Bootloader
         SearchEngine::setUpdatePriority(
             $SysConfig->getInt("SearchEngineUpdatePriority")
         );
-        Recommender::SetUpdatePriority(
+        Recommender::setUpdatePriority(
             $SysConfig->getInt("RecommenderEngineUpdatePriority")
         );
 
@@ -584,8 +615,9 @@ class Bootloader
 
     /**
      * Set up page caching, including hooks for clearing page cache.
+     * @return void
      */
-    private function setUpPageCaching()
+    private function setUpPageCaching(): void
     {
         $this->AF->addPageCacheTag(
             "ResourceList",
@@ -621,9 +653,16 @@ class Bootloader
 
     /**
      * Hook periodic events to be run.
+     * @return void
      */
-    private function setUpPeriodicTasks()
+    private function setUpPeriodicTasks(): void
     {
+        # hook FilePond cleanup to run hourly
+        $this->AF->hookEvent(
+            "EVENT_HOURLY",
+            "Metavus\\FormUI::cleanFilePondUploadDir"
+        );
+
         # hook file fixity checks to run daily
         $this->AF->hookEvent(
             "EVENT_DAILY",
@@ -643,8 +682,9 @@ class Bootloader
 
     /**
      * Perform any needed user-interface-related setup tasks.
+     * @return void
      */
-    private function setUpUserInterface()
+    private function setUpUserInterface(): void
     {
         $SysConfig = SystemConfiguration::getInstance();
 
@@ -674,23 +714,20 @@ class Bootloader
 
     /**
      * Configure server-related settings.
+     * @return void
      */
-    private function setUpWebServerEnvironment()
+    private function setUpWebServerEnvironment(): void
     {
         # set whether to prefer HTTP_HOST using the system configuration setting
         $SysConfig = SystemConfiguration::getInstance();
-        ApplicationFramework::PreferHttpHost($SysConfig->getBool("PreferHttpHost"));
-
-        # set the root URL override using the system configuration setting
-        if ($SysConfig->isSet("RootUrlOverride")) {
-            ApplicationFramework::RootUrlOverride($SysConfig->getString("RootUrlOverride"));
-        }
+        ApplicationFramework::preferHttpHost($SysConfig->getBool("PreferHttpHost"));
     }
 
     /**
      * Set up plugin manager.  (Does not include loading plugins.)
+     * @return void
      */
-    private function setUpPluginManager()
+    private function setUpPluginManager(): void
     {
         PluginManager::setConfigValueLoader(["Metavus\\FormUI", "LoadValue"]);
         PluginManager::setApplicationFramework($this->AF);
@@ -703,8 +740,9 @@ class Bootloader
     /**
      * Run database upgrades (if Developer plugin is enabled).  Requires
      * plugin manager to have been previously set up.
+     * @return void
      */
-    private function runDatabaseUpgrades()
+    private function runDatabaseUpgrades(): void
     {
         if (PluginManager::pluginIsSetToBeEnabled("Developer")) {
             require_once("plugins/Developer/Developer.php");
@@ -721,8 +759,9 @@ class Bootloader
 
     /**
      * Load plugins.
+     * @return void
      */
-    private function loadPlugins()
+    private function loadPlugins(): void
     {
         # if plugin loading has not been forbidden
         if (!array_key_exists("StartUpOpt_DO_NOT_LOAD_PLUGINS", $GLOBALS) ||
@@ -754,8 +793,9 @@ class Bootloader
 
     /**
      * Set up navigation menu options.
+     * @return void
      */
-    private function setUpNavigationOptions()
+    private function setUpNavigationOptions(): void
     {
         $PluginMgr = PluginManager::getInstance();
         if ($PluginMgr->pluginEnabled("SecondaryNavigation")) {
@@ -793,7 +833,7 @@ class Bootloader
             $Schema = new MetadataSchema();
             $SecondaryNav->offerNavItem(
                 "Add Resource",
-                str_replace('$ID', "NEW", $Schema->editPage())."&SC=".$Schema->id(),
+                str_replace('$ID', "NEW", $Schema->getEditPage())."&SC=".$Schema->id(),
                 $Schema->authoringPrivileges(),
                 "Create a new resource record."
             );
@@ -815,8 +855,9 @@ class Bootloader
 
     /**
      * Load image size configuration.
+     * @return void
      */
-    private function setImageSizes()
+    private function setImageSizes(): void
     {
         $Sizes = $this->AF->getMultiValueInterfaceSetting("ImageSizes");
 
@@ -840,16 +881,110 @@ class Bootloader
             }
         }
 
-        foreach ($Sizes as $SizeName => $Dimensions) {
-            if (preg_match("/^([0-9]+)x([0-9]+)$/", $Dimensions, $Matches)) {
-                Image::addImageSize($SizeName, (int)$Matches[1], (int)$Matches[2]);
+        foreach ($Sizes as $SizeName => $SizeDefinition) {
+            unset($Width, $Height);
+            $Options = [];
+
+            $Pieces = preg_split("%\\s+%", $SizeDefinition, 0, PREG_SPLIT_NO_EMPTY);
+            if ($Pieces === false) {
+                $this->AF->logError(
+                    ApplicationFramework::LOGLVL_ERROR,
+                    "Parsing failed for image size ".$SizeName
+                            ." (\"".$SizeDefinition."\")."
+                );
+                continue;
+            }
+            foreach ($Pieces as $Piece) {
+                # if piece looks like it matches a defined image option constant
+                $PossibleConstantName = "ScoutLib\\RasterImageFile::".$Piece;
+                if (defined($PossibleConstantName)) {
+                    # add constant to image size options
+                    $Options[] = $PossibleConstantName;
+                } else {
+                    # if piece looks like it matches WxH (width and height in pixels)
+                    if (preg_match("/^([0-9]+)x([0-9]+)$/", $Piece, $Matches)) {
+                        # save width and height
+                        $Width = (int)$Matches[1];
+                        $Height = (int)$Matches[2];
+                    } else {
+                        $this->AF->logError(
+                            ApplicationFramework::LOGLVL_ERROR,
+                            "Unrecognized option for image size ".$SizeName
+                                    ." (\"".$SizeDefinition."\")."
+                        );
+                    }
+                }
+            }
+
+            if (isset($Width) && isset($Height)) {
+                Image::addImageSize($SizeName, $Width, $Height, $Options);
             } else {
                 $this->AF->logError(
                     ApplicationFramework::LOGLVL_ERROR,
-                    "Unable to parse image dimensions for size "
-                    .$SizeName.".Dimensions were ".$Dimensions
+                    "No dimensions specified for image size ".$SizeName."."
                 );
             }
         }
+    }
+
+    /**
+     * Adjust IP address in REMOTE_ADDR for Cloudflare's CDN. If the request
+     * bears a CF-Connecting-IP HTTP header and came from Cloudflare's IP
+     * range, update REMOTE_ADDR to reflect the IP of the client rather than
+     * the Cloudflare proxy that is forwarding the request.
+     * @see https://developers.cloudflare.com/fundamentals/reference/http-request-headers/
+     * @return void
+     */
+    private function adjustIPAddressForCloudflare(): void
+    {
+        if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])
+            && isset($_SERVER["REMOTE_ADDR"])
+            && $this->isCloudflareIP($_SERVER["REMOTE_ADDR"])) {
+            $_SERVER["REMOTE_ADDR"] = $_SERVER["HTTP_CF_CONNECTING_IP"];
+        }
+    }
+
+    /**
+     * Check if an IP is within Cloudflare's IP ranges.
+     * @param string $IP Address of the client in dot-decimal format
+     *   (e.g., 192.168.0.1)
+     * @return bool TRUE for Cloudflare IPs, FALSE otherwise.
+     */
+    private function isCloudflareIP(string $IP): bool
+    {
+        # keep a local cache of CF's IP list
+        $CacheFile = "local/data/caches/CloudflareIPAddressRangeList.txt";
+        $MaxCacheAge = 2592000; # 30 days in seconds
+
+        # if cache has not yet been created or is too old, refresh it
+        if (!file_exists($CacheFile)
+            || (time() - filemtime($CacheFile) > $MaxCacheAge)) {
+            $Data = file_get_contents("https://www.cloudflare.com/ips-v4/");
+            if ($Data !== false) {
+                file_put_contents($CacheFile, $Data);
+            }
+        } else {
+            $Data = file_get_contents($CacheFile);
+        }
+
+        # if cache could not be loaded, assume this isn't a CF IP
+        if ($Data === false) {
+            return false;
+        }
+
+        # otherwise see if remote IP matches one of the ranges
+        $IPBinary = ip2long($IP);
+        $CFRanges = explode("\n", $Data);
+        foreach ($CFRanges as $Range) {
+            list ($NetworkDottedQuad, $MaskBits) = explode('/', $Range);
+
+            $NetworkBinary = ip2long($NetworkDottedQuad);
+            $Mask = ~((1 << (32 - (int)$MaskBits)) - 1);
+            if (($IPBinary & $Mask) == ($NetworkBinary & $Mask)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -3,22 +3,21 @@
 #   FILE:  SecondaryNavigation.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use InvalidArgumentException;
+use Metavus\HtmlButton;
 use Metavus\Plugins\SecondaryNavigation\NavItem;
 use Metavus\Plugins\SecondaryNavigation\NavMenu;
 use Metavus\PrivilegeFactory;
 use Metavus\PrivilegeSet;
 use Metavus\SecureLoginHelper;
 use Metavus\User;
-use ScoutLib\Database;
 use ScoutLib\Plugin;
 use ScoutLib\ApplicationFramework;
 
@@ -30,7 +29,7 @@ class SecondaryNavigation extends Plugin
     /**
      * Set plugin attributes.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "SecondaryNavigation";
         $this->Version = "1.0.2";
@@ -38,7 +37,7 @@ class SecondaryNavigation extends Plugin
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
     }
 
@@ -46,7 +45,7 @@ class SecondaryNavigation extends Plugin
      * Set up keyword for inserting nav menu
      * @return string|null error string or null on success
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $AF = ApplicationFramework::getInstance();
         $AF->registerInsertionKeywordCallback(
@@ -59,9 +58,9 @@ class SecondaryNavigation extends Plugin
 
     /**
      * Create the database tables necessary to use this plugin.
-     * @return string|null on success or an error message otherwise
+     * @return string|null NULL on success or an error message otherwise
      */
-    public function install()
+    public function install(): ?string
     {
         # set up database tables
         return $this->createTables($this->SqlTables);
@@ -69,9 +68,9 @@ class SecondaryNavigation extends Plugin
 
     /**
      * Uninstall the plugin.
-     * @return NULL|string NULL if successful or an error message otherwise
+     * @return null|string NULL if successful or an error message otherwise
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         # remove tables from database
         return $this->dropTables($this->SqlTables);
@@ -79,8 +78,9 @@ class SecondaryNavigation extends Plugin
 
     /**
      * Set up configuration options.
+     * @return null|string NULL if successful or an error message otherwise
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         # normalize OfferedNavItems for option list
         $this->CfgSetup["DefaultNavigation"] = [
@@ -149,7 +149,7 @@ class SecondaryNavigation extends Plugin
      * Set NavItems for user when no NavMenu exists (depending on privileges)
      * @param int $OwnerId ID of user to create NavItems for
      */
-    public function setDefaultLinks(int $OwnerId)
+    public function setDefaultLinks(int $OwnerId): void
     {
         $User = new User($OwnerId);
         $ToOrder = [];
@@ -159,8 +159,8 @@ class SecondaryNavigation extends Plugin
         NavItem::create($OwnerId, "Filler Item", "");
 
         # create NavItems for default links (if user has privileges)
-        $DefaultItems = strlen($this->configSetting("DefaultNavigation")) ?
-            explode("\n", $this->configSetting("DefaultNavigation")) : [];
+        $DefaultItems = strlen($this->getConfigSetting("DefaultNavigation")) ?
+            explode("\n", $this->getConfigSetting("DefaultNavigation")) : [];
         $OfferedItems = $this->getOfferedNavItems();
         foreach ($DefaultItems as $Link) {
             $NewItem = $OfferedItems[trim($Link)];
@@ -191,7 +191,7 @@ class SecondaryNavigation extends Plugin
         ob_start();
         ?>
             <div class="bg-secondary text-white" id="mv-secondary-navigation-menu">
-                <?PHP if ($User->IsLoggedIn()) { ?>
+                <?PHP if ($User->isLoggedIn()) { ?>
                 <!-- BEGIN MENU AREA -->
                 <div class="col-12">
                     <div class="row">
@@ -231,7 +231,7 @@ class SecondaryNavigation extends Plugin
     /**
      * Get NavMenu for user and display all NavItems in order
      */
-    public function displayNavItems()
+    public function displayNavItems(): void
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -260,7 +260,7 @@ class SecondaryNavigation extends Plugin
      * @param string $Label text for link to be displayed
      * @param string $Link url or relative link to direct to
      */
-    public function displayNavItem($Label, $Link)
+    public function displayNavItem($Label, $Link): void
     {
         ?>
         <div class="mv-secondary-navigation-menu-item" title="<?= htmlspecialchars($Label) ?>"
@@ -273,34 +273,39 @@ class SecondaryNavigation extends Plugin
     /**
      * Display Add/Edit buttons
      */
-    public function displayNavEditButtons()
+    public function displayNavEditButtons(): void
     {
         $AF = ApplicationFramework::getInstance();
         $NavMenu = new NavMenu(User::getCurrentUser()->id());
         $NormalizedUrl = $this->normalizeUrl($AF->getUncleanRelativeUrlWithParams());
-        $DisableAdd = ($NavMenu->navItemExists($NormalizedUrl) ||
-            $NormalizedUrl == "index.php?P=Preferences");
         $AddLink = "index.php?P=P_SecondaryNavigation_EditItem&AL=".urlencode($NormalizedUrl).
             "&PT=".urlencode(PageTitle(null, false) ?? "");
+
+        $AddButton = new HtmlButton("Add");
+        $AddButton->setIcon("Plus.svg");
+        $AddButton->setSize(HtmlButton::SIZE_SMALL);
+        $AddButton->addClass("float-end");
+        if ($NavMenu->navItemExists($NormalizedUrl)
+            || $NormalizedUrl == "index.php?P=Preferences") {
+            $AddButton->disable();
+        }
+        $AddButton->setLink($AddLink);
+
+        $EditButton = new HtmlButton("Edit");
+        $EditButton->setIcon("Pencil.svg");
+        $EditButton->setSize(HtmlButton::SIZE_SMALL);
+        $EditButton->addClass("float-end");
+        $EditButton->setTitle("Edit secondary navigation bar.");
+        $EditButton->setLink("index.php?P=P_SecondaryNavigation_EditNav");
         ?>
             <div class="row">
                 <div class="col">
-                    <a class="btn btn-primary btn-sm mv-button-iconed
-                          float-right <?= $DisableAdd ? ' disabled' : '' ?>"
-                    <?PHP if (!$DisableAdd) {
-                        ?> href="<?= $AddLink ?>"<?PHP
-                    }  ?>>
-                    <img class="mv-button-icon"
-                    src="<?= $AF->GUIFile("Plus.svg") ?>" alt=""> Add</a>
+                    <?= $AddButton->getHtml(); ?>
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                <a class="btn btn-primary btn-sm mv-button-iconed float-right"
-                    href="index.php?P=P_SecondaryNavigation_EditNav"
-                    title="Edit secondary navigation bar.">
-                    <img class="mv-button-icon"
-                    src="<?= $AF->GUIFile("Pencil.svg") ?>" alt=""> Edit</a>
+                    <?= $EditButton->getHtml(); ?>
                 </div>
             </div>
         <?PHP
@@ -312,7 +317,7 @@ class SecondaryNavigation extends Plugin
      * @param string $FieldValue value to validate
      * @return string|null null if label is valid (no html tags), string containing error otherwise
      */
-    public static function validateLabel($FieldName, $FieldValue)
+    public static function validateLabel($FieldName, $FieldValue): ?string
     {
         if ($FieldValue == strip_tags($FieldValue)) {
             return null;
@@ -325,7 +330,7 @@ class SecondaryNavigation extends Plugin
      * @param NavMenu $NavMenu containing NavItems to display
      * @return array representing structure in which to display the NavItems
      */
-    public function getTree(NavMenu $NavMenu)
+    public function getTree(NavMenu $NavMenu): array
     {
         $ItemIds = $NavMenu->getItemIdsInOrder();
         $Tree = [];
@@ -350,7 +355,7 @@ class SecondaryNavigation extends Plugin
         string $Link,
         PrivilegeSet $RequiredPrivileges,
         string $Description = ""
-    ) {
+    ): void {
         # keying on link since it makes checking privs easier later
         $this->OfferedItems[$this->normalizeUrl($Link)] = [
             "Label" => $Label,
@@ -367,7 +372,9 @@ class SecondaryNavigation extends Plugin
     {
         $Items = $this->OfferedItems;
         # add any additional items to offer from config value
-        $ConfigItems = $this->parseAdditionalNavItems($this->configSetting("AdditionalNavItems"));
+        $ConfigItems = $this->parseAdditionalNavItems(
+            $this->getConfigSetting("AdditionalNavItems")
+        );
         foreach ($ConfigItems as $Item) {
             # in case this is a file name and not a URL
             if (!$this->urlLooksValid($Item["URL"])) {
@@ -393,7 +400,7 @@ class SecondaryNavigation extends Plugin
      */
     public function addOfferedItemToNavForCurrentUser(
         string $Link
-    ) {
+    ): void {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
@@ -439,7 +446,7 @@ class SecondaryNavigation extends Plugin
      */
     public function removeItemFromNavForCurrentUser(
         string $Link
-    ) {
+    ): void {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
@@ -470,7 +477,7 @@ class SecondaryNavigation extends Plugin
      * @param string $UncleanUrl URL to normalize
      * @return string normalized URL (alphabetized parameters)
      */
-    private function normalizeUrl(string $UncleanUrl)
+    private function normalizeUrl(string $UncleanUrl): string
     {
         # if there are no parameters url is already "normal"
         if (strpos($UncleanUrl, "&") === false) {

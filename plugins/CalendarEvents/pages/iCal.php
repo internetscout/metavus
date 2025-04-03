@@ -7,12 +7,12 @@
 #   http://metavus.net
 #
 
+use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\CalendarEvents\Event;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\iCalendarEvent;
 use ScoutLib\iCalendarFeed;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
@@ -37,7 +37,7 @@ if (!Event::itemExists($EventId)) {
 
 $Event = new Event($EventId);
 
-$H_Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$H_Plugin = CalendarEvents::getInstance();
 
 # if the entry is some other type of resource
 if (!$H_Plugin->isEvent($Event)) {

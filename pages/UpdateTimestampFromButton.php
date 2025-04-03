@@ -6,18 +6,20 @@
 #   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Record;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
 # check that required params were provided
 if (!isset($_GET["ID"]) || !isset($_GET["FI"])) {
-        checkAuthorization(-1);
+        CheckAuthorization(-1);
     return;
 }
 
@@ -27,7 +29,7 @@ $FieldId = $_GET["FI"];
 
 # bail if the resource is invalid
 if (!Record::itemExists($ResourceId)) {
-    checkAuthorization(-1);
+    CheckAuthorization(-1);
     return;
 }
 
@@ -71,4 +73,4 @@ $Resource->updateAutoupdateFields(
 );
 
 # route user back to view page
-$GLOBALS["AF"]->setJumpToPage($Resource->getViewPageUrl());
+ApplicationFramework::getInstance()->setJumpToPage($Resource->getViewPageUrl());

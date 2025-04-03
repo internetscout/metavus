@@ -3,23 +3,24 @@
 #   FILE:  Events.html (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\User;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
-* Print the marker used to determine where "today" begins.
-*/
-function CalendarEvents_PrintTodayMarker()
+ * Print the marker used to determine where "today" begins.
+ */
+function CalendarEvents_PrintTodayMarker(): void
 {
     ?><div id="today" class="calendar_events-today"></div><?PHP
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
@@ -30,6 +31,15 @@ $SafeMonth = defaulthtmlentities($H_Month);
 $PreviousMonthTimestamp = CalendarEvents_GetPreviousMonth($H_EventCounts, $H_Month);
 $NextMonthTimestamp = CalendarEvents_GetNextMonth($H_EventCounts, $H_Month);
 
+$AdminListButton = new HtmlButton("Admin List");
+$AdminListButton->setIcon("cog.png");
+$AdminListButton->setLink("index.php?P=P_CalendarEvents_ListEvents");
+
+$AddEventButton = new HtmlButton("Add Event");
+$AddEventButton->setIcon("Plus.svg");
+$AddEventButton->setLink("index.php?P=EditResource&ID=NEW&SC=$SafeSchemaId");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <div class="container">
@@ -39,16 +49,10 @@ $NextMonthTimestamp = CalendarEvents_GetNextMonth($H_EventCounts, $H_Month);
     </div>
     <div class="col">
       <?PHP if ($H_Plugin->UserCanEditEvents($User)) { ?>
-        <a class="btn btn-primary mv-button-iconed"
-          href="index.php?P=P_CalendarEvents_ListEvents"><img
-          src="<?= $AF->GUIFile('cog.png'); ?>" alt=""
-          class="mv-button-icon" /> Admin List</a>
+            <?= $AdminListButton->getHtml(); ?>
       <?PHP } ?>
       <?PHP if ($H_Plugin->UserCanAuthorEvents($User)) { ?>
-        <a class="btn btn-primary mv-button-iconed"
-          href="index.php?P=EditResource&amp;ID=NEW&amp;SC=<?=$SafeSchemaId; ?>">
-          <img class="mv-button-icon" alt=""
-            src="<?= $AF->GUIFile('Plus.svg') ?>"/> Add Event</a>
+            <?= $AddEventButton->getHtml(); ?>
       <?PHP } ?>
     </div>
   </div>

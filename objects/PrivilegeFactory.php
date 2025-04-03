@@ -3,13 +3,12 @@
 #   FILE:  PrivilegeFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2007-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2007-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ItemFactory;
 
 /**
@@ -168,8 +167,8 @@ class PrivilegeFactory extends ItemFactory
      * @return array Array with item names as values and item IDs as indexes
      */
     public function getItemNames(
-        string $SqlCondition = null,
-        int $Limit = null,
+        ?string $SqlCondition = null,
+        ?int $Limit = null,
         int $Offset = 0,
         array $Exclusions = []
     ): array {
@@ -300,9 +299,9 @@ class PrivilegeFactory extends ItemFactory
     public function getPrivilegeOptions()
     {
         $PrivilegeOptions = [];
-        $Privileges = $this->GetPrivileges(true, false);
+        $Privileges = $this->getPrivileges(true, false);
         foreach ($Privileges as $Id => $Label) {
-            if ($Id == PRIV_USERDISABLED || User::IsPseudoPrivilege($Id)) {
+            if ($Id == PRIV_USERDISABLED || User::isPseudoPrivilege($Id)) {
                 continue;
             }
             $PrivilegeOptions[$Id] = $Label;

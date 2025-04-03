@@ -3,10 +3,11 @@
 #   FILE:  EventReports.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\Record;
 
@@ -59,7 +60,21 @@ function PrintBlogTable($CountData, $StartDate, $Caption)
 }
 
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$ViewsWeekButton = new HtmlButton("Week");
+$ViewsWeekButton->addClass("mv-button-weekly mv-button-views mv-button-active");
+$ViewsMonthButton = new HtmlButton("Month");
+$ViewsMonthButton->addClass("mv-button-monthly mv-button-views");
+$ViewsYearButton = new HtmlButton("Year");
+$ViewsYearButton->addClass("mv-button-yearly mv-button-views");
+$SharesWeekButton = new HtmlButton("Week");
+$SharesWeekButton->addClass("mv-button-weekly mv-button-shares mv-button-active");
+$SharesMonthButton = new HtmlButton("Month");
+$SharesMonthButton->addClass("mv-button-monthly mv-button-shares");
+$SharesYearButton = new HtmlButton("Year");
+$SharesYearButton->addClass("mv-button-yearly mv-button-shares");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <style type="text/css">
@@ -80,12 +95,9 @@ function PrintBlogTable($CountData, $StartDate, $Caption)
       <div style="height: 2.5em">
         <h2 class="mv-stat-header">Blog Post Views</h2>
         <ul class="mv-button-group cw-content-mfetabs" style="float: right;">
-          <li>
-            <button class="btn btn-primary mv-button-weekly mv-button-views mv-button-active"
-            >Week</button>
-          </li>
-          <li><button class="btn btn-primary mv-button-monthly mv-button-views">Month</button></li>
-          <li><button class="btn btn-primary mv-button-yearly mv-button-views">Year</button></li>
+          <li><?= $ViewsWeekButton->getHtml(); ?></li>
+          <li><?= $ViewsMonthButton->getHtml(); ?></li>
+          <li><?= $ViewsYearButton->getHtml(); ?></li>
         </ul>
       </div>
 
@@ -108,12 +120,9 @@ function PrintBlogTable($CountData, $StartDate, $Caption)
       <div style="height: 2.5em">
         <h2 class="mv-stat-header">Blog Post Shares</h2>
         <ul class="mv-button-group cw-content-mfetabs" style="float: right;">
-          <li>
-            <button class="btn btn-primary mv-button-weekly mv-button-shares mv-button-active"
-            >Week</button>
-          </li>
-          <li><button class="btn btn-primary mv-button-monthly mv-button-shares">Month</button></li>
-          <li><button class="btn btn-primary mv-button-yearly mv-button-shares">Year</button></li>
+          <li><?= $SharesWeekButton->getHtml(); ?></li>
+          <li><?= $SharesMonthButton->getHtml(); ?></li>
+          <li><?= $SharesYearButton->getHtml(); ?></li>
         </ul>
       </div>
 

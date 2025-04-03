@@ -1,10 +1,20 @@
-<?php
+<?PHP
 
 use ScoutLib\HtmlRadioButtonSet;
 use ScoutLib\StdLib;
 
+require_once("lib/ScoutLib/tests/HtmlValidationTestTrait.php");
+
 class HtmlRadioButtonSet_Test extends PHPUnit\Framework\TestCase
 {
+    use HtmlValidationTestTrait;
+
+    const VALIDATION_ERRORS_TO_IGNORE = [
+        "/The document has no document element/",
+        "/Specification mandates value for attribute disabled/",
+        "/Specification mandates value for attribute checked/",
+    ];
+
     /**
      * Test __construct().
      */
@@ -20,7 +30,7 @@ class HtmlRadioButtonSet_Test extends PHPUnit\Framework\TestCase
         # Test basic structure of the HtmlRadioButtonSet
         $MsgHeader = "Test basic structure of the HtmlRadioButtonSet: ";
         $ButtonSet = new HtmlRadioButtonSet($MockFormName, $MockOptions);
-        $this->validateHtml($ButtonSet);
+        $this->validateHtml($ButtonSet->getHtml(), $this::VALIDATION_ERRORS_TO_IGNORE);
 
         $DOM = new DOMDocument();
         $ButtonSetHtml = $ButtonSet->getHtml();
@@ -39,7 +49,7 @@ class HtmlRadioButtonSet_Test extends PHPUnit\Framework\TestCase
             $MsgHeader."There should be exactly 1 <label> for each optoin provided."
         );
 
-        foreach (range(0,2) as $Idx) {
+        foreach (range(0, 2) as $Idx) {
             $InputEle = $InputEles->item($Idx);
             $LabelEle = $LabelEles->item($Idx);
             $InputVal = $InputEle->getAttribute("value");
@@ -375,7 +385,7 @@ class HtmlRadioButtonSet_Test extends PHPUnit\Framework\TestCase
      */
     private function getRadioButtonSetDomEles(HtmlRadioButtonSet $ButtonSet)
     {
-        $this->validateHtml($ButtonSet);
+        $this->validateHtml($ButtonSet->getHtml(), $this::VALIDATION_ERRORS_TO_IGNORE);
 
         $DOM = new DOMDocument();
         $DOM->loadHTML($ButtonSet->getHtml());
@@ -402,56 +412,23 @@ class HtmlRadioButtonSet_Test extends PHPUnit\Framework\TestCase
      */
     private function getRadioButtonSetForTest(int $ButtonCount)
     {
-        foreach (range(0, $ButtonCount-1) as $Idx) {
+        foreach (range(0, $ButtonCount - 1) as $Idx) {
             $Options["val ".$Idx] = "label ".$Idx;
         }
         return new HtmlRadioButtonSet("TestFormName", $Options);
     }
 
     /**
-     * Test the html of an HtmlRadioButtonSet is valid.
-     * @param HtmlRadioButtonSet $ButtonSet Target HtmlRadioButtonSet.
+     * {@see HtmlValidationTestTrait::preprocessHtml()}
      */
-    private function validateHtml(HtmlRadioButtonSet $ButtonSet)
+    private function preprocessHtml(string $RadioButtonSetHtml)
     {
-        # We validate the button set's html by first validating
-        # it against XHTML and then filtering out error
-        # messages of errors that are not error in HTML.
-        # We do this instead of just using DOMDocument::validate()
-        # because DOMDocument::validate(), which internally uses
-        # libxml2's xmlValidateDocument(), will attempt to
-        # fetch DTD from W3C, which will then get blocked (see
-        # https://www.w3.org/blog/systeam/2008/02/08/w3c_s_excessive_dtd_traffic/).
-        # Fetching HTML4.01 DTD manually and then using it as a local
-        # DTD does not solve the problem because it's using a DTD
-        # syntax that libxml2 cannot parse. For HTML5, since it's
-        # no longer SGML based, there is no DTD to use.
-        $ErrorsToIgnore = [
-            "/The document has no document element/",
-            "/Specification mandates value for attribute disabled/",
-            "/Specification mandates value for attribute checked/",
-        ];
-
         # append </input> because a closing tag is required
         # by XHTML even though <input ...> is the correct html5
         $InputPattern = "/<input.*?>/";
         $Replacement = "\\0</input>";
-        $Html = preg_replace($InputPattern, $Replacement, $ButtonSet->getHtml());
+        $Html = preg_replace($InputPattern, $Replacement, $RadioButtonSetHtml);
         $Html = "<div>".$Html."</div>";
-
-        # validate and build error message
-        $Errors = StdLib::validateXhtml($Html, $ErrorsToIgnore);
-        $Message = "getHtml() returned an invalid html; document errors:\n".
-            "HTML Was:\n"
-            .$Html
-            ."Errors were:\n"
-            .array_reduce(
-                $Errors,
-                function ($Carry, $Value) {
-                    return $Carry . " ".$Value->message."\n";
-                },
-                ""
-            );
-        $this->assertEmpty($Errors, $Message);
+        return $Html;
     }
 }

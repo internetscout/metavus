@@ -3,17 +3,19 @@
 #   FILE:  ListSentEmail.html (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\ItemListUI;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
-PageTitle("Sent Email Log");
-
+# ----- SETUP ----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
 
 # set up fields to display
 $ListFields = [
@@ -31,7 +33,7 @@ $ListFields = [
 ];
 
 # add in template filtering and display when Mailer is enabled
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) {
+if ($PluginMgr->pluginReady("Mailer")) {
     $ListFields["Template"] = [
         "Heading" => "Mailer Template",
         "Sortable" => false,
@@ -58,18 +60,23 @@ $ListUI->ItemsPerPage($H_ItemsPerPage);
 $ListUI->BaseLink($H_BaseLink);
 $OptList = new HtmlOptionList("TID", $H_Templates, $H_SelectedTemplate);
 $OptList->SubmitOnChange(true);
+
+$SubmitButton = new HtmlButton("Search");
+$SubmitButton->setIcon("MagnifyingGlass.svg");
+$SubmitButton->setSize(HtmlButton::SIZE_SMALL);
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Sent Email Log");
 ?>
 <div id="SearchSentMessages" style="float: right; margin-top: 15px;">
   <form action="index.php" method="get">
     <input type="hidden" name="P" value="P_MetricsReporter_ListSentEmail">
-    <?PHP if ($GLOBALS["G_PluginManager"]->PluginEnabled("Mailer")) { ?>
+    <?PHP if ($PluginMgr->pluginReady("Mailer")) { ?>
     <b>Template:</b> <?= $OptList->GetHtml() ?>&nbsp;&nbsp;
     <?PHP } ?>
     <b>Search:</b>
     <input type="text" name="SS" value="<?= htmlspecialchars($H_SearchString) ?>">
-    <button class="btn btn-primary btn-sm mv-button-iconed" type="submit" value="GO"><img
-        src="<?= $AF->GUIFile('MagnifyingGlass.svg.svg'); ?>" alt=""
-        class="mv-button-icon" /> Search</button>
+    <?= $SubmitButton->getHtml(); ?>
   </form>
 </div>
 

@@ -25,7 +25,7 @@ class SearchParameterSet extends \ScoutLib\SearchParameterSet
      * the $Field argument must be a type usable as an array index (e.g. an
      * integer or a string).
      * @param string|array $SearchStrings String or array of strings to search for.
-     * @param mixed $Field Field to search.  (OPTIONAL – defaults to
+     * @param mixed $Field Field to search.  (OPTIONAL - defaults to
      *       keyword search if no field specified)
      * @see SearchParameterSet::canonicalFieldFunction()
      */
@@ -128,7 +128,7 @@ class SearchParameterSet extends \ScoutLib\SearchParameterSet
         static $MFields = [];
         $FieldId = self::getCanonicalFieldId($Field);
         if (!isset($MFields[$FieldId])) {
-            $MFields[$FieldId] = new MetadataField($FieldId);
+            $MFields[$FieldId] = MetadataField::getField($FieldId);
         }
         return $MFields[$FieldId];
     }

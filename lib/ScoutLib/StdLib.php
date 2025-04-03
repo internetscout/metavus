@@ -3,12 +3,11 @@
 #   FILE:  StdLib.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2016-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 
 namespace ScoutLib;
-
 use Closure;
 use Exception;
 use DOMDocument;
@@ -25,30 +24,43 @@ use ReflectionProperty;
  */
 class StdLib
 {
+    # cached data timeout for DataCache->set(), in seconds
+    const CACHED_DATA_TTL = 60 * 60 * 24;
 
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /**
      * Get info about call to current function.
+     * @param int $LevelsToGoUp Number of levels to go up from calling
+     *      context.  (OPTIONAL, defaults to 1)
      * @return array Array with the element names "FileName" (with no leading
      *      path), "FullFileName" (with absolute path), "RelativeFileName"
-     *      (with relative path), "LineNumber", and "Function".
+     *      (with relative path), "LineNumber", "Class", and "Function".
      */
-    public static function getCallerInfo(): array
+    public static function getCallerInfo(int $LevelsToGoUp = 1): array
     {
         $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
-        $FullFileName = $Trace[1]["file"];
+        if (isset($Trace[$LevelsToGoUp]["file"])) {
+            $FullFileName = $Trace[$LevelsToGoUp]["file"];
+            $FileName = basename($FullFileName);
+            $RelativeFileName = str_replace(getcwd() . "/", "", $FullFileName);
+        } else {
+            $FullFileName = "UnknownFile";
+            $FileName = "UnknownFile";
+            $RelativeFileName = "UnknownFile";
+        }
         $Info = [
-            "FileName" => basename($FullFileName),
-            "RelativeFileName" => str_replace(getcwd() . "/", "", $FullFileName),
+            "FileName" => $FileName,
+            "RelativeFileName" => $RelativeFileName,
             "FullFileName" => $FullFileName,
-            "LineNumber" => $Trace[1]["line"],
+            "LineNumber" => $Trace[$LevelsToGoUp]["line"] ?? "XX",
+            "Class" => ($Trace[$LevelsToGoUp + 1]["class"] ?? ""),
             "Function" => "",
         ];
-        if (isset($Trace[2]["function"])) {
-            $Info["Function"] = ($Trace[2]["class"] ?? "")
-                    .($Trace[2]["type"] ?? "")
-                    .$Trace[2]["function"];
+        if (isset($Trace[$LevelsToGoUp + 1]["function"])) {
+            $Info["Function"] = ($Trace[$LevelsToGoUp + 1]["class"] ?? "")
+                    .($Trace[$LevelsToGoUp + 1]["type"] ?? "")
+                    .$Trace[$LevelsToGoUp + 1]["function"];
         }
         return $Info;
     }
@@ -60,7 +72,9 @@ class StdLib
     public static function getMyCaller(): string
     {
         $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        return basename($Trace[1]["file"]).":".$Trace[1]["line"];
+        $FileName =  isset($Trace[1]["file"])
+                ? basename($Trace[1]["file"]) : "UnknownFile";
+        return $FileName.":".($Trace[1]["line"] ?? "UnknownLine");
     }
 
     /**
@@ -81,7 +95,7 @@ class StdLib
      */
     public static function checkMyCaller(
         string $DesiredCaller,
-        string $ExceptionMsg = null
+        ?string $ExceptionMsg = null
     ): bool {
         # retrieve caller info
         $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
@@ -158,6 +172,37 @@ class StdLib
     }
 
     /**
+     * Get type (if available) for specified parameter for specified callback.
+     * @param callable $Callback Function or method.
+     * @param int $ArgIndex Index into parameters.  (First parameter is index 0.)
+     * @return string|false Parameter type or FALSE if parameter was not found
+     *      or parameter type is not available.
+     */
+    public static function getArgumentType(callable $Callback, int $ArgIndex)
+    {
+        $Params = (StdLib::getReflectionForCallback($Callback))->getParameters();
+        if (!isset($Params[$ArgIndex])) {
+            return false;
+        }
+        $Type = $Params[$ArgIndex]->getType();
+        if ($Type === null) {
+            return false;
+        }
+
+        # trim off optional argument indicator if present
+        if ($Type instanceof \ReflectionNamedType) {
+            $Type = $Type->getName();
+        } else {
+            $Type = @(string)$Type;
+        }
+        if ($Type[0] == "?") {
+            $Type = substr($Type, 1);
+        }
+
+        return $Type;
+    }
+
+    /**
      * Get backtrace as a string.
      * @param bool $IncludeArgs If true, arguments will be included in function
      *       call information.  (OPTIONAL, defaults to true)
@@ -168,7 +213,7 @@ class StdLib
         # get backtrace text
         ob_start();
         $TraceOpts = $IncludeArgs ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS;
-        debug_print_backtrace($TraceOpts);
+        debug_print_backtrace($TraceOpts);  // phpcs:ignore
         $TraceString = (string)ob_get_contents();
         ob_end_clean();
 
@@ -220,7 +265,7 @@ class StdLib
      * @return array An array of PHP configuration settings.
      * @see phpinfo()
      */
-    public static function getPhpInfo()
+    public static function getPhpInfo(): array
     {
         # grab PHP info page
         ob_start();
@@ -260,14 +305,14 @@ class StdLib
 
             # store "local" info values
             foreach ($LocalValue[0] as $MatchString => $Dummy) {
-                $MatchString = trim($MatchString);
+                $MatchString = trim((string)$MatchString);
                 $Info[$ModuleName][trim(strip_tags($LocalValue[1][$MatchString]))] =
                     array(trim(strip_tags($LocalValue[2][$MatchString])));
             }
 
             # store "master" info values
             foreach ($MasterValue[0] as $MatchString => $Dummy) {
-                $MatchString = trim($MatchString);
+                $MatchString = trim((string)$MatchString);
                 $Info[$ModuleName][trim(strip_tags($MasterValue[1][$MatchString]))] =
                     array(
                         trim(strip_tags($MasterValue[2][$MatchString])),
@@ -299,7 +344,7 @@ class StdLib
      * @param string $String String to test.
      * @return bool TRUE when the string represents data.
      */
-    public static function isSerializedData($String)
+    public static function isSerializedData($String): bool
     {
         # only strings are serialized data
         if (!is_string($String)) {
@@ -327,7 +372,7 @@ class StdLib
     public static function loadLegacyPrivateVariables(
         &$Object,
         string $OldNamespace = ""
-    ) {
+    ): void {
         # get prefix for index of non-namespaced saved variables
         # (class prefix is surrounded by null bytes)
         $Reflection = new ReflectionClass($Object);
@@ -380,8 +425,11 @@ class StdLib
      *       defaults to "-")
      * @return string Returns a string containing a nicely-formatted date value.
      */
-    public static function getPrettyDate($Date, $Verbose = false, $BadDateString = "-")
-    {
+    public static function getPrettyDate(
+        $Date,
+        bool $Verbose = false,
+        string $BadDateString = "-"
+    ): string {
         # convert date to seconds
         $TStamp = !is_null($Date) ? strtotime($Date) : false;
 
@@ -435,7 +483,7 @@ class StdLib
         $Verbose = false,
         $BadTimeString = "-",
         $IncludeOldTimes = true
-    ) {
+    ): string {
         # convert timestamp to seconds if necessary
         if (is_null($Timestamp)) {
             $TStamp = false;
@@ -445,7 +493,7 @@ class StdLib
         }
 
         # if time was invalid
-        if (($TStamp === false) || ($TStamp < 0)) {
+        if ($TStamp === false) {
             $Pretty = $BadTimeString;
         } elseif (date("z Y", $TStamp) == date("z Y")) {
             # else if timestamp is today use format "1:23pm"
@@ -489,7 +537,7 @@ class StdLib
      * @param int $Count Do not pluralize if this value is 1 or -1.  (OPTIONAL)
      * @return string Word in plural form.
      */
-    public static function pluralize(string $Word, int $Count = null): string
+    public static function pluralize(string $Word, ?int $Count = null): string
     {
         # return word unchanged if singular count is supplied
         if (($Count == 1) || ($Count == - 1)) {
@@ -568,8 +616,10 @@ class StdLib
         $Title = preg_replace($RegEx, '', $Title);
 
         # find each word (including punctuation attached)
+        $SmartQLeft = "\u{2018}";
+        $SmartQRight = "\u{2019}";
         preg_match_all(
-            '/[\w\p{L}&`\'‘’"“\.@:\/\{\(\[<>_]+-? */u',
+            '/[\w\p{L}&`\''.$SmartQLeft.$SmartQRight.'"“\.@:\/\{\(\[<>_]+-? */u',
             $Title,
             $Matches,
             PREG_OFFSET_CAPTURE
@@ -599,7 +649,7 @@ class StdLib
                 ? mb_strtolower($MatchString, 'UTF-8')
 
                 # else: brackets and other wrappers
-                : (preg_match('/[\'"_{(\[‘“]/u', mb_substr(
+                : (preg_match('/[\'"_{(\['.$SmartQLeft.'“]/u', mb_substr(
                     $Title,
                     max(0, $MatchOffset - 1),
                     3,
@@ -949,7 +999,7 @@ class StdLib
      * Multibyte-aware (if supported in PHP) version of substr().
      * (Consult PHP documentation for arguments and return value.)
      */
-    public static function substr()
+    public static function substr(): string
     {
         return self::callMbStringFuncIfAvailable(__FUNCTION__, func_get_args(), 3);
     }
@@ -957,6 +1007,7 @@ class StdLib
     /**
      * Multibyte-aware (if supported in PHP) version of strpos().
      * (Consult PHP documentation for arguments and return value.)
+     * @return int|false
      */
     public static function strpos()
     {
@@ -966,6 +1017,7 @@ class StdLib
     /**
      * Multibyte-aware (if supported in PHP) version of strrpos().
      * (Consult PHP documentation for arguments and return value.)
+     * @return int|false
      */
     public static function strrpos()
     {
@@ -976,7 +1028,7 @@ class StdLib
      * Multibyte-aware (if supported in PHP) version of strlen().
      * (Consult PHP documentation for arguments and return value.)
      */
-    public static function strlen()
+    public static function strlen(): int
     {
         return self::callMbStringFuncIfAvailable(__FUNCTION__, func_get_args(), 1);
     }
@@ -1001,7 +1053,7 @@ class StdLib
      * @return int 0 if values are equal, -1 if A is less than B, or 1 if B is
      *       greater than A.
      */
-    public static function sortCompare($A, $B)
+    public static function sortCompare($A, $B): int
     {
         return $A <=> $B;
     }
@@ -1045,7 +1097,7 @@ class StdLib
 
             # iterate over our database until we find the desired zip
             # or run out of database
-            while (($Line = fgetcsv($FHandle, 0, "\t")) !== false) {
+            while (($Line = fgetcsv($FHandle, 0, "\t", "\"", "\\")) !== false) {
                 if ($Line[0] == $Zip) {
                     $ZipCache[$Zip] = array(
                         "Lat" => $Line[1], "Lng" => $Line[2]
@@ -1184,6 +1236,7 @@ class StdLib
      * The randomized array is returned with new numerical keys.
      * @param array $Values Array to be randomized
      * @param int $Seed Seed value to use in randomization.
+     * @return array Randomized array.
      */
     public static function randomizeArray(array $Values, int $Seed): array
     {
@@ -1374,7 +1427,7 @@ class StdLib
      *       when there may be multiple constants with the same value.  (OPTIONAL)
      * @return string|null Constant name or null if no matching value found.
      */
-    public static function getConstantName($ClassName, $Value, string $Prefix = null)
+    public static function getConstantName($ClassName, $Value, ?string $Prefix = null): ?string
     {
         static $Constants;
 
@@ -1500,7 +1553,7 @@ class StdLib
      * @param string $EmailAddress email address to obfuscate
      * @return string obfuscated email address
      */
-    public static function obfuscateEmailAddress(string $EmailAddress)
+    public static function obfuscateEmailAddress(string $EmailAddress): string
     {
         if (!filter_var($EmailAddress, FILTER_VALIDATE_EMAIL)) {
             throw new Exception("Invalid email address passed to StdLib::obfuscateEmailAddress()");
@@ -1522,7 +1575,7 @@ class StdLib
      * @param string $Url Source URL.
      * @return array List of probable synonyms including the original Url provided.
      */
-    public static function getPossibleSynonymsForUrl(string $Url)
+    public static function getPossibleSynonymsForUrl(string $Url): array
     {
         # parse the url into components
         $UrlParts = parse_url($Url);
@@ -1625,7 +1678,7 @@ class StdLib
     public static function getPhpMemoryLimit(): int
     {
         $Setting = ini_get("memory_limit");
-        if ($Setting === false) {
+        if ($Setting == false) {
             throw new Exception("Unable to retrieve memory_limit PHP setting.");
         }
         return self::convertPhpIniSizeToBytes($Setting);
@@ -1689,20 +1742,25 @@ class StdLib
     }
 
     /**
-     * Retrieve the host name for the given IP address. Returns the IP address if
-     * no host name can be found.  Host names are cached during the current page load.
-     * @param string $IpAddress IP address.  (OPTIONAL, if not supplied then
-     *      $_SERVER["REMOTE_ADDR"] is used)
+     * Retrieve the host name for the given IP address. Returns the IP address
+     * if no host name can be found.  Host names are cached for CACHED_DATA_TTL
+     * time.
+     * @param string|null $IpAddress IP address.  (OPTIONAL, if not supplied
+     *      then $_SERVER["REMOTE_ADDR"] is used)
      * @return string Host name, or IP address if no host name available for IP.
      */
-    public static function getHostName(string $IpAddress = null): string
+    public static function getHostName(?string $IpAddress = null): string
     {
         if ($IpAddress === null) {
             $IpAddress = $_SERVER["REMOTE_ADDR"];
         }
 
-        static $HostNameCache;
-        if (!isset($HostNameCache[$IpAddress])) {
+        $Cache = self::getCache();
+        $CacheKey = __FUNCTION__."-"
+                .str_replace(DataCache::CHARS_NOT_ALLOWED_IN_KEYS, "_", $IpAddress);
+        $HostName = $Cache->get($CacheKey);
+
+        if ($HostName === null) {
             if ($IpAddress == "::1") {
                 $HostName = "localhost";
             } else {
@@ -1716,9 +1774,89 @@ class StdLib
                     $HostName = $IpAddress;
                 }
             }
-            $HostNameCache[$IpAddress] = $HostName;
+            $Cache->set($CacheKey, $HostName, self::CACHED_DATA_TTL);
         }
-        return $HostNameCache[$IpAddress];
+        return $HostName;
+    }
+
+    /**
+     * Get number of CPU cores for current server, if available.
+     * @return int|null Number of cores or NULL if number could not be determined.
+     */
+    public static function getNumberOfCpuCores(): ?int
+    {
+        $OSName = strtoupper(substr(PHP_OS, 0, 3));
+        switch ($OSName) {
+            case "LIN":     # Linux
+                # try using "nproc"
+                $CmdOutput = shell_exec("nproc 2> /dev/null");
+                if (is_string($CmdOutput)) {
+                    $CoreCount = trim($CmdOutput);
+                    if (ctype_digit($CoreCount) && ((int)$CoreCount > 0)) {
+                        return (int)$CoreCount;
+                    }
+                }
+
+                # try parsing count from /proc/cpuinfo
+                if (is_readable("/proc/cpuinfo")) {
+                    $CpuInfo = file_get_contents("/proc/cpuinfo");
+                    if ($CpuInfo !== false) {
+                        preg_match_all('/^processor\s+:\s+\d+/m', $CpuInfo, $Matches);
+                        return count($Matches[0]);
+                    }
+                }
+
+                # report that we could not determine count
+                return null;
+
+            case "DAR":     # MacOS (Darwin)
+                # try using "sysctl"
+                $CmdOutput = shell_exec("sysctl -n hw.ncpu 2> /dev/null");
+                if (is_string($CmdOutput)) {
+                    $CoreCount = trim($CmdOutput);
+                    if (ctype_digit($CoreCount) && ((int)$CoreCount > 0)) {
+                        return (int)$CoreCount;
+                    }
+                }
+
+                # report that we could not determine count
+                return null;
+
+            case "WIN":     # Windows
+                # try using environment variable
+                $CoreCount = getenv("NUMBER_OF_PROCESSORS");
+                if (ctype_digit($CoreCount) && ((int)$CoreCount > 0)) {
+                    return (int)$CoreCount;
+                }
+
+                # try using "wmic"
+                $CpuInfo = shell_exec("wmic cpu get NumberOfCores 2>NUL");
+                if ($CpuInfo) {
+                    # first line is a header and rest should contain core counts
+                    $Lines = array_filter(array_map("trim", explode("\n", $CpuInfo)));
+
+                    # sum core counts
+                    $LinesWithCounts = array_values(array_filter(
+                        $Lines,
+                        function ($Line) {
+                            return ctype_digit($Line);
+                        }
+                    ));
+                    if (count($LinesWithCounts)) {
+                        $CoreCount = 0;
+                        foreach ($LinesWithCounts as $Line) {
+                            $CoreCount += (int)$Line;
+                        }
+                    }
+                    return ($CoreCount > 0) ? (int)$CoreCount : null;
+                }
+
+                # report that we could not determine count
+                return null;
+
+            default:
+                return null;
+        }
     }
 
     /**
@@ -1757,6 +1895,162 @@ class StdLib
         } else {
             return @unlink($DirName);
         }
+    }
+
+
+    /**
+     * Prune a cache directory to a specified maximum number of files
+     * and maximum size, also removing files older than a specified
+     * maximum age.
+     * @param string $Path Path to cache directory.
+     * @param int $MaxAge Maximum file age in seconds or zero for no maximum age.
+     * @param int $MaxEntries Maximum number of files to retain in the cache.
+     * @param int $MaxSize Maximum size of the cache in MB.
+     * @return int Number of files deleted.
+     * @throws InvalidArgumentException if $Path is not a directory or cannot
+     *     be written.
+     * @throws InvalidArgumentException if $MaxAage is negative.
+     * @throws InvalidArgumentException if $MaxEntries is negative.
+     * @throws InvalidArgumentException if $MaxSize is negative.
+     * @throws Exception when files in the cache cannot be removed.
+     */
+    public static function pruneFileCache(
+        string $Path,
+        int $MaxAge,
+        int $MaxEntries,
+        int $MaxSize
+    ) : int {
+
+        if (!is_dir($Path)) {
+            throw new InvalidArgumentException(
+                $Path." is not a directory."
+            );
+        }
+
+        if (!is_writable($Path)) {
+            throw new InvalidArgumentException(
+                $Path." is not writeable."
+            );
+        }
+
+        if ($MaxAge < 0) {
+            throw new InvalidArgumentException(
+                "Maximum age cannot be negative."
+            );
+        }
+
+        if ($MaxEntries < 0) {
+            throw new InvalidArgumentException(
+                "Maximum number of entries cannot be negative."
+            );
+        }
+
+        if ($MaxSize < 0) {
+            throw new InvalidArgumentException(
+                "Maximum size cannot be negative."
+            );
+        }
+
+
+        $NumFilesPruned = 0;
+
+        $DirEntries = scandir($Path, SCANDIR_SORT_NONE);
+        if ($DirEntries === false) {
+            throw new Exception("scandir() call failed.");
+        }
+
+        $Now = time();
+        $TotalSize = 0;
+        $FileSizes = [];
+        $FileAges = [];
+
+        # iterate over directory entries
+        foreach ($DirEntries as $Entry) {
+            # skip dot files
+            if ($Entry[0] == ".") {
+                continue;
+            }
+
+            # skip non-regular files
+            $FullPath = $Path."/".$Entry;
+            if (!is_file($FullPath)) {
+                continue;
+            }
+
+            $FileAge = $Now - filemtime($FullPath);
+            # if this file is too old, nuke it
+            if ($MaxAge > 0 && $FileAge > $MaxAge) {
+                $Result = unlink($FullPath);
+                if ($Result === false) {
+                    throw new Exception(
+                        "Failed to delete file ".$FullPath
+                    );
+                }
+                $NumFilesPruned++;
+                continue;
+            }
+
+            # otherwise, note its size and age
+            $FileSize = filesize($FullPath);
+            $TotalSize += $FileSize;
+            $FileAges[$FullPath] = $FileAge;
+            $FileSizes[$FullPath] = $FileSize;
+        }
+
+        # sort files from oldest to newest
+        arsort($FileAges, SORT_NUMERIC);
+
+        # if we have too many items in cache, delete some of the oldest ones
+        if (count($FileAges) > $MaxEntries) {
+            $NumToDelete = count($FileAges) - $MaxEntries;
+            $FilesToDelete = array_slice(array_keys($FileAges), 0, $NumToDelete);
+            foreach ($FilesToDelete as $File) {
+                $TotalSize -= $FileSizes[$File];
+                unlink($File);
+                $NumFilesPruned++;
+            }
+
+            $FileAges = array_slice($FileAges, $NumToDelete, null, true);
+        }
+
+        # check if the cache is too large
+
+        if ($TotalSize < $MaxSize) {
+            # if not, nothing to do
+            return $NumFilesPruned;
+        }
+
+        # if so, prune the oldest items
+        foreach (array_keys($FileAges) as $File) {
+            unlink($File);
+            $NumFilesPruned++;
+            $TotalSize -= $FileSizes[$File];
+            if ($TotalSize < $MaxSize) {
+                break;
+            }
+        }
+
+        return $NumFilesPruned;
+    }
+
+    /**
+     * Get current amount of free memory.  The value returned is a "best
+     * guess" based on reported memory usage.
+     * @return int Number of bytes.
+     */
+    public static function getFreeMemory(): int
+    {
+        return self::getPhpMemoryLimit() - memory_get_usage();
+    }
+
+    /**
+     * Get current percentage of free memory.  The value returned is based
+     * on a "best guess" from reported memory usage.
+     * @return float Estimated percentage free.
+     */
+    public static function getPercentFreeMemory(): float
+    {
+        return (self::getFreeMemory() / self::getPhpMemoryLimit()) * 100;
     }
 
     /** Format to feed to date() to get SQL-compatible date/time string. */
@@ -1842,11 +2136,25 @@ class StdLib
     );
 
     /**
+     * Get a DataCache for StdLib. It is not user-specific.
+     * @return DataCache Cache
+     */
+    private static function getCache(): DataCache
+    {
+        static $Cache = null;
+        if ($Cache === null) {
+            $Cache = new DataCache("ScoutLib-StdLib-");
+        }
+        return $Cache;
+    }
+
+    /**
      * Call PHP multibyte string function if available, otherwise call plain
      * version of function.
      * @param string $Func Name of plain function.
      * @param array $Args Argument list to pass to function.
      * @param int $NumPlainArgs Number of arguments to plain version of function.
+     * @return mixed
      */
     private static function callMbStringFuncIfAvailable(
         string $Func,
@@ -1936,7 +2244,7 @@ class StdLib
                     throw new Exception("Unexpected max RGB value.");
             }
             $H *= 60;
-            if ($H < 0) {   // @phpstan-ignore-line
+            if ($H < 0) {
                 $H += 360;
             }
         }

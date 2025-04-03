@@ -3,13 +3,31 @@
 #   FILE:  Preferences.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\UserEditingUI;
+namespace Metavus;
+
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ReturnTo)) {
+    throw new Exception("H_ReturnTo not defined.");
+}
+if (!isset($H_UserEditingUI)) {
+    throw new Exception("H_UserEditingUI not defined.");
+}
 
 $Heading = "User Preferences";
+
+$SaveButton = new HtmlButton("Save");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setLink($H_ReturnTo);
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle($Heading);
 ?>
 
@@ -22,7 +40,7 @@ PageTitle($Heading);
 
   <input type="hidden" name="F_ReturnTo" value="<?= $H_ReturnTo; ?>" />
   <?PHP if ($H_UserEditingUI->isFormVisible()) { ?>
-    <button class="btn btn-primary" type="submit" name="Submit" value="Save">Save</button>
-    <a class="btn btn-primary" href="<?= $H_ReturnTo; ?>">Cancel</a>
+        <?= $SaveButton->getHtml(); ?>
+        <?= $CancelButton->getHtml(); ?>
   <?PHP } ?>
 </form>

@@ -4,13 +4,12 @@
 #   FILE:  mvus (Metavus command line utility)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ReflectionClass;
 use ScoutLib\ApplicationFramework;
@@ -29,8 +28,8 @@ class CommandLineUtility
     # ---- CONFIGURATION -----------------------------------------------------
 
     const BOOTSTRAP_FILE = "objects/Bootloader.php";
-    const CLU_VERSION = "2.0.18";
-    const REQUIRED_SOFTWARE_VERSION = "1.0.0";
+    const CLU_VERSION = "2.0.24";
+    const REQUIRED_SOFTWARE_VERSION = "1.2.0";
 
     private $TablesToExcludeFromSparseDatabaseDump = [
         "AF_CachedPageCallbacks",
@@ -75,9 +74,9 @@ class CommandLineUtility
         "cache" => [
             "SubCommands" => [
                 "clear" => [
-                    "Description" => "clear page/object/template cache",
-                    "Usage" => "(all|template|object|page)",
-                    "Options" => "ATOP",
+                    "Description" => "clear page/object/template/image cache",
+                    "Usage" => "(all|template|object|page|scaled)",
+                    "Options" => "ATOPS",
                     "MinArgs" => 1,
                     "Function" => "clearCaches",
                     ],
@@ -188,6 +187,12 @@ class CommandLineUtility
                     "Description" => "list available user interfaces",
                     "Function" => "listUserInterfaces",
                     ],
+                "logins" => [
+                    "Description" => "list user logins",
+                    "Function" => "listUserLogins",
+                    "Usage" => "(PrivilegeConstant|PrivilegeId|all)",
+                    "MinArgs" => 1,
+                    ],
                 "plugins" => [
                     "Description" => "list available plugins",
                     "Function" => "listPlugins",
@@ -281,6 +286,13 @@ class CommandLineUtility
             ],
         "task" => [
             "SubCommands" => [
+                "count" => [
+                    "Description" => "count queued/running/orphaned tasks",
+                    "Usage" => "(queued|running|orphaned|all)",
+                    "Options" => "AOQR",
+                    "MinArgs" => 1,
+                    "Function" => "countTasks",
+                    ],
                 "delete" => [
                     "Description" => "remove task from queue",
                     "Usage" => "TaskID",
@@ -302,7 +314,7 @@ class CommandLineUtility
                     ],
                 "run" => [
                     "Description" => "run task",
-                    "Usage" => "TaskId",
+                    "Usage" => "(TaskId|next|all)",
                     "MinArgs" => 1,
                     "Function" => "runTask",
                     ],
@@ -327,6 +339,12 @@ class CommandLineUtility
                     "Usage" => "Email Password [UserName]",
                     "MinArgs" => 2,
                     "Function" => "addUser",
+                    ],
+                "password" => [
+                    "Description" => "set user password",
+                    "Usage" => "UserName Password",
+                    "MinArgs" => 2,
+                    "Function" => "setUserPassword",
                     ],
                 ],
             ],
@@ -406,7 +424,7 @@ class CommandLineUtility
      * Check to make sure operating environment is viable, and exit with an error
      * message if it is not.
      */
-    public function checkEnvironment()
+    public function checkEnvironment(): void
     {
         # check to make sure we are running from the command line
         if (php_sapi_name() != "cli") {
@@ -510,7 +528,7 @@ class CommandLineUtility
     /**
      * Set up operating environment (e.g. initialize application framework).
      */
-    public function setUpOperatingEnvironment()
+    public function setUpOperatingEnvironment(): void
     {
         # skip operating environment setup if specified for command
         $CmdInfo = $this->CommandList[$this->Command];
@@ -541,7 +559,7 @@ class CommandLineUtility
     /**
      * Print overall usage information (AKA help).
      */
-    public function printHelp()
+    public function printHelp(): void
     {
         print "Metavus Command Line Utility ".self::CLU_VERSION."\n";
         print "Usage: mvus command [arguments]\n";
@@ -579,7 +597,7 @@ class CommandLineUtility
     /**
      * Print usage information for specific command.
      */
-    public function printUsage()
+    public function printUsage(): void
     {
         $CmdInfo = $this->CommandList[$this->Command];
         if (isset($CmdInfo["UsageFunction"])) {
@@ -629,7 +647,7 @@ class CommandLineUtility
      * Run specified command.
      * @param array $Args Arguments for command.
      */
-    public function runCommand(array $Args)
+    public function runCommand(array $Args): void
     {
         $CmdInfo = $this->CommandList[$this->Command];
         if (isset($CmdInfo["Function"])) {
@@ -668,7 +686,7 @@ class CommandLineUtility
      * Clear specified system cache(s).
      * @param array $Args Additional command line arguments.
      */
-    private function clearCaches(array $Args)
+    private function clearCaches(array $Args): void
     {
         $ArgLetter = strtoupper($Args[0][0]);
         $AF = ApplicationFramework::getInstance();
@@ -681,23 +699,33 @@ class CommandLineUtility
                 $PluginMgr->clearCaches();
                 print "Object location cache cleared.\n";
                 $AF->clearPageCache();
-                print "Page cache cleared.";
+                print "Page cache cleared.\n";
                 break;
 
             case "O":
                 $AF->clearObjectLocationCache();
                 $PluginMgr->clearCaches();
-                print "Object location cache cleared.";
+                print "Object location cache cleared.\n";
                 break;
 
             case "P":
                 $AF->clearPageCache();
-                print "Page cache cleared.";
+                print "Page cache cleared.\n";
+                break;
+
+            case "S":
+                $AF->queueUniqueTask(
+                    ["Metavus\\ImageFactory", "deleteAllScaledImagesAsTask"],
+                    [],
+                    ApplicationFramework::PRIORITY_HIGH,
+                    "Delete all scaled versions of images and clear page cache."
+                );
+                print "Task queued to delete all scaled images and clear page cache.\n";
                 break;
 
             case "T":
                 $AF->clearTemplateLocationCache();
-                print "Template location cache cleared.";
+                print "Template location cache cleared.\n";
                 break;
         }
     }
@@ -706,7 +734,7 @@ class CommandLineUtility
      * Get/set system configuration value.
      * @param array $Args Additional command line arguments.
      */
-    private function configValue(array $Args)
+    private function configValue(array $Args): void
     {
         $ConfigArg = $Args[0];
 
@@ -791,7 +819,7 @@ class CommandLineUtility
      * Report on usage in software of specified file(s).
      * @param array $Args Additional command line arguments.
      */
-    private function reportOnFileUsage(array $Args)
+    private function reportOnFileUsage(array $Args): void
     {
         foreach ($Args as $FileNameWithPath) {
             $FileName = basename($FileNameWithPath);
@@ -832,7 +860,7 @@ class CommandLineUtility
      * used to replace the 'X-DATE-X' tokens in deprecated lines with an
      * actual date (currently 1 year from the release date).
      */
-    private function checkDeprecation()
+    private function checkDeprecation(): void
     {
         $Version = file_get_contents("VERSION");
         if ($Version === false) {
@@ -884,7 +912,7 @@ class CommandLineUtility
      * Export definition for specified schema to XML file.
      * @param array $Args Additional command line arguments.
      */
-    private function exportSchemaToXmlFile(array $Args)
+    private function exportSchemaToXmlFile(array $Args): void
     {
         $Schema = $this->getSchema($Args[0]);
 
@@ -934,7 +962,7 @@ class CommandLineUtility
      * Search through source code using grep.
      * @param array $Args Additional command line arguments.
      */
-    private function grepSource(array $Args)
+    private function grepSource(array $Args): void
     {
         $Command = $this->buildSourceGrepCommand($Args);
         system($Command);
@@ -944,7 +972,7 @@ class CommandLineUtility
      * Print login arguments for MySQL command line programs.
      * @param array $Args Additional command line arguments.
      */
-    private function printMysqlArgs(array $Args)
+    private function printMysqlArgs(array $Args): void
     {
         print $this->getMysqlLoginArgs()."\n";
     }
@@ -956,7 +984,7 @@ class CommandLineUtility
      * line.  (It must be the first option, placed right after the command.)
      * @param array $Args Additional command line arguments.
      */
-    private function writeMysqlLoginInfoToConfigFile(array $Args)
+    private function writeMysqlLoginInfoToConfigFile(array $Args): void
     {
         $FileName = $Args[0];
 
@@ -995,7 +1023,7 @@ class CommandLineUtility
      * Check database integrity.
      * @param array $Args Additional command line arguments.
      */
-    private function checkDatabase(array $Args)
+    private function checkDatabase(array $Args): void
     {
         $DbAuth = $this->getAuthArgsForMysqlCommands();
         $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
@@ -1009,7 +1037,7 @@ class CommandLineUtility
      * @param array $Args Additional command line arguments.
      * @param string $MessagePrefix Prefix to dump message.  (OPTIONAL)
      */
-    private function dumpDatabase(array $Args, string $MessagePrefix = "Dumping")
+    private function dumpDatabase(array $Args, string $MessagePrefix = "Dumping"): void
     {
         $FileName = $Args[0];
         $Sparse = isset($Args[1])
@@ -1109,7 +1137,7 @@ class CommandLineUtility
      * Load resource records from specified file.
      * @param array $Args Additional command line arguments.
      */
-    private function loadResourcesFromFile(array $Args)
+    private function loadResourcesFromFile(array $Args): void
     {
         $FileName = $Args[0];
         if (!is_readable($FileName)) {
@@ -1172,7 +1200,7 @@ class CommandLineUtility
      * Reload database from specified file.
      * @param array $Args Additional command line arguments.
      */
-    private function reloadDatabase(array $Args)
+    private function reloadDatabase(array $Args): void
     {
         $FileName = $Args[0];
 
@@ -1241,7 +1269,7 @@ class CommandLineUtility
      * Start MySQL command line client.
      * @param array $Args Additional command line arguments.
      */
-    private function runMysqlShell(array $Args)
+    private function runMysqlShell(array $Args): void
     {
         $DbAuth = $this->getAuthArgsForMysqlCommands();
         $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
@@ -1256,20 +1284,20 @@ class CommandLineUtility
     /**
      * Print user interface for specific user or default.
      */
-    private function getUserInterface(array $Args)
+    private function getUserInterface(array $Args): void
     {
         $UserArg = $Args[0];
         switch (strtoupper($UserArg)) {
             case "DEFAULT":
                 $SysConfig = SystemConfiguration::getInstance();
                 $CurrentInterface = $SysConfig->getString("DefaultActiveUI");
-                print "Current default interface is \"".$CurrentInterface."\".";
+                print "Current default interface is \"".$CurrentInterface."\".\n";
                 break;
 
             default:
                 $User = $this->normalizeUserArgument($UserArg);
                 print "Current user interface for ".$User->Name()
-                        ." is \"".$User->Get("ActiveUI")."\".";
+                        ." is \"".$User->Get("ActiveUI")."\".\n";
                 break;
         }
     }
@@ -1277,7 +1305,7 @@ class CommandLineUtility
     /**
      * Set user interface for specific user, all users, or default.
      */
-    private function setUserInterface(array $Args)
+    private function setUserInterface(array $Args): void
     {
         $UserArg = $Args[0];
         $InterfaceArg = $Args[1];
@@ -1293,20 +1321,20 @@ class CommandLineUtility
                     $User->Set("ActiveUI", $NewInterface);
                 }
                 print "Active user interface for all ".number_format(count($UserIds))
-                        ." users set to \"".$NewInterface."\".";
+                        ." users set to \"".$NewInterface."\".\n";
                 break;
 
             case "DEFAULT":
                 $SysConfig = SystemConfiguration::getInstance();
                 $SysConfig->setString("DefaultActiveUI", $NewInterface);
-                print "Default user interface set to \"".$NewInterface."\".";
+                print "Default user interface set to \"".$NewInterface."\".\n";
                 break;
 
             default:
                 $User = $this->normalizeUserArgument($UserArg);
                 $User->Set("ActiveUI", $NewInterface);
                 print "User interface for ".$User->Name()
-                        ." set to \"".$NewInterface."\".";
+                        ." set to \"".$NewInterface."\".\n";
                 break;
         }
     }
@@ -1315,7 +1343,7 @@ class CommandLineUtility
      * List available configuration settings.
      * @param array $Args Additional command line arguments.
      */
-    private function listConfigSettings(array $Args)
+    private function listConfigSettings(array $Args): void
     {
         $Settings = SystemConfiguration::getInstance()->getFields();
         print "Available system configuration settings:";
@@ -1329,7 +1357,7 @@ class CommandLineUtility
      * List metadata fields.
      * @param array $Args Additional command line arguments.
      */
-    private function listMetadataFields(array $Args)
+    private function listMetadataFields(array $Args): void
     {
         $AllSchemas = MetadataSchema::getAllSchemas();
         uasort($AllSchemas, function ($A, $B) {
@@ -1396,7 +1424,7 @@ class CommandLineUtility
      * List all available user interfaces.
      * @param array $Args Additional command line arguments.
      */
-    private function listUserInterfaces(array $Args)
+    private function listUserInterfaces(array $Args): void
     {
         $this->printUserInterfaceList();
     }
@@ -1405,7 +1433,7 @@ class CommandLineUtility
      * List all available privileges.
      * @param array $Args Additional command line arguments.
      */
-    private function listAllPrivileges(array $Args)
+    private function listAllPrivileges(array $Args): void
     {
         print "All available privileges:\n";
         foreach ($this->getAvailablePrivileges() as $PrivId => $PrivName) {
@@ -1417,7 +1445,7 @@ class CommandLineUtility
      * List metadata schemas.
      * @param array $Args Additional command line arguments.
      */
-    private function listMetadataSchemas(array $Args)
+    private function listMetadataSchemas(array $Args): void
     {
         $Schemas = MetadataSchema::GetAllSchemas();
         usort($Schemas, function ($A, $B) {
@@ -1433,7 +1461,7 @@ class CommandLineUtility
      * Turn system maintenance mode on or off.
      * @param array $Args Additional command line arguments.
      */
-    private function toggleMaintenanceMode(array $Args)
+    private function toggleMaintenanceMode(array $Args): void
     {
         $FlagFile = ".maintenance";
 
@@ -1462,7 +1490,7 @@ class CommandLineUtility
      * Run command supplied by plugin.
      * @param array $Args Additional command line arguments.
      */
-    private function runPluginCommand(array $Args)
+    private function runPluginCommand(array $Args): void
     {
         $Plugin = $this->getPlugin($Args[0]);
         $PluginName = $Plugin->getBaseName();
@@ -1498,7 +1526,7 @@ class CommandLineUtility
      * Run any needed system or database upgrades, via the Developer plugin.
      * @param array $Args Additional command line arguments.
      */
-    private function runUpgrades(array $Args)
+    private function runUpgrades(array $Args): void
     {
         $PluginMgr = PluginManager::getInstance();
         if (!$PluginMgr->pluginReady("Developer")) {
@@ -1506,6 +1534,7 @@ class CommandLineUtility
             exit(1);
         }
         $DPlugin = $PluginMgr->getPlugin("Developer");
+        $DPlugin = \Metavus\Plugins\Developer::getInstance();
         $UpgradeMethod = [$DPlugin, "commandUpgrade"];
         if (!is_callable($UpgradeMethod)) {
             print "Developer::commandUpgrade() method not found in Developer plugin.\n";
@@ -1518,7 +1547,7 @@ class CommandLineUtility
      * Print current plugin configuration values.
      * @param array $Args Additional command line arguments.
      */
-    private function printPluginConfig(array $Args)
+    private function printPluginConfig(array $Args): void
     {
         $Plugin = $this->getPlugin($Args[0]);
         $Attribs = $Plugin->getAttributes();
@@ -1569,7 +1598,7 @@ class CommandLineUtility
                 case FormUI::FTYPE_METADATAFIELD:
                     $FieldId = $Plugin->configSetting($SettingName);
                     if (is_numeric($FieldId)) {
-                        $Field = new MetadataField((int)$FieldId);
+                        $Field = MetadataField::getField((int)$FieldId);
                         $SettingValue = $Field->name()." ("
                                 .MetadataField::$FieldTypeHumanEnums[$Field->type()].")";
                     } else {
@@ -1602,7 +1631,7 @@ class CommandLineUtility
      * Disable specified plugin.
      * @param array $Args Additional command line arguments.
      */
-    private function disablePlugin(array $Args)
+    private function disablePlugin(array $Args): void
     {
         $Plugin = $this->getPlugin($Args[0]);
         $Plugin->isEnabled(false);
@@ -1617,7 +1646,7 @@ class CommandLineUtility
      * Enable specified plugin.
      * @param array $Args Additional command line arguments.
      */
-    private function enablePlugin(array $Args)
+    private function enablePlugin(array $Args): void
     {
         $Plugin = $this->getPlugin($Args[0]);
         $Plugin->isEnabled(true);
@@ -1629,10 +1658,67 @@ class CommandLineUtility
     }
 
     /**
+     * List user logins.
+     * @param array $Args Additional command line arguments.
+     */
+    private function listUserLogins(array $Args): void
+    {
+        # make sure metrics recorder plugin is available
+        if (!( PluginManager::getInstance())->pluginReady("MetricsRecorder")) {
+            print "Cannot retrieve login data because"
+                    ." MetricsRecorder plugin is not available.\n";
+            exit(1);
+        }
+
+        # parse privilege parameter
+        $PrivilegeIds = array_keys($this->normalizePrivilegeArguments($Args));
+
+        # retrieve login data
+        $MRPlugin = \Metavus\Plugins\MetricsRecorder::getInstance();
+        $EventData = $MRPlugin->getEventData(
+            "MetricsRecorder",
+            \Metavus\Plugins\MetricsRecorder::ET_USERLOGIN,
+        );
+
+        # sort logins in reverse date order
+        usort($EventData, function ($A, $B) {
+            return strtotime($B["EventDate"]) <=> strtotime($A["EventDate"]);
+        });
+
+        $UFactory = new \ScoutLib\UserFactory();
+        foreach ($EventData as $Event) {
+            # load user if available
+            $UserId = $Event["UserId"];
+            if (!isset($Users[$UserId])) {
+                $Users[$UserId] = $UFactory->userExists($UserId ?? -1)
+                        ? new User($UserId)
+                        : null;
+            }
+            $User = $Users[$UserId];
+
+            # if there were privileges specified
+            if (count($PrivilegeIds)) {
+                # skip unknown users and users without the specified privileges
+                if (($User === null) || !$User->hasPriv($PrivilegeIds)) {
+                    continue;
+                }
+            }
+
+            $UserName = ($User ? $User->name() : "[UNKNOWN]")." (".$UserId.")";
+            printf(
+                "%-21s %-18s %s\n",
+                $Event["EventDate"],
+                $UserName,
+                $Event["IPAddress"]
+            );
+        }
+    }
+
+    /**
      * List all plugins.
      * @param array $Args Additional command line arguments.
      */
-    private function listPlugins(array $Args)
+    private function listPlugins(array $Args): void
     {
         $LineFormat = "%-23s %-9s\n";
 
@@ -1652,16 +1738,22 @@ class CommandLineUtility
      * Add user privilege.
      * @param array $Args Additional command line arguments.
      */
-    private function addPrivilegeToUser(array $Args)
+    private function addPrivilegeToUser(array $Args): void
     {
         $UserArg = array_shift($Args);
         $User = $this->normalizeUserArgument($UserArg);
 
         $Privileges = $this->normalizePrivilegeArguments($Args);
+        if (!count($Privileges)) {
+            $Privileges = $this->getAvailablePrivileges(true);
+        }
 
-        foreach ($Privileges as $Privilege) {
-            $User->GrantPriv($Privilege->Id());
-            print "Privilege ".$Privilege->Name()
+        foreach ($Privileges as $PrivId => $PrivName) {
+            if (strpos($PrivName, " (Deprecated)") !== false) {
+                continue;
+            }
+            $User->grantPriv($PrivId);
+            print "Privilege ".$PrivName
                     ." granted to user ".$User->Name().".\n";
         }
     }
@@ -1670,7 +1762,7 @@ class CommandLineUtility
      * List user privileges.
      * @param array $Args Additional command line arguments.
      */
-    private function listPrivilegesForUser(array $Args)
+    private function listPrivilegesForUser(array $Args): void
     {
         $UserArg = $Args[0];
         $User = $this->normalizeUserArgument($UserArg);
@@ -1687,17 +1779,49 @@ class CommandLineUtility
      * Remove user privilege.
      * @param array $Args Additional command line arguments.
      */
-    private function removePrivilegeFromUser(array $Args)
+    private function removePrivilegeFromUser(array $Args): void
     {
         $UserArg = array_shift($Args);
         $User = $this->normalizeUserArgument($UserArg);
 
         $Privileges = $this->normalizePrivilegeArguments($Args);
+        if (!count($Privileges)) {
+            $Privileges = $this->getAvailablePrivileges(true);
+        }
 
-        foreach ($Privileges as $Privilege) {
-            $User->RevokePriv($Privilege->Id());
-            print "Privilege ".$Privilege->Name()
+        foreach ($Privileges as $PrivId => $PrivName) {
+            $User->revokePriv($PrivId);
+            print "Privilege ".$PrivName
                     ." revoked from user ".$User->Name().".\n";
+        }
+    }
+
+    /**
+     * Print current count of queued, running, or orphaned tasks.
+     * @param array $Args Additional command line arguments.
+     */
+    private function countTasks(array $Args): void
+    {
+        $ArgLetter = strtoupper($Args[0][0]);
+        $AF = ApplicationFramework::getInstance();
+        switch ($ArgLetter) {
+            case "Q":
+                print count($AF->getQueuedTaskList());
+                break;
+
+            case "R":
+                print count($AF->getRunningTaskList());
+                break;
+
+            case "O":
+                print count($AF->getOrphanedTaskList());
+                break;
+
+            case "A":
+                print count($AF->getRunningTaskList())
+                        + count($AF->getOrphanedTaskList())
+                        + count($AF->getQueuedTaskList());
+                break;
         }
     }
 
@@ -1705,7 +1829,7 @@ class CommandLineUtility
      * Delete specified task.
      * @param array $Args Additional command line arguments.
      */
-    private function deleteTask(array $Args)
+    private function deleteTask(array $Args): void
     {
         $TaskId = $Args[0];
         $TasksRemoved = (ApplicationFramework::getInstance())->deleteTask($TaskId);
@@ -1720,7 +1844,7 @@ class CommandLineUtility
      * List queued, running, or orphaned tasks.
      * @param array $Args Additional command line arguments.
      */
-    private function listTasks(array $Args)
+    private function listTasks(array $Args): void
     {
         $ArgLetter = strtoupper($Args[0][0]);
         $AF = ApplicationFramework::getInstance();
@@ -1749,7 +1873,7 @@ class CommandLineUtility
      * Requeue specified task.
      * @param array $Args Additional command line arguments.
      */
-    private function requeueTask(array $Args)
+    private function requeueTask(array $Args): void
     {
         $TaskId = strtoupper($Args[0]);
 
@@ -1782,43 +1906,77 @@ class CommandLineUtility
     }
 
     /**
-     * Run specified task.
+     * Run specified task, next task, or all currently-queued tasks.
      * @param array $Args Additional command line arguments.
      */
-    private function runTask(array $Args)
+    private function runTask(array $Args): void
     {
-        $TaskId = $Args[0];
         $AF = ApplicationFramework::getInstance();
-        $Task = $AF->getTask($TaskId);
-        if (!$Task) {
-            print "No task found with ID ".$TaskId.".";
-            exit(1);
-        }
 
-        # check to make sure task appears runnable
-        if (!is_callable($Task["Callback"])) {
-            print "Task with ID ".$TaskId." does not have a runnable callback.";
-            exit(1);
-        }
-
-        # run task
-        if ($Task["Parameters"]) {
-            call_user_func_array($Task["Callback"], $Task["Parameters"]);
+        $TaskArg = strtoupper($Args[0]);
+        if ($TaskArg == "NEXT") {
+            $Tasks = $AF->getQueuedTaskList();
+            $Tasks = array_slice($Tasks, 0, 1, true);
+        } elseif ($TaskArg == "ALL") {
+            $Tasks = $AF->getQueuedTaskList();
+        } elseif (is_numeric($TaskArg)) {
+            $Task = $AF->getTask((int)$TaskArg);
+            if (!$Task) {
+                print "No task found with ID ".$TaskArg.".";
+                exit(1);
+            }
+            $Tasks = [ $TaskArg => $Task ];
         } else {
-            call_user_func($Task["Callback"]);
+            print "Invalid task argument \"".$Args[0]."\".";
+            exit(1);
         }
 
-        # remove task from queue
-        $AF->deleteTask($TaskId);
+        if (!count($Tasks)) {
+            print "No tasks found to run.";
+            exit(1);
+        }
 
-        print "Task with ID ".$TaskId." has been run.";
+        foreach ($Tasks as $TaskId => $Task) {
+            # check to make sure task appears runnable
+            if (!is_callable($Task["Callback"])) {
+                print "Task with ID ".$TaskId." does not have a runnable callback.\n";
+                continue;
+            }
+
+            # run task
+            if ($Task["Parameters"]) {
+                call_user_func_array($Task["Callback"], $Task["Parameters"]);
+            } else {
+                call_user_func($Task["Callback"]);
+            }
+
+            # remove task from queue
+            $AF->deleteTask($TaskId);
+
+            # assemble nicely-formatted task synopsis string
+            $Synopsis = ApplicationFramework::getTaskCallbackSynopsis($Task);
+            $SynopsisShorthand = [
+                'ScoutLib\ApplicationFramework' => "AF",
+            ];
+            $Synopsis = str_replace(
+                array_keys($SynopsisShorthand),
+                $SynopsisShorthand,
+                $Synopsis,
+            );
+            $SynopsisChars = 55;
+            if (strlen($Synopsis) > $SynopsisChars) {
+                $Synopsis = substr($Synopsis, 0, ($SynopsisChars - 3))."...";
+            }
+
+            print "Task ID ".$TaskId." has run.  ".$Synopsis."\n";
+        }
     }
 
     /**
-     * Add/remove/list user privileges.
+     * Add new user account.
      * @param array $Args Additional command line arguments.
      */
-    private function addUser(array $Args)
+    private function addUser(array $Args): void
     {
         $Email = $Args[0];
         $Password = $Args[1];
@@ -1826,11 +1984,11 @@ class CommandLineUtility
         if (isset($Args[2])) {
             $UserName = $Args[2];
         } else {
-            $UserName = UserFactory::GenerateUniqueUsernameFromEmail($Email);
+            $UserName = UserFactory::generateUniqueUsernameFromEmail($Email);
         }
 
         $UFactory = new UserFactory();
-        $NewUser = $UFactory->CreateNewUser(
+        $NewUser = $UFactory->createNewUser(
             $UserName,
             $Password,
             $Password,
@@ -1839,15 +1997,27 @@ class CommandLineUtility
         );
 
         if (is_object($NewUser)) {
-            $NewUser->IsActivated(true);
+            $NewUser->isActivated(true);
             print "User account '".$UserName."' added.";
         } else {
             foreach ($NewUser as $ErrorCode) {
-                print \ScoutLib\User::GetStatusMessageForCode($ErrorCode)."\n";
+                print \ScoutLib\User::getStatusMessageForCode($ErrorCode)."\n";
             }
             $this->printUsage();
             exit(1);
         }
+    }
+
+    /**
+     * Set password for user.
+     * @param array $Args Additional command line arguments.
+     */
+    private function setUserPassword(array $Args): void
+    {
+        $User = $this->normalizeUserArgument($Args[0]);
+        $Password = $Args[1];
+        $User->setPassword($Password);
+        print "Password set for user \"".$User->name()."\".\n";
     }
 
 
@@ -1875,6 +2045,9 @@ class CommandLineUtility
                 "local/objects",
                 "local/plugins",
                 ];
+        $PathsToExclude = [
+                "plugins/\*/lib",
+                ];
         $Extensions = [
                 "php",
                 "html",
@@ -1889,21 +2062,41 @@ class CommandLineUtility
                 "buildrelease",
                 "install/mvus",
                 ];
-        foreach ($Extensions as $Extension) {
-            $ExtOpts[] = "-iname \"*.".$Extension."\"";
-        }
-        foreach ($GrepArgs as $Index => $Arg) {
-            if (strpos($Arg, " ") !== false) {
-                $GrepArgs[$Index] = "'".$Arg."'";
-            }
-        }
+
+        # start arguments for "find" with locations
         foreach ($LocalLocations as $LocalLoc) {
             if (is_dir($LocalLoc)) {
                 $Locations[] = $LocalLoc;
             }
         }
-        $Command = "find ".join(" ", $Locations)
-                ." \( ".join(" -o ", $ExtOpts)." \) -print0 "
+        $FindArgs = join(" ", $Locations);
+
+        # add exclusions to arguments for "find"
+        $Opts = [];
+        foreach ($PathsToExclude as $PathToExclude) {
+            $Opts[] = "-path ".$PathToExclude;
+        }
+        $FindArgs .= " \( ".join(" -o ", $Opts)." \) -prune -o ";
+
+        # add file types to arguments for "find"
+        $Opts = [];
+        foreach ($Extensions as $Extension) {
+            $Opts[] = "-iname \"*.".$Extension."\"";
+        }
+        $FindArgs .= " \( ".join(" -o ", $Opts)." \)";
+
+        # add final options to arguments for "find"
+        $FindArgs .= " -print0";
+
+        # assemble arguments for "grep"
+        foreach ($GrepArgs as $Index => $Arg) {
+            if (strpos($Arg, " ") !== false) {
+                $GrepArgs[$Index] = "'".$Arg."'";
+            }
+        }
+
+        # assemble entire command and return it to caller
+        $Command = "find ".$FindArgs
                 ." | xargs -0 grep ".join(" ", $GrepArgs)
                 ." ".join(" ", $OtherFiles);
         return $Command;
@@ -1971,14 +2164,26 @@ class CommandLineUtility
      * Get list of available privileges, with constant privileges first
      * (sorted by constant name) and then custom privileges (sorted by
      * privilege name).
+     * @param bool $OmitPseudoPrivs If TRUE, omit pseudo-privileges from
+     *      the values returned.
      * @return array Privilege names, with privilege IDs for index.
      */
-    private function getAvailablePrivileges()
+    private function getAvailablePrivileges(bool $OmitPseudoPrivs = false)
     {
         # get all privileges
         $PFactory = new PrivilegeFactory();
-        $AllPrivs = $PFactory->GetPrivileges(true, false);
+        $AllPrivs = $PFactory->getPrivileges(true, false);
         ksort($AllPrivs);
+
+        # filter out pseudo-privileges if requested
+        if ($OmitPseudoPrivs) {
+            foreach ($AllPrivs as $PrivId => $Priv) {
+                if (User::IsPseudoPrivilege($PrivId)
+                        || ($PrivId == PRIV_USERDISABLED)) {
+                    unset($AllPrivs[$PrivId]);
+                }
+            }
+        }
 
         # get all constants that begin with "PRIV_"
         $PrivConstantNames = array_filter(
@@ -2180,7 +2385,7 @@ class CommandLineUtility
      * Load software configuration file.
      * @throws Exception If configuration file not found.
      */
-    private function loadConfigFile()
+    private function loadConfigFile(): void
     {
         if (file_exists("local/config.php")) {
             require_once("local/config.php");
@@ -2196,7 +2401,7 @@ class CommandLineUtility
      * @param string $Arg Command line argument.
      * @return string Normalized value.
      */
-     private function normalizeInterfaceArgument(string $Arg)
+     private function normalizeInterfaceArgument(string $Arg): string
      {
         # look for match in list of canonical interface names
         $AllInterfaces = (ApplicationFramework::getInstance())->getUserInterfaces();
@@ -2231,14 +2436,17 @@ class CommandLineUtility
      }
 
     /**
-     * Normalize command line privilege argument to Privilege object.
-     * @param array $Args Command line argument.
+     * Normalize command line privilege argument to Privilege IDs/names.
+     * @param array $Args Command line arguments.
      * @param bool $ErrorOut If TRUE, will print message and error out if
      *      unable to normalize.  (OPTIONAL, defaults to TRUE)
-     * @return array Normalized values (Privilege objects).
+     * @return array Privilege names with privilege IDs for the index,
+     *      or an empty array if "ALL" was specified.
      */
-    private function normalizePrivilegeArguments(array $Args, bool $ErrorOut = true)
-    {
+    private function normalizePrivilegeArguments(
+        array $Args,
+        bool $ErrorOut = true
+    ): array {
         $Privileges = [];
         $PFactory = new PrivilegeFactory();
         foreach ($Args as $Arg) {
@@ -2247,14 +2455,7 @@ class CommandLineUtility
             $Arg = strtoupper($Arg);
 
             if ($Arg == "ALL") {
-                $AllPrivs = $PFactory->GetPrivileges();
-                foreach ($AllPrivs as $PrivId => $Priv) {
-                    if (!User::IsPseudoPrivilege($PrivId)
-                            && ($PrivId != PRIV_USERDISABLED)) {
-                        $Privileges[$PrivId] = $Priv;
-                    }
-                }
-                continue;
+                return [];
             }
 
             if ((strpos($Arg, "PRIV_") === 0) && defined($Arg)) {
@@ -2270,7 +2471,7 @@ class CommandLineUtility
             }
 
             if (isset($PrivilegeId)) {
-                $Privileges[$PrivilegeId] = new Privilege($PrivilegeId);
+                $Privileges[$PrivilegeId] = (new Privilege($PrivilegeId))->name();
             } elseif ($ErrorOut) {
                 print "Privilege \"".$Arg."\" is unknown.\n";
                 exit(1);
@@ -2318,7 +2519,7 @@ class CommandLineUtility
      * @param string $Prefix Prefix for task count label.
      * @param array $Tasks Task list.
      */
-    private function printTaskList(string $Prefix, array $Tasks)
+    private function printTaskList(string $Prefix, array $Tasks): void
     {
         $QueueSize = count($Tasks);
         print $Prefix." Tasks: ".$QueueSize."\n";
@@ -2326,7 +2527,7 @@ class CommandLineUtility
             printf("%-9s %-40s\n", "ID", "SYNOPSIS");
             foreach ($Tasks as $TaskId => $TaskInfo) {
                 $TaskSynopsis = htmlspecialchars_decode(
-                    ApplicationFramework::GetTaskCallbackSynopsis($TaskInfo)
+                    ApplicationFramework::getTaskCallbackSynopsis($TaskInfo)
                 );
                 printf("%-9d %-40s\n", $TaskId, $TaskSynopsis);
             }
@@ -2336,7 +2537,7 @@ class CommandLineUtility
     /**
      * Print list of available user interfaces.
      */
-    private function printUserInterfaceList()
+    private function printUserInterfaceList(): void
     {
         $InterfaceList = (ApplicationFramework::getInstance())->getUserInterfaces();
         $InterfaceNames = array_keys($InterfaceList);

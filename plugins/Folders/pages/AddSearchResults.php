@@ -3,13 +3,14 @@
 #   FILE:  AddSearchResults.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
@@ -19,7 +20,6 @@ use Metavus\SearchParameterSet;
 use Metavus\SystemConfiguration;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -38,7 +38,7 @@ function getSortInfo(): array
 
     # use specified sort field
     if (!is_null($SortFieldId) && MetadataSchema::fieldExistsInAnySchema($SortFieldId)) {
-        $SortField = new MetadataField($SortFieldId);
+        $SortField = MetadataField::getField($SortFieldId);
     }
 
     # use the sort order specified
@@ -70,13 +70,13 @@ function getSortInfo(): array
 /**
 * Perform a search using the given search groups and sorting info.
 * @param SearchParameterSet $SearchParams Search group parameters for the search engine.
-* @param string $SortFieldName Name of the field to sort by.
+* @param string|null $SortFieldName Name of the field to sort by.
 * @param bool $SortDescending TRUE to sort the results in descending order.
 * @return array Returns an array of search results.
 */
 function performSearch(
     SearchParameterSet $SearchParams,
-    string $SortFieldName = null,
+    ?string $SortFieldName,
     bool $SortDescending
 ): array {
     # retrieve user currently logged in
@@ -125,7 +125,7 @@ if (!Common::apiPageCompletion("P_Folders_ManageFolders")) {
 }
 
 # get the folders plugin
-$FoldersPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$FoldersPlugin = Folders::getInstance();
 
 # set up variables
 $Errors = [];
@@ -178,5 +178,4 @@ if ($ResourceFolder->containsItem($Folder->id())) {
 # This page does not output any HTML
 ApplicationFramework::getInstance()->suppressHTMLOutput();
 
-/** @phpstan-ignore-next-line */
 $FoldersPlugin::processPageResponse($Errors);

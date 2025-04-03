@@ -3,12 +3,12 @@
 #   FILE:  GoogleMaps.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use DirectoryIterator;
 use Exception;
 use InvalidArgumentException;
@@ -17,12 +17,12 @@ use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugin;
 use Metavus\Plugins\GoogleMaps\CallbackManager;
+use Metavus\Plugins\Mailer;
 use Metavus\Record;
 use Metavus\RecordFactory;
 use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -96,18 +96,20 @@ class GoogleMaps extends Plugin
 
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Google Maps";
-        $this->Version = "1.3.5";
-        $this->Description = "This plugin adds the ability to add a Google"
-                ." Maps window to a page or interface.";
+        $this->Version = "1.3.8";
+        $this->Description = "Adds the ability to add a Google Maps"
+                ." window to a Metavus page or interface, pulling"
+                ." map marker data from record metadata.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "Mailer" => "1.3.1"
         ];
 
@@ -122,7 +124,7 @@ class GoogleMaps extends Plugin
      * Set up configuration options.
      * @return NULL on success or a string on failure.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $this->CfgSetup["APIKey"] = [
             "Type" => FormUI::FTYPE_TEXT,
@@ -136,6 +138,35 @@ class GoogleMaps extends Plugin
                 ."https://developers.google.com/maps/documentation/"
                 ."javascript/get-api-key</a>",
             "ValidateFunction" => '\Metavus\Plugins\GoogleMaps::validateConfigSettings',
+        ];
+
+        $this->CfgSetup["Channel"] = [
+            "Type" => "Option",
+            "Label" => "Release Channel",
+            "Help" => "Specify a specific Maps API release channel to use. "
+                ."For details, see "
+                ."<a href='https://developers.google.com/maps/documentation/javascript/versions'>"
+                ."Maps JavaScript API: Versioning</a>.",
+            "Options" => [
+                "" => "Default (selected by Google)",
+                "weekly" => "Weekly",
+                "quarterly" => "Quarterly",
+                "beta" => "Beta",
+                "alpha" => "Alpha",
+            ],
+            "OptionThreshold" => 0, #(display as dropdown, not radio buttons)
+            "Default" => "",
+        ];
+
+        $this->CfgSetup["MapStyles"] = [
+            "Type" => FormUI::FTYPE_PARAGRAPH,
+            "Label" => "Map Style",
+            "Help" => "Custom map styles to use as embedded JSON style declarations. "
+                ."See <a href='https://developers.google.com/maps/documentation/"
+                ."javascript/json-styling-overview'>Maps JavaScript API: Using "
+                ."embedded JSON style declarations</a> for details.",
+            "ValidateFunction" => '\Metavus\Plugins\GoogleMaps::validateConfigSettings',
+            "Default" => "{}",
         ];
 
         $this->CfgSetup["GeocodingAPIKey"] = [
@@ -187,8 +218,7 @@ class GoogleMaps extends Plugin
             "Label" => "Geocode Error Mailer Template",
             "Help" => "Template to use when sending email reports about errors "
                 ."geocoding an address",
-            "Options" => PluginManager::getInstance()
-                ->getPlugin("Mailer")
+            "Options" => Mailer::getInstance()
                 ->getTemplateList(),
         ];
 
@@ -272,7 +302,7 @@ class GoogleMaps extends Plugin
      * @param array $Values All setting values.
      * @return string|null NULL on successful validation, error string otherwise.
      */
-    public static function validateConfigSettings($Name, $Value, $Values)
+    public static function validateConfigSettings($Name, $Value, $Values): ?string
     {
         $APIKeys = [
             "APIKey",
@@ -285,6 +315,14 @@ class GoogleMaps extends Plugin
             return $Name." appears to be invalid.";
         }
 
+        if ($Name == "MapStyles") {
+            $Data = @json_decode($Value);
+            if ($Data === null) {
+                return $Name." must be valid JSON. "
+                    ."Error was: ".json_last_error_msg();
+            }
+        }
+
         return null;
     }
 
@@ -292,9 +330,9 @@ class GoogleMaps extends Plugin
      * Initialize default settings.
      * @return string|null NULL on success, an error string otherwise
      */
-    public function install()
+    public function install(): ?string
     {
-        $this->configSetting(
+        $this->setConfigSetting(
             "GeocodeErrorEmailTemplate",
             $this->getMailerTemplateId()
         );
@@ -306,144 +344,29 @@ class GoogleMaps extends Plugin
             return $Result;
         }
 
-        return $this->createTables($this->SqlTables);
+        return $this->createTables(self::SQL_TABLES);
     }
 
     /**
      * Uninstall the plugin.
      * @return string|null Returns  NULL if successful or an error message otherwise.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         $Result = $this->dropTables(CallbackManager::$SqlTables);
         if ($Result !== null) {
             return $Result;
         }
 
-        $Result = $this->dropTables($this->SqlTables);
+        $Result = $this->dropTables(self::SQL_TABLES);
         if ($Result !== null) {
             return $Result;
         }
         # remove the cache directory
         $CachePath = $this->getCachePath();
         if (file_exists($CachePath) &&
-            !RemoveFromFilesystem($CachePath)) {
+            !StdLib::deleteDirectoryTree($CachePath)) {
             return "Could not delete the cache directory.";
-        }
-
-        return null;
-    }
-
-    /**
-     * Upgrade from a previous version.
-     * @param string $PreviousVersion Previous version number
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        $DB = new Database();
-
-        switch ($PreviousVersion) {
-            case "1.0.1":
-                $DB->query(
-                    "CREATE TABLE GoogleMapsCallbacks ("
-                    ."Id VARCHAR(32) UNIQUE, "
-                    ."Payload BLOB,"
-                    ."LastUsed TIMESTAMP,"
-                    ." INDEX (Id))"
-                );
-                // fall through
-            case "1.0.2":
-                $DB->query(
-                    "CREATE TABLE GoogleMapsGeocodes ("
-                    ."Id VARCHAR(32) UNIQUE, "
-                    ."Lat DOUBLE, "
-                    ."Lng DOUBLE, "
-                    ."LastUpdate TIMESTAMP, "
-                    ."LastUsed TIMESTAMP, "
-                    ."INDEX (Id))"
-                );
-                $this->configSetting("ExpTime", 604800);
-                // fall through
-            case "1.0.3":
-                $this->configSetting("DefaultGridSize", 10);
-                $this->configSetting("DesiredPointCount", 100);
-                $this->configSetting("MaxIterationCount", 10);
-                // fall through
-            case "1.0.4":
-                $DB->query(
-                    "ALTER TABLE GoogleMapsCallbacks "
-                    ."ADD COLUMN Params BLOB"
-                );
-                // fall through
-            case "1.1.0":
-                $this->checkCacheDirectory();
-                // fall through
-            case "1.2.1":
-                // fall through
-            case "1.2.2":
-                $DB->query(
-                    "ALTER TABLE GoogleMapsCallbacks "
-                    ."RENAME TO GoogleMaps_Callbacks"
-                );
-                $DB->query(
-                    "ALTER TABLE GoogleMapsGeocodes "
-                    ."RENAME TO GoogleMaps_Geocodes"
-                );
-                // fall through
-            case "1.2.7":
-                $this->configSetting("ResourcesLastModified", time());
-                // fall through
-            case "1.2.8":
-                $DB->query(
-                    "ALTER TABLE GoogleMaps_Geocodes "
-                    ."ADD COLUMN AddrData MEDIUMBLOB"
-                );
-                $DB->query("DELETE FROM GoogleMaps_Geocodes");
-                // fall through
-            case "1.3.0":
-                $DB->query(
-                    "ALTER TABLE GoogleMaps_Geocodes "
-                    ."ADD COLUMN LastUsed TIMESTAMP"
-                );
-
-                $DB->query(
-                    "DELETE FROM GoogleMaps_Geocodes WHERE Lat IS NULL"
-                );
-
-                $DB->query(
-                    "UPDATE GoogleMaps_Geocodes SET LastUsed=NOW()"
-                );
-
-                $this->configSetting("GeocodeLastSuccessful", time());
-                $this->createMissingTables($this->SqlTables);
-
-                $this->configSetting(
-                    "GeocodeErrorEmailTemplate",
-                    $this->getMailerTemplateId()
-                );
-                // fall through
-
-            case "1.3.1":
-                $this->createMissingTables($this->SqlTables);
-                $this->createMissingTables(
-                    CallbackManager::$SqlTables
-                );
-                // fall through
-
-            case "1.3.2":
-                $this->checkCacheDirectory();
-                // fall through
-
-            case "1.3.3":
-                foreach (["Params", "Payload"] as $Col) {
-                    $DB->query(
-                        "ALTER TABLE GoogleMaps_Callbacks "
-                        ."CHANGE COLUMN ".$Col." ".$Col." BLOB"
-                    );
-                }
-                // fall through
-
-            default:
         }
 
         return null;
@@ -454,7 +377,7 @@ class GoogleMaps extends Plugin
      * @return array Returns an array of the events this plugin provides to the
      *      application framework.
      */
-    public function declareEvents()
+    public function declareEvents(): array
     {
         return [
             "GoogleMaps_EVENT_HTML_TAGS" => ApplicationFramework::EVENTTYPE_DEFAULT,
@@ -473,12 +396,10 @@ class GoogleMaps extends Plugin
      * @return array Returns an array of events to be hooked into the application
      *      framework.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         $Events = [
             "EVENT_HOURLY" => "cleanCaches",
-            "EVENT_RESOURCE_ADD" => "updateResourceTimestamp",
-            "EVENT_RESOURCE_DELETE" => "updateResourceTimestamp",
             "GoogleMaps_EVENT_HTML_TAGS" => "generateHTMLTags",
             "GoogleMaps_EVENT_HTML_TAGS_SIMPLE" => "generateHTMLTagsSimple",
             "GoogleMaps_EVENT_STATIC_MAP"   => "staticMap",
@@ -489,16 +410,9 @@ class GoogleMaps extends Plugin
             "Mailer_EVENT_IS_TEMPLATE_IN_USE" => "claimTemplate",
         ];
 
-        if ($this->configSetting("AutoPopulateEnable")) {
-            $Events["EVENT_RESOURCE_MODIFY"] = [
-                "UpdateResourceTimestamp",
-                "BlankAutoPopulatedFields"
-            ];
+        if ($this->getConfigSetting("AutoPopulateEnable")) {
             $Events["EVENT_PERIODIC"] = "UpdateAutoPopulatedFields";
-        } else {
-            $Events["EVENT_RESOURCE_MODIFY"] = "UpdateResourceTimestamp";
         }
-
         return $Events;
     }
 
@@ -506,16 +420,21 @@ class GoogleMaps extends Plugin
      * Startup initialization for the plugin.
      * @return string|null NULL on success, otherwise an error string.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
-        if ($this->configSetting("AutoPopulateEnable")) {
-            $SrcFieldId = $this->configSetting("DefaultPointField");
-            $SrcField = new MetadataField($SrcFieldId);
+        if ($this->getConfigSetting("AutoPopulateEnable")) {
+            $SrcFieldId = $this->getConfigSetting("DefaultPointField");
+            $SrcField = MetadataField::getField($SrcFieldId);
 
             if ($SrcField->type() == MetadataSchema::MDFTYPE_POINT) {
                 return "Autopopulation cannot be used with a Point field. "
                     ."Please select a different field or disable Autopopulation.";
             }
+
+            Record::registerObserver(
+                Record::EVENT_SET,
+                [$this, "blankAutoPopulatedFields"]
+            );
         }
 
         # explicitly add our include directories because our code is
@@ -530,6 +449,11 @@ class GoogleMaps extends Plugin
 
         $this->CallbackManager = new CallbackManager();
 
+        Record::registerObserver(
+            Record::EVENT_ADD | Record::EVENT_REMOVE | Record::EVENT_SET,
+            [$this, "updateResourceTimestamp"]
+        );
+
         return null;
     }
 
@@ -539,19 +463,19 @@ class GoogleMaps extends Plugin
      * @return int The minimum number of minutes to wait before calling
      *     this method again.
      */
-    public function updateAutoPopulatedFields()
+    public function updateAutoPopulatedFields(): int
     {
-        $SrcFieldId = $this->configSetting("DefaultPointField");
+        $SrcFieldId = $this->getConfigSetting("DefaultPointField");
 
         # if no field configured, come back later
         if ($SrcFieldId == null) {
-            return $this->configSetting("AutoPopulateInterval");
+            return $this->getConfigSetting("AutoPopulateInterval");
         }
 
         # pull out the list of configured fields to autopopulate
         $AutoPopulateFields = [];
         foreach ($this->AutoPopulateData as $Key => $Data) {
-            $TgtField = $this->configSetting("FieldMapping-".$Key);
+            $TgtField = $this->getConfigSetting("FieldMapping-".$Key);
 
             # if this field isn't mapped, check the next one
             if ($TgtField == null) {
@@ -617,38 +541,60 @@ class GoogleMaps extends Plugin
             }
 
             # make sure there's time for another query
-            #   forground queries take ca 60s, so make sure we've got
+            #   foreground queries take ca 60s, so make sure we've got
             #   1.5x that in case of a particularly slow one
             if (ApplicationFramework::getInstance()->getSecondsBeforeTimeout() < 90) {
                 break;
             }
         }
 
-        return $this->configSetting("AutoPopulateInterval");
+        return $this->getConfigSetting("AutoPopulateInterval");
     }
 
-    // phpcs:disable
     /**
      * Generates the HTML tags to make the Google Maps widget.
      *
-     * Takes two parameters, a PointProvider and a DetailProvider.
-     * Both are the PHP callbacks, the former takes a user-provided
-     * array, and is expected to return all of the points with GPS
-     * coordinates. The latter should take an id number (usually a
-     * ResourceId) and a user-provided array and print a fragment of
-     * HTML to display in the info window that pops up over the map
-     * marker for that resource.  Anything that can be a php callback
-     * is fair game.
+     * Takes two parameters, a PointProvider and a DetailProvider.  Both are
+     * the PHP callbacks, the former takes a user-provided array, and is
+     * expected to return all of the points with GPS coordinates. The latter
+     * should take an id number (usually a ResourceId) and a user-provided
+     * array and should print a fragment of HTML to display in the info window
+     * that pops up over the map marker for that resource.  Anything that can
+     * be a php callback is fair game.
      *
-     * If you're using functions, they need to be part of the
-     * environment when the helper pages for the plugin are loaded.
-     * To accomplish this, put them in files called
-     * F-(FUNCTION_NAME).html or F-(FUNCTION_NAME).php in your
-     * 'interface', 'local/pages' or inside your interface directory.
+     * For both callbacks, the format of the user-provided array is up to the
+     * user implementing the callback. It can contain any additional
+     * information that the callback may need in order to emit the correct
+     * data for the given map. Common examples include a subject area, the
+     * page where the map is displayed, and the active user interface.
      *
-     * If you're using object methods, the objects will need to be
-     * somewhere that the ApplicationFramework's object loading will
-     * look, 'local/objects' is likely best.
+     * If you're using functions, they need to be part of the environment when
+     * the helper pages for the plugin are loaded.
+     *
+     * If you're using object methods, the objects will need to be somewhere
+     * that the ApplicationFramework's object loading will look.
+     *
+     * When the HTML for the map is generated, information about the provided
+     * callbacks is stored by the plugin. Google's machinery adds the pins to
+     * the map by creating overlays based on KML data that they fetch from us
+     * via our GetKML plugin page. It is that page that invokes the callbacks
+     * provided to generate the markup Google wants.
+     *
+     * If Google's crawler cannot access GetKML (e.g., because of HTTP Auth
+     * requirements), then no pins will appear. The following in .htaccess
+     * will allow Google's crawler:
+     * <If "%{HTTP_USER_AGENT} =~ /Kml-Google/">
+     *     Require all granted
+     * </If>
+     *
+     * The data for a given set of callbacks can be manually fetched via:
+     * curl 'BaseUrl/index.php?P=P_GoogleMaps_GetKML&PP={PointProviderHash}&DP={DetailProviderHash}'
+     *
+     * The value for {PointProviderHash} can be found by searching the HTML for 'PointProvider = "'.
+     * The value for {DetailProviderHash} can be found by searching the HTML for "&DP=".
+     *
+     * For an intro to the KML syntax, see
+     * https://en.wikipedia.org/wiki/Keyhole_Markup_Language for a brief overview.
      *
      * @param array $PointProvider Callback that provides point information
      * @param array $PointProviderParams Parameters passed to the point
@@ -665,10 +611,12 @@ class GoogleMaps extends Plugin
      * @param string $KmlPage Page that generates KML for Google
      * @param int|array $MapsOptions Either a bitmask of style constants from
      *      this object, or an array specifying additional options for this map
-     *      based on https://developers.google.com/maps/documentation/javascript/reference#MapOptions
+     *      based on
+     *      https://developers.google.com/maps/documentation/javascript/reference#MapOptions
+     * @param string $Styles Custom map styles encoded as JSON configuration using
+     *      https://developers.google.com/maps/documentation/javascript/json-styling-overview
      * @see GenerateHTMLTagsSimple()
      */
-    // phpcs:enable
     public function generateHTMLTags(
         $PointProvider,
         $PointProviderParams,
@@ -679,8 +627,9 @@ class GoogleMaps extends Plugin
         $DefaultZoom,
         $InfoDisplayEvent,
         $KmlPage = "P_GoogleMaps_GetKML",
-        $MapsOptions = []
-    ) {
+        $MapsOptions = [],
+        $Styles = null
+    ): void {
         $AF = ApplicationFramework::getInstance();
         $UseSsl = isset($_SERVER["HTTPS"]);
 
@@ -689,7 +638,7 @@ class GoogleMaps extends Plugin
                 .'<span style="color: #DDDDDD;">[JavaScript Required]'
                 .'</span></center></div>');
 
-        $ApiKey = $this->configSetting("APIKey");
+        $ApiKey = $this->getConfigSetting("APIKey");
 
         if (strlen($ApiKey) == 0) {
             $ApiUrl = ($UseSsl) ?
@@ -697,13 +646,13 @@ class GoogleMaps extends Plugin
                     'http://maps.google.com/maps/api/js?sensor=false' ;
         } else {
             $ApiUrl = 'https://maps.googleapis.com/maps/api/js?key='.$ApiKey;
+            $Channel = $this->getConfigSetting("Channel");
+            if (strlen($Channel) > 0) {
+                $ApiUrl .= "&v=".$Channel;
+            }
         }
         print('<script type="text/javascript" src="'.$ApiUrl.'"></script>');
-
-        foreach (["jquery.cookie.js", "GoogleMapsExtensions.js"] as $Tgt) {
-            print('<script type="text/javascript" src="'.
-                  $AF->gUIFile($Tgt).'"></script>');
-        }
+        $AF->includeUIFile("jquery.cookie.js");
 
         $PPHash = $this->CallbackManager
                 ->registerCallback($PointProvider, $PointProviderParams);
@@ -762,24 +711,37 @@ class GoogleMaps extends Plugin
             $MapsOptions = $OptionsArray;
         }
 
+        if ($Styles === null) {
+            $Styles = $this->getConfigSetting("MapStyles") ?? "{}";
+        }
+
         $Replacements = [
             "X-POINT-PROVIDER-X" => $PPHash,
             "X-DETAIL-PROVIDER-X" => $DPHash,
             "X-DEFAULT-LAT-X" => $DefaultLat,
             "X-DEFAULT-LON-X" => $DefaultLon,
             "X-DEFAULT-ZOOM-X" => $DefaultZoom,
-            "X-DESIRED-POINT-COUNT-X" => $this->configSetting("DesiredPointCount"),
+            "X-DESIRED-POINT-COUNT-X" => $this->getConfigSetting("DesiredPointCount"),
             "X-INFO-DISPLAY-EVENT-X" => $InfoDisplayEvent,
             "X-BASE-URL-X" => $AF->baseUrl(),
             "X-KML-PAGE-X" => $KmlPage,
-            "X-KML-CACHE-INTERVAL-X" => $this->configSetting("KmlCacheLifetime") ?? 3600,
+            "X-KML-CACHE-INTERVAL-X" => $this->getConfigSetting("KmlCacheLifetime") ?? 3600,
             "X-MAP-OPTIONS-X" => json_encode($MapsOptions),
+            "X-MAP-STYLES-X" => $Styles,
         ];
+
+        $GoogleMapsDisplayJS = file_get_contents("./plugins/GoogleMaps/GoogleMapsDisplay.js");
+
+        if ($GoogleMapsDisplayJS == false) {
+            throw new Exception(
+                "Failed to read the contents of plugins/GoogleMaps/GoogleMapsDisplay.js"
+            );
+        }
 
         $MapApplication = str_replace(
             array_keys($Replacements),
             array_values($Replacements),
-            file_get_contents("./plugins/GoogleMaps/GoogleMapsDisplay.js")
+            $GoogleMapsDisplayJS
         );
 
         print '<style type="text/css">';
@@ -804,7 +766,7 @@ class GoogleMaps extends Plugin
         $DefaultLon,
         $DefaultZoom,
         $InfoDisplayEvent
-    ) {
+    ): void {
         $PointProvider = ["GoogleMaps", "DefaultPointProvider"];
         $PointProviderParams = [];
         $DetailProvider = ["GoogleMaps", "DefaultDetailProvider"];
@@ -829,12 +791,12 @@ class GoogleMaps extends Plugin
      * <script type="text/javascript">
      *   $('#cw-some-button-id').click(change_point_provider(<?= $Hash ?>));
      *  </script>
-     * @param array $PointProvider Callback used to provide points.
+     * @param callable $PointProvider Callback used to provide points.
      * @param array $Params Parameters to pass to the point provider callback.
      * @return string Hash of registered point provider.
      * @see DefaultPointProvider()
      */
-    public function registerPointProvider($PointProvider, $Params)
+    public function registerPointProvider($PointProvider, $Params): string
     {
         return $this->CallbackManager
             ->registerCallback($PointProvider, $Params);
@@ -846,7 +808,7 @@ class GoogleMaps extends Plugin
      *   understand) on which to center the map.
      * @return string Requested URL.
      */
-    public function googleMapsUrl(string $Location)
+    public function googleMapsUrl(string $Location): string
     {
         return "https://www.google.com/maps?q=".urlencode($Location);
     }
@@ -864,9 +826,9 @@ class GoogleMaps extends Plugin
      * @param int $Height Height of the map image.
      * @param int $Zoom Zoom level of the maps image.
      */
-    public function staticMap($Lat, $Long, $Width, $Height, $Zoom = 14)
+    public function staticMap($Lat, $Long, $Width, $Height, $Zoom = 14): void
     {
-        $ApiKey = $this->configSetting("APIKey");
+        $ApiKey = $this->getConfigSetting("APIKey");
 
         if (strlen($ApiKey) == 0) {
             $UseSsl = isset($_SERVER["HTTPS"]);
@@ -910,12 +872,12 @@ class GoogleMaps extends Plugin
      * @param string $Address Address of a location.
      * @param bool $Foreground TRUE to wait for an address, rather than
      *   spawning a background task to fetch it.
-     * @return string|null Address string when available, null otherwise.
+     * @return array|null Array holding address data when available, null otherwise.
      */
-    public function geocode($Address, $Foreground = false)
+    public function geocode($Address, $Foreground = false): ?array
     {
         # if we cannot geocode because no API key was provided, return null
-        $ApiKey = $this->configSetting("GeocodingAPIKey");
+        $ApiKey = $this->getConfigSetting("GeocodingAPIKey");
         if (strlen($ApiKey) == 0) {
             return null;
         }
@@ -937,7 +899,7 @@ class GoogleMaps extends Plugin
             if ($Foreground) {
                 $this->geocodeRequest($Address);
                 $DB->query("SELECT Lat,Lng,AddrData FROM GoogleMaps_Geocodes "
-                           ."WHERE Id='".md5($Address)."'");
+                           ."WHERE Id='".$Key."'");
                 $Row = $DB->fetchRow();
             } else {
                 # if we can't find it, set up a Geocoding request and return NULL
@@ -959,7 +921,7 @@ class GoogleMaps extends Plugin
 
         # if there was no value, return null
         #  otherwise, unpack the serialized array and return the result
-        if ($Row["Lat"] == null) {
+        if ($Row == false || $Row["Lat"] == null) {
             return null;
         } else {
             $Row["AddrData"] = unserialize($Row["AddrData"]);
@@ -971,9 +933,9 @@ class GoogleMaps extends Plugin
      * Perform the request necessary to geocode an address.
      * @param string $Address Address of a location.
      */
-    public function geocodeRequest($Address)
+    public function geocodeRequest($Address): void
     {
-        $ApiKey = $this->configSetting("GeocodingAPIKey");
+        $ApiKey = $this->getConfigSetting("GeocodingAPIKey");
         if (strlen($ApiKey) == 0) {
             throw new Exception(
                 "Google's geocoding API requires an API Key."
@@ -1004,8 +966,18 @@ class GoogleMaps extends Plugin
             ])
         );
 
+        if ($Data == false) {
+            ApplicationFramework::getInstance()->logMessage(
+                ApplicationFramework::LOGLVL_ERROR,
+                "GoogleMaps geocode request failed to retrieve data for address '".$Address
+                ."' using API key '".$ApiKey."'."
+            );
+            return;
+        }
+
         $ParsedData = simplexml_load_string($Data);
-        if ($ParsedData->status == "OK") {
+        if (($ParsedData !== false)
+                && ($ParsedData->status == "OK")) {
             # extract lat and lng
             $Lat = floatval($ParsedData->result->geometry->location->lat);
             $Lng = floatval($ParsedData->result->geometry->location->lng);
@@ -1022,7 +994,7 @@ class GoogleMaps extends Plugin
                     # snag the value
                     $AddrData[(string)$ItemType]["Name"] = (string)$Item->long_name;
 
-                    # if there was a distinct appreviation, get that as well
+                    # if there was a distinct abbreviation, get that as well
                     if ((string)$Item->long_name != (string)$Item->short_name) {
                         $AddrData[(string)$ItemType]["ShortName"] =
                             (string)$Item->short_name;
@@ -1058,6 +1030,33 @@ class GoogleMaps extends Plugin
     }
 
     /**
+     * Clear all cached data for a given Id.
+     * @param string $Id Id to clear.
+     */
+    public function deleteAllDataForId(string $Id) : void
+    {
+        # nothing to do when Id provided isn't valid
+        if (!preg_match('/^[0-9a-f]+$/', $Id)) {
+            return;
+        }
+
+        $DB = new Database();
+
+        $DB->query(
+            "LOCK TABLES GoogleMaps_Geocodes, GoogleMaps_GeocodeErrors WRITE"
+        );
+        $DB->query(
+            "DELETE FROM GoogleMaps_Geocodes WHERE Id='".addslashes($Id)."'"
+        );
+        $DB->query(
+            "DELETE FROM GoogleMaps_GeocodeErrors WHERE Id='".addslashes($Id)."'"
+        );
+        $DB->query(
+            "UNLOCK TABLES"
+        );
+    }
+
+    /**
      * Computes the distance in kilometers between two points, assuming a
      * spherical earth.
      * @param int $LatSrc Latitude of the source coordinate.
@@ -1071,7 +1070,7 @@ class GoogleMaps extends Plugin
         $LonSrc,
         $LatDst,
         $LonDst
-    ) {
+    ): float {
         return StdLib::computeGreatCircleDistance(
             $LatSrc,
             $LonSrc,
@@ -1094,7 +1093,7 @@ class GoogleMaps extends Plugin
         $LonSrc,
         $LatDst,
         $LonDst
-    ) {
+    ): float {
         return StdLib::computeBearing(
             $LatSrc,
             $LonSrc,
@@ -1106,7 +1105,7 @@ class GoogleMaps extends Plugin
     /**
      * Periodic function to clean old data from DB cache tables.
      */
-    public function cleanCaches()
+    public function cleanCaches(): void
     {
         $DB = new Database();
 
@@ -1114,7 +1113,7 @@ class GoogleMaps extends Plugin
         $DB->query(
             "DELETE FROM GoogleMaps_Geocodes WHERE "
             ."TIMESTAMPDIFF(SECOND, LastUsed, NOW()) >"
-            .$this->configSetting("ExpTime")
+            .$this->getConfigSetting("ExpTime")
         );
 
         # clean error info for expired geocodes
@@ -1127,7 +1126,7 @@ class GoogleMaps extends Plugin
             "SELECT Id FROM GoogleMaps_Geocodes "
             ."WHERE Lat IS NULL AND "
             ."TIMESTAMPDIFF(SECOND, LastUpdate, NOW()) >"
-            .$this->configSetting("GeocodeFailureCacheExpirationTime")
+            .$this->getConfigSetting("GeocodeFailureCacheExpirationTime")
         );
         $FailedIds = $DB->fetchColumn("Id");
 
@@ -1160,22 +1159,27 @@ class GoogleMaps extends Plugin
 
     /**
      * Update the timestamp storing the last change to any resource.
+     * @param int $Events Record::EVENT_* values OR'd together.
+     * @param Record $Record The record being observed.
      */
-    public function updateResourceTimestamp()
+    public function updateResourceTimestamp(int $Events, Record $Record): void
     {
-        $this->configSetting("ResourcesLastModified", time());
+        $this->setConfigSetting("ResourcesLastModified", time());
     }
 
     /**
      * When a resource is modified, clear the autopopulated fields so
      * that they can be updated.
+     * @param int $Events Record::EVENT_* values OR'd together.
      * @param Record $Resource Resource to blank.
      */
-    public function blankAutoPopulatedFields($Resource)
-    {
+    public function blankAutoPopulatedFields(
+        int $Events,
+        Record $Resource
+    ): void {
         # pull out the list of configured fields to autopopulate
         foreach ($this->AutoPopulateData as $Key => $Data) {
-            $TgtField = $this->configSetting("FieldMapping-".$Key);
+            $TgtField = $this->getConfigSetting("FieldMapping-".$Key);
 
             # if this field isn't mapped, check the next one
             if ($TgtField == null) {
@@ -1194,7 +1198,7 @@ class GoogleMaps extends Plugin
      * @param string $DetailProviderHash Detail provider hash.
      * @return string Returns the path to the cached KML file.
      */
-    public function getKml($PointProviderHash, $DetailProviderHash)
+    public function getKml($PointProviderHash, $DetailProviderHash): string
     {
         $Kml = $this->getKmlFilePath($PointProviderHash, $DetailProviderHash);
 
@@ -1214,8 +1218,8 @@ class GoogleMaps extends Plugin
             );
 
             $MTime = filemtime($Kml);
-            if ($MTime < $this->configSetting("ResourcesLastModified") ||
-                $MTime < $this->configSetting("GeocodeLastSuccessful")) {
+            if ($MTime < $this->getConfigSetting("ResourcesLastModified") ||
+                $MTime < $this->getConfigSetting("GeocodeLastSuccessful")) {
                 $this->queueUniqueTask(
                     "generateKml",
                     [$PointProviderHash, $DetailProviderHash],
@@ -1235,7 +1239,7 @@ class GoogleMaps extends Plugin
      * @param string $DetailProviderHash Detail provider hash.
      * @see GetKmlFilePath()
      */
-    public function generateKml($PointProviderHash, $DetailProviderHash)
+    public function generateKml($PointProviderHash, $DetailProviderHash): void
     {
         $AF = ApplicationFramework::getInstance();
 
@@ -1257,6 +1261,9 @@ class GoogleMaps extends Plugin
             "D" => "Detail",
             "P" => "Point",
         ];
+        $CallbackKey = "Callback";
+        $CallbackParamsKey = "Params";
+        $Callbacks = [];
         $CallbackErrors = false;
         foreach ($CallbackTypes as $Abbr => $Type) {
             $Row = $DB->query(
@@ -1278,10 +1285,26 @@ class GoogleMaps extends Plugin
                 continue;
             }
 
+            # get the first database row
             $Row = $DB->fetchRow();
-            ${$Abbr."PCallback"} = unserialize($Row["Payload"]);
-            ${$Abbr."PParams"} = unserialize($Row["Params"]);
-            if (!is_callable(${$Abbr."PCallback"})) {
+
+            # check if we did get a database row
+            # since we already checked whether the query returned any rows
+            # at this point we should have at least one row
+            # therefore, this should always evaluate to false
+            if (!$Row) {
+                throw new Exception(
+                    "Failed to get the database row retrieved by querying the "
+                    ."GoogleMaps_Callbacks table. (should be impossible)"
+                );
+            }
+
+            $Callbacks[$Abbr] = [
+                $CallbackKey => unserialize($Row["Payload"]),
+                $CallbackParamsKey => unserialize($Row["Params"])
+            ];
+
+            if (!is_callable($Callbacks[$Abbr][$CallbackKey])) {
                 $AF->LogMessage(
                     ApplicationFramework::LOGLVL_ERROR,
                     "[GoogleMaps] Registered ".$Type." Provider could not be "
@@ -1304,13 +1327,16 @@ class GoogleMaps extends Plugin
         );
 
         # call the supplied detail provider, expecting an Array
-        $Points = call_user_func_array($PPCallback, [$PPParams]);
+        $Points = call_user_func_array(
+            $Callbacks["P"][$CallbackKey],
+            [$Callbacks["P"][$CallbackParamsKey]]
+        );
 
         # add log message if no points where found
         if (count($Points) < 1) {
             $Message = "[GoogleMaps] No points found for parameters: ";
             $Message .= var_export(
-                ["Parameters" => $PPParams],
+                ["Parameters" => $Callbacks["P"][$CallbackParamsKey]],
                 true
             );
 
@@ -1379,11 +1405,14 @@ class GoogleMaps extends Plugin
             # add the description text/HTML
             ob_start();
             call_user_func_array(
-                $DPCallback,
-                [$Id, $DPParams]
+                $Callbacks["D"][$CallbackKey],
+                [$Id, $Callbacks["D"][$CallbackParamsKey]]
             );
-            $Output = ob_get_contents();
-            ob_end_clean();
+            $Output = ob_get_clean();
+
+            if ($Output === false) {
+                throw new Exception("No output was received from callback or buffer.");
+            }
 
             $Kml .= $this->cleanMarkupForXml($Output);
 
@@ -1406,15 +1435,15 @@ class GoogleMaps extends Plugin
      *      provider doesn't use them.
      * @return array Returns an array of points and associated data.
      */
-    public static function defaultPointProvider($Params)
+    public static function defaultPointProvider($Params): array
     {
         global $DB;
 
         $rc = [];
 
-        $MyPlugin = PluginManager::getInstance()->getPlugin("GoogleMaps");
+        $MyPlugin = static::getInstance();
 
-        $MetadataField = $MyPlugin->configSetting("DefaultPointField");
+        $MetadataField = $MyPlugin->getConfigSetting("DefaultPointField");
 
         if ($MetadataField != "") {
             $Schema = new MetadataSchema();
@@ -1462,7 +1491,7 @@ class GoogleMaps extends Plugin
                 }
             }
         } else {
-            $SqlQuery =  $MyPlugin->configSetting("DefaultSqlQuery");
+            $SqlQuery =  $MyPlugin->getConfigSetting("DefaultSqlQuery");
 
             if ($SqlQuery != null && !self::containsDangerousSQL($SqlQuery)) {
                 $DB->query($SqlQuery);
@@ -1487,7 +1516,7 @@ class GoogleMaps extends Plugin
      * a link to the full record of a resource.
      * @param int $ResourceId ID of the resource for which to provide details.
      */
-    public static function defaultDetailProvider($ResourceId)
+    public static function defaultDetailProvider($ResourceId): void
     {
         $AF = ApplicationFramework::getInstance();
 
@@ -1511,9 +1540,9 @@ class GoogleMaps extends Plugin
      * @param array $TemplateUsers Users of the given template.
      * @return array parameters for next event in the chain.
      */
-    public function claimTemplate(int $TemplateId, array $TemplateUsers)
+    public function claimTemplate(int $TemplateId, array $TemplateUsers): array
     {
-        if ($this->configSetting("GeocodeErrorEmailTemplate") == $TemplateId) {
+        if ($this->getConfigSetting("GeocodeErrorEmailTemplate") == $TemplateId) {
             $TemplateUsers[] = $this->Name;
         }
 
@@ -1524,7 +1553,7 @@ class GoogleMaps extends Plugin
      * Log an error message sent by client-side javascript.
      * @param string $Message Error message.
      */
-    public function logJavascriptError(string $Message)
+    public function logJavascriptError(string $Message): void
     {
         $DB = new Database();
 
@@ -1586,7 +1615,7 @@ class GoogleMaps extends Plugin
         string $Label,
         string $BgColor,
         string $FgColor
-    ) {
+    ): string {
         if (!preg_match('/^[0-9a-f]{6}$/', $BgColor)) {
             throw new InvalidArgumentException("Invalid BgColor: ".$BgColor);
         }
@@ -1611,9 +1640,9 @@ class GoogleMaps extends Plugin
      * it does not.
      * @return int TemplateId of the GoogleMaps Geocode Error template.
      */
-    protected function getMailerTemplateId()
+    public function getMailerTemplateId(): int
     {
-        $Mailer = PluginManager::getInstance()->getPlugin("Mailer");
+        $Mailer = Mailer::getInstance();
         $MailerTemplates = $Mailer->GetTemplateList();
 
         # set up a template if one doesn't yet exist
@@ -1629,8 +1658,7 @@ class GoogleMaps extends Plugin
                 "Could not geocode X-GOOGLEMAPS:ADDRESS-X\n"
                 ."Error message:\n"
                 ."X-GOOGLEMAPS:ERROR-X",
-                "",
-                false
+                ""
             );
 
             # need to get the template again if we just added the
@@ -1638,10 +1666,18 @@ class GoogleMaps extends Plugin
             $MailerTemplates = $Mailer->GetTemplateList();
         }
 
-        return array_search(
+        $TemplateId = array_search(
             self::MAILER_TEMPLATE_NAME,
             $MailerTemplates
         );
+
+        if (is_int($TemplateId)) {
+            return (int) $TemplateId;
+        } else {
+            throw new Exception(
+                "TemplateId is not an integer value ( Should not be possible )"
+            );
+        }
     }
 
     /**
@@ -1651,7 +1687,7 @@ class GoogleMaps extends Plugin
     * @param string $DetailProviderHash Detail provider hash
     * @return string Path to the cached KML file.
     */
-    protected function getKmlFilePath($PointProviderHash, $DetailProviderHash)
+    protected function getKmlFilePath($PointProviderHash, $DetailProviderHash): string
     {
         $CachePath = $this->getKmlCachePath();
         $FileName = $PointProviderHash . "_" .$DetailProviderHash . ".xml";
@@ -1664,7 +1700,7 @@ class GoogleMaps extends Plugin
      * Get the path of the KML cache directory.
      * @return string Path of KML Cache directory, with no trailing slash.
      */
-    protected function getKmlCachePath()
+    protected function getKmlCachePath(): string
     {
         return $this->getCachePath() . "/kml";
     }
@@ -1673,7 +1709,7 @@ class GoogleMaps extends Plugin
      * Get the path of the map marker cache directory.
      * @return string Path of Marker Cache directory, with no trailing slash.
      */
-    protected function getMarkerCachePath()
+    protected function getMarkerCachePath(): string
     {
         return $this->getCachePath() . "/markers";
     }
@@ -1682,7 +1718,7 @@ class GoogleMaps extends Plugin
      * Get the path of the cache directory.
      * @return string Returns the path of the cache directory.
      */
-    protected function getCachePath()
+    protected function getCachePath(): string
     {
         return getcwd() . "/local/data/caches/GoogleMaps";
     }
@@ -1692,7 +1728,7 @@ class GoogleMaps extends Plugin
      * necessary.
      * @return null|string Error message or NULL if no issues detected.
      */
-    protected function checkCacheDirectory()
+    public function checkCacheDirectory(): ?string
     {
         # string path => bool recursive
         $Paths = [
@@ -1737,7 +1773,7 @@ class GoogleMaps extends Plugin
         float $Lat,
         float $Lng,
         array $AddrData
-    ) {
+    ): void {
         $DB = new Database();
 
         $DB->query(
@@ -1762,7 +1798,7 @@ class GoogleMaps extends Plugin
             "UNLOCK TABLES"
         );
 
-        $this->configSetting("GeocodeLastSuccessful", time());
+        $this->setConfigSetting("GeocodeLastSuccessful", time());
     }
 
     /**
@@ -1775,7 +1811,7 @@ class GoogleMaps extends Plugin
         $Id,
         $Address,
         $Data
-    ) {
+    ): void {
         $DB = new Database();
 
         $DB->query(
@@ -1806,7 +1842,7 @@ class GoogleMaps extends Plugin
      * Clear geocode failure cache and retry geocoding for failing addresses.
      * @param array $FailedIds IDs corresponding to failing addresses.
      */
-    private function clearFailureCacheAndRetryGeocoding($FailedIds)
+    private function clearFailureCacheAndRetryGeocoding($FailedIds): void
     {
         $DB = new Database();
 
@@ -1851,7 +1887,7 @@ class GoogleMaps extends Plugin
     private function sendGeocodeFailureEmail(
         string $Address,
         string $Data
-    ) {
+    ): void {
         $ErrorsToSkip = [
             "OVER_QUERY_LIMIT",
             "REQUEST_DENIED",
@@ -1863,11 +1899,11 @@ class GoogleMaps extends Plugin
             return;
         }
 
-        $Mailer = PluginManager::getInstance()->getPlugin("Mailer");
+        $Mailer = Mailer::getInstance();
 
         $Recipients = array_keys(
             (new UserFactory())->getUsersWithPrivileges(
-                $this->configSetting("GeocodeErrorEmailRecipients")
+                $this->getConfigSetting("GeocodeErrorEmailRecipients")
                 ->GetPrivilegeList()
             )
         );
@@ -1878,9 +1914,9 @@ class GoogleMaps extends Plugin
         ];
 
         $Mailer->SendEmail(
-            $this->configSetting("GeocodeErrorEmailTemplate"),
+            $this->getConfigSetting("GeocodeErrorEmailTemplate"),
             $Recipients,
-            null,
+            [],
             $Tokens
         );
     }
@@ -1892,7 +1928,7 @@ class GoogleMaps extends Plugin
      * @param string $Data Markup to clean.
      * @return string Cleaned data
      */
-    private function cleanMarkupForXml($Data)
+    private function cleanMarkupForXml($Data): string
     {
         $Output = preg_replace_callback(
             '/&[A-Za-z]{0,15}[; ]/',
@@ -1926,12 +1962,12 @@ class GoogleMaps extends Plugin
      * @param string $Path Directory to clean.
      * @param string $FilePattern Regex matching files that should be removed.
      */
-    private function cleanCacheDirectory($Path, $FilePattern)
+    private function cleanCacheDirectory($Path, $FilePattern): void
     {
         if (is_dir($Path)) {
             # determine when files should expire
             $ExpiredTime = strtotime(
-                "-". $this->configSetting("CallbackExpTime")." days"
+                "-". $this->getConfigSetting("CallbackExpTime")." days"
             );
 
             $DI = new DirectoryIterator($Path);
@@ -1951,7 +1987,7 @@ class GoogleMaps extends Plugin
      * @param string $SqlStatement An SQL statement
      * @return bool FALSE for safe-looking statements and TRUE otherwise
      */
-    private static function containsDangerousSQL($SqlStatement)
+    private static function containsDangerousSQL($SqlStatement): bool
     {
         $EvilKeywords = [
             "ALTER","RENAME","TRUNCATE","CREATE","START","COMMIT",
@@ -1998,7 +2034,7 @@ class GoogleMaps extends Plugin
         ]
     ];
 
-    private $SqlTables = [
+    public const SQL_TABLES = [
         "Geocodes" =>
             "CREATE TABLE GoogleMaps_Geocodes (
             Id VARCHAR(32),

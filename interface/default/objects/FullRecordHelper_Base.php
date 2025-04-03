@@ -3,13 +3,12 @@
 #   FILE:  FullRecordHelper_Base.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use htmLawed;
 use ScoutLib\Date;
@@ -48,8 +47,9 @@ abstract class FullRecordHelper_Base
 
     /**
      * Set Record to be displayed for full record.
+     * @return void
      */
-    public static function setRecord(Record $Record)
+    public static function setRecord(Record $Record): void
     {
         # save record for our use
         self::$Record = $Record;
@@ -245,15 +245,16 @@ abstract class FullRecordHelper_Base
      *     (OPTIONAL)
      * @param array $Attributes Items to include in HTML attributes, keyed
      *     with the attribute name.(OPTIONAL)
+     * @return void
      */
     public static function addButtonForPage(
         string $Label,
         string $Link,
         string $Title,
-        string $IconName = null,
+        ?string $IconName = null,
         string $AdditionalCssClasses = "",
         array $Attributes = []
-    ) {
+    ): void {
         self::$ButtonsForPage[] = [
             "Label" => $Label,
             "Link" => $Link,
@@ -275,7 +276,7 @@ abstract class FullRecordHelper_Base
 
     private static $ButtonsForPage = [];
     private static $Instance;
-    private static $Record;
+    protected static $Record;
     private static $StdFieldNames = [
         "Title",
         "Description",
@@ -353,11 +354,15 @@ abstract class FullRecordHelper_Base
         switch ($Field->type()) {
             case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
             case MetadataSchema::MDFTYPE_OPTION:
-                foreach ($RawValue as $CName) {
-                    $Value[$CName->id()] = $this->getSearchLinkedVersionOfValue(
-                        $CName->name(),
-                        $Field
-                    );
+                foreach ($RawValue as $CNId => $CName) {
+                    if ($CName instanceof ControlledName) {
+                        $Value[$CName->id()] = $this->getSearchLinkedVersionOfValue(
+                            $CName->name(),
+                            $Field
+                        );
+                    } else {
+                        $Value[$CNId] = $CName;
+                    }
                 }
                 $EscapeValue = false;
                 break;
@@ -524,7 +529,7 @@ abstract class FullRecordHelper_Base
     ): string {
         $SearchParams = new SearchParameterSet();
         $SearchParams->addParameter("=".$Value, $Field);
-        $Link = "index.php?P=SearchResults&".$SearchParams->UrlParameterString();
+        $Link = "index.php?P=SearchResults&".$SearchParams->urlParameterString();
         $Title = "Search for records where ".$Field->getDisplayName()
                 ." is also \"".htmlspecialchars($Value)."\"";
         return "<a href=\"".$Link."\" title=\"".htmlspecialchars($Title)."\">"
@@ -548,7 +553,7 @@ abstract class FullRecordHelper_Base
     /**
      * Escape any HTML entities in prepared values.
      * @param string|array $PreparedValue Value(s) to escape.
-     * return string|array Escaped value(s).
+     * @return string|array Escaped value(s).
      */
     private function escapePreparedValue($PreparedValue)
     {

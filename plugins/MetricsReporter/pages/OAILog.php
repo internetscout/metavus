@@ -3,17 +3,20 @@
 #   FILE:  OAILog.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
 
 # define constants for the start time options
+use Metavus\InterfaceConfiguration;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
-use Metavus\InterfaceConfiguration;
 use Metavus\TransportControlsUI;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 define("ST_1_DAY", 1);
@@ -37,9 +40,12 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
+$AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
+
 # grab ahold of the relevant metrics objects
-$Recorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
-$Reporter = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsReporter");
+$Recorder = MetricsRecorder::getInstance();
+$Reporter = MetricsReporter::getInstance();
 
 # extract parameters
 $H_ResultsPerPage = intval(StdLib::getFormValue("RP", 50));
@@ -61,6 +67,15 @@ $RevSort = StdLib::getFormValue(
 
 # set up a lookup table of starting times, starting from the top of the hour
 $CurrentHour = strtotime(date("Y-m-d H:00:00"));
+
+# throw an Exception if failed to get $CurrentHour
+if ($CurrentHour === false) {
+    throw new Exception(
+        "Failed to parse textual datetime of the format Y-m-d H:00:00 "
+        ."into a Unix timestamp."
+    );
+}
+
 $TimeLUT = [
     ST_FOREVER => 0,
     ST_24_MONTH => strtotime("-24 months", $CurrentHour),
@@ -73,7 +88,7 @@ $TimeLUT = [
 ];
 
 # pull out all the harvest data for the specified period
-$H_HarvestData = $Recorder->GetEventData(
+$H_HarvestData = $Recorder->getEventData(
     "MetricsRecorder",
     MetricsRecorder::ET_OAIREQUEST,
     date("Y-m-d H:00:00", $TimeLUT[$H_StartTime])
@@ -89,7 +104,7 @@ $FilterIPs = [];
 # for each entry
 foreach ($H_HarvestData as $Key => $Val) {
     # check if this request looks like an sql injection
-    if (MetricsReporter::RequestIsSqlInjection($Val["DataTwo"])) {
+    if (MetricsReporter::requestIsSqlInjection($Val["DataTwo"])) {
         # increment this IP's badness score
         $IPAddr = $Val["DataOne"];
         if (!isset($FilterIPs[$IPAddr])) {
@@ -144,7 +159,7 @@ if ($H_FilterType != FT_ALL) {
             $ContactCount = [];
             $ContactDates = [];
             foreach ($H_HarvestData as $Key => $Val) {
-                $IPAddr = $Val["DataOne"];
+                $IPAddr = (string)$Val["DataOne"];
 
                 # if we lack a contact summary for this IP, create one
                 if (!isset($ContactSummary[$IPAddr])) {
@@ -173,19 +188,18 @@ if ($H_FilterType != FT_ALL) {
                 parse_str($Val["DataTwo"], $ReqParams);
 
                 # figure out the request type for this request
-                if (!isset($ReqParams["verb"]) ||
-                    !in_array(
-                        $ReqParams["verb"],
-                        [
-                            "ListRecords", "GetRecord", "ListIdentifiers",
-                            "ListSets", "Identify"
-                        ]
-                    )
-                ) {
-                    $ReqType = "unknown";
-                } else {
-                    $ReqType = $ReqParams["verb"];
-                }
+                $knownVerbs = [
+                    "ListRecords",
+                    "GetRecord",
+                    "ListIdentifiers",
+                    "ListSets",
+                    "Identify"
+                ];
+                $ReqType = (isset($ReqParams["verb"])
+                                && is_string($ReqParams["verb"])
+                                && in_array($ReqParams["verb"], $knownVerbs))
+                            ? $ReqParams["verb"]
+                            : "unknown";
 
                 # if we don't have a record for this type of contact,
                 # create one
@@ -343,13 +357,13 @@ if ($H_FilterType == FT_CONTACT) {
 # sort the data
 $SortFunctions = [
     "EventDate" => function ($V1, $V2) {
-        return StdLib::SortCompare(
+        return StdLib::sortCompare(
             strtotime($V1["EventDate"]),
             strtotime($V2["EventDate"])
         );
     },
     "R" => function ($V1, $V2) {
-        return StdLib::SortCompare(
+        return StdLib::sortCompare(
             strtotime($V1["EventDate"]),
             strtotime($V2["EventDate"])
         );
@@ -358,7 +372,7 @@ $SortFunctions = [
         return strcmp($V1["DataTwo"], $V2["DataTwo"]);
     },
     "Count" => function ($V1, $V2) {
-        return StdLib::SortCompare($V1["Count"], $V2["Count"]);
+        return StdLib::sortCompare($V1["Count"], $V2["Count"]);
     }
 ];
 uasort($H_HarvestData, $SortFunctions[$SortField]);
@@ -379,18 +393,18 @@ $H_TransportUI = new TransportControlsUI();
 $H_TransportUI->itemsPerPage($H_ResultsPerPage);
 
 $H_TotalResults = count($H_HarvestData);
-$H_TransportUI->ItemCount($H_TotalResults);
+$H_TransportUI->itemCount($H_TotalResults);
 
 $H_HarvestData = array_slice(
     $H_HarvestData,
-    $H_TransportUI->StartingIndex(),
+    $H_TransportUI->startingIndex(),
     $H_ResultsPerPage,
     true
 );
 
 # if the user requested JSON data, produce that as output
 if (isset($_GET["JSON"])) {
-    $GLOBALS["AF"]->SuppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     header("Content-Type: application/json; charset="
            .InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet"), true);
 

@@ -628,8 +628,9 @@ class HumanMetadataField
     /**
      * Set the text that is used when a value is not set.
      * @param string $Text Text to be used when a value is not set.
+     * @return void
      */
-    public function setNotSetText($Text)
+    public function setNotSetText($Text): void
     {
         $this->NotSetText = $Text;
     }
@@ -671,8 +672,9 @@ class HumanMetadataField
 
     /**
      * Load the static privilege list.
+     * @return void
      */
-    protected function loadPrivilegeList()
+    protected function loadPrivilegeList(): void
     {
         $PrivilegeFactory = new PrivilegeFactory();
 
@@ -705,8 +707,9 @@ class HumanMetadataField
 
     /**
      * Load the static user field list.
+     * @return void
      */
-    protected function loadUserFieldList()
+    protected function loadUserFieldList(): void
     {
         $Schema = new MetadataSchema($this->Field->schemaId());
         $UserFields = $Schema->getFields(MetadataSchema::MDFTYPE_USER);

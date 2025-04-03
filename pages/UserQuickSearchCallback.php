@@ -6,14 +6,16 @@
 #   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\QuickSearchHelper;
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 #
-$GLOBALS["AF"]->BeginAjaxResponse();
+ApplicationFramework::getInstance()->BeginAjaxResponse();
 
 if (!isset($_GET["SS"])) {
     print json_encode([

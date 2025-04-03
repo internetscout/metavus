@@ -3,14 +3,41 @@
 #   FILE:  ImportUsersExecute.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
-$Header = ($ImportComplete) ? "Import Completed" : "Importing Users";
+use Exception;
+use ScoutLib\ApplicationFramework;
 
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_DuplicateEntries)) {
+    throw new Exception("H_DuplicateEntries not defined.");
+}
+if (!isset($H_ErrorMessages)) {
+    throw new Exception("H_ErrorMessages not defined.");
+}
+if (!isset($H_ImportComplete)) {
+    throw new Exception("H_ImportComplete not defined.");
+}
+if (!isset($H_PrivNotFound)) {
+    throw new Exception("H_PrivNotFound not defined.");
+}
+if (!isset($H_UserCount)) {
+    throw new Exception("H_UserCount not defined.");
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$Header = ($H_ImportComplete) ? "Import Completed" : "Importing Users";
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1><?= $Header ?></h1>
@@ -51,11 +78,9 @@ $Header = ($ImportComplete) ? "Import Completed" : "Importing Users";
     </ul>
 <?PHP } ?>
 
-<?PHP if (!$ImportComplete) { ?>
+<?PHP if (!$H_ImportComplete) { ?>
 <form name="importusers" method="post" action="index.php?P=ImportUsersExecute">
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $CancelButton->getHtml(); ?>
 </form>
 
 <?PHP } ?>

@@ -12,6 +12,7 @@ namespace Metavus;
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Email;
+use ScoutLib\StdLib;
 
 /**
  * System configuration setting storage, retrieval, and editing definitions class.
@@ -166,8 +167,7 @@ class SystemConfiguration extends Configuration
                 "GetFunction" => function (string $SettingName) {
                     return false;
                 },
-                "SetFunction" => function (string $SettingName, $Value) {
-                },
+                "SetFunction" => [ $this, "setAllUserInterfacesToDefault" ],
                 "Help" => "When checked, this option will set all user"
                         ." accounts to the above Default User Interface.",
                 "Value" => false,
@@ -307,7 +307,18 @@ class SystemConfiguration extends Configuration
                 "MinVal" => 1000,
                 "Default" => 5000,
                 "Help" => "The maximum number of resources to use when"
-                                ." generating search facets.",
+                        ." generating search facets.",
+            ],
+            "AnonSearchCpuLoadCutoff" => [
+                "Type" => FormUI::FTYPE_NUMBER,
+                "Label" => "System Load Cutoff for Anonymous Searches",
+                "MinVal" => 1,
+                "DefaultFunction" => function () {
+                    $CoreCount = StdLib::getNumberOfCpuCores();
+                    return ($CoreCount > 0) ? (int)($CoreCount * 1.2) : 8;
+                },
+                "Help" => "When the system laod is above this level, searches"
+                        ." by anonymous users will not be allowed.",
             ],
             # -------------------------------------------------
             "HEADING-Recommender" => [
@@ -358,7 +369,7 @@ class SystemConfiguration extends Configuration
                 "SetFunction" => [ $this, "setEmailDeliverySetting" ],
                 "ValidateFunction" => [$this, "validateEmailDeliverySettings"],
                 "Help" => "Example: <i>mail.myhost.com</i>",
-                "DisplayIf" => [ "MailingMethod" => EMail::METHOD_SMTP ],
+                "DisplayIf" => [ "MailingMethod" => Email::METHOD_SMTP ],
             ],
             "SmtpPort" => [
                 "Type" => FormUI::FTYPE_NUMBER,
@@ -370,7 +381,7 @@ class SystemConfiguration extends Configuration
                 "SetFunction" => [ $this, "setEmailDeliverySetting" ],
                 "ValidateFunction" => [$this, "validateEmailDeliverySettings"],
                 "Help" => "Default: <i>25</i>",
-                "DisplayIf" => [ "MailingMethod" => EMail::METHOD_SMTP ],
+                "DisplayIf" => [ "MailingMethod" => Email::METHOD_SMTP ],
             ],
             "UseAuthenticationForSmtp" => [
                 "Type" => FormUI::FTYPE_FLAG,
@@ -378,7 +389,7 @@ class SystemConfiguration extends Configuration
                 "GetFunction" => [ $this, "getEmailDeliverySetting" ],
                 "SetFunction" => [ $this, "setEmailDeliverySetting" ],
                 "ValidateFunction" => [$this, "validateEmailDeliverySettings"],
-                "DisplayIf" => [ "MailingMethod" => EMail::METHOD_SMTP ],
+                "DisplayIf" => [ "MailingMethod" => Email::METHOD_SMTP ],
             ],
             "SmtpUserName" => [
                 "Type" => FormUI::FTYPE_TEXT,
@@ -388,7 +399,7 @@ class SystemConfiguration extends Configuration
                 "ValidateFunction" => [$this, "validateEmailDeliverySettings"],
                 "Help" => "Only needed if using authentication for SMTP.",
                 "DisplayIf" => [
-                    "MailingMethod" => EMail::METHOD_SMTP,
+                    "MailingMethod" => Email::METHOD_SMTP,
                     "UseAuthenticationForSmtp" => true
                 ],
             ],
@@ -400,7 +411,7 @@ class SystemConfiguration extends Configuration
                 "ValidateFunction" => [$this, "validateEmailDeliverySettings"],
                 "Help" => "Only needed if using authentication for SMTP.",
                 "DisplayIf" => [
-                    "MailingMethod" => EMail::METHOD_SMTP,
+                    "MailingMethod" => Email::METHOD_SMTP,
                     "UseAuthenticationForSmtp" => true
                 ],
             ],
@@ -527,6 +538,16 @@ class SystemConfiguration extends Configuration
                                 ." set to <i>Warning</i> or above, PHP \"Notice\""
                                 ." messages will be logged.",
             ],
+            "LogDBCachePruning" => [
+                "Type" => FormUI::FTYPE_FLAG,
+                "Label" => "Log Database Cache Pruning",
+                "GetFunction" => [$this, "getAFSetting"],
+                "SetFunction" => [$this, "setAFSetting"],
+                "Help" => "When enabled and the current logging level is"
+                                ." set to <i>Info</i> or above, details about"
+                                ." database cache pruning activity will"
+                                ." be logged.",
+            ],
             "DatabaseSlowQueryThresholdForForeground" => [
                 "Type" => FormUI::FTYPE_NUMBER,
                 "Label" => "Database Slow Query Threshold (Foreground)",
@@ -599,6 +620,27 @@ class SystemConfiguration extends Configuration
                 "SetFunction" => function (string $SettingName, $Value) {
                     (ApplicationFramework::getInstance())->maxExecutionTime($Value * 60);
                 },
+            ],
+            "UseFilepond" => [
+                "Type" => FormUI::FTYPE_FLAG,
+                "Label" => "Use Filepond for Uploads",
+                "Help" => "When enabled, uploads on most forms are handled with the"
+                              ." FilePond library, which uses front-end Javascript"
+                              ." and AJAX to provide progress meters and chunked"
+                              ." uploads of large files.",
+                "Default" => true
+            ],
+            "UploadChunkSize" => [
+                "Type" => FormUI::FTYPE_NUMBER,
+                "Label" => "Upload Chunk Size",
+                "Units" => "megabytes",
+                "MinVal" => 1,
+                "Default" => 2,
+                "Help" => "Size of chunks used when uploading files via FilePond. To avoid errors,"
+                                ." it must not exceed the PHP upload_max_filesize setting or the"
+                                ." limits of any HTTP proxies that sit between users and the server"
+                                ." (ex: 100MB for Cloudflare).",
+                "DisplayIf" => ["UseFilepond" => true],
             ],
             "UseMinimizedJavascript" => [
                 "Type" => FormUI::FTYPE_FLAG,
@@ -679,6 +721,24 @@ class SystemConfiguration extends Configuration
     ];
 
     /**
+     * Set the interface for each user to default interface
+     * @param bool $Value Whether to set the interface
+     */
+    protected function setAllUserInterfacesToDefault(string $SettingName, $Value): void
+    {
+        if ($Value == false) {
+            return;
+        }
+        $DefaultInterface = $this->getString("DefaultActiveUI");
+        $UFactory = new \Metavus\UserFactory();
+        $UserIds = $UFactory->getUserIds();
+        foreach ($UserIds as $UserId) {
+            $User = new User($UserId);
+            $User->set("ActiveUI", $DefaultInterface);
+        }
+    }
+
+    /**
      * Get specific delivery setting value from Email class.
      * @param string $SettingName Name of setting.
      * @return mixed Value to set.
@@ -697,8 +757,9 @@ class SystemConfiguration extends Configuration
      * Set specific delivery setting value in Email class.
      * @param string $SettingName Name of setting.
      * @param mixed $Value Value to set.
+     * @return void
      */
-    protected function setEmailDeliverySetting(string $SettingName, $Value)
+    protected function setEmailDeliverySetting(string $SettingName, $Value): void
     {
         $Method = ["ScoutLib\\Email", static::$EmailSettingToMethodMap[$SettingName]];
         if (!is_callable($Method)) {
@@ -716,9 +777,13 @@ class SystemConfiguration extends Configuration
      */
     protected function getAFSetting(string $SettingName)
     {
-        $Method = [ ApplicationFramework::getInstance(), lcfirst($SettingName) ];
+        $AF = ApplicationFramework::getInstance();
+        $Method = [ $AF, "get".$SettingName ];
         if (!is_callable($Method)) {
-            throw new Exception("Uncallable AF method for setting \""
+            $Method = [ $AF, lcfirst($SettingName) ];
+        }
+        if (!is_callable($Method)) {
+            throw new Exception("No callable AF method available for getting \""
                     .$SettingName."\".");
         }
         return ($Method)();
@@ -728,12 +793,17 @@ class SystemConfiguration extends Configuration
      * Set specific delivery setting value in ApplicationFramework class.
      * @param string $SettingName Name of setting.
      * @param mixed $Value Value to set.
+     * @return void
      */
-    protected function setAFSetting(string $SettingName, $Value)
+    protected function setAFSetting(string $SettingName, $Value): void
     {
-        $Method = [ ApplicationFramework::getInstance(), lcfirst($SettingName) ];
+        $AF = ApplicationFramework::getInstance();
+        $Method = [ $AF, "set".$SettingName ];
         if (!is_callable($Method)) {
-            throw new Exception("Uncallable AF method for setting \""
+            $Method = [ $AF, lcfirst($SettingName) ];
+        }
+        if (!is_callable($Method)) {
+            throw new Exception("No callable AF method available for setting \""
                     .$SettingName."\".");
         }
         ($Method)($Value, true);
@@ -741,18 +811,18 @@ class SystemConfiguration extends Configuration
 
     /**
      * Validate email delivery settings from form.  (Intended to be used as a
-     * callback for "ValidateFunction" parameters – not to be called otherwise.
+     * callback for "ValidateFunction" parameters, and should not be called otherwise.
      * Method is only "public" because that is required for the callback use.)
      * @param string $SettingName Name of setting to validate.
      * @param string|array $SettingValue Value for specified setting.
      * @param array $AllValues All values submitted for form.
-     * @return string Error message or NULL if no problems found.
+     * @return string|null Error message or NULL if no problems found.
      */
     public function validateEmailDeliverySettings(
         string $SettingName,
         $SettingValue,
         array $AllValues
-    ) {
+    ): ?string {
         # return previously-determined result if available
         static $ErrMsgs;
         if (isset($ErrMsgs)) {
@@ -765,12 +835,12 @@ class SystemConfiguration extends Configuration
         $SavedSettings = Email::defaultDeliverySettings();
 
         # set settings to values passed in
-        Email::DefaultDeliveryMethod($AllValues["MailingMethod"]);
-        Email::DefaultPassword($AllValues["SmtpPassword"] ?? null);
-        Email::DefaultPort($AllValues["SmtpPort"] ?? null);
-        Email::DefaultServer($AllValues["SmtpServer"] ?? null);
-        Email::DefaultUserName($AllValues["SmtpUserName"] ?? null);
-        Email::DefaultUseAuthentication($AllValues["UseAuthenticationForSmtp"] ?? null);
+        Email::defaultDeliveryMethod($AllValues["MailingMethod"]);
+        Email::defaultPassword($AllValues["SmtpPassword"] ?? null);
+        Email::defaultPort($AllValues["SmtpPort"] ?? null);
+        Email::defaultServer($AllValues["SmtpServer"] ?? null);
+        Email::defaultUserName($AllValues["SmtpUserName"] ?? null);
+        Email::defaultUseAuthentication($AllValues["UseAuthenticationForSmtp"] ?? null);
 
         # test new settings
         $TestEmail = new Email();
@@ -804,7 +874,7 @@ class SystemConfiguration extends Configuration
             } else {
                 $Msg = "An unknown error was encountered while trying to verify the"
                         ." <b>Mailing</b> settings.";
-                FormUI::LogError($Msg);
+                FormUI::logError($Msg);
             }
         }
 

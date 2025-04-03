@@ -136,8 +136,10 @@ ul.mv-button-group.mv-button-iconed > li > *,
 ul.mv-button-group.mv-button-iconed > li > a:link,
 ul.mv-button-group.mv-button-iconed > li > a:hover,
 ul.mv-button-group.mv-button-iconed > li > a:visited {
-    position: relative;
-    padding-left: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
 }
 
 .cw-button.cw-button-iconed.cw-button-elegant img.cw-button-icon,
@@ -156,9 +158,7 @@ ul.mv-button-group.mv-button-iconed > li > * img.mv-button-icon,
 ul.mv-button-group.mv-button-iconed > li > a:link img.mv-button-icon,
 ul.mv-button-group.mv-button-iconed > li > a:hover img.mv-button-icon,
 ul.mv-button-group.mv-button-iconed > li > a:visited img.mv-button-icon {
-    position: absolute;
-    top: 3px;
-    left: 4px;
+    position: static;
     height: 16px;
 }
 
@@ -315,25 +315,6 @@ ul.btn.btn-sm > li > a:hover,
 ul.btn.btn-sm > li > a:visited {
     padding: 2px 4px;
     font-size: 9px;
-}
-
-.cw-button.cw-button-constrained.cw-button-iconed,
-a.cw-button.cw-button-constrained.cw-button-iconed:link,
-a.cw-button.cw-button-constrained.cw-button-iconed:visited,
-a.cw-button.cw-button-constrained.cw-button-iconed:hover,
-ul.cw-button.cw-button-constrained.cw-button-iconed > li > *,
-ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:link,
-ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:hover,
-ul.cw-button.cw-button-constrained.cw-button-iconed > li > a:visited,
-.btn.btn-sm.mv-button-iconed,
-a.btn.btn-sm.mv-button-iconed:link,
-a.btn.btn-sm.mv-button-iconed:visited,
-a.btn.btn-sm.mv-button-iconed:hover,
-ul.btn.btn-sm.mv-button-iconed > li > *,
-ul.btn.btn-sm.mv-button-iconed > li > a:link,
-ul.btn.btn-sm.mv-button-iconed > li > a:hover,
-ul.btn.btn-sm.mv-button-iconed > li > a:visited {
-    padding-left: 16px;
 }
 
 .cw-button.cw-button-constrained.cw-button-iconed.cw-button-elegant img.cw-button-icon,
@@ -4653,7 +4634,7 @@ table.cw-content-sysconfigtable, table.mv-content-sysconfigtable {
         line-height: 1em;
     }
 
-    .thead-dark {
+    .table-dark {
         line-height: 20px;
     }
 }
@@ -4706,10 +4687,6 @@ div#cw-tabs, div#mv-tabs {
     img[src$=".svg"] {
         height: 10px !important;
     }
-}
-
-.btn.cw-button-iconed, .btn.mv-button-iconed {
-    padding-left: 16px;
 }
 
 .list-group-item {
@@ -5116,7 +5093,7 @@ body#page-editresourcesearchname {
             line-height: 2.25em;
             width: 100%;
 
-            .thead-dark {
+            .table-dark {
                 background-color: #babacf;
                 text-transform: uppercase;
                 text-align: left;
@@ -5458,3 +5435,34 @@ table.mv-fieldtable > tbody > tr > th:first-child > .mv-form-required {
 
 /* @end
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>*/
+
+/**
+ * Styles copied from Metavus.scss for forward compatibility
+ */
+/*
+ * Styles defined for FormUI
+ */
+.mv-form-image-right {
+    float: right;
+}
+.mv-form-image-left {
+    float: left;
+}
+.mv-form-filefield-table, .mv-form-image-table {
+    width: 100%;
+
+    tr {
+        background-color: inherit !important;
+    }
+
+    td {
+        padding: 0.25em;
+        border-top: none;
+    }
+
+    td:last-of-type {
+        text-align: right;
+        padding-right: 0;
+    }
+}
+

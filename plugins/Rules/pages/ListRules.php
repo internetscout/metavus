@@ -3,9 +3,10 @@
 #   FILE:  ListRules.php (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\Plugins\Rules\Rule;
 use Metavus\Plugins\Rules\RuleFactory;

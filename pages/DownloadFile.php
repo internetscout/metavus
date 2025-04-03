@@ -3,54 +3,58 @@
 #   FILE:  DownloadFile.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\File;
-use Metavus\MetadataField;
-use Metavus\Record;
-use Metavus\User;
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Item;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
 $FileId = StdLib::getFormValue("ID", StdLib::getFormValue("Id"));
 
-# if file ID was supplied and is valid
-if (!is_null($FileId) && File::ItemExists($FileId)) {
-    # load file
-    $File = new File($FileId);
-
-    # check whether user can view file
-    if ($File->ResourceId() != Record::NO_ITEM) {
-        $Resource = new Record($File->ResourceId());
-        if ($File->FieldId() != Item::NO_ITEM) {
-            $Field = new MetadataField($File->FieldId());
-            $CanView = $Resource->UserCanViewField($User, $Field);
-        } else {
-            $CanView = $Resource->UserCanView($User);
-        }
-    } else {
-        $CanView = true;
-    }
-
-    # if user can view file
-    if ($CanView) {
-        # download file
-        $GLOBALS["AF"]->DownloadFile(
-            $File->GetNameOfStoredFile(),
-            $File->Name(),
-            $File->GetMimeType()
-        );
-    } else {
-        # print message about unauthorized access
-        CheckAuthorization(-1);
-    }
+# if file was not valid, tell AF not to cache this page
+if ($FileId === null || !File::itemExists($FileId)) {
+    $AF->doNotCacheCurrentPage();
+    return;
 }
 
-# if a file was not found, the HTML template will be loaded instead
+
+# load file
+$File = new File($FileId);
+
+# check whether user can view file
+if ($File->ResourceId() != Record::NO_ITEM) {
+    $Resource = new Record($File->ResourceId());
+    if ($File->FieldId() != Item::NO_ITEM) {
+        $Field = MetadataField::getField($File->FieldId());
+        $CanView = $Resource->UserCanViewField($User, $Field);
+    } else {
+        $CanView = $Resource->UserCanView($User);
+    }
+} else {
+    $CanView = true;
+}
+
+# if user cannot view file, tell AF not to cache this page
+if (!$CanView) {
+    $AF->doNotCacheCurrentPage();
+    CheckAuthorization(-1);
+    return;
+}
+
+# download file
+$AF->downloadFile(
+    $File->GetNameOfStoredFile(),
+    $File->Name(),
+    $File->GetMimeType()
+);

@@ -3,14 +3,15 @@
 #   FILE:  MetricsReporter.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\FormUI;
 use Metavus\Plugin;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\PluginManager;
 
@@ -24,18 +25,19 @@ class MetricsReporter extends Plugin
     /**
      * Set the plugin attributes.  At minimum this method MUST set $this->Name
      * and $this->Version.  This is called when the plugin is initially loaded.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Metrics Reporter";
         $this->Version = "1.1.3";
         $this->Description = "Generates usage and web metrics reports"
                 ." from data recorded by the <i>Metrics Recorder</i> plugin.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "MetricsRecorder" => "1.1.3"
         ];
         $this->EnabledByDefault = true;
@@ -69,7 +71,7 @@ class MetricsReporter extends Plugin
      *      string or array of strings containing error message(s) indicating
      *      why config setup failed.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $AdminPages = [
             "CollectionReports" => "Collection Usage Metrics",
@@ -97,7 +99,7 @@ class MetricsReporter extends Plugin
      * @return string|null NULL if installation succeeded, otherwise a string containing
      *       an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
         $DB = new Database();
 
@@ -116,42 +118,11 @@ class MetricsReporter extends Plugin
     }
 
     /**
-     * Perform any work needed when the plugin is upgraded to a new version
-     * (for example, adding fields to database tables).
-     * @param string $PreviousVersion The version number of this plugin that was
-     *       previously installed.
-     * @return string|null NULL if upgrade succeeded, otherwise a string containing
-     *       an error message indicating why upgrade failed.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        $DB = new Database();
-
-        if (version_compare($PreviousVersion, "1.1.0", "<")) {
-            $DB->query("CREATE TABLE IF NOT EXISTS MetricsReporter_Cache (
-              Id VARCHAR(32),
-              Page VARCHAR(32),
-              Data LONGBLOB,
-              LastUpdate TIMESTAMP DEFAULT NOW(),
-              INDEX (Id, Page),
-              INDEX (LastUpdate),
-              UNIQUE (Id, Page) )");
-        }
-
-        if (version_compare($PreviousVersion, "1.1.2", "<")) {
-            $DB->query("CREATE TABLE IF NOT EXISTS MetricsReporter_SpamSearches ("
-                       ."SearchKey VARCHAR(32), UNIQUE (SearchKey) )");
-        }
-
-        return null;
-    }
-
-    /**
      * Hook the events into the application framework.
      * @return array Returns an array of events to be hooked into the application
      *      framework.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [
             "EVENT_HOURLY" => "ExpireCache",
@@ -164,14 +135,16 @@ class MetricsReporter extends Plugin
     /**
      * Get a cached value.
      * @param string $Name Key to use when looking up value.
+     * @return mixed Cached value.
      */
     public function cacheGet($Name)
     {
+        $AF = ApplicationFramework::getInstance();
         $DB = new Database();
 
         $DB->query("SELECT Data FROM MetricsReporter_Cache "
                    ."WHERE Id='".md5($Name)."' AND "
-                   ."Page='".md5($GLOBALS["AF"]->GetPageName())."'");
+                   ."Page='".md5($AF->getPageName())."'");
 
         if ($DB->numRowsSelected() == 0) {
             return null;
@@ -192,13 +165,15 @@ class MetricsReporter extends Plugin
      * Store a value in the cache.
      * @param string $Name Key to use for later retrieval.
      * @param mixed $Data Value to store (must be serializable).
+     * @return void
      */
-    public function cachePut($Name, $Data)
+    public function cachePut($Name, $Data): void
     {
+        $AF = ApplicationFramework::getInstance();
         $DB = new Database();
 
         $CacheId = md5($Name);
-        $Page = md5($GLOBALS["AF"]->GetPageName());
+        $Page = md5($AF->getPageName());
 
         $DB->query("LOCK TABLES MetricsReporter_Cache WRITE");
         $DB->query("DELETE FROM MetricsReporter_Cache WHERE "
@@ -212,18 +187,21 @@ class MetricsReporter extends Plugin
 
     /**
      * Clear all cache entries for the current page.
+     * @return void
      */
-    public function cacheClear()
+    public function cacheClear(): void
     {
+        $AF = ApplicationFramework::getInstance();
         $DB = new Database();
         $DB->query("DELETE FROM MetricsReporter_Cache "
-                   ."WHERE Page='".md5($GLOBALS["AF"]->GetPageName())."'");
+                   ."WHERE Page='".md5($AF->getPageName())."'");
     }
 
     /**
      * Periodic task to expire old cache entries.
+     * @return void
      */
-    public function expireCache()
+    public function expireCache(): void
     {
         # Delete entries from the cache if they are older than 4 hours
         $DB = new Database();
@@ -236,7 +214,7 @@ class MetricsReporter extends Plugin
      * @param array $InputArray Input data.
      * @return array with keys converted.
      */
-    public static function formatDateKeys($InputArray)
+    public static function formatDateKeys($InputArray): array
     {
         $Result = [];
         foreach ($InputArray as $Key => $Val) {
@@ -251,7 +229,7 @@ class MetricsReporter extends Plugin
      * @param string $RequestString Request to filter.
      * @return bool TRUE for injection attempts.
      */
-    public static function requestIsSqlInjection($RequestString)
+    public static function requestIsSqlInjection($RequestString): bool
     {
         $RequestString = urldecode($RequestString);
 

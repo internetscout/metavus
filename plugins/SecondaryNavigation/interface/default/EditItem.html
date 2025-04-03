@@ -3,12 +3,24 @@
 #   FILE:  AddItem.html (SecondaryNavigation plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-# ----- MAIN -----------------------------------------------------------------
+use Metavus\HtmlButton;
 
+# ----- SETUP ----------------------------------------------------------------
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+
+$AddLinkButton = new HtmlButton("Add Link");
+$AddLinkButton->setIcon("Plus.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <?PHP
@@ -34,15 +46,9 @@ $H_FormUI->displayErrorBlock();
 <form method="post" action="index.php?P=P_SecondaryNavigation_EditItem">
     <?PHP $H_FormUI->displayFormTable(); ?>
     <?PHP if ($H_EditPage) { ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>"
-        alt="" class="mv-button-icon" /> Save Changes</button>
+        <?= $SaveButton->getHtml(); ?>
     <?PHP } else { ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Add Link"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add Link</button>
+        <?= $AddLinkButton->getHtml(); ?>
     <?PHP } ?>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $CancelButton->getHtml(); ?>
 </form>

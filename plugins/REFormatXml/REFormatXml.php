@@ -3,14 +3,15 @@
 #   FILE:  REFormatXml.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\ResourceExporter;
 use Metavus\Record;
 use ScoutLib\Plugin;
 use ScoutLib\StdLib;
@@ -25,18 +26,19 @@ class REFormatXml extends Plugin
 
     /**
      * Set plugin attributes.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Resource Export Format: XML";
         $this->Version = "1.0.0";
         $this->Description = "Add support to Resource Exporter for exporting "
             ."resources in eXtensible Markup Language (XML) format.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "ResourceExporter" => "1.0.0"
         ];
         $this->EnabledByDefault = true;
@@ -49,7 +51,7 @@ class REFormatXml extends Plugin
      * @return NULL if initialization was successful, otherwise a string containing
      *       an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $ExportedDataTypes = [
             MetadataSchema::MDFTYPE_TEXT,
@@ -66,8 +68,8 @@ class REFormatXml extends Plugin
             MetadataSchema::MDFTYPE_USER,
             MetadataSchema::MDFTYPE_REFERENCE,
         ];
-        $GLOBALS["G_PluginManager"]->GetPlugin("ResourceExporter")->
-                RegisterFormat(
+        ResourceExporter::getInstance()->
+                registerFormat(
                     "XML",
                     "xml",
                     [$this, "Export"],
@@ -97,7 +99,7 @@ class REFormatXml extends Plugin
      *       the array values.
      * @return int Number of resources exported, or NULL if export failed.
      */
-    public function export($ResourceIds, $FieldIds, $FileName, $ParamSettings)
+    public function export($ResourceIds, $FieldIds, $FileName, $ParamSettings): int
     {
         # start XML output
         $Out = new XMLWriter();

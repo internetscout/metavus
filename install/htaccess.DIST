@@ -32,6 +32,11 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php [L]
 </IfModule>
 
+# only allow index.php and installmv.php to be directly executed
+<FilesMatch "^(?!(index|installmv)\.php).*\.php$">
+  Require all denied
+</FilesMatch>
+
 # set Cache Policy (static assets and fingerprinted files)
 <FilesMatch "\.(css|js|png|jpe?g|gif|svg|ico|swf|flv|mp4|pdf|docx?|pptx?|zip|woff)$">
   Header set Cache-Control "max-age=604800, public"

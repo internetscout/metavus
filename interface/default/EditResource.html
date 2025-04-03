@@ -3,38 +3,50 @@
 #   FILE:  EditResource.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+namespace Metavus;
+
+use Exception;
 use ScoutLib\ApplicationFramework;
 
-function printButtons($Mode)
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+/**
+ * Print main action buttons for page
+ * @param string $Mode mode page is in (add/edit/confirm delete)
+ * @return void
+ */
+function printButtons(string $Mode): void
 {
-    $AF = ApplicationFramework::getInstance();
+    $CancelButton = new HtmlButton("Cancel");
+    $CancelButton->setIcon("Cross.svg");
 
     switch ($Mode) {
         case "Add":
-            $Buttons = [
-                "Add" => "Plus.svg",
-                "Cancel" => "Cross.svg"
-            ];
+            $AddButton = new HtmlButton("Add");
+            $AddButton->setIcon("Plus.svg");
+            $Buttons = [$AddButton, $CancelButton];
             break;
 
         case "Edit":
-            $Buttons = [
-                "Save" => "Disk.svg",
-                "Duplicate" => "Copy.svg",
-                "Delete" => "Delete.svg",
-                "Cancel"  => "Cross.svg"
-            ];
+            $SaveButton = new HtmlButton("Save");
+            $SaveButton->setIcon("Disk.svg");
+            $DuplicateButton = new HtmlButton("Duplicate");
+            $DuplicateButton->setIcon("Copy.svg");
+            $DeleteButton = new HtmlButton("Delete");
+            $DeleteButton->setIcon("Delete.svg");
+            $DeleteButton->addSemanticClass("btn-danger");
+            $Buttons = [$SaveButton, $DuplicateButton, $DeleteButton, $CancelButton];
             break;
 
         case "Confirm Delete":
-            $Buttons = [
-                "Confirm" => "Check.svg",
-                "Cancel" => "Cross.svg"
-            ];
+            $ConfirmButton = new HtmlButton("Confirm");
+            $ConfirmButton->setIcon("Check.svg");
+            $ConfirmButton->addSemanticClass("btn-danger");
+            $Buttons = [$ConfirmButton, $CancelButton];
             break;
 
         default:
@@ -42,16 +54,24 @@ function printButtons($Mode)
             break;
     }
 
-    foreach ($Buttons as $Button => $Icon) {
-        $CssClass = in_array($Button, ["Delete", "Confirm"]) ?
-            "danger" : "primary";
-        print '<button class="btn btn-'.$CssClass.' mv-button-iconed" type="submit" '
-            .'name="Submit" value="'.$Button.'"><img src="'.$AF->GUIFile($Icon)
-            .'" alt="" class="mv-button-icon" /> '.$Button.'</button> ';
+    foreach ($Buttons as $Button) {
+        print $Button->getHtml() . " ";
     }
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Mode)) {
+    throw new Exception("H_Mode not defined.");
+}
+if (!isset($H_Resource)) {
+    $H_Resource = null;
+}
+if (!isset($H_ResourceId)) {
+    $H_ResourceId = null;
+}
+if (!isset($H_RecordEditingUI)) {
+    throw new Exception("H_RecordEditingUI not defined.");
+}
 
 $SafeResourceName = isset($H_Resource) ?
     $H_Resource->getSchema()->resourceName() : "Record";
@@ -67,11 +87,8 @@ if (is_null($H_ResourceId) || !isset($H_Resource)) {
     if (is_null($H_ResourceId)) {
         print "No ". $SafeResourceName." ID was specified.</p>";
         return;
-    }
-
-    if (!isset($H_Resource) && $H_ResourceId == "NEW") {
-        print "Insufficient privileges to create "
-            .$SafeResourceName."</p>";
+    } elseif ($H_ResourceId == "NEW") {
+        print "Insufficient privileges to create " . $SafeResourceName . "</p>";
         return;
     }
 
@@ -81,15 +98,31 @@ if (is_null($H_ResourceId) || !isset($H_Resource)) {
 
 $AF = ApplicationFramework::getInstance();
 
+# get HTML for any extra buttons
+# (need to use $H_Resource->id() instead of $H_ResourceId
+# because $H_ResourceId is "NEW" when making a new record)
+$TopButtonInsertionHtml = $AF->formatInsertionKeyword(
+    "EDITRESOURCE-TOP-BUTTONS",
+    ["RecordId" => $H_Resource->id()]
+);
+$BottomButtonInsertionHtml = $AF->formatInsertionKeyword(
+    "EDITRESOURCE-BOTTOM-BUTTONS",
+    ["RecordId" => $H_Resource->id()]
+);
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <form name="EditForm" method="post" enctype="multipart/form-data"
       action="index.php?P=EditResource&amp;ID=<?= $H_Resource->Id();?>">
   <div class="clearfix">
-    <div class="float-left">
+    <div class="float-start">
       <h1><?= $H_Mode ?> <?= $SafeResourceName ?></h1>
       <p><i>(required fields are <span class="mv-form-requiredfield">circled</span>)</i></p>
     </div>
-    <div class="float-right"><?PHP printButtons($H_Mode); ?></div>
+    <div class="float-end">
+      <?PHP printButtons($H_Mode); ?>
+      <?= $TopButtonInsertionHtml; ?>
+    </div>
   </div>
 
   <?PHP if ($H_Mode == "Confirm Delete") { ?>
@@ -103,10 +136,11 @@ $AF = ApplicationFramework::getInstance();
     </div>
   <?PHP } ?>
   <div class="mv-above-editform"><?PHP
-           $GLOBALS["AF"]->signalEvent(
+    $AF = ApplicationFramework::getInstance();
+           $AF->signalEvent(
                "EVENT_HTML_INSERTION_POINT",
                [
-                   $GLOBALS["AF"]->GetPageName(),
+                   $AF->GetPageName(),
                    "Above Edit Form",
                    [
                        "Resource" => $H_Resource,
@@ -119,12 +153,16 @@ $AF = ApplicationFramework::getInstance();
   <?PHP $H_RecordEditingUI->displayErrorBlock(); ?>
   <?PHP $H_RecordEditingUI->displayFormTable(); ?>
 
-  <div class="float-right"><?PHP printButtons($H_Mode); ?></div>
+  <div class="float-end">
+    <?PHP printButtons($H_Mode); ?>
+    <?= $BottomButtonInsertionHtml; ?>
+  </div>
   <?PHP
-        $GLOBALS["AF"]->signalEvent(
+    $AF = ApplicationFramework::getInstance();
+        $AF->signalEvent(
             "EVENT_HTML_INSERTION_POINT",
             [
-                $GLOBALS["AF"]->getPageName(),
+                $AF->getPageName(),
                 "Bottom of Edit Form",
                 [
                     "Resource" => $H_Resource,
@@ -137,7 +175,8 @@ $AF = ApplicationFramework::getInstance();
 <div class="clearfix">&nbsp;</div>
 
 <script type="text/javascript">
+  var RecordId = parseInt('<?= $H_ResourceId; ?>');
   $(document).ready(function(){
-      CKEDITOR.config.contentsCss.push('<?= $AF->pUIFile("MV-Theme-CKEditor.css")  ?>');
+      CKEDITOR.config.contentsCss.push('<?= $AF->gUIFile("MV-Theme-CKEditor.css"); ?>');
   });
 </script>

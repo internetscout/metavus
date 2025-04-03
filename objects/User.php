@@ -3,17 +3,15 @@
 #   FILE:  User.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
-use ScoutLib\Email;
 use ScoutLib\StdLib;
 
 /**
@@ -62,7 +60,7 @@ class User extends \ScoutLib\User
      * @param string $UserName Login name for new user.
      * @return User Newly-created user.
      */
-    public static function create(string $UserName)
+    public static function create(string $UserName): User
     {
         # create base User object
         $PUser = parent::create($UserName);
@@ -121,8 +119,9 @@ class User extends \ScoutLib\User
 
     /**
      * Log this user out and disassociate their underlying Resource from this CWUser.
+     * @return void
      */
-    public function logout()
+    public function logout(): void
     {
         parent::logout();
         $this->Resource = null;
@@ -135,7 +134,7 @@ class User extends \ScoutLib\User
      * @param PrivilegeSet $NewValue New value (OPTIONAL, default NULL)
      * @return PrivilegeSetCompatibilityShim for use in legacy code.
      */
-    public function privileges(PrivilegeSet $NewValue = null)
+    public function privileges(?PrivilegeSet $NewValue = null): PrivilegeSetCompatibilityShim
     {
         if ($NewValue !== null) {
             throw new Exception(
@@ -152,7 +151,7 @@ class User extends \ScoutLib\User
      * @return int|null Returns the ID of the associated user resource or NULL
      *      if it's not available, e.g., the user isn't logged in.
      */
-    public function resourceId()
+    public function resourceId(): ?int
     {
         return ($this->Resource !== null) ? $this->Resource->Id() : null;
     }
@@ -162,7 +161,7 @@ class User extends \ScoutLib\User
      * @return Record|null Returns the associated user resource or NULL if it's
      *      not available, e.g., the user isn't logged in.
      */
-    public function getResource()
+    public function getResource(): ?Record
     {
         return ($this->Resource !== null) ? $this->Resource : null;
     }
@@ -182,11 +181,12 @@ class User extends \ScoutLib\User
      */
     public function hasPriv($Privilege, $Privileges = null): bool
     {
+        $Args = func_get_args();
         static $ErrorsLoggedFrom = [];
         if ($Privilege instanceof PrivilegeSet) {
             $MyCaller = StdLib::getMyCaller();
             if (!isset($ErrorsLoggedFrom[$MyCaller])) {
-                $GLOBALS["AF"]->logError(
+                ApplicationFramework::getInstance()->logError(
                     ApplicationFramework::LOGLVL_WARNING,
                     "User::hasPriv() called with instance of PrivilegeSet, "
                     .StdLib::getMyCaller()." use PrivilegeSet::meetsRequirements() instead."
@@ -199,7 +199,6 @@ class User extends \ScoutLib\User
                 return $Privilege->meetsRequirements($this);
             }
         } else {
-            $Args = func_get_args();
             if (is_array($Args[0])) {
                 if (count($Args) == 1) {
                     $Args = $Args[0];
@@ -211,7 +210,7 @@ class User extends \ScoutLib\User
                 return true;
             }
 
-            $Callable = "parent::hasPriv";
+            $Callable = parent::class . "::hasPriv";
             if (is_callable($Callable)) {
                 $Args = self::filterPrivileges($Args);
                 if (count($Args) > 0) {
@@ -226,16 +225,16 @@ class User extends \ScoutLib\User
     /**
      * Grant privilege to a a user.
      * @param int $Privilege Privilege to grant.
+     * @return void
      * @throws Exception On attempts to grant a pseudo-privilege.
-     * @see User::GrantPriv() for return values.
      */
-    public function grantPriv(int $Privilege)
+    public function grantPriv(int $Privilege): void
     {
         if (self::isPseudoPrivilege($Privilege)) {
             throw new Exception("Attempt to grant pseudo-privilege to user");
         }
 
-        return parent::grantPriv($Privilege);
+        parent::grantPriv($Privilege);
     }
 
     /**
@@ -243,8 +242,9 @@ class User extends \ScoutLib\User
      * @param array $NewPrivileges New privilege list to
      *   assign. Pseudo-privileges are filtered from the list passed to
      *   User::setPrivList().
+     * @return void
      */
-    public function setPrivList(array $NewPrivileges)
+    public function setPrivList(array $NewPrivileges): void
     {
         parent::setPrivList(self::filterPrivileges($NewPrivileges));
     }
@@ -255,7 +255,7 @@ class User extends \ScoutLib\User
      */
     public function getAccountActivationUrl() : string
     {
-        return $GLOBALS["AF"]->baseUrl()."index.php?P=ActivateAccount&"
+        return ApplicationFramework::getInstance()->baseUrl()."index.php?P=ActivateAccount&"
             .$this->getAccountActivationUrlParameters();
     }
 
@@ -275,15 +275,16 @@ class User extends \ScoutLib\User
      */
     public function getAccountManualActivationUrl() : string
     {
-        return $GLOBALS["AF"]->baseUrl()."index.php?P=ManuallyActivateAccount";
+        return ApplicationFramework::getInstance()->baseUrl()."index.php?P=ManuallyActivateAccount";
     }
 
     /**
      * Send a confirmation message to a newly supplied email address to verify
      *   that a user actually has access to it.
      * @param string $NewEmail Email address to verify
+     * @return void
      */
-    public function sendEmailConfirmationEmail(string $NewEmail)
+    public function sendEmailConfirmationEmail(string $NewEmail): void
     {
         $ActivationUrl = $this->getAccountActivationUrl();
         $ManualActivationUrl = $this->getAccountManualActivationUrl();
@@ -316,7 +317,7 @@ class User extends \ScoutLib\User
      * Send user account activation email.
      * @return bool TRUE when a message was sent, FALSE otherwise
      */
-    public function sendActivationEmail()
+    public function sendActivationEmail(): bool
     {
         $IntConfig = InterfaceConfiguration::getInstance();
         return $this->sendCustomActivationEmail(
@@ -333,12 +334,13 @@ class User extends \ScoutLib\User
     public function sendCustomActivationEmail(
         int $TemplateId,
         $Resources = []
-    ) {
+    ): bool {
+        $AF = ApplicationFramework::getInstance();
         $ActivationUrlParameters = "?UN=".urlencode($this->get("UserName"))
             ."&AC=".$this->getActivationCode();
-        $ActivationUrl = $GLOBALS["AF"]->baseUrl()
+        $ActivationUrl = $AF->baseUrl()
             ."index.php".$ActivationUrlParameters."&P=ActivateAccount";
-        $ManualActivationUrl = $GLOBALS["AF"]->baseUrl()
+        $ManualActivationUrl = $AF->baseUrl()
             ."index.php?P=ManuallyActivateAccount";
 
         $IntConfig = InterfaceConfiguration::getInstance();
@@ -369,7 +371,7 @@ class User extends \ScoutLib\User
      * @param string $ConfirmCode Email change confirmation code
      * @return bool TRUE for successful confirmation, FALSE otherwise
      */
-    public function confirmEmailChange(string $ConfirmCode)
+    public function confirmEmailChange(string $ConfirmCode): bool
     {
         # if the provided code was invalid, don't change anything
         if (!$this->isMailChangeCodeGood($ConfirmCode)) {
@@ -387,7 +389,7 @@ class User extends \ScoutLib\User
 
         # but if they were different, change the user's email
         $this->set("EMail", $NewEmail);
-        $GLOBALS["AF"]->signalEvent(
+        ApplicationFramework::getInstance()->signalEvent(
             "EVENT_USER_EMAIL_CHANGED",
             [
                 "UserId" => $this->id(),
@@ -404,7 +406,7 @@ class User extends \ScoutLib\User
      * @param string $ActivationCode Account activation code
      * @return bool TRUE on successful activation, FALSE otherwise.
      */
-    public function activateAccount(string $ActivationCode)
+    public function activateAccount(string $ActivationCode): bool
     {
         if (!$this->isActivationCodeGood($ActivationCode)) {
             return false;
@@ -420,7 +422,7 @@ class User extends \ScoutLib\User
      * @param string $NewEmail New email address
      * @return string|null Status message string or NULL when nothing was done
      */
-    public function changeUserEmail(string $NewEmail)
+    public function changeUserEmail(string $NewEmail): ?string
     {
         $OldEmail = $this->get("EMail");
         if ($OldEmail != $NewEmail) {
@@ -443,7 +445,7 @@ class User extends \ScoutLib\User
      * @param int $UserId UserId to check.
      * @return bool TRUE for users that exist.
      */
-    public static function itemExists($UserId)
+    public static function itemExists($UserId): bool
     {
         return (new UserFactory())->userExists($UserId);
     }
@@ -476,7 +478,8 @@ class User extends \ScoutLib\User
             $CustomFields = [];
             $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
 
-            foreach ($Schema->getFields() as $Field) {
+            $Fields = $Schema->getFields(null, MetadataSchema::MDFORDER_EDITING);
+            foreach ($Fields as $Field) {
                 # they're custom if not owned by core software
                 if (($Field->Owner() != "CWISCore")
                         && ($Field->Owner() != "MetavusCore")) {
@@ -500,7 +503,8 @@ class User extends \ScoutLib\User
             $DefaultFields = [];
             $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
 
-            foreach ($Schema->getFields() as $Field) {
+            $Fields = $Schema->getFields(null, MetadataSchema::MDFORDER_EDITING);
+            foreach ($Fields as $Field) {
                 # they're default if owned by core software
                 if (($Field->Owner() == "CWISCore")
                         || ($Field->Owner() == "MetavusCore")) {
@@ -535,7 +539,7 @@ class User extends \ScoutLib\User
 
         if ($Status == self::U_OKAY) {
             # signal password change
-            $GLOBALS["AF"]->SignalEvent(
+            ApplicationFramework::getInstance()->signalEvent(
                 "EVENT_USER_PASSWORD_CHANGED",
                 [
                     "UserId" => $this->id(),
@@ -566,21 +570,22 @@ class User extends \ScoutLib\User
 
     /**
      * Get a value from the specified field.
-     * @param string $FieldName The name of the field to get.
+     * @param int|string|MetadataField $Field Field ID or full name of field
+     *      or MetadataField object.
      * @return mixed Returns the field value or NULL if user data isn't available,
      *      e.g., the user isn't logged in.
      */
-    public function get($FieldName)
+    public function get($Field)
     {
         # all values are NULL for anonymous users
         if ($this->isAnonymous()) {
             return null;
         }
 
-        if (in_array($FieldName, self::$FieldsOnlyInDatabase)) {
-            return parent::get($FieldName);
+        if (is_string($Field) && in_array($Field, self::$FieldsOnlyInDatabase)) {
+            return parent::get($Field);
         } else {
-            return $this->Resource->Get($FieldName);
+            return $this->Resource->get($Field);
         }
     }
 
@@ -602,7 +607,7 @@ class User extends \ScoutLib\User
 
         # make sure Field is a FieldName
         if (is_int($Field)) {
-            $Field = new MetadataField($Field);
+            $Field = MetadataField::getField($Field);
         }
         if ($Field instanceof MetadataField) {
             $Field = $Field->name();
@@ -633,11 +638,41 @@ class User extends \ScoutLib\User
     }
 
     /**
+     * Update legacy columns in the APUsers table for a specified field. Does
+     * nothing for fields that do not exist in the APUsers table.
+     * Should only be called by UserEditingUI.
+     * @param string $FieldName Name of the field to set.
+     * @param mixed $NewValue The value to which to set the field.
+     * @return int Returns the status of the operation.
+     */
+    public function setLegacyColumn($FieldName, $NewValue): int
+    {
+        StdLib::checkMyCaller(
+            "Metavus\\UserEditingUI",
+            "User::setLegacyColumn() may only be called by UserEditingUI."
+        );
+
+        if ($this->isAnonymous()) {
+            throw new Exception(
+                "Attempt to set User field value when "
+                ."no user is logged in."
+            );
+        }
+
+        if ($this->DB->fieldExists("APUsers", $FieldName)) {
+            return parent::set($FieldName, $NewValue);
+        }
+
+        return self::U_OKAY;
+    }
+
+    /**
      * Update user field values (both MFields and DB Fields) from data
      * provided via FormUI.
      * @param array $Values Form values
+     * @return void
      */
-    public function setFieldsFromFormData($Values)
+    public function setFieldsFromFormData($Values): void
     {
         $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
 
@@ -773,11 +808,11 @@ class User extends \ScoutLib\User
 
     /**
      * Get additional fields for user signup form provided by
-     * EVENT_APPEND_HTML_TO_FORM.  (Event obsolete – may be replaced
-     * at some point with different mechanism.)
+     * EVENT_APPEND_HTML_TO_FORM.  (Event obsolete - may be replaced
+     * at some point with a different mechanism.)
      * @return array Additional form fields.
      */
-    public static function getAdditionalSignupFormFields()
+    public static function getAdditionalSignupFormFields(): array
     {
         return [];
     }
@@ -788,14 +823,14 @@ class User extends \ScoutLib\User
      * @param bool $NewValue Whether registration has been confirmed. (OPTIONAL)
      * @return bool Whether registration has been confirmed.
      */
-    public function isActivated(bool $NewValue = null): bool
+    public function isActivated(?bool $NewValue = null): bool
     {
         if (!is_null($NewValue)) {
             $WasActivated = parent::isActivated();
             parent::isActivated($NewValue);
             if (!$WasActivated && $NewValue) {
                 $this->revokePriv(PRIV_USERDISABLED);
-                $GLOBALS["AF"]->signalEvent(
+                ApplicationFramework::getInstance()->signalEvent(
                     "EVENT_USER_VERIFIED",
                     ["UserId" => $this->id()]
                 );
@@ -878,7 +913,7 @@ class User extends \ScoutLib\User
      * @param int $Priv Privilege to check.
      * @return bool TRUE for standard privileges, FALSE otherwise
      */
-    public static function isStandardPrivilege($Priv)
+    public static function isStandardPrivilege($Priv): bool
     {
         return (self::MIN_STANDARD_PRIV <= $Priv &&
                 $Priv <= self::MAX_STANDARD_PRIV) ? true : false;
@@ -890,7 +925,7 @@ class User extends \ScoutLib\User
      * @param int $Priv Privilege to check.
      * @return bool TRUE for pseudo-privileges, FALSE otherwise
      */
-    public static function isPseudoPrivilege($Priv)
+    public static function isPseudoPrivilege($Priv): bool
     {
         return (self::MIN_PSEUDO_PRIV <= $Priv &&
                 $Priv <= self::MAX_PSEUDO_PRIV) ? true : false;
@@ -902,7 +937,7 @@ class User extends \ScoutLib\User
      * @param int $Priv Privilege to check.
      * @return bool TRUE for custom privileges, FALSE otherwise
      */
-    public static function isCustomPrivilege($Priv)
+    public static function isCustomPrivilege($Priv): bool
     {
         if ($Priv >= self::MIN_CUSTOM_PRIV) {
             return true;
@@ -916,7 +951,7 @@ class User extends \ScoutLib\User
      * @param array $Privs List to filter.
      * @return array Filtered list.
      */
-    protected static function filterPrivileges($Privs)
+    protected static function filterPrivileges($Privs): array
     {
         $Result = [];
         foreach ($Privs as $Priv) {

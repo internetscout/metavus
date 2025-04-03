@@ -3,17 +3,33 @@
 #   FILE:  NewSavedSearch.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
-use Metavus\FormUI;
+namespace Metavus;
 
-# ----- MAIN -----------------------------------------------------------------
+use Exception;
 
-PageTitle("Save Search");
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+
+$SaveButton = new HtmlButton("Save");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
 
 $MailingsEnabled = $GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailings");
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Save Search");
 ?>
 <h1>New Saved Search</h1>
 
@@ -27,10 +43,6 @@ $MailingsEnabled = $GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailin
      <b>Email</b>.</p>
 <?PHP } ?>
     <?PHP $H_FormUI->DisplayFormTable(); ?>
-    <button class="btn btn-primary mv-button-iconed" type="Submit" name="Submit"
-        value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon" /> Save</button>
-    <button class="btn btn-danger mv-button-iconed" type="Submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $SaveButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

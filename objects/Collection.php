@@ -3,13 +3,12 @@
 #   FILE:  Collection.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\StdLib;
 
 /**
@@ -40,6 +39,23 @@ class Collection extends Record
     public function getSize(): int
     {
         return count($this->getItemIds());
+    }
+
+    /**
+     * Get visible collection size (number of items currently in collection
+     * visible to a user).
+     * @param User $User User to use for permissions checks (OPTIONAL,
+     *   defaults to currently logged-in user).
+     * @return int Item count.
+     */
+    public function getVisibleSize(?User $User = null): int
+    {
+        $VisibleItems = RecordFactory::multiSchemaFilterNonViewableRecords(
+            $this->getItemIds(),
+            ($User === null) ? User::getCurrentUser() : $User
+        );
+
+        return count($VisibleItems);
     }
 
     /**

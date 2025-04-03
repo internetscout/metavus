@@ -3,11 +3,52 @@
 #   FILE:  PopulateField.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
+
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_AddedItemCount)) {
+    $H_AddedItemCount = null;
+}
+if (!isset($H_Field)) {
+    $H_Field = null;
+}
+if (!isset($H_Vocabularies)) {
+    $H_Vocabularies = null;
+}
+if (!isset($H_Vocabulary)) {
+    $H_Vocabulary = null;
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$ReturnButton = new HtmlButton("Return");
+$ReturnButton->setIcon("BackArrow.svg");
+$ReturnButton->setLink("index.php?P=EditMetadataField&Id=" . $H_Field->Id());
+
+$PopulateButton = new HtmlButton("Populate");
+$PopulateButton->setIcon("MagicWand.svg");
+
+$CancelSingleButton = new HtmlButton("Cancel");
+$CancelSingleButton->setIcon("Cross.svg");
+$CancelSingleButton->addSemanticClass("btn-danger");
+
+$PreviewButton = new HtmlButton("Preview");
+$PreviewButton->setIcon("EyeOpen.svg");
+$PreviewButton->setSize(HtmlButton::SIZE_SMALL);
+
+$CancelAllButton = new HtmlButton("Cancel");
+$CancelAllButton->setIcon("Cross.svg");
+$CancelAllButton->addSemanticClass("btn-danger");
+$CancelAllButton->setLink("index.php?P=EditMetadataField&Id=" . $H_Field->Id());
+
+# ----- DISPLAY --------------------------------------------------------------
 
 /*
 CASES:
@@ -17,41 +58,41 @@ CASES:
 - display list of available vocabs
 */
 
+PageTitle("Populate Metadata Field");
 ?>
 
-<?PHP if (isset($G_ErrorMessages)) { ?>
+<?PHP if (isset($H_ErrorMessages)) { ?>
 <h1>Error Encountered</h1>
 
 <ul class="list-group list-group-flush">
-    <?PHP foreach ($G_ErrorMessages as $Msg) { ?>
+    <?PHP foreach ($H_ErrorMessages as $Msg) { ?>
     <li class="list-group-item"><?= $Msg; ?></li>
     <?PHP } ?>
 </ul>
 
-<?PHP } elseif (isset($G_IsVocabImport)) { ?>
+<?PHP } elseif (isset($H_IsVocabImport)) { ?>
 <h1>Field Populated</h1>
 
-<p>The <i><?= $G_Field->GetDisplayName(); ?></i> field was populated with
-    <?= $G_AddedItemCount; ?> new terms.</p>
+<p>The <i><?= $H_Field->GetDisplayName(); ?></i> field was populated with
+    <?= $H_AddedItemCount; ?> new terms.</p>
 
-    <?PHP if ($G_AddedItemCount < count($G_Vocabulary->TermList())) { ?>
-<p><?= count($G_Vocabulary->TermList()) - $G_AddedItemCount; ?> terms
+    <?PHP if ($H_AddedItemCount < count($H_Vocabulary->TermList())) { ?>
+<p><?= count($H_Vocabulary->TermList()) - $H_AddedItemCount; ?> terms
 were skipped because they were already present in the vocabulary for the
 field.</p>
     <?PHP } ?>
 
-<a class="btn btn-primary mv-button-iconed"
-    href="index.php?P=EditMetadataField&amp;Id=<?=$G_Field->Id();?>"><img
-    src="<?= $AF->GUIFile('BackArrow.svg'); ?>" alt="" class="mv-button-icon" /> Return</a>
+    <?= $ReturnButton->getHtml(); ?>
 
-<?PHP } elseif (isset($G_IsVocabPreview)) { ?>
+<?PHP } elseif (isset($H_IsVocabPreview)) { ?>
     <?PHP
-    $PopLink = "index.php?P=PopulateField&amp;ID=".$G_Field->Id()
-        ."&amp;VH=".$G_Vocabulary->Hash()."&amp;CP=Y";
-    $CancelLink = "index.php?P=PopulateField&amp;ID=".$G_Field->Id();
-    $Version = strlen($G_Vocabulary->Version())
-        ? $G_Vocabulary->Version() : "(no version specified)";
-    $Terms = $G_Vocabulary->TermList();
+    $PopulateButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->Id()
+        . "&VH=" . $H_Vocabulary->Hash() . "&CP=Y");
+    $CancelLink = "index.php?P=PopulateField&amp;ID=".$H_Field->Id();
+    $CancelSingleButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->Id());
+    $Version = strlen($H_Vocabulary->Version())
+        ? $H_Vocabulary->Version() : "(no version specified)";
+    $Terms = $H_Vocabulary->TermList();
     ?>
 
 <h1>Confirm Populate</h1>
@@ -63,7 +104,7 @@ replaced or overwritten.</p>
     <tbody>
         <tr>
             <th>Vocabulary</th>
-            <td><?= "<i>".$G_Vocabulary->Name()."</i> (".count($Terms)." terms)"; ?></td>
+            <td><?= "<i>".$H_Vocabulary->Name()."</i> (".count($Terms)." terms)"; ?></td>
         </tr>
         <tr>
             <th>Version</th>
@@ -71,36 +112,36 @@ replaced or overwritten.</p>
         </tr>
         <tr>
             <th>URL</th>
-            <td><a href="<?= $G_Vocabulary->Url(); ?>"
-                    target="_blank"><?= $G_Vocabulary->Url(); ?></a></td>
+            <td><a href="<?= $H_Vocabulary->Url(); ?>"
+                    target="_blank"><?= $H_Vocabulary->Url(); ?></a></td>
         </tr>
         <tr>
             <th>Owner/Maintainer</th>
             <td>
-                <a href="<?= $G_Vocabulary->OwnerUrl();?>"
-                    target="_blank"><?= $G_Vocabulary->OwnerName(); ?></a>
+                <a href="<?= $H_Vocabulary->OwnerUrl();?>"
+                    target="_blank"><?= $H_Vocabulary->OwnerName(); ?></a>
             </td>
         </tr>
         <tr>
             <th>Description</th>
-            <td><?= $G_Vocabulary->Description(); ?></td>
+            <td><?= $H_Vocabulary->Description(); ?></td>
         </tr>
-        <?PHP if ($G_Vocabulary->HasQualifier() && strlen($G_Vocabulary->QualifierUrl())) { ?>
+        <?PHP if ($H_Vocabulary->HasQualifier() && strlen($H_Vocabulary->QualifierUrl())) { ?>
         <tr>
             <th>Qualifier</th>
             <td>
-                <a href="<?= $G_Vocabulary->QualifierUrl(); ?>">
-                  <?= $G_Vocabulary->QualifierName(); ?>
+                <a href="<?= $H_Vocabulary->QualifierUrl(); ?>">
+                  <?= $H_Vocabulary->QualifierName(); ?>
                 </a>
             </td>
         </tr>
         <?PHP } ?>
-        <?PHP if (strlen($G_Vocabulary->QualifierNamespace())) { ?>
+        <?PHP if (strlen($H_Vocabulary->QualifierNamespace())) { ?>
         <tr>
             <th>Namespace</th>
             <td>
-                <a href="<?= $G_Vocabulary->QualifierNamespace(); ?>">
-                <i><?= $G_Vocabulary->QualifierNamespace(); ?></i>
+                <a href="<?= $H_Vocabulary->QualifierNamespace(); ?>">
+                <i><?= $H_Vocabulary->QualifierNamespace(); ?></i>
                 </a>
             </td>
         </tr>
@@ -119,19 +160,15 @@ replaced or overwritten.</p>
 </table>
 
 <p>
-    <a class="btn btn-primary mv-button-iconed" href="<?= $PopLink; ?>"><img
-        src="<?= $AF->GUIFile('MagicWand.svg'); ?>" alt=""
-        class="mv-button-icon" /> Populate</a>
-    <a class="btn btn-danger mv-button-iconed" href="<?= $CancelLink; ?>"><img
-        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</a>
+    <?= $PopulateButton->getHtml(); ?>
+    <?= $CancelSingleButton->getHtml(); ?>
 </p>
 
 <?PHP } else { ?>
 <h1>Available Vocabularies</h1>
 
 <p>Controlled vocabularies available for populating the <i><?=
-    $G_Field->GetDisplayName(); ?></i> field:</p>
+    $H_Field->GetDisplayName(); ?></i> field:</p>
 
 <table class="table table-striped">
     <thead>
@@ -144,8 +181,9 @@ replaced or overwritten.</p>
         </tr>
     </thead>
     <tbody>
-        <?PHP foreach ($G_Vocabularies as $Vocab) {
-            $PopLink = "index.php?P=PopulateField&amp;ID=".$G_Field->Id()."&amp;VH=".$Vocab->Hash();
+        <?PHP foreach ($H_Vocabularies as $Vocab) {
+            $PreviewButton->setLink("index.php?P=PopulateField&ID="
+                . $H_Field->Id() . "&VH=" . $Vocab->Hash());
             ?>
         <tr>
             <td><?= $Vocab->Name(); ?></td>
@@ -153,19 +191,14 @@ replaced or overwritten.</p>
             <td><a href="<?= $Vocab->OwnerUrl();?>"
                     target="_blank"><?= $Vocab->OwnerName(); ?></a></td>
             <td><?= $Vocab->Description()." (".count($Vocab->TermList())." terms)";  ?></td>
-            <td><a class="btn btn-primary btn-sm mv-button-iconed"
-                    href="<?= $PopLink; ?>"><img src="<?= $AF->GUIFile('EyeOpen.svg'); ?>"
-                    alt="" class="mv-button-icon" /> Preview</a></td>
+            <td><?= $PreviewButton->getHtml(); ?></td>
         </tr>
         <?PHP } ?>
     </tbody>
 </table>
 
 <p>
-    <a class="btn btn-danger mv-button-iconed"
-        href="index.php?P=EditMetadataField&amp;Id=<?=$G_Field->Id();?>"><img
-        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</a>
+    <?= $CancelAllButton->getHtml(); ?>
 </p>
 
 <?PHP } ?>

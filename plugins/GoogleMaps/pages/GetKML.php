@@ -3,14 +3,15 @@
 #   FILE:  GetKML.php (GoogleMaps plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 # ----- MAIN -----------------------------------------------------------------
 
+use Metavus\Plugins\GoogleMaps;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
@@ -21,7 +22,7 @@ $DetailProvider = StdLib::getArrayValue($_GET, "DP");
 
 # only continue if given the parameters
 if ($PointProvider && $DetailProvider) {
-    $GMaps = PluginManager::getInstance()->getPluginForCurrentPage();
+    $GMaps = GoogleMaps::getInstance();
 
     $Path = $GMaps->GetKml($PointProvider, $DetailProvider);
 

@@ -3,15 +3,15 @@
 #   FILE:  HtmlOptionListSet.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
 
 /**
  * Convenience class for generating an HTML select/option form element.
@@ -46,7 +46,7 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
      */
     public function getHtml(): string
     {
-        $GLOBALS["AF"]->RequireUIFile("HtmlOptionListSet.js");
+        ApplicationFramework::getInstance()->requireUIFile("HtmlOptionListSet.js");
 
         # save original selected values
         $OrigSetting = $this->SelectedValue;
@@ -56,9 +56,10 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
 
         # start out with empty HTML
         $Html = "<div class='mv-optionlistset mv-mutable-widget' "
-            ." data-dynamic='".($this->dynamic ? "true" : "false")."' "
-            ." data-minlists='".$this->minLists."' "
-            ." data-maxlists='".$this->maxLists."'>";
+                ." data-dynamic='".($this->Dynamic ? "true" : "false")."' "
+                ." data-minlists='".$this->MinLists."' "
+                ." data-maxlists='".$this->MaxLists."'>";
+
 
         # if we have any current settings
         if ($OrigSetting !== null) {
@@ -68,18 +69,21 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
             # show one list for each setting
             foreach ($SelectedValues as $Value) {
                 $this->SelectedValue = $Value;
-                $Html .= parent::getHtml();
+                $Html .= $this->getRowHtml();
                 $ListsShown++;
             }
+        } else {
+            $SelectedValues = [];
         }
 
         # add any necessary additional lists
-        if ($this->dynamic || $ListsShown < $this->minLists) {
+        if (count($SelectedValues) < $this->Options &&
+            ($this->Dynamic || $ListsShown < $this->MinLists)) {
             $this->SelectedValue = null;
             do {
-                $Html .= parent::getHtml();
+                $Html .= $this->getRowHtml();
                 $ListsShown++;
-            } while ($ListsShown < $this->minLists);
+            } while ($ListsShown < $this->MinLists);
         }
 
         $Html .= "</div>";
@@ -100,7 +104,7 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
      * @return bool TRUE if users can select multiple items, otherwise FALSE.
      * @throws Exception if NewValue set to false.
      */
-    public function multipleAllowed(bool $NewValue = null): bool
+    public function multipleAllowed(?bool $NewValue = null): bool
     {
         if ($NewValue === false) {
             throw new Exception(
@@ -121,7 +125,7 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
      * @see HtmlOptionList::OnChangeAction()
      * @throws Exception if NewValue set to true.
      */
-    public function submitOnChange(bool $NewValue = null): bool
+    public function submitOnChange(?bool $NewValue = null): bool
     {
         if ($NewValue === true) {
             throw new Exception(
@@ -139,7 +143,7 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
      * @return string Current action.
      * @see HtmlOptionList::submitOnChange()
      */
-    public function onChangeAction(string $NewValue = null): string
+    public function onChangeAction(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             throw new Exception(
@@ -155,20 +159,20 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
      * @param bool $NewValue New setting (OPTIONAL).
      * @return bool TRUE if list is dynamic.
      */
-    public function dynamic(bool $NewValue = null) : bool
+    public function dynamic(?bool $NewValue = null) : bool
     {
         if ($NewValue !== null) {
-            $this->dynamic = $NewValue;
+            $this->Dynamic = $NewValue;
         }
-        return $this->dynamic;
+        return $this->Dynamic;
     }
 
     /**
      * Get/set minimum number of option lists in this element.
      * @param int $NewValue New setting (OPTIONAL)
-     * @return int Current minLists value.
+     * @return int Current value.
      */
-    public function minLists(int $NewValue = null) : int
+    public function minLists(?int $NewValue = null) : int
     {
         if ($NewValue !== null) {
             if ($NewValue < 1) {
@@ -184,30 +188,58 @@ class HtmlOptionListSet extends \ScoutLib\HtmlOptionList
                 );
             }
 
-            $this->minLists = $NewValue;
+            $this->MinLists = $NewValue;
         }
-        return $this->minLists;
+        return $this->MinLists;
     }
 
     /**
      * Get/set maximum number of option lists in this element.
      * @param int $NewValue New setting (OPTIONAL)
-     * @return int Current maxLists value
+     * @return int Current value.
      */
-    public function maxLists(int $NewValue = null) : int
+    public function maxLists(?int $NewValue = null) : int
     {
         if ($NewValue !== null) {
-            if ($NewValue < $this->minLists) {
+            if ($NewValue < $this->MinLists) {
                 throw new Exception(
-                    "maxLists cannot be less than minLists"
+                    "MaxLists cannot be less than MinLists"
                 );
             }
-            $this->maxLists = $NewValue;
+            $this->MaxLists = $NewValue;
         }
-        return $this->maxLists;
+        return $this->MaxLists;
     }
 
-    protected $dynamic = true;
-    protected $minLists = 1;
-    protected $maxLists = PHP_INT_MAX;
+
+    # ---- PRIVATE INTERFACE -------------------------------------------------
+
+    /**
+     * Get HTML for a row in an option list set.
+     * @return string Html
+     */
+    private function getRowHtml() : string
+    {
+        if (is_null($this->DeleteButton)) {
+            $this->DeleteButton = new HtmlButton("");
+            $this->DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+            $this->DeleteButton->addSemanticClass("btn-danger");
+            $this->DeleteButton->addClass("mv-button-delete");
+            $this->DeleteButton->setIcon("Cross.svg");
+            $this->DeleteButton->setOnclick("HtmlOptionListSet.handleDeleteButtonClick(this)");
+        }
+
+        $Result = "<div class='mv-optionlistset-row'>"
+            .parent::getHtml()
+            .$this->DeleteButton->getHtml()
+            ."</div>";
+
+        return $Result;
+    }
+
+    protected $Dynamic = true;
+    protected $MinLists = 1;
+    protected $MaxLists = PHP_INT_MAX;
+
+    private $DeleteButton = null;
 }

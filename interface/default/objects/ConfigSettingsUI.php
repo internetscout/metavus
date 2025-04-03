@@ -3,9 +3,10 @@
 #   FILE:  ConfigSettingsUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
@@ -23,7 +24,7 @@ class ConfigSettingsUI extends FormUI
     * @param string $TableId CSS ID for table element.  (OPTIONAL)
     * @param string $TableStyle CSS styles for table element.  (OPTIONAL)
     */
-    public function displaySettingsTable($TableId = null, $TableStyle = null)
+    public function displaySettingsTable($TableId = null, $TableStyle = null): void
     {
         $this->displayFormTable($TableId, $TableStyle);
     }
@@ -33,7 +34,7 @@ class ConfigSettingsUI extends FormUI
     * @return array Array of configuration settings, with setting names
     *       for the index, and new setting values for the values.
     */
-    public function getNewSettingsFromForm()
+    public function getNewSettingsFromForm(): array
     {
         return $this->getNewValuesFromForm();
     }

@@ -3,17 +3,41 @@
 #   FILE:  PluginConfig.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
-use Metavus\FormUI;
+namespace Metavus;
 
-PageTitle("Plugin Configuration");
+use Exception;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_CfgUI)) {
+    throw new Exception("H_CfgUI not defined.");
+}
+if (!isset($H_Plugin)) {
+    $H_Plugin = null;
+}
+if (!isset($H_PluginCssClass)) {
+    throw new Exception("H_PluginCssClass not defined.");
+}
 
 $BaseName = (isset($_GET["PN"])) ? $_GET["PN"] : null;
 $Attribs = $H_Plugin->GetAttributes();
 
+$AF = ApplicationFramework::getInstance();
+
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Plugin Configuration");
 ?>
 
 <?PHP if (is_null($H_Plugin)) { ?>
@@ -34,12 +58,8 @@ $Attribs = $H_Plugin->GetAttributes();
 <form method="post" class="priv-form <?= $H_PluginCssClass ?>"
     action="index.php?P=PluginConfig&amp;PN=<?= $H_Plugin->getBaseName() ?>">
         <?PHP  $H_CfgUI->DisplayFormTable();  ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit"
-        name="Submit" value="Save Changes"><img src="<?= $AF->GUIFile('Disk.svg'); ?>"
-        alt="" class="mv-button-icon" /> Save Changes</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit"
-        name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
-        alt="" class="mv-button-icon" /> Cancel</button>
+        <?= $SaveButton->getHtml(); ?>
+        <?= $CancelButton->getHtml(); ?>
 </form>
     <?PHP } ?>
 

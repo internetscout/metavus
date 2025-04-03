@@ -3,7 +3,7 @@
 #   FILE:  ChangeSetEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,7 +11,8 @@
 namespace Metavus;
 
 use ScoutLib\ApplicationFramework;
-use ScoutLib\StdLib;
+use ScoutLib\Date;
+use ScoutLib\HtmlOptionList;
 use Exception;
 
 /**
@@ -21,15 +22,15 @@ use Exception;
 class ChangeSetEditingUI
 {
     /**
-     * Create a UI for specifing edits to metadata fields.
+     * Create a UI for specifying edits to metadata fields.
      * @param string $EditFormName Name to use for the HTML elements.
      *    The form cannot contain any input elements whose names are
      *    EditFormName.
      * @param int $SchemaId Schema Id (OPTIONAL, default Resource schema).
      */
     public function __construct(
-        $EditFormName,
-        $SchemaId = MetadataSchema::SCHEMAID_DEFAULT
+        string $EditFormName,
+        int $SchemaId = MetadataSchema::SCHEMAID_DEFAULT
     ) {
         $this->EditFormName = $EditFormName;
         $this->Schema = new MetadataSchema($SchemaId);
@@ -57,13 +58,14 @@ class ChangeSetEditingUI
      * @param mixed $CurrentOperator Initial operator (one of the OP_XX class constants)
      * @param bool $AllowRemoval TRUE if this field should be removable
      *   (OPTIONAL, default FALSE)
+     * @return void
      */
     public function addField(
         $FieldNameOrId,
         $CurrentValue = null,
         $CurrentOperator = null,
         $AllowRemoval = false
-    ) {
+    ) : void {
         # if a field name was passed in, convert it to a field id
         if (!is_numeric($FieldNameOrId)) {
             $FieldNameOrId = $this->Schema->getField($FieldNameOrId)->Id();
@@ -91,6 +93,7 @@ class ChangeSetEditingUI
      *   OP_XX class constants)
      * @param bool $AllowRemoval TRUE if this field should be removable
      *   (OPTIONAL, default TRUE)
+     * @return void
      */
     public function addSelectableField(
         $FieldTypesOrIds = null,
@@ -98,7 +101,7 @@ class ChangeSetEditingUI
         $CurrentValue = null,
         $CurrentOperator = null,
         $AllowRemoval = true
-    ) {
+    ) : void {
         $Options = $this->typesOrIdsToFieldList($FieldTypesOrIds);
 
         if (count($Options) > 0) {
@@ -121,8 +124,9 @@ class ChangeSetEditingUI
      *   bitmask of MDFTYPE_ constants specifying allowed fields
      *   (OPTIONAL, defaults to all fields in the schema supported by the
      *    editing UI)
+     * @return void
      */
-    public function addFieldButton($Label = "Add field", $FieldTypesOrIds = null)
+    public function addFieldButton($Label = "Add field", $FieldTypesOrIds = null) : void
     {
         $Options = $this->typesOrIdsToFieldList($FieldTypesOrIds);
 
@@ -141,12 +145,13 @@ class ChangeSetEditingUI
     /**
      * Display editing form elements enclosed in a <table>.  Note that
      * it still must be wrapped in a <form> that has a submit button.
-     * @param string $TableId HTML identifier to use (OPTIONAL, default
+     * @param ?string $TableId HTML identifier to use (OPTIONAL, default
      *   NULL)
-     * @param string $TableStyle CSS class to attach for this table
+     * @param ?string $TableStyle CSS class to attach for this table
      *   (OPTIONAL, default NULL)
+     * @return void
      */
-    public function displayAsTable($TableId = null, $TableStyle = null)
+    public function displayAsTable(?string $TableId = null, ?string $TableStyle = null) : void
     {
         print('<table id="'.defaulthtmlentities($TableId).'" '
               .'class="'.defaulthtmlentities($TableStyle).'">');
@@ -157,8 +162,9 @@ class ChangeSetEditingUI
     /**
      * Display the table rows for the editing form, without the
      * surrounding <table> tags.
+     * @return void
      */
-    public function displayAsRows()
+    public function displayAsRows(): void
     {
         $AF = ApplicationFramework::getInstance();
 
@@ -204,7 +210,7 @@ class ChangeSetEditingUI
             print("</td>");
 
             if ($FieldRow["Type"] == "Regular") {
-                $Field = new MetadataField($FieldRow["FieldId"]);
+                $Field = MetadataField::getField($FieldRow["FieldId"]);
 
                 # for fields that cannot be selected, we already know
                 # the type and can print field-specific elements
@@ -273,12 +279,11 @@ class ChangeSetEditingUI
                 $this->printQuicksearch($FieldRow);
 
                 print ("</td>");
-
                 if ($FieldRow["Type"] == "AddButton") {
                     print(
                         '</tr><tr class="button_row"><td colspan="4">'
                         .'<span class="btn btn-primary btn-sm mv-feui-add mv-button-iconed">'
-                        .'<img src="'.$AF->GUIFile('Plus.svg')
+                        .'<img src="'.$AF->gUIFile('Plus.svg')
                         .'" alt="" class="mv-button-icon" /> '
                         .defaulthtmlentities($FieldRow["Label"]).'</button></td></tr>'
                     );
@@ -294,7 +299,7 @@ class ChangeSetEditingUI
      *      ["FieldId" => $FieldId, "Op" => $Operator, "Val" => $Value,] ...]
      *  extracted from the $_POST data for $EditFormName.
      */
-    public function getValuesFromFormData()
+    public function getValuesFromFormData(): array
     {
         $Results = [];
 
@@ -332,7 +337,7 @@ class ChangeSetEditingUI
                 $TextVal2  = array_shift($FormData);
                 $SearchVal = array_shift($FormData);
 
-                $Field = new MetadataField((int)$FieldId);
+                $Field = MetadataField::getField((int)$FieldId);
 
                 switch ($Field->type()) {
                     case MetadataSchema::MDFTYPE_PARAGRAPH:
@@ -378,9 +383,10 @@ class ChangeSetEditingUI
     /**
      * Load a configured set of fields.
      * @param array $Data Fields to load in the format from getValuesFromFormData()
+     * @return void
      * @see getValuesFromFormData()
      */
-    public function loadConfiguration($Data)
+    public function loadConfiguration($Data): void
     {
         foreach ($Data as $Row) {
             # convert a legacy CHANGE_REPLACE into CHANGE_SET
@@ -400,12 +406,174 @@ class ChangeSetEditingUI
         }
     }
 
+    /**
+     * Record a message that a form value was invalid.
+     * There is an array of error messages for each field.
+     * @param string $Msg Error message to record.
+     * @param int $FieldId ID of Metadata Field that has an invalid value.
+     * @return void
+     */
+    public function logError(string $Msg, int $FieldId): void
+    {
+        $this->ErrorMessages[$FieldId][] = $Msg;
+    }
+
+    /**
+    * Display HTML block with any error messages.
+    * @return void
+    */
+    public function displayErrorBlock(): void
+    {
+        $ErrorText = "";
+        if (count($this->ErrorMessages) == 0) {
+            return;
+        }
+
+        foreach ($this->ErrorMessages as $FieldId => $Messages) {
+            foreach ($Messages as $Message) {
+                $ErrorText .= "<li>".
+                      MetadataField::getField($FieldId)->name().
+                      ": ".$Message."</li>\n";
+            }
+        }
+        print "<ul class=\"mv-form-error\">\n";
+        print $ErrorText;
+        print "</ul>\n";
+    }
+
+    /**
+     * Check that the value provided for the metadata field is valid.
+     * Return an explanatory error message if the value is not valid.
+     * @return int The number of fields with invalid values.
+     */
+    public function validateFieldInput(): int
+    {
+        $this->ErrorMessages = [];
+        $ErrorCount = 0;
+        $ChangeRows = $this->getValuesFromFormData();
+        foreach ($ChangeRows as $ChangeRow) {
+            $FieldId = (int)$ChangeRow["FieldId"];
+            $Value = trim($ChangeRow["Val"]);
+            $Field = MetadataField::getField($FieldId);
+            $Operator = $ChangeRow["Op"];
+            if ($Operator  == Record::CHANGE_CLEARALL) {
+                # no value is required for clear all, so skip validation
+                continue;
+            }
+            switch ($Field->type()) {
+                case MetadataSchema::MDFTYPE_TEXT:
+                case MetadataSchema::MDFTYPE_PARAGRAPH:
+                case MetadataSchema::MDFTYPE_URL:
+                case MetadataSchema::MDFTYPE_NUMBER:
+                case MetadataSchema::MDFTYPE_DATE:
+                case MetadataSchema::MDFTYPE_TREE:
+                case MetadataSchema::MDFTYPE_OPTION:
+                case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
+                case MetadataSchema::MDFTYPE_REFERENCE:
+                    if (!strlen($Value)) {
+                        $this->logError(
+                            "Blank value not allowed.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                        continue 2;
+                        # skip checking additional errors for the field
+                        # after logging that it is blank
+                    }
+            }
+
+            switch ($Field->type()) {
+                case MetadataSchema::MDFTYPE_NUMBER:
+                    if (!is_numeric(trim($Value))) {
+                        $this->logError(
+                            "Non-numeric value not allowed.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    }
+                    break;
+                case MetadataSchema::MDFTYPE_DATE:
+                    if (!Date::isValidDate($Value)) {
+                        $this->logError("Invalid date.", $Field->id());
+                        $ErrorCount++;
+                    }
+                    break;
+                case MetadataSchema::MDFTYPE_TIMESTAMP:
+                    if (!strtotime(strval($Value))) {
+                        $this->logError(
+                            "Invalid timestamp.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    }
+                    break;
+                case MetadataSchema::MDFTYPE_FLAG:
+                    if (!in_array($Value, ["1", "0"])) {
+                        $this->logError(
+                            "Value must be 1 or 0.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    }
+                    break;
+                case MetadataSchema::MDFTYPE_TREE:
+                    if (!is_numeric($Value)) {
+                        $this->logError(
+                            "Non-numeric value not allowed.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    } elseif (!Classification::itemExists((int)$Value)) {
+                        $this->logError(
+                            "Non-existing value.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    }
+                    break;
+                case MetadataSchema::MDFTYPE_OPTION:
+                case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
+                    if (!is_numeric($Value)) {
+                        $this->logError(
+                            "Non-numeric value not allowed.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    } elseif (!ControlledName::itemExists((int)$Value)) {
+                        $this->logError(
+                            "Non-existing value.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    }
+                    break;
+                case MetadataSchema::MDFTYPE_REFERENCE:
+                    if (!is_numeric($Value)) {
+                        $this->logError(
+                            "Non-numeric value not allowed.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    } elseif (!Record::itemExists((int)$Value)) {
+                        $this->logError(
+                            "Non-existing value.",
+                            $Field->id()
+                        );
+                        $ErrorCount++;
+                    }
+                    break;
+            }
+        }
+        return $ErrorCount;
+    }
+
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $EditFormName;
     private $Fields;
     private $Schema;
+    protected $ErrorMessages = [];
 
     # mapping of operator constants to their friendly names
     private $OpNames = [
@@ -422,40 +590,21 @@ class ChangeSetEditingUI
     private $AllowedFieldTypes;
 
     /**
-     * Print an <option> for an operator, with CSS classes needed by
-     *     javascript interface helper.
-     * @param int $Value Initial value to display.
-     * @param int|null $Selected Value that should be selected.
-     * @param array $TypeNames Names of the Metavus field types for which
-     *   this operator is appropriate, converted to lowercase.
-     */
-    private function printOp(int $Value, int $Selected = null, $TypeNames = [])
-    {
-        $Classes = [];
-        foreach ($TypeNames as $Name) {
-            $Classes[] = "field-type-".$Name;
-        }
-
-        print('<option value="'.$Value.'" '
-              .($Selected == $Value ? 'selected ' : '')
-              .'class="'.implode(' ', $Classes).'"'
-              .'>'.$this->OpNames[$Value]
-              .'</option>'."\n");
-    }
-
-    /**
      * Print the <select> element used for choosing which metadata field to
      * edit in selectable field rows (i.e. those that allow the user a choice
      * of which field to edit).
      * @param array $FieldRow Row from $this->Fields for the field that we're
      *   printing. Needs to have SelectOptions, Type, and FieldId elements.
+     * @return void
      */
-    private function printFieldSelector($FieldRow)
+    private function printFieldSelector(array $FieldRow): void
     {
-        print('<select name="'.$this->EditFormName.'[]" '
-              .'class="field-subject">');
+        $Options = [];
+        $OptionClasses = [];
+        $OptionData = [];
+
         foreach ($FieldRow["SelectOptions"] as $FieldId) {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
             $TypeName = defaulthtmlentities(
                 str_replace(' ', '', strtolower($Field->typeAsName()))
             );
@@ -469,20 +618,20 @@ class ChangeSetEditingUI
                 $TypeName .= " required";
             }
 
-            # determine if this field is selected
-            # (i.e. when this row isn't an add button and when the selected
-            #  FieldId matches this one)
-            $IsSelected = ($FieldRow["Type"] != "AddButton") &&
-                !is_null($FieldRow["FieldId"]) &&
-                ($FieldRow["FieldId"] == $FieldId);
-
-            print('<option class="field-type-'.$TypeName.'" '
-                  .'data-maxnumsearchresults="'.$Field->numAjaxResults().'" '
-                  .'value="'.$Field->id().'" '
-                  .($IsSelected ? " selected" : "")
-                  .'>'.defaulthtmlentities($Field->name()).'</option>');
+            $Options[$Field->id()] = $Field->name();
+            $OptionClasses[$Field->id()] = "field-type-" . $TypeName;
+            $OptionData[$Field->id()]["maxnumsearchresults"] = $Field->numAjaxResults();
         }
-        print('</select>');
+
+        $FieldOptionList = new HtmlOptionList($this->EditFormName . "[]", $Options);
+        $FieldOptionList->classForList("field-subject");
+        $FieldOptionList->classForOptions($OptionClasses);
+        $FieldOptionList->dataForOptions($OptionData);
+        # determine if there is selected field (i.e. when this row isn't an add button)
+        if ($FieldRow["Type"] != "AddButton") {
+            $FieldOptionList->selectedValue($FieldRow["FieldId"]);
+        }
+        print $FieldOptionList->getHtml();
     }
 
     /**
@@ -491,39 +640,27 @@ class ChangeSetEditingUI
      * allow the user a choice of which field to edit).
      * @param int|null $CurOp Currently selected operation as a Record::CHANGE_ constant.
      * @param bool $AllowRemoval TRUE if this field can be deleted, FALSE otherwise.
+     * @return void
      */
-    private function printOperatorSelector($CurOp, bool $AllowRemoval)
+    private function printOperatorSelector(?int $CurOp, bool $AllowRemoval): void
     {
-        print('<select name="'.$this->EditFormName.'[]" '
-              .'class="field-operator">');
-
-        $AllTypesButTime = [
-            "controlledname",
-            "flag",
-            "multoption",
-            "number",
-            "option",
-            "paragraph",
-            "reference",
-            "text",
-            "tree",
-            "url",
+        $TimeTypes = ["field-type-date", "field-type-timestamp"];
+        $TextTypes = ["field-type-url", "field-type-text", "field-type-paragraph"];
+        $OtherTypes = [
+            "field-type-controlledname",
+            "field-type-flag",
+            "field-type-multoption",
+            "field-type-number",
+            "field-type-option",
+            "field-type-reference",
+            "field-type-tree"
         ];
 
-        $AllTypes = array_merge(
-            $AllTypesButTime,
-            [
-                "date",
-                "timestamp",
-            ]
-        );
+        $AllTypesButTimeString = join(" ", array_merge($TextTypes, $OtherTypes));
+        $AllTypesString = join(" ", array_merge($TimeTypes, $TextTypes, $OtherTypes));
+        $TextTypesString = join(" ", $TextTypes);
 
-        # for fields that cannot be removed, allow a 'do nothing' option
-        if (!$AllowRemoval) {
-            $this->printOp(Record::CHANGE_NOP, $CurOp, $AllTypes);
-        }
-
-        # display all avaialble operators, annotated such that
+        # display all available operators, annotated such that
         # js can switch between them
         # (CLEAR is not currently supported for time types because
         # it's not obvious how values should be compared to determine
@@ -531,16 +668,32 @@ class ChangeSetEditingUI
         # Date field, would that match only Dates with a BeginDate of
         # "2020-" and no end date? Or would it match any Date beginning
         # and/or ending in 2020?)
-        $this->printOp(Record::CHANGE_SET, $CurOp, $AllTypes);
-        $this->printOp(Record::CHANGE_CLEAR, $CurOp, $AllTypesButTime);
-        $this->printOp(Record::CHANGE_CLEARALL, $CurOp, $AllTypes);
-
-        $TextTypes = [ "url", "text", "paragraph" ] ;
-        $this->printOp(Record::CHANGE_APPEND, $CurOp, $TextTypes);
-        $this->printOp(Record::CHANGE_PREPEND, $CurOp, $TextTypes);
-        $this->printOp(Record::CHANGE_FIND_REPLACE, $CurOp, $TextTypes);
-
-        print('</select>');
+        $Options = [
+            Record::CHANGE_SET => $this->OpNames[Record::CHANGE_SET],
+            Record::CHANGE_CLEAR => $this->OpNames[Record::CHANGE_CLEAR],
+            Record::CHANGE_CLEARALL => $this->OpNames[Record::CHANGE_CLEARALL],
+            Record::CHANGE_APPEND => $this->OpNames[Record::CHANGE_APPEND],
+            Record::CHANGE_PREPEND => $this->OpNames[Record::CHANGE_PREPEND],
+            Record::CHANGE_FIND_REPLACE => $this->OpNames[Record::CHANGE_FIND_REPLACE]
+        ];
+        $OptionClasses = [
+            Record::CHANGE_SET => $AllTypesString,
+            Record::CHANGE_CLEAR => $AllTypesButTimeString,
+            Record::CHANGE_CLEARALL => $AllTypesString,
+            Record::CHANGE_APPEND => $TextTypesString,
+            Record::CHANGE_PREPEND => $TextTypesString,
+            Record::CHANGE_FIND_REPLACE => $TextTypesString
+        ];
+        # for fields that cannot be removed, allow a 'do nothing' option
+        if (!$AllowRemoval) {
+            $Options = [Record::CHANGE_NOP => $this->OpNames[Record::CHANGE_NOP]] + $Options;
+            $OptionClasses = [Record::CHANGE_NOP => $AllTypesString] + $OptionClasses;
+        }
+        $OperatorOptionList = new HtmlOptionList($this->EditFormName . "[]", $Options);
+        $OperatorOptionList->classForList("field-operator");
+        $OperatorOptionList->classForOptions($OptionClasses);
+        $OperatorOptionList->selectedValue($CurOp);
+        print $OperatorOptionList->getHtml();
     }
 
 
@@ -551,42 +704,41 @@ class ChangeSetEditingUI
      * Print a <select> element for choosing an operator in a non-selectable field row.
      * @param array $FieldRow Row from $this->Fields for the field that we're
      *   printing. Needs to have FieldId, CurrentOperator, and AllowRemoval elements.
+     * @return void
      */
-    private function printOperatorSelectorForField($FieldRow)
+    private function printOperatorSelectorForField(array $FieldRow): void
     {
-        $Field = new MetadataField($FieldRow["FieldId"]);
-        $CurOp = $FieldRow["CurrentOperator"];
-        $AllowRemoval = $FieldRow["AllowRemoval"];
+        $Field = MetadataField::getField($FieldRow["FieldId"]);
+        $OptionSelections = [];
 
-        print('<select name="'.$this->EditFormName.'[]">');
-        if (!$AllowRemoval) {
-            $this->printOp(Record::CHANGE_NOP, $CurOp);
+        if (!$FieldRow["AllowRemoval"]) {
+            $OptionSelections[] = Record::CHANGE_NOP;
         }
 
         switch ($Field->type()) {
             case MetadataSchema::MDFTYPE_URL:
             case MetadataSchema::MDFTYPE_TEXT:
             case MetadataSchema::MDFTYPE_PARAGRAPH:
-                $this->printOp(Record::CHANGE_SET, $CurOp);
+                $OptionSelections[] = Record::CHANGE_SET;
                 if ($Field->optional()) {
-                    $this->printOp(Record::CHANGE_CLEARALL, $CurOp);
+                    $OptionSelections[] = Record::CHANGE_CLEARALL;
                 }
-                $this->printOp(Record::CHANGE_CLEAR, $CurOp);
-                $this->printOp(Record::CHANGE_APPEND, $CurOp);
-                $this->printOp(Record::CHANGE_PREPEND, $CurOp);
-                $this->printOp(Record::CHANGE_FIND_REPLACE, $CurOp);
+                $OptionSelections[] = Record::CHANGE_CLEAR;
+                $OptionSelections[] = Record::CHANGE_APPEND;
+                $OptionSelections[] = Record::CHANGE_PREPEND;
+                $OptionSelections[] = Record::CHANGE_FIND_REPLACE;
                 break;
 
             case MetadataSchema::MDFTYPE_FLAG:
-                $this->printOp(Record::CHANGE_SET, $CurOp);
+                $OptionSelections[] = Record::CHANGE_SET;
                 break;
 
             case MetadataSchema::MDFTYPE_TIMESTAMP:
             case MetadataSchema::MDFTYPE_DATE:
             case MetadataSchema::MDFTYPE_NUMBER:
-                $this->printOp(Record::CHANGE_SET, $CurOp);
+                $OptionSelections[] = Record::CHANGE_SET;
                 if ($Field->optional()) {
-                    $this->printOp(Record::CHANGE_CLEARALL, $CurOp);
+                    $OptionSelections[] = Record::CHANGE_CLEARALL;
                 }
                 break;
 
@@ -594,45 +746,56 @@ class ChangeSetEditingUI
             case MetadataSchema::MDFTYPE_TREE:
             case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
             case MetadataSchema::MDFTYPE_REFERENCE:
-                $this->printOp(Record::CHANGE_SET, $CurOp);
-                $this->printOp(Record::CHANGE_CLEAR, $CurOp);
+                $OptionSelections[] = Record::CHANGE_SET;
+                $OptionSelections[] = Record::CHANGE_CLEAR;
 
                 if ($Field->optional() &&
                     ($Field->type() != MetadataSchema::MDFTYPE_OPTION ||
                      $Field->allowMultiple() )) {
-                    $this->printOp(Record::CHANGE_CLEARALL, $CurOp);
+                    $OptionSelections[] = Record::CHANGE_CLEARALL;
                 }
                 break;
 
             default:
                 throw new Exception("Unsupported field type");
         }
-        print('</select>');
+
+        $Options = [];
+        foreach ($OptionSelections as $OptionsSelection) {
+            $Options[$OptionsSelection] = $this->OpNames[$OptionsSelection];
+        }
+
+        $OperatorOptionList = new HtmlOptionList($this->EditFormName . "[]", $Options);
+        $OperatorOptionList->selectedValue($FieldRow["CurrentOperator"]);
+        print $OperatorOptionList->getHtml();
     }
 
     /**
      * Print a <select> element that can choose from among the controlled
      * vocabularies for a given set of fields.
      * @param array $FieldIds List of field ids.
+     * @return void
      */
-    private function printValueSelector($FieldIds)
+    private function printValueSelector(array $FieldIds): void
     {
-        print('<select name="'.$this->EditFormName.'[]" '
-              .'class="field-value-select">');
+        $Options = [];
+        $OptionClasses = [];
 
         foreach ($FieldIds as $FieldId) {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
             if ($Field->type() == MetadataSchema::MDFTYPE_FLAG ||
                 $Field->type() == MetadataSchema::MDFTYPE_OPTION) {
                 foreach ($Field->getPossibleValues() as $Id => $Val) {
-                    print('<option value="'.$Id.'" '
-                          .'class="field-id-'.$Field->id().'">'
-                          .defaulthtmlentities($Val)
-                          .'</option>'."\n");
+                    $Options[$Id] = $Val;
+                    $OptionClasses[$Id] = "field-id-" . $Field->id();
                 }
             }
         }
-        print('</select>');
+
+        $ValueSelectorOptionList = new HtmlOptionList($this->EditFormName . "[]", $Options);
+        $ValueSelectorOptionList->classForOptions($OptionClasses);
+        $ValueSelectorOptionList->classForList("field-value-select");
+        print $ValueSelectorOptionList->getHtml();
     }
 
     /**
@@ -640,10 +803,11 @@ class ChangeSetEditingUI
      * @param array $FieldRow Row from $this->Fields for the field that we're
      *   printing. Needs to have FieldId, CurrentValue, and CurrentOperator
      *   elements.
+     * @return void
      */
-    private function printEditElementsForField($FieldRow)
+    private function printEditElementsForField(array $FieldRow): void
     {
-        $Field = new MetadataField($FieldRow["FieldId"]);
+        $Field = MetadataField::getField($FieldRow["FieldId"]);
         $CurVal = $FieldRow["CurrentValue"];
         $CurOp = $FieldRow["CurrentOperator"];
 
@@ -677,15 +841,13 @@ class ChangeSetEditingUI
 
             case MetadataSchema::MDFTYPE_FLAG:
             case MetadataSchema::MDFTYPE_OPTION:
-                print('<select name="'.$this->EditFormName.'[]">');
-                foreach ($Field->getPossibleValues() as $Id => $Val) {
-                    print('<option value="'.$Id.'" '
-                          .'class="field-id-'.$Field->id().'"'
-                          .( ($CurVal == $Id) ? ' selected' : '')
-                          .'>'.defaulthtmlentities($Val)
-                          .'</option>'."\n");
-                }
-                print('</select>'."\n");
+                $OptionList = new HtmlOptionList(
+                    $this->EditFormName . "[]",
+                    $Field->getPossibleValues()
+                );
+                $OptionList->classForOptions("field-id-" . $Field->id());
+                $OptionList->selectedValue($CurVal);
+                print $OptionList->getHtml();
                 break;
         }
     }
@@ -695,8 +857,9 @@ class ChangeSetEditingUI
      * @param array $FieldRow Row from $this->Fields for the field that we're
      *   printing. Needs to have CurrentValue and Type elements. For rows that
      *   aren't an add button it also needs to have a FieldId element.
+     * @return void
      */
-    private function printQuicksearch($FieldRow)
+    private function printQuicksearch(array $FieldRow): void
     {
         # (CurrentValue in quick search fields will be a ClassificationId, a
         # ControlledNameId, or a RecordId)
@@ -707,7 +870,7 @@ class ChangeSetEditingUI
         if ($FieldRow["Type"] != "AddButton" && !is_null($FieldRow["FieldId"])) {
             # pull out that field
             $FieldId = $FieldRow["FieldId"];
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
 
             # and look up a human-friendly display value
             if (strlen($CurValueId) > 0) {
@@ -734,7 +897,7 @@ class ChangeSetEditingUI
     *     Bitmask of MDFType values
     * @return array of FieldIds
     */
-    private function typesOrIdsToFieldList($FieldTypesOrIds)
+    private function typesOrIdsToFieldList(?array $FieldTypesOrIds): array
     {
         $Result = [];
 

@@ -3,12 +3,24 @@
 #   FILE:  PurgeSampleData.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+# ----- SETUP ----------------------------------------------------------------
+$PurgeButton = new HtmlButton("Purge Sample Data");
+$PurgeButton->setIcon("Delete.svg");
+$PurgeButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cancel.svg");
+$CancelButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Purge Sample Data");
 ?>
 
 <h1>Purge Sample Records</h1>
@@ -23,10 +35,6 @@ will also be removed automatically, provided they have not been
 assigned to other resources prior to purging.</p>
 
 <form method="post" action="index.php?P=PurgeSampleDataExecute">
-    <button class="btn btn-danger mv-button-iconed" type="submit"
-        name="Submit" value="Purge Sample Data"><img src="<?= $AF->GUIFile('Delete.svg'); ?>"
-        alt="" class="mv-button-icon" /> Purge Sample Data</button>
-    <button class="btn btn-primary mv-button-iconed" type="submit"
-        name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>"
-        alt="" class="mv-button-icon" /> Cancel</button>
+    <?= $PurgeButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

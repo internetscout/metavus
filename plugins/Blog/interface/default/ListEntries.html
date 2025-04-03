@@ -3,7 +3,7 @@
 #   FILE:  ListEntries.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -15,7 +15,7 @@ use ScoutLib\PluginManager;
 /**
  * Check if notifications for the passed in entry can be sent out or not.
  *
- * This method will check if the current (passed in) entery is allowed to Send
+ * This method will check if the current (passed in) entry is allowed to Send
  * out notifications to its subscribers. The return value (bool) will be used to determine
  * whether or not the notify button will be displayed.
  *
@@ -24,9 +24,9 @@ use ScoutLib\PluginManager;
  */
 function ShouldDisplayEmailNotify($Entry)
 {
-    $Blog = PluginManager::getInstance()->getPlugin("Blog");
-    return $Entry->GetBlogId() == $Blog->ConfigSetting("EmailNotificationBlog")
-        && $Blog->NotificationsCouldBeSent($Entry, User::getCurrentUser());
+    $BlogPlugin = Blog::getInstance();
+    return $Entry->GetBlogId() == $BlogPlugin->getConfigSetting("EmailNotificationBlog")
+        && $BlogPlugin->NotificationsCouldBeSent($Entry, User::getCurrentUser());
 }
 
 /**
@@ -106,12 +106,12 @@ $BlogFieldDefinitions = [
 $BaseLink = "index.php?P=P_Blog_ListEntries&amp;CK=".$H_Checksum."&amp;".$H_BlogSelectVarName
     ."=".$H_CurrentBlogId;
 $ViewLink = "index.php?P=P_Blog_Entry&amp;ID=\$ID";
-$EditLink = $H_Schema->editPage();
+$EditLink = $H_Schema->getEditPage();
 $NotifyLink = "index.php?P=P_Blog_ConfirmNotifySubscribers&amp;ID=\$ID";
 $DeleteLink = "index.php?P=EditResource&amp;ID=\$ID&amp;Submit=Delete";
 
 # Top level button and option list links
-$AddNewEntryLink = str_replace('$ID', "NEW&amp;SC=".$SafeSchemaId, $H_Schema->editPage());
+$AddNewEntryLink = str_replace('$ID', "NEW&SC=".$SafeSchemaId, $H_Schema->getEditPage());
 $ManageSubscribersLink = "index.php?P=P_Blog_ManageSubscribers";
 $BlogOptionListLink = "index.php?P=P_Blog_ListEntries";
 
@@ -152,16 +152,16 @@ $TransportUI->sortField($H_SortField);
 $TransportUI->reverseSortFlag($H_ReverseSort);
 
 # add a "pick-blog" option list
-$Blog = PluginManager::getInstance()->getPlugin("Blog");
+$BlogPlugin = Blog::getInstance();
 $ListUI->AddTopOptionList(
-    $Blog->GetAvailableBlogs(),
+    $BlogPlugin->GetAvailableBlogs(),
     $H_BlogSelectVarName,
     $BlogOptionListLink,
     $H_CurrentBlogId
 );
 
 # add a button linking to Manage Subscribers page
-if ($H_CurrentBlogId == $Blog->ConfigSetting("EmailNotificationBlog")) {
+if ($H_CurrentBlogId == $BlogPlugin->getConfigSetting("EmailNotificationBlog")) {
     $ListUI->AddTopButton("Manage Subscribers", $ManageSubscribersLink, 'cog.png');
 }
 

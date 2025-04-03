@@ -7,8 +7,8 @@
 #   http://metavus.net
 #
 
+use Metavus\Plugins\SocialMedia;
 use Metavus\Record;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
@@ -21,7 +21,7 @@ $UserId = StdLib::getArrayValue($_GET, "UserId");
 # get the resource and SocialMedia plugin
 if (Record::ItemExists($ResourceId)) {
     $Resource = new Record($ResourceId);
-    $Plugin = PluginManager::getInstance()->getPlugin("SocialMedia");
+    $Plugin = SocialMedia::getInstance();
 
     # share the resource
     $Plugin->ShareResource($Resource, $Site, $UserId);

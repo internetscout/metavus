@@ -2,9 +2,36 @@
 #   FILE:  FixityChecks.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ImageListUI)) {
+    throw new Exception("H_ImageListUI not defined.");
+}
+if (!isset($H_Images)) {
+    throw new Exception("H_Images not defined.");
+}
+if (!isset($H_FileListUI)) {
+    throw new Exception("H_FileListUI not defined.");
+}
+if (!isset($H_Files)) {
+    throw new Exception("H_Files not defined.");
+}
+if (!isset($H_NumImages)) {
+    throw new Exception("H_NumImages not defined.");
+}
+if (!isset($H_NumFiles)) {
+    throw new Exception("H_NumFiles not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <h1>Fixity Checks</h1>
 

@@ -1,0 +1,100 @@
+<?PHP
+#
+#   FILE:  CookiePermission.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_State)) {
+    throw new Exception("Variable \$H_State not set.");
+}
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+$ServiceName = $Plugin->getConfigSetting("ServiceName");
+
+$InterfaceFiles = [
+    "bootstrap.js",
+    "CW-Base.js",
+    "bootstrap.css",
+    "Metavus.css",
+    "P_EduLink.css",
+    "P_EduLink_Login.js"
+];
+$AF->includeUIFile($InterfaceFiles);
+
+$LogoFileName = $Plugin->getConfigSetting("LogoFileName");
+$LogoHref = trim($Plugin->getConfigSetting("LogoHref") ?? "");
+if (strlen($LogoHref) == 0) {
+    $LogoHref = $AF->baseUrl();
+}
+
+$DataSharingButton = new HtmlButton("Click to request data sharing");
+$DataSharingButton->setId("mv-embed-button");
+
+# ----- DISPLAY --------------------------------------------------------------
+?><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><?= $ServiceName ?></title>
+  </head>
+  <body>
+<?PHP if ($H_State === false) { ?>
+    <div class="alert alert-danger">ERROR: No state provided.</div>
+<?PHP } else { ?>
+    <div class="mx-4">
+      <div class="container mv-p-edulink-header">
+        <div class="row">
+          <div class="col">
+            <a href="<?= $LogoHref ?>" target='_blank'
+               ><img class="mv-logo" src="<?= $AF->gUIFile($LogoFileName) ?>"/></a>
+          </div>
+        </div>
+
+        <div class="row mt-4">
+          <div class="col">
+            <p>Your browser&apos;s enhanced tracking protection requires
+              manual confirmation that you want to share data across sites
+              in order to use content provided by <?= $ServiceName ?>.</p>
+
+            <p>Unfortunately, this is a multi-step process. Clicking below
+              will confirms that you want <?= $ServiceName ?> to be able
+              to request data sharing. After clicking, you will be
+              returned to your LMS. There, you will need to click a
+              confirmation button to enable data sharing. Finally, your
+              browser will display a pop-up asking for permission to share
+              data between <?= $ServiceName ?> and your LMS using
+              cookies.</p>
+
+            <p>Your browser will remember that you have granted
+              permission. You will not be prompted again until it has been
+              more than 30 days since you viewed any content from
+              <?= $ServiceName ?>.</p>
+
+            <?= $DataSharingButton->getHtml(); ?>A
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      doRedirect(
+          '<?= $H_State ?>',
+          '<?= ApplicationFramework::baseUrl() ?>',
+          ''
+      );
+    </script>
+<?PHP } ?>
+  </body>
+</html>

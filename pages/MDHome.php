@@ -6,68 +6,12 @@
 #   Copyright 2004-2022 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\CollectionStats;
-use Metavus\MetadataSchema;
-use Metavus\Record;
-use Metavus\User;
-use Metavus\RecordFactory;
+namespace Metavus;
+
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
-
-PageTitle("Metadata Tool");
-
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-// @codingStandardsIgnoreStart
-
-function PrintTotalNumberOfResources()
-{
-    global $G_CollectionStats;
-
-    print(number_format($G_CollectionStats["TotalNumberOfResources"]));
-}
-
-function PrintNumberOfReleasedResources()
-{
-    global $G_CollectionStats;
-
-    print(number_format($G_CollectionStats["NumberOfReleasedResources"]));
-}
-
-function PrintNumberOfRatedResources()
-{
-    global $G_CollectionStats;
-
-    print(number_format($G_CollectionStats["NumberOfRatedResources"]));
-}
-
-function PrintTotalNumberOfClassifications()
-{
-    global $G_CollectionStats;
-
-    print(number_format($G_CollectionStats["TotalNumberOfClassifications"]));
-}
-
-function PrintTotalNumberOfControlledNames()
-{
-    global $G_CollectionStats;
-
-    print(number_format($G_CollectionStats["TotalNumberOfControlledNames"]));
-}
-
-function PrintTotalSearchTerms()
-{
-    global $G_CollectionStats;
-
-    print(number_format($G_CollectionStats["TotalSearchTerms"]));
-}
-
-// @codingStandardsIgnoreEnd
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
-
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -84,7 +28,7 @@ if (!CheckAuthorization(
     return;
 }
 
-global $G_CollectionStats, $G_StatsUpdateTime;
+global $G_StatsUpdateTime;
 
 $DB = new Database();
 
@@ -98,7 +42,11 @@ if (isset($_GET["US"])) {
         "Updated"
     );
 
-    if (time() - strtotime($G_StatsUpdateTime ?? "") > 3600) {
+    $StatsUpdateTimeString = strtotime(
+        gettype($G_StatsUpdateTime) === "string" ? $G_StatsUpdateTime : ""
+    );
+
+    if (time() - $StatsUpdateTimeString > 3600) {
         global $AF;
 
         $AF->queueTask(
@@ -106,15 +54,17 @@ if (isset($_GET["US"])) {
         );
     }
 
-    $G_CollectionStats = unserialize(
-        (string)$DB->Query(
-            "SELECT Value FROM CachedValues WHERE Name='CollectionStats'",
-            "Value"
-        )
+    $H_CollectionStats = null;
+    $QueryValue = $DB->Query(
+        "SELECT Value FROM CachedValues WHERE Name='CollectionStats'",
+        "Value"
     );
+    if (gettype($QueryValue) === "string") {
+        $H_CollectionStats = unserialize($QueryValue);
+    }
 
     # generate collection stats if they don't exist yet
-    if ($G_CollectionStats === false) {
+    if (!$H_CollectionStats) {
         $AF->SetJumpToPage("MDHome&US");
     }
 }

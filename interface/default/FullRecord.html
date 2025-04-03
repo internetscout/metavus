@@ -3,7 +3,7 @@
 #   FILE:  FullRecord.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,7 +11,6 @@
 namespace Metavus;
 
 use Exception;
-use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -27,7 +26,6 @@ if ($H_Record === false) {
 }
 
 # set up some convenience variables
-$AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 
 # get values for title and description
@@ -79,22 +77,24 @@ $Comments = $H_Record->comments();
 <div class="container-fluid">
     <div class="row">
         <div class="col mv-stdtitle">
-            <?PHP
-            if ($UserCanEdit) {
-                print $FRHelper->getButtonHtml("Edit", $EditButtonLink, "Edit", "Pencil");
-            }
-            foreach ($FRHelper->getButtonsForPage() as $ButtonInfo) {
-                print $FRHelper->getButtonHtml(
-                    $ButtonInfo["Label"],
-                    $ButtonInfo["Link"],
-                    $ButtonInfo["Title"],
-                    $ButtonInfo["IconName"],
-                    $ButtonInfo["AdditionalCssClasses"],
-                    $ButtonInfo["Attributes"]
-                );
-            }
-            ?>
-            <h1><?= $Title ?></h1>
+            <div class="mv-btn-group">
+                <?PHP
+                if ($UserCanEdit) {
+                    print $FRHelper->getButtonHtml("Edit", $EditButtonLink, "Edit", "Pencil");
+                }
+                foreach ($FRHelper->getButtonsForPage() as $ButtonInfo) {
+                    print $FRHelper->getButtonHtml(
+                        $ButtonInfo["Label"],
+                        $ButtonInfo["Link"],
+                        $ButtonInfo["Title"],
+                        $ButtonInfo["IconName"],
+                        $ButtonInfo["AdditionalCssClasses"],
+                        $ButtonInfo["Attributes"]
+                    );
+                }
+                ?>
+            </div>
+            <h1 dir="auto"><?= $Title ?></h1>
         </div>
     </div>
     <div class="row">
@@ -110,11 +110,11 @@ $Comments = $H_Record->comments();
     <div class="row">
         <div class="col mv-stdscreenshot">
             <?PHP  if (isset($Screenshot) && isset($ScreenshotFullImageLink)) {  ?>
-            <a tabindex="-1" aria-hidden="true" class="mv-stdscreenshot" href="<?= $ScreenshotFullImageLink ?>">
+            <a tabindex="-1" aria-hidden="true" class="mv-stdscreenshot" href="<?=
+                    $ScreenshotFullImageLink ?>">
                 <?= $Screenshot->getHtml("mv-image-thumbnail") ?></a>
-            </a>
             <?PHP  }  ?>
-            <div class="mv-stddescription"><?= $Description ?></div>
+            <div class="mv-stddescription" dir="auto"><?= $Description ?></div>
         </div>
     </div>
     <div class="row">
@@ -145,7 +145,8 @@ $Comments = $H_Record->comments();
                 $GroupHtml = ob_get_clean();
 
                 # if any fields were displayed, show the group
-                if (strlen($GroupHtml) > 0) {
+                // @phpstan-ignore-next-line
+                if (($GroupHtml != false) && (strlen($GroupHtml) > 0)) {
                     ?><div class="row container mv-mfield-group">
                     <div class="col">
                         <h3><?= $GroupName ?></h3>

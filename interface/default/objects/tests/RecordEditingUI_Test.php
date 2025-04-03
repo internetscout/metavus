@@ -3,14 +3,13 @@
 #   FILE:  RecordEditingUI_Test.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2023 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 // phpcs:disable PSR1.Classes.ClassDeclaration.MultipleClasses
 
 namespace Metavus;
-
 use ScoutLib\Date;
 
 class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
@@ -163,7 +162,9 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
     public function testConvertFormValueToMFieldValue()
     {
         # test for text format (e.g. a title field)
-        $MetadataField = new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Text Field"]);
+        $MetadataField = MetadataField::getField(
+            self::$TestFieldIds["RecordEditingUI_Test Text Field"]
+        );
         $this->assertEquals(
             "Check that this title was trimmed.",
             RecordEditingUI::convertFormValueToMFieldValue(
@@ -174,7 +175,7 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
 
         # tests for paragraph format (e.g. a description field)
         $MetadataField =
-        new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Paragraph Field"]);
+        MetadataField::getField(self::$TestFieldIds["RecordEditingUI_Test Paragraph Field"]);
 
         # case: rich text editor not used
         $this->assertEquals(
@@ -198,14 +199,16 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
 
         # test for number format (e.g. cumulative rating field)
         $MetadataField =
-        new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Number Field"]);
+        MetadataField::getField(self::$TestFieldIds["RecordEditingUI_Test Number Field"]);
         $this->assertEquals(
             4.5,
             RecordEditingUI::convertFormValueToMFieldValue($MetadataField, 4.5)
         );
 
         #tests for date format (e.g. date issued field)
-        $MetadataField = new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Date Field"]);
+        $MetadataField = MetadataField::getField(
+            self::$TestFieldIds["RecordEditingUI_Test Date Field"]
+        );
 
         # case: date is entered
         $this->assertEquals(
@@ -218,14 +221,16 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
 
         # test for timestamp format (e.g. date of record creation field)
         $MetadataField =
-        new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Timestamp Field"]);
+        MetadataField::getField(self::$TestFieldIds["RecordEditingUI_Test Timestamp Field"]);
         $this->assertEquals(
             "2022-01-10 09:00:00",
             RecordEditingUI::convertFormValueToMFieldValue($MetadataField, "2022-01-10 09:00:00")
         );
 
         # test for flag format (e.g. has no password field)
-        $MetadataField = new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Flag Field"]);
+        $MetadataField = MetadataField::getField(
+            self::$TestFieldIds["RecordEditingUI_Test Flag Field"]
+        );
         $this->assertTrue(RecordEditingUI::convertFormValueToMFieldValue($MetadataField, "1"));
         $this->assertFalse(RecordEditingUI::convertFormValueToMFieldValue($MetadataField, "0"));
 
@@ -233,7 +238,7 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
         $FormatsToTest = [
             # tests for tree format (e.g. classification field)
             [
-                "MetadataField" => new MetadataField(
+                "MetadataField" => MetadataField::getField(
                     self::$TestFieldIds["RecordEditingUI_Test Tree Field"]
                 ),
                 "Cases" => [
@@ -279,7 +284,7 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
             ],
             # tests for controlled name format (e.g. publisher field)
             [
-                "MetadataField" => new MetadataField(
+                "MetadataField" => MetadataField::getField(
                     self::$TestFieldIds["RecordEditingUI_Test CName Field"]
                 ),
                 "Cases" => [
@@ -327,7 +332,7 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
             ],
             # tests for option format (e.g. resource type)
             [
-                "MetadataField" => new MetadataField(
+                "MetadataField" => MetadataField::getField(
                     self::$TestFieldIds["RecordEditingUI_Test Option Field"]
                 ),
                 "Cases" => [
@@ -371,7 +376,7 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
             ],
             # tests for user format (e.g. last modified by id)
             [
-                "MetadataField" => new MetadataField(
+                "MetadataField" => MetadataField::getField(
                     self::$TestFieldIds["RecordEditingUI_Test User Field"]
                 ),
                 "Cases" => [
@@ -402,7 +407,9 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
         }
 
         # tests for image format (e.g. screenshot)
-        $MetadataField = new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Image Field"]);
+        $MetadataField = MetadataField::getField(
+            self::$TestFieldIds["RecordEditingUI_Test Image Field"]
+        );
 
         # case: image is provided
         # the image object created after the user upload an image
@@ -421,7 +428,9 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
         $this->assertEquals($Expected, $Actual);
 
         # test for file format (e.g. files)
-        $MetadataField = new MetadataField(self::$TestFieldIds["RecordEditingUI_Test File Field"]);
+        $MetadataField = MetadataField::getField(
+            self::$TestFieldIds["RecordEditingUI_Test File Field"]
+        );
 
         # case: file is provided
         $Expected = $this->getArrayObjectsId([
@@ -437,7 +446,9 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
         $this->assertEmpty(RecordEditingUI::convertFormValueToMFieldValue($MetadataField, ""));
 
         # tests for url format (e.g. url field)
-        $MetadataField = new MetadataField(self::$TestFieldIds["RecordEditingUI_Test Url Field"]);
+        $MetadataField = MetadataField::getField(
+            self::$TestFieldIds["RecordEditingUI_Test Url Field"]
+        );
 
         # case: has provided url
         $Expected = "https://scout.wisc.edu/";
@@ -448,7 +459,7 @@ class RecordEditingUI_Test extends \PHPUnit\Framework\TestCase
         $this->assertEquals($Expected, $Actual);
 
         # tests for search parameter set format (e.g. selection criteria)
-        $MetadataField = new MetadataField(self::$TestFieldIds[
+        $MetadataField = MetadataField::getField(self::$TestFieldIds[
             "RecordEditingUI_Test Search Param Set Field"
         ]);
 

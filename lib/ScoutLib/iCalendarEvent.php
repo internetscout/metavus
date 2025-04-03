@@ -3,7 +3,7 @@
 #   FILE:  iCalendarEvent.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -31,7 +31,7 @@ class iCalendarEvent
         string $StartDate,
         string $EndDate,
         bool $AllDay,
-        string $TimeZoneID = null
+        ?string $TimeZoneID = null
     ) {
         # generate the UID and add it to the document
         $this->addProperty("VEVENT", "UID", $this->generateUID($ID, $StartDate));
@@ -57,7 +57,7 @@ class iCalendarEvent
      * property will be overwritten.
      * @param string $Value The date and time the event was created.
      */
-    public function addCreated(string $Value)
+    public function addCreated(string $Value): void
     {
         $this->addTextProperty(
             "VEVENT",
@@ -71,7 +71,7 @@ class iCalendarEvent
      * property will be overwritten.
      * @param string $Value The body of the summary.
      */
-    public function addSummary(string $Value)
+    public function addSummary(string $Value): void
     {
         # add the property
         $this->addTextProperty("VEVENT", "SUMMARY", $Value);
@@ -85,7 +85,7 @@ class iCalendarEvent
      * Any existing DTSTAMP property will be overwritten.
      * @param string $Value The body of the description.
      */
-    public function addDateTimeStamp(string $Value)
+    public function addDateTimeStamp(string $Value): void
     {
         $this->addDateTimeProperty(
             "VEVENT",
@@ -94,13 +94,12 @@ class iCalendarEvent
         );
     }
 
-
     /**
      * Add the description property to the iCalendar document. An existing
      * description property will be overwritten.
      * @param string $Value The body of the description.
      */
-    public function addDescription(string $Value)
+    public function addDescription(string $Value): void
     {
         $this->addTextProperty("VEVENT", "DESCRIPTION", $Value);
     }
@@ -110,7 +109,7 @@ class iCalendarEvent
      * categories property will be overwritten.
      * @param array $Categories A list of categories.
      */
-    public function addCategories(array $Categories)
+    public function addCategories(array $Categories): void
     {
         # don't add the property if there are no categories to add
         if (!count($Categories)) {
@@ -129,7 +128,7 @@ class iCalendarEvent
      * will be overwritten.
      * @param string $Value The URL to add.
      */
-    public function addURL(string $Value)
+    public function addURL(string $Value): void
     {
         # don't add a blank URL
         if (!strlen($Value)) {
@@ -145,7 +144,7 @@ class iCalendarEvent
      * @param float $Latitude Latitude value.
      * @param float $Longitude Longitude value.
      */
-    public function addGeographicPosition(float $Latitude, float $Longitude)
+    public function addGeographicPosition(float $Latitude, float $Longitude): void
     {
         # construct the value for the property
         $Value = floatval($Latitude) . ";" . floatval($Longitude);
@@ -159,7 +158,7 @@ class iCalendarEvent
      * property will be overwritten.
      * @param string $Value The location.
      */
-    public function addLocation(string $Value)
+    public function addLocation(string $Value): void
     {
         $this->addTextProperty("VEVENT", "LOCATION", $Value);
     }
@@ -215,7 +214,7 @@ class iCalendarEvent
      * @param string $Summary Optional summary to use in the name.
      * @return string the generated file name.
      */
-    public static function generateFileNameFromSummary(string $Summary = null): string
+    public static function generateFileNameFromSummary(?string $Summary = null): string
     {
         # just use the date/time if the summary isn't given
         if (!$Summary) {
@@ -295,7 +294,7 @@ class iCalendarEvent
         string $Property,
         string $Value,
         array $Parameters = array()
-    ) {
+    ): void {
 
         # construct the property line
         $Line = $this->generatePropertyString($Property, $Parameters) . $Value;
@@ -324,7 +323,7 @@ class iCalendarEvent
         string $Property,
         string $Value,
         array $Parameters = array()
-    ) {
+    ): void {
 
         # don't add empty properties
         if (!strlen($Value)) {
@@ -356,7 +355,7 @@ class iCalendarEvent
         string $Property,
         string $Value,
         array $Parameters = array()
-    ) {
+    ): void {
 
         $this->addProperty(
             $Component,
@@ -383,7 +382,7 @@ class iCalendarEvent
         string $Property,
         string $Value,
         array $Parameters = array()
-    ) {
+    ): void {
 
         $this->addProperty(
             $Component,

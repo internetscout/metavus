@@ -22,7 +22,7 @@ global $H_Schema;
 
 use ScoutLib\StdLib;
 
-$Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+$Blog = Blog::getInstance();
 $H_Schema = new MetadataSchema($Blog->GetSchemaId());
 
 # don't allow unauthorized access

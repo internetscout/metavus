@@ -92,33 +92,116 @@ class CallbackManager
      * Expire callback owners, then delete unowned callbacks that are also
      * unused. (if a callback is unowned but still in use, it will not be
      * deleted @see deleteCallback)
+     * @return void
      */
-    public function expireCallbacks()
+    public function expireCallbacks(): void
     {
-        $this->DB->Query(
+        $this->DB->query(
             "LOCK TABLES "
             ."GoogleMaps_Callbacks WRITE, "
             ."GoogleMaps_CallbackOwners WRITE"
         );
 
         # delete old owner registrations
-        $this->DB->Query(
+        $this->DB->query(
             "DELETE FROM GoogleMaps_CallbackOwners "
             ."WHERE TIMESTAMPDIFF(SECOND, LastUsed, NOW()) > "
             .$this->ExpirationAge
         );
 
-        # delete any callbacks that no longer have owners
-        $this->DB->Query(
-            "SELECT Id FROM GoogleMaps_Callbacks WHERE "
-            ."Id NOT IN (SELECT CallbackId FROM GoogleMaps_CallbackOwners)"
+        # get the list of all callbacks
+        $this->DB->query(
+            "SELECT Id FROM GoogleMaps_Callbacks"
         );
-        $CallbackIds = $this->DB->FetchColumn("Id");
+        $CallbackIds = $this->DB->fetchColumn("Id");
+
+        # get the list of owned callbacks
+        $this->DB->query(
+            "SELECT DISTINCT CallbackId AS Id FROM GoogleMaps_CallbackOwners"
+        );
+        $OwnedCallbackIds = array_flip($this->DB->fetchColumn("Id"));
+
+        # iterate over all the callbacks
         foreach ($CallbackIds as $CallbackId) {
+            # if it has an owner, nothing to do
+            if (isset($OwnedCallbackIds[$CallbackId])) {
+                continue;
+            }
+
+            # otherwise, nuke it
             $this->deleteCallback($CallbackId);
         }
 
-        $this->DB->Query("UNLOCK TABLES");
+        $this->DB->query("UNLOCK TABLES");
+    }
+
+    /**
+     * Remove the Get and Post elements from the Environment on the
+     * CallbackOwners table. Should be queued as a unique task from
+     * GoogleMaps::upgrade().
+     */
+    public static function removeGetAndPostFromEnvironmentData() : void
+    {
+        $DB = new Database();
+
+        # work in chunks of 5k so that we don't pop the memory limit
+        $ChunkSize = 5000;
+
+        # get the oldest chunk that still has a 'Get' element in the
+        # environment
+        $DB->query(
+            "SELECT * FROM GoogleMaps_CallbackOwners"
+                ." WHERE Environment LIKE '{\"Get\":%'"
+                ." ORDER BY LastUsed ASC"
+                ." LIMIT ".$ChunkSize
+        );
+
+        $Rows = $DB->fetchRows();
+        foreach ($Rows as $Row) {
+            # pull data out of this row
+            $CallbackId = $Row["CallbackId"];
+            $EnvData = $Row["Environment"];
+            $Env = json_decode($EnvData, true);
+
+            # delete old data
+            $DB->query(
+                "DELETE FROM GoogleMaps_CallbackOwners"
+                    ." WHERE PageSignature='".addslashes($Row["PageSignature"])."'"
+                    ." AND CallbackId='".addslashes($CallbackId)."'"
+            );
+
+            # on failure to decode the environment, nothing we can do
+            if (!is_array($Env)) {
+                continue;
+            }
+
+            # remove the unwanted elements, regenerate the data
+            unset($Env["Get"]);
+            unset($Env["Post"]);
+            $EnvData = json_encode($Env);
+
+            # on failure to regenerate the data, nothing we can do
+            if ($EnvData === false) {
+                continue;
+            }
+
+            $PageSignature = md5($EnvData);
+
+            # add the updated data
+            $DB->query(
+                "INSERT IGNORE INTO GoogleMaps_CallbackOwners "
+                    ."(PageSignature, CallbackId, Environment, LastUsed) VALUES ("
+                    ."'".addslashes($PageSignature)."',"
+                    ."'".addslashes($CallbackId)."',"
+                    ."'".addslashes($EnvData)."',"
+                    ."NOW()"
+                    .")"
+            );
+        }
+
+        if (count($Rows) == $ChunkSize) {
+            ApplicationFramework::getInstance()->requeueCurrentTask();
+        }
     }
 
     /**
@@ -127,8 +210,9 @@ class CallbackManager
      * or that have registered owners, an error message is logged and
      * the callback is retained.
      * @param string $CallbackId Opaque identifier specifying the callback to delete.
+     * @return void
      */
-    private function deleteCallback($CallbackId)
+    private function deleteCallback($CallbackId): void
     {
         $AF = ApplicationFramework::getInstance();
 
@@ -179,13 +263,7 @@ class CallbackManager
 
         # get a fingerprint for this page's environment
         if (is_null(self::$EnvironmentSignature)) {
-            $GetVars = $_GET;
-            ksort($GetVars);
-            $PostVars = $_POST;
-            ksort($PostVars);
             self::$EnvironmentSignature = json_encode([
-                "Get" => $GetVars,
-                "Post" => $PostVars,
                 "Page" => $AF->getPageName(),
                 "ActiveUI" => $AF->activeUserInterface(),
                 "Server" => $_SERVER["SERVER_NAME"],

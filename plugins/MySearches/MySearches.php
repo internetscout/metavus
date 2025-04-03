@@ -3,13 +3,12 @@
 #   FILE:  MySearches.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MySearches\MySearchesUI;
@@ -17,6 +16,8 @@ use Metavus\SavedSearchFactory;
 use Metavus\SearchParameterSet;
 use Metavus\User;
 use ScoutLib\Plugin;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 /**
  * Displays data for the UI about a user's saved searches and recent searches.
@@ -28,17 +29,17 @@ class MySearches extends Plugin
     /**
      * Register information about this plugin.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "My Searches";
         $this->Version = "1.1.0";
         $this->Description = "Provides data for the UI via events"
                 ." about a user's saved searches and recent searches.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "MetricsRecorder" => "1.2.6",
         ];
         $this->EnabledByDefault = true;
@@ -65,13 +66,15 @@ class MySearches extends Plugin
     /**
      * Initialize default settings.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
+        $AF = ApplicationFramework::getInstance();
+
         # add extra function dirs that we need
         # these are listed in reverse order because each will be added to the
         # beginning of the search list
         $BaseName = $this->getBaseName();
-        $GLOBALS["AF"]->addFunctionDirectories([
+        $AF->addFunctionDirectories([
             "local/plugins/".$BaseName."/interface/%ACTIVEUI%/include/",
             "plugins/".$BaseName."/interface/%ACTIVEUI%/include/",
             "local/plugins/".$BaseName."/interface/default/include/",
@@ -79,11 +82,11 @@ class MySearches extends Plugin
         ]);
 
         # register insertion keywords for our output
-        $GLOBALS["AF"]->registerInsertionKeywordCallback(
+        $AF->registerInsertionKeywordCallback(
             "P-MYSEARCHES-SAVEDSEARCHBOX",
             [$this, "getHtmlForSavedSearchesBox"]
         );
-        $GLOBALS["AF"]->registerInsertionKeywordCallback(
+        $AF->registerInsertionKeywordCallback(
             "P-MYSEARCHES-RECENTSEARCHBOX",
             [$this, "getHtmlForRecentSearchesBox"]
         );
@@ -104,12 +107,12 @@ class MySearches extends Plugin
         $User = User::getCurrentUser();
 
         # bail if display of saved searches is disabled or user is not logged in
-        if (($this->configSetting("MySearches") != "Yes") || !$User->IsLoggedIn()) {
+        if (($this->getConfigSetting("MySearches") != "Yes") || !$User->isLoggedIn()) {
             return "";
         }
 
         $Searches = (new SavedSearchFactory())->getSearchesForUser(
-            $User->Id()
+            $User->id()
         );
         if (count($Searches) == 0) {
             return "";
@@ -142,26 +145,28 @@ class MySearches extends Plugin
      */
     public function getHtmlForRecentSearchesBox(): string
     {
+        $PluginManager = PluginManager::getInstance();
+
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
         # bail if display of recent searches is disabled or user is not logged in
-        if (($this->configSetting("RecentSearches") != "Yes") || !$User->IsLoggedIn()) {
+        if (($this->getConfigSetting("RecentSearches") != "Yes") || !$User->isLoggedIn()) {
             return "";
         }
 
         # grab the recent searches for this user
-        $MetricsRecorder = $GLOBALS["G_PluginManager"]->GetPlugin("MetricsRecorder");
+        $MetricsRecorderPlugin = MetricsRecorder::getInstance();
         $SearchEventTypes = [
             MetricsRecorder::ET_SEARCH,
             MetricsRecorder::ET_ADVANCEDSEARCH
         ];
-        $SearchEvents = $MetricsRecorder->GetEventData(
+        $SearchEvents = $MetricsRecorderPlugin->getEventData(
             "MetricsRecorder",
             $SearchEventTypes,
             null,
             null,
-            $User->Id()
+            $User->id()
         );
 
         # bail if no searches were found for this user

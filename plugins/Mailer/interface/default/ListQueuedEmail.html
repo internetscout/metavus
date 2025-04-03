@@ -3,17 +3,17 @@
 #   FILE:  ListQueuedEmail.html (Mailer plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\FormUI;
+use Metavus\HtmlButton;
 use Metavus\ItemListUI;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
-PageTitle("Queued Email");
-
+# ----- SETUP ----------------------------------------------------------------
 ApplicationFramework::getInstance()->requireUIFile(
     ["jquery-ui.js", "jquery-ui.css"],
     ApplicationFramework::ORDER_FIRST
@@ -56,6 +56,12 @@ $FormUI = new FormUI([
 $OptList = new HtmlOptionList("TID", $H_Templates, $H_SelectedTemplate);
 $OptList->SubmitOnChange(true);
 
+$SearchButton = new HtmlButton("Search");
+$SearchButton->setIcon("MagnifyingGlass.svg");
+$SearchButton->setSize(HtmlButton::SIZE_SMALL);
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Queued Email");
 ?>
 <div id="SearchQueuedMessages" style="float: right; margin-top: 15px;">
   <form action="index.php" method="get">
@@ -64,9 +70,7 @@ $OptList->SubmitOnChange(true);
     <?= $OptList->GetHtml() ?>
     &nbsp;&nbsp;<b>Search:</b>
     <input type="text" name="SS" value="<?= htmlspecialchars($H_SearchString) ?>">
-    <button class="btn btn-primary btn-sm" type="submit" value="GO"><img
-        src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
-        class="mv-button-icon" /> Search</button>
+    <?= $SearchButton->getHtml(); ?>
     </form>
 </div>
 <h1>Queued Email</h1>
@@ -100,12 +104,12 @@ if (count($H_EmailList) > 0) {
         "All" : "All Displayed";
 
     $SendManyLink = "index.php?P=P_Mailer_ProcessMany"
-        ."&amp;A=Send"
-        ."&amp;IDs=".implode("-", array_keys($H_EmailList))
+        ."&A=Send"
+        ."&IDs=".implode("-", array_keys($H_EmailList))
         .$SearchParamsForUrl;
     $DeleteManyLink = "index.php?P=P_Mailer_ProcessMany"
-        ."&amp;A=Destroy"
-        ."&amp;IDs=".implode("-", array_keys($H_EmailList))
+        ."&A=Destroy"
+        ."&IDs=".implode("-", array_keys($H_EmailList))
         .$SearchParamsForUrl;
 
     $ListUI->AddTopButton(

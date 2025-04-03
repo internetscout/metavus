@@ -6,10 +6,12 @@
 #   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\MetadataSchema;
 use Metavus\PrivilegeEditingUI;
 use Metavus\RecordFactory;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
@@ -20,16 +22,16 @@ use ScoutLib\StdLib;
 * Get the page with necessary parameters when returning to the DBEditor page.
 * @param mixed $Value MetadataSchema object, MetadataField object, or a schema
 *      ID.
-* @return Returns the page to return to.
+* @return string  Returns the page to return to.
 */
-function GetReturnToPage($Value)
+function GetReturnToPage($Value): string
 {
     $Suffix = "";
 
     # get the suffix from a metadata schema if not using the default schema
     if ($Value instanceof MetadataSchema) {
         if ($Value->Id() != MetadataSchema::SCHEMAID_DEFAULT) {
-            $Suffix = "&SC=" . urlencode($Value->Id());
+            $Suffix = "&SC=" . (string)$Value->Id();
         }
     # use the value directly if not using the default schema
     } elseif (!is_null($Value) && $Value != MetadataSchema::SCHEMAID_DEFAULT) {
@@ -44,7 +46,7 @@ function GetReturnToPage($Value)
  * @param array $FormFields Array holding the parameters for the fields mapping.
  * @param MetadataSchema $Schema The schema whose field mappings will be updated.
  */
-function saveFieldMapping(array $FormFields, MetadataSchema $Schema)
+function saveFieldMapping(array $FormFields, MetadataSchema $Schema): void
 {
     foreach ($FormFields as $FieldId => $Params) {
         $NewFieldValue = StdLib::getFormValue($FieldId);
@@ -114,11 +116,12 @@ $Action = StdLib::getFormValue("F_Submit");
 # variables for holding privilege errors
 $H_PrivilegesError = null;
 $H_PrivsetUI = new PrivilegeEditingUI($SchemaId);
+$AF = ApplicationFramework::getInstance();
 
 # if user canceled editing
 if ($Action == "Cancel") {
     # go back to the list of fields for the schema
-    $GLOBALS["AF"]->SetJumpToPage(GetReturnToPage($H_Schema));
+    $AF->SetJumpToPage(GetReturnToPage($H_Schema));
     return;
 # else if user requested changes be saved
 } elseif ($Action == "Save Changes") {
@@ -144,7 +147,7 @@ if ($Action == "Cancel") {
         $H_Schema->commentsEnabled(StdLib::getFormValue("F_AllowComments", false));
 
         # nuke the page cache in case permission changes affect what is displayed
-        $GLOBALS["AF"]->ClearPageCache();
+        $AF->ClearPageCache();
         RecordFactory::ClearViewingPermsCache();
     } catch (Exception $Exception) {
         # couldn't update the privileges
@@ -154,7 +157,7 @@ if ($Action == "Cancel") {
     # if there were no errors
     if (is_null($H_PrivilegesError)) {
         # go back to the list of fields for the schema
-        $GLOBALS["AF"]->SetJumpToPage(GetReturnToPage($H_Schema));
+        $AF->SetJumpToPage(GetReturnToPage($H_Schema));
         return;
     }
 }

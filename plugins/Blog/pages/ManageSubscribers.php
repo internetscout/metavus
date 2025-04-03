@@ -16,7 +16,7 @@ use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-$H_Blog = PluginManager::getInstance()->getPluginForCurrentPage();
+$H_Blog = Blog::getInstance();
 $H_Schema = new MetadataSchema($H_Blog->getSchemaId());
 $AF = ApplicationFramework::getInstance();
 
@@ -27,7 +27,7 @@ if (!$H_Schema->userCanEdit(User::getCurrentUser())) {
 }
 
 # set the current blog
-$H_Blog->setCurrentBlog($H_Blog->configSetting("EmailNotificationBlog"));
+$H_Blog->setCurrentBlog($H_Blog->getConfigSetting("EmailNotificationBlog"));
 
 $H_Subscribers = $H_Blog->getSubscribers();
 

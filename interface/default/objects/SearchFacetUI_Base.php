@@ -3,14 +3,16 @@
 #   FILE:  SearchFacetUI_Base.php
 #
 #   Part of the Collection Workflow Integration System (CWIS)
-#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu/cwis/
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\DataCache;
+use ScoutLib\Database;
 
 /**
  * SearchFacetUI supports the generation of a user interface for faceted
@@ -35,7 +37,6 @@ class SearchFacetUI_Base
         SearchParameterSet $SearchParams,
         array $SearchResults
     ) {
-        $this->BaseLink = "index.php?P=SearchResults";
         $this->SearchParams = $SearchParams;
         $this->SearchResults = $SearchResults;
         $this->MaxFacetsPerField =
@@ -56,6 +57,7 @@ class SearchFacetUI_Base
         }
 
         $this->SchemaId = reset($SchemaIds);
+        $this->DataCache = new DataCache("Metavus-SearchFacetUI-");
     }
 
     /**
@@ -64,7 +66,7 @@ class SearchFacetUI_Base
      * @param User $NewValue User value to set (OPTIONAL)
      * @return User Current value.
      */
-    public function user(User $NewValue = null): User
+    public function user(?User $NewValue = null): User
     {
         if (!is_null($NewValue)) {
             $this->User = $NewValue;
@@ -74,28 +76,105 @@ class SearchFacetUI_Base
     }
 
     /**
-     * Get/set the base link used when generating search URLs that add a
-     * search facet.If none is explicitly provided, it defaults to
-     * "index.php?P=SearchResults".
-     * @param string $NewValue New value to set (OPTIONAL).
+     * Set the base link used when generating search URLs that add a
+     * search facet.  If not set, it defaults to "index.php?P=SearchResults".
+     * @param string $NewValue New value to set.
+     */
+    public function setBaseLink(string $NewValue): void
+    {
+        $this->BaseLink = $NewValue;
+    }
+
+    /**
+     * Get the current base link value (used when generating search URLs that
+     * add a search facet).
      * @return string Current value.
      */
-    public function baseLink(string $NewValue = null): string
+    public function getBaseLink(): string
     {
-        if (!is_null($NewValue)) {
-            $this->BaseLink = $NewValue;
-        }
-
         return $this->BaseLink;
     }
 
+    /**
+     * Set facets to be open by default.
+     */
+    public function setAllFacetsOpenByDefault(): void
+    {
+        $this->OpenFieldsByDefault = true;
+    }
+
+    /**
+     * Restrict the list of fields displayed as facets to a subset of those
+     * set for inclusion in faceted search. In order to appear a field must
+     * both be configured for faceted search and be in the list of FieldIds
+     * given.
+     * @param array $FieldIds Fields to allow.
+     * @return void
+     */
+    public function setFacetFieldIds(array $FieldIds): void
+    {
+        $this->FacetFieldIds = $FieldIds;
+    }
+
+
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+    protected $OpenFieldsByDefault = false;
     protected $User;
     protected $SchemaId;
+    protected $FacetFieldIds = null;
+
+    private $DataCache;
+    private static $CacheTTL = 120 * 60; # seconds
+    private static $SlowGenerationThreshold = 0.2; # seconds
 
     ##
     # Facet generation functions
+
+    /**
+     * Load search facets from cache or generate them if necessary.
+     * @return void
+     * @see generateFacets()
+     */
+    protected function loadFacets(): void
+    {
+        $DB = new Database();
+        $Schema = new MetadataSchema($this->SchemaId);
+
+        $CacheKey = __FUNCTION__."-".hash(
+            'sha256',
+            implode(
+                "/",
+                [
+                    $Schema->computeUserClass($this->User),
+                    serialize($this->SearchResults),
+                    $this->SearchParams->data(),
+                ]
+            )
+        );
+
+        $CacheData = $this->DataCache->get($CacheKey);
+        if (!is_null($CacheData)) {
+            $CacheData = unserialize($CacheData);
+            $this->TreeSuggestionsByFieldName = $CacheData["TreeSuggestionsByFieldName"];
+            $this->SuggestionsByFieldName = $CacheData["SuggestionsByFieldName"];
+            return;
+        }
+
+        $StartTime = microtime(true);
+        $this->generateFacets();
+        $StopTime = microtime(true);
+
+        # if facets took a long time to compute, cache them
+        if ($StopTime - $StartTime > self::$SlowGenerationThreshold) {
+            $Data = serialize([
+                "TreeSuggestionsByFieldName" => $this->TreeSuggestionsByFieldName,
+                "SuggestionsByFieldName" => $this->SuggestionsByFieldName,
+            ]);
+
+            $this->DataCache->set($CacheKey, $Data, self::$CacheTTL);
+        }
+    }
 
     /**
      * Generate (i.e. bring into existence) a list of search facets
@@ -105,8 +184,9 @@ class SearchFacetUI_Base
      *   TreeSuggestionsByFieldName data members. The former stores
      *   suggestions for Controlled Name and Option fields, the latter
      *   suggestions for Classification fields.
+     * @return void
      */
-    protected function generateFacets()
+    protected function generateFacets(): void
     {
         $Schema = new MetadataSchema($this->SchemaId);
         $Fields = $Schema->getFields(
@@ -126,6 +206,11 @@ class SearchFacetUI_Base
             }
 
             if (!$Field->userCanView($this->User)) {
+                continue;
+            }
+
+            if (!is_null($this->FacetFieldIds) &&
+                !in_array($Field->id(), $this->FacetFieldIds)) {
                 continue;
             }
 
@@ -158,22 +243,36 @@ class SearchFacetUI_Base
     }
 
     /**
-     * Populate the internal data used to store search facets (i.e. suggested
-     *   terms that can be added to a search) for a specified Tree field from
-     *   a list of suggested Classification IDs.
+     * Populate TreeSuggestionsByFieldName for a specified Tree Field based on
+     * a list of suggested Classification IDs.
      * @param MetadataField $Field Metadata field to process
      * @param array $Suggestions Search suggestions from SearchEngine::getResultFacets()
+     * @return void
      */
     private function populateFacetsForTreeField(
         MetadataField $Field,
         array $Suggestions
-    ) {
+    ): void {
         # build up a nested array of suggestions where each level of the array
         # is keyed by the termid
         $Facets = $this->convertSuggestionsToNestedArray($Suggestions);
 
-        # if this field should always show top-level classifications, add those
-        if (!$Field->facetsShowOnlyTermsUsedInResults()) {
+        $CurrentValues = $this->SearchParams->getSearchStringsForField($Field);
+
+        # Determine the search logic to use when adding a facet to this field.
+        # If we have any terms for this field from the current search, then adding
+        # another (in the form of an additional term for this facet)
+        # will employ the field's search group logic. Otherwise, it will be
+        # the top-level logic of our params
+        $Logic = count($CurrentValues) > 0
+            ? $Field->searchGroupLogic()
+            : ($this->SearchParams->logic() == "OR"
+               ? SearchEngine::LOGIC_OR
+               : SearchEngine::LOGIC_AND);
+
+        # if this field should show top-level classifications, add those
+        if ($Logic == SearchEngine::LOGIC_OR
+            && !$Field->facetsShowOnlyTermsUsedInResults()) {
             $Facets = $this->addTopLevelClassifications($Facets, $Field);
         }
 
@@ -195,7 +294,8 @@ class SearchFacetUI_Base
         $Facets = $this->pruneChildrenOfUnselectedFacets($Facets);
 
         # if necessary, add child classifications
-        if (!$Field->facetsShowOnlyTermsUsedInResults()) {
+        if ($Logic == SearchEngine::LOGIC_OR
+            && !$Field->facetsShowOnlyTermsUsedInResults()) {
             $Facets = $this->addChildrenOfSelectedTerms($Facets, $Field);
         }
 
@@ -222,17 +322,17 @@ class SearchFacetUI_Base
     }
 
     /**
-     * Populate the internal data used to store search facets (i.e. suggested
-     *   terms that can be added to a search) for a specified Controlled Name
-     *   or Option field from a list of suggested Controlled Name IDs.
+     * Populate SuggestionsByFieldName for a specified Controlled Name or
+     * Option field based on a list of suggested Controlled Name IDs.
      * @param MetadataField $Field Metadata field to process
      * @param array $Suggestions Search suggestions from
      *   SearchEngine::getResultFacets()
+     * @return void
      */
     private function populateFacetsForNameField(
         MetadataField $Field,
         array $Suggestions
-    ) {
+    ): void {
         # retrieve current search parameter values for field
         $CurrentValues = $this->SearchParams->getSearchStringsForField($Field);
 
@@ -369,8 +469,11 @@ class SearchFacetUI_Base
             }
 
             $CurrentTerm = "";
-            $Segments = explode(" -- ", $SelectedValue);
+            # remove "--" and whitespace from segments before looking up
+            # terms IDs by name
+            $Segments = explode("--", $SelectedValue);
             foreach ($Segments as $Segment) {
+                $Segment = trim($Segment);
                 $CurrentTerm .= (strlen($CurrentTerm) ? " -- " : "").$Segment;
 
                 $TermId = $Field->getFactory()->getItemIdByName($CurrentTerm);
@@ -562,10 +665,15 @@ class SearchFacetUI_Base
     ): array {
         $Factory = $Field->getFactory();
 
-
+        $CacheKey = __FUNCTION__."-".$Field->id();
+        $ItemCount = $this->DataCache->get($CacheKey);
+        if ($ItemCount === null) {
+            $ItemCount = $Factory->getItemCount();
+            $this->DataCache->set($CacheKey, $ItemCount, self::$CacheTTL);
+        }
 
         # refuse to add facets if vocabulary is too large
-        if ($Factory->getItemCount() > $this->MaxFacetsPerField) {
+        if ($ItemCount > $this->MaxFacetsPerField) {
             return [];
         }
 
@@ -600,8 +708,21 @@ class SearchFacetUI_Base
     ): array {
         $RFactory = new RecordFactory($Field->schemaId());
 
+        $CurrentValues = $this->SearchParams->getSearchStringsForField($Field);
+
+        # Determine the search logic to use when adding a facet to this field.
+        # If we have any terms for this field from the current search, then adding
+        # another (in the form of an additional term for this facet)
+        # will employ the field's search group logic. Otherwise, it will be
+        # the top-level logic of our params
+        $Logic = count($CurrentValues) > 0
+            ? $Field->searchGroupLogic()
+            : ($this->SearchParams->logic() == "OR"
+               ? SearchEngine::LOGIC_OR
+               : SearchEngine::LOGIC_AND);
+
         foreach (array_keys($Facets) as $Id) {
-            $RecordCount = ($Field->searchGroupLogic() == SearchEngine::LOGIC_AND) ?
+            $RecordCount = ($Logic == SearchEngine::LOGIC_AND) ?
                 $Facets[$Id]["TermInfo"]["Count"] :
                 $RFactory->associatedVisibleRecordCount(
                     $Id,
@@ -699,12 +820,13 @@ class SearchFacetUI_Base
      *   adding/removing the term, normalize the "Name" entries for display,
      *   and put terms in alphabetical order.
      * @param array $Facets Facets to annotate.
-     * @pasam MetadataField $Field Field to add/remove search terms.
+     * @param MetadataField $Field Field to add/remove search terms.
+     * @return void
      */
     private function prepareFacetsForDisplay(
         array &$Facets,
         MetadataField $Field
-    ) {
+    ): void {
         foreach ($Facets as $Id => &$Item) {
             if ($Id == "TermInfo") {
                 # generate the appropriate updated url
@@ -718,6 +840,12 @@ class SearchFacetUI_Base
                         $Field,
                         $Item["Name"]
                     );
+
+                    # can skip processing children if the current term cannot
+                    # be added
+                    if ($Item["AddLink"] === null) {
+                        break;
+                    }
                 }
 
                 # set the name that should be displayed
@@ -729,6 +857,22 @@ class SearchFacetUI_Base
                 $this->prepareFacetsForDisplay($Item, $Field);
             }
         }
+
+        # if this facet cannot be added, clear all its info
+        if (isset($Facets["TermInfo"]) &&
+            array_key_exists("AddLink", $Facets["TermInfo"]) &&
+            $Facets["TermInfo"]["AddLink"] === null) {
+            $Facets = [];
+            return;
+        }
+
+        # remove any empty facets
+        $Facets = array_filter(
+            $Facets,
+            function ($Value) {
+                return count($Value) > 0;
+            }
+        );
 
         # alphabetize the facets at this level of the tree
         uasort(
@@ -754,12 +898,13 @@ class SearchFacetUI_Base
      * Add a specified term to our search URL.
      * @param MetadataField $Field Metadata field for this term.
      * @param string $Term Search term to add.
-     * @return string URL with search parameters including new term.
+     * @return string|null URL with search parameters including new term or NULL
+     *    when adding the term will exceed the max search complexity.
      */
     private function addTermToSearchURL(
         MetadataField $Field,
         string $Term
-    ): string {
+    ): ?string {
         if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
             $TreeArray = $this->addTermToTreeArray(
                 $this->getSearchTermsAsTreeArray($Field),
@@ -775,6 +920,10 @@ class SearchFacetUI_Base
         } else {
             $SearchStrings = $this->SearchParams->getSearchStringsForField($Field);
             $SearchStrings[] = "=".$Term;
+        }
+
+        if (count($SearchStrings) >= 26) {
+            return null;
         }
 
         # create our own copy of search parameters
@@ -936,6 +1085,12 @@ class SearchFacetUI_Base
         string $Term
     ) {
         if (is_numeric($Term)) {
+            # if ClassificationId provided that does not (any longer?) exist,
+            # nothing to do
+            if (!Classification::itemExists((int)$Term)) {
+                return $TreeArray;
+            }
+
             $Term = (new Classification($Term))->fullName();
         }
 
@@ -1004,7 +1159,7 @@ class SearchFacetUI_Base
         MetadataField $Field,
         $Value
     ) {
-        $SignalResult = $GLOBALS["AF"]->signalEvent(
+        $SignalResult = ApplicationFramework::getInstance()->signalEvent(
             "EVENT_FIELD_DISPLAY_FILTER",
             [
                 "Field" => $Field,
@@ -1090,7 +1245,7 @@ class SearchFacetUI_Base
     protected $TreeSuggestionsByFieldName = [];
     protected $ShowCounts = true;
 
-    private $BaseLink;
+    private $BaseLink = "index.php?P=SearchResults";
     private $MaxFacetsPerField;
     private $SearchParams;
     private $SearchResults;

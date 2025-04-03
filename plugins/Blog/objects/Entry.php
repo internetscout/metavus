@@ -20,7 +20,6 @@ use Metavus\User;
 use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -75,14 +74,14 @@ class Entry extends Record
      */
     public function entryUrl(array $Get = [], $Fragment = null)
     {
-        $Blog = PluginManager::getInstance()->getPlugin("Blog");
-        $UrlPrefix = $Blog->blogSetting($this->getBlogId(), "CleanUrlPrefix");
+        $BlogPlugin = Blog::getInstance();
+        $UrlPrefix = $BlogPlugin->blogSetting($this->getBlogId(), "CleanUrlPrefix");
 
         # if clean URLs are available
         $AF = ApplicationFramework::getInstance();
         if ($AF->cleanUrlSupportAvailable() && strlen($UrlPrefix) > 0) {
             # base part of the URL
-            $Url = $UrlPrefix . "/" . urlencode($this->id()) . "/";
+            $Url = $UrlPrefix . "/" . urlencode((string) $this->id()) . "/";
 
             # add the title
             $Url .= urlencode($this->titleForUrl());
@@ -495,7 +494,7 @@ class Entry extends Record
      * Get BlogId
      * @return int the BlogId associated with this entry
      */
-    public function getBlogId()
+    public function getBlogId() : int
     {
         return current(array_keys($this->get(Blog::BLOG_NAME_FIELD_NAME)));
     }
@@ -549,26 +548,12 @@ class Entry extends Record
 
             # perform marker filtering
             if ($FilterMarker) {
-                $Value = str_replace(self::EXPLICIT_MARKER, "", $Value);
+                $Value = $this->filterOutEndOfTeaserMarker($Value);
             }
 
             # perform image filtering
             if ($FilterImages) {
-                # delete the captions shown below images
-                $Value = preg_replace(
-                    '%<div [^>]*class="mv-form-image-caption"[^>]*>[^<]*</div>%',
-                    "",
-                    $Value
-                );
-
-                # delete images and their containing divs
-                $Value = preg_replace(
-                    '%<div class="mv-form-image-(right|left)"[^>]*>'
-                    .'\s*<img [^>]+>\s*'
-                    .'</div>%',
-                    "",
-                    $Value
-                );
+                $Value = $this->filterOutImages($Value);
             }
         }
 
@@ -696,6 +681,42 @@ class Entry extends Record
 
         # before yesterday
         return "on";
+    }
+
+    /**
+     * Filter the 'End of Teaser' marker from provided HTML.
+     * @string $Html HTML to filter.
+     * @return string HTML with the marker removed.
+     */
+    private function filterOutEndOfTeaserMarker(string $Html): string
+    {
+        return str_replace(self::EXPLICIT_MARKER, "", $Html);
+    }
+
+    /**
+     * Filter images from provided HTML.
+     * @string $Html HTML to filter.
+     * @return string HTML with images removed.
+     */
+    private function filterOutImages(string $Html): string
+    {
+        # delete the captions shown below images
+        $Html = preg_replace(
+            '%<div [^>]*class="mv-form-image-caption"[^>]*>[^<]*</div>%',
+            "",
+            $Html
+        );
+
+        # delete images and their containing divs
+        $Html = preg_replace(
+            '%<div class="mv-form-image-(right|left)"[^>]*>'
+                .'\s*<img [^>]+>\s*'
+                .'</div>%',
+            "",
+            $Html
+        );
+
+        return $Html;
     }
 
     /**

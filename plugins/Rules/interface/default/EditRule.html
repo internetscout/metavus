@@ -3,41 +3,31 @@
 #   FILE:  EditRule.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\FormUI;
+use Metavus\HtmlButton;
 
-# ----- MAIN -----------------------------------------------------------------
-
+# ----- SETUP ----------------------------------------------------------------
 $Heading = $H_IsNewRule ? "Add New Rule" : "Edit Rule";
+
+$SaveButton = new HtmlButton($H_IsNewRule ? "Add" : "Save");
+$SaveButton->setIcon($H_IsNewRule ? "Plus.svg" : "Disk.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle($Heading);
-
-if ($H_IsNewRule) {
-    $SubmitChangesButton = [
-        "value" => "Add",
-        "icon" => "Plus.svg"
-    ];
-} else {
-    $SubmitChangesButton = [
-        "value" => "Save",
-        "icon" => "Disk.svg"
-    ];
-}
-
 ?>
 <h1><?= $Heading ?></h1>
 <?PHP  FormUI::DisplayErrorBlock();  ?>
 <form method="POST" action="?P=P_Rules_EditRule" class="priv-form mv-feui-form">
-<input type="hidden" name="ID" value="<?= $H_RuleId ?>" />
-<?PHP  $H_FormUI->DisplayFormTable();  ?>
-<button type="submit" name="Submit" value="<?= $SubmitChangesButton["value"]; ?>"
-    class="btn btn-primary mv-button-iconed"><img
-    src="<?= $AF->GUIFile($SubmitChangesButton["icon"]); ?>"
-    alt="" class="mv-button-icon" /> <?= $SubmitChangesButton["value"]; ?></button>
-<button type="submit" name="Submit" value="Cancel"
-    class="btn btn-danger mv-button-iconed"><img
-    src="<?= $AF->GUIFile('Cross.svg'); ?>"
-    alt="" class="mv-button-icon" /> Cancel</button>
+  <input type="hidden" name="ID" value="<?= $H_RuleId ?>" />
+  <?PHP  $H_FormUI->DisplayFormTable();  ?>
+  <?= $SaveButton->getHtml(); ?>
+  <?= $CancelButton->getHtml(); ?>
 </form>

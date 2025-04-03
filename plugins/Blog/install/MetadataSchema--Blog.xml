@@ -140,6 +140,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordChange</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
@@ -154,6 +155,7 @@
         <Owner>Blog</Owner>
         <Optional>0</Optional>
         <UpdateMethod>Button</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
@@ -174,6 +176,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordCreate</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
@@ -190,6 +193,7 @@
         <Editable>0</Editable>
         <Optional>0</Optional>
         <UpdateMethod>OnRecordEdit</UpdateMethod>
+        <TriggersAutoUpdates>0</TriggersAutoUpdates>
         <UserPrivilegeRestrictions>2</UserPrivilegeRestrictions>
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>

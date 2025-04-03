@@ -1,0 +1,125 @@
+<?PHP
+#
+#   FILE:  CanvasTutorial.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+?>
+<h1>Embedding a resource in Canvas</h1>
+
+<p>Resources can be embedded in Canvas in a number of ways. The two most
+  common are as Modules and as Assignments.</p>
+
+<ul>
+  <li>Select a course to edit and navigate to the front page for that
+    course.</li>
+
+  <li><b>Embedding in a Module</b>
+    <ol>
+      <li>From the course navigation at left, select Modules.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_M1.jpg") ?></li>
+
+      <li>If this resource should be part of a new module, use
+        the <i>+ Module</i> button at top right to create the new
+        module.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_M2.jpg") ?></li>
+
+      <li>Press the <i>+</i> button in the header of the module where
+        this resource should live.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_M3.jpg") ?></li>
+
+      <li>Select <i>External Tool</i> from the <i>Add</i> menu.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_M4.jpg") ?></li>
+
+      <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
+        from the list of available tools.</li>
+
+      <li>Follow the instructions in the <i>Locating a Resource</i>
+        section below, proceeding with the next step in this section
+        afterwards.</li>
+
+      <li>Press the <i>Add Item</i> button.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_M5.jpg") ?></li>
+
+      <li>Your selected resource will now appear as a component of a
+        Canvas module. It can be published using the 'Publishe' button
+        at right of the content. This button appears as a 'no' icon
+        for unpublished entries and a green checkmark for published
+        entries. Alternately, you may leave the content unpublished
+        for reference materials that should not be visible to
+        students.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_M6.jpg") ?></li>
+    </ol>
+  </li>
+
+  <li><b>Embedding in an Assignment</b>
+
+    <ol>
+      <li>From the course navigation at left, select Assignments.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A1.jpg") ?></li>
+
+      <li>Click the <i>+ Assignment</i> button at top right.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A2.jpg") ?></li>
+
+      <li>Under <i>Submission type</i>, select <i>External Tool</i>, then
+        press <i>Find</i><br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A3.jpg") ?></li>
+
+      <li>Press the <i>Find</i> button<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A4.jpg") ?></li>
+
+      <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
+        from the list.</li>
+
+      <li>Follow the instructions in the <i>Locating a Resource</i>
+        section below, proceeding with the next step in this section
+        afterwards.</li>
+
+      <li>Press the <i>Select</i> button in Canvas.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A5.jpg") ?></li>
+
+      <li>Give your assignment a title. You can also provide introductory
+        text that will be displayed above the resource.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A6.jpg") ?></li>
+
+      <li>Press <i>Save &amp Publish</i><br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A7.jpg") ?></li>
+
+      <li>Your selected resource will now appear embedded in a Canvas
+        assignment.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_A8.jpg") ?></li>
+
+    </ol>
+  </li>
+
+  <li id="locating"><b>Locating a Resource</b>
+    <ol>
+      <li>Use the search box and/or the facets shown at right to locate
+        the resource(s) you want.</li>
+
+      <li>Use the <i>Select</i> buttons to make your resource selections.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_L1.jpg") ?></li>
+
+      <li>When you've selected all the resources you want, press the <i>Send
+          to LMS</i> button to forward your selections back to Canvas.<br/>
+        <?= $AF->gUIFileTag("Canvas_Tutorial_L2.jpg") ?></li>
+
+    </ol>
+  </li>
+</ul>
+
+<style type="text/css">
+li + li {
+  margin-top: 0.75em;
+}

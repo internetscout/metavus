@@ -1,0 +1,69 @@
+<?PHP
+#
+#   FILE:  EditRegistration.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Id)) {
+    throw new Exception("H_Id not defined.");
+}
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+
+$AddButton = new HtmlButton("Add");
+$AddButton->addSemanticClass("btn-outline-primary");
+
+$SaveButton = new HtmlButton("Save");
+$SaveButton->addSemanticClass("btn-outline-primary");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->addSemanticClass("btn-outline-primary");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+?>
+<h1>Edit LTI Registration</h1>
+
+<?PHP
+if (isset($H_Error)) {
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+    return;
+}
+?>
+<p class='alert alert-primary'>
+  <b>Note On Terminology</b>: Unfortunately, the various LTI library
+  implementations and LMSes do not use a consistent set of parameter
+  names. Names in the table below follow the terminology from the
+  <a href="https://github.com/1EdTech/lti-1-3-php-library"
+     >lti-1-3-php-library</a> used in the plugin code so that
+  searching for them (e.g., google) will find relevant general
+  documentation. On LMS-specific setup pages, the LMS's terminology
+  is used instead. For some LMSes, some parameters (or defaults for
+  them) can be derived. Where possible, the LMS-specific pages do
+  so. These parameters remain editable here in case the computed
+  defaults need to be modified for a specific LMS instance.
+</p>
+
+<form id="mv-p-edulink-tool-form" method="post" enctype="multipart/form-data"
+      action="index.php?P=P_EduLink_EditRegistration&amp;ID=<?= $H_Id ?>">
+
+  <?PHP $H_FormUI->displayErrorBlock(); ?>
+  <?PHP $H_FormUI->displayFormTable(); ?>
+
+  <?PHP if ($H_Id == "NEW") { ?>
+        <?= $AddButton->getHtml(); ?>
+  <?PHP } else { ?>
+        <?= $SaveButton->getHtml(); ?>
+  <?PHP } ?>
+  <?= $CancelButton->getHtml(); ?>
+</form>

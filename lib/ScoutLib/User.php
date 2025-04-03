@@ -3,13 +3,12 @@
 #   FILE:  User.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\Database;
@@ -274,7 +273,7 @@ class User
      * @return string|null Most recently-saved last location, or NULL if
      *      not associated with a particular user.
      */
-    public function lastLocation(string $NewLocation = null)
+    public function lastLocation(?string $NewLocation = null)
     {
         # return NULL if not associated with a particular user
         if ($this->UserId === null) {
@@ -332,7 +331,7 @@ class User
      * @param string $Format Date format.  (OPTIONAL)
      * @return string|null Requested value or NULL if no user.
      */
-    public function getDate(string $FieldName, string $Format = null)
+    public function getDate(string $FieldName, ?string $Format = null)
     {
         # return NULL if not associated with a particular user
         if ($this->UserId === null) {
@@ -467,7 +466,7 @@ class User
     /**
      * Log user out.
      */
-    public function logout()
+    public function logout(): void
     {
         # clear user ID (if any) for session
         if (isset($_SESSION["APUserId"])) {
@@ -607,7 +606,7 @@ class User
      * @param string $NewPassword New password for user.
      * @throws Exception If no specific (non-anonymous) user is available.
      */
-    public function setPassword(string $NewPassword)
+    public function setPassword(string $NewPassword): void
     {
         # check to make sure we are associated with an actual user
         if ($this->isAnonymous()) {
@@ -629,7 +628,7 @@ class User
      * @param string $NewEncryptedPassword New encrypted password for user.
      * @throws Exception If no specific (non-anonymous) user is available.
      */
-    public function setEncryptedPassword($NewEncryptedPassword)
+    public function setEncryptedPassword($NewEncryptedPassword): void
     {
         # check to make sure we are associated with an actual user
         if ($this->isAnonymous()) {
@@ -666,7 +665,7 @@ class User
      * @param bool $NewValue Whether registration has been confirmed.  (OPTIONAL)
      * @return bool Whether registration has been confirmed.
      */
-    public function isActivated(bool $NewValue = null): bool
+    public function isActivated(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("RegistrationConfirmed", $NewValue);
     }
@@ -728,6 +727,8 @@ class User
      */
     public function hasPriv($Privilege, $Privileges = null): bool
     {
+        $Args = func_get_args();
+
         # return FALSE if not associated with a particular user
         if ($this->UserId === null) {
             return false;
@@ -755,7 +756,6 @@ class User
         }
 
         # add any privileges from additional args to query
-        $Args = func_get_args();
         array_shift($Args);
         foreach ($Args as $Arg) {
             $Query .= $Sep . "Privilege='" . $Arg . "'";
@@ -784,6 +784,8 @@ class User
         $Privilege,
         $Privileges = null
     ): string {
+        $Args = func_get_args();
+
         # set up beginning of database query
         $Query = "SELECT DISTINCT UserId FROM APUserPrivileges "
             . "WHERE ";
@@ -801,7 +803,6 @@ class User
         }
 
         # add any privileges from additional args to query
-        $Args = func_get_args();
         array_shift($Args);
         foreach ($Args as $Arg) {
             $Query .= $Sep . "Privilege='" . $Arg . "'";
@@ -824,6 +825,8 @@ class User
         $Privilege,
         $Privileges = null
     ): string {
+        $Args = func_get_args();
+
         # set up beginning of database query
         $Query = "SELECT DISTINCT UserId FROM APUserPrivileges "
             . "WHERE ";
@@ -841,7 +844,6 @@ class User
         }
 
         # add any privileges from additional args to query
-        $Args = func_get_args();
         array_shift($Args);
         foreach ($Args as $Arg) {
             $Query .= $Sep . "Privilege != '" . $Arg . "'";
@@ -858,7 +860,7 @@ class User
      * @throws Exception If no specific (non-anonymous) user is available.
      * @throws InvalidArgumentException If specified privilege appears invalid.
      */
-    public function grantPriv(int $Privilege)
+    public function grantPriv(int $Privilege): void
     {
         # check to make sure we are associated with an actual user
         if ($this->isAnonymous()) {
@@ -893,7 +895,7 @@ class User
      * @throws Exception If no specific (non-anonymous) user is available.
      * @throws InvalidArgumentException If specified privilege appears invalid.
      */
-    public function revokePriv(int $Privilege)
+    public function revokePriv(int $Privilege): void
     {
         # check to make sure we are associated with an actual user
         if ($this->isAnonymous()) {
@@ -935,7 +937,7 @@ class User
      * @param array $NewPrivileges New list of privileges for user.
      * @throws Exception If no specific (non-anonymous) user is available.
      */
-    public function setPrivList(array $NewPrivileges)
+    public function setPrivList(array $NewPrivileges): void
     {
         # check to make sure we are associated with an actual user
         if ($this->isAnonymous()) {
@@ -998,7 +1000,7 @@ class User
      * Set the user currently using the site.
      * @param User $NewValue New current user.
      */
-    public static function setCurrentUser(User $NewValue)
+    public static function setCurrentUser(User $NewValue): void
     {
         static::$CurrentUser[get_called_class()] = $NewValue;
     }
@@ -1071,8 +1073,8 @@ class User
      */
     public static function checkPasswordForErrors(
         string $Password,
-        string $UserName = null,
-        string $Email = null
+        ?string $UserName = null,
+        ?string $Email = null
     ): array {
 
         # start off assuming no errors
@@ -1181,7 +1183,7 @@ class User
      * Set password requirements.
      * @param int $NewValue New password rules as a bitmask of PW_* constants.
      */
-    public static function setPasswordRules(int $NewValue)
+    public static function setPasswordRules(int $NewValue): void
     {
         self::$PasswordRules = $NewValue;
     }
@@ -1190,7 +1192,7 @@ class User
      * Set password minimum length.
      * @param int $NewValue New minimum length.
      */
-    public static function setPasswordMinLength(int $NewValue)
+    public static function setPasswordMinLength(int $NewValue): void
     {
         self::$PasswordMinLength = $NewValue;
     }
@@ -1199,7 +1201,7 @@ class User
      * Set password minimum unique characters.
      * @param int $NewValue New number of required unique characters.
      */
-    public static function setPasswordMinUniqueChars(int $NewValue)
+    public static function setPasswordMinUniqueChars(int $NewValue): void
     {
         self::$PasswordMinUniqueChars = $NewValue;
     }

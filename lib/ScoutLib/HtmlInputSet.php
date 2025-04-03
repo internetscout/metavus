@@ -3,7 +3,7 @@
 #   FILE:  HtmlInputSet.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2017-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -11,7 +11,7 @@
 namespace ScoutLib;
 
 /**
- * Convenience class for generating a set of HTML input form elements.
+ * Base class for classes generating HTML for a set of input form elements.
  */
 abstract class HtmlInputSet
 {
@@ -39,7 +39,7 @@ abstract class HtmlInputSet
     /**
      * Print HTML for set.
      */
-    public function printHtml()
+    public function printHtml(): void
     {
         print $this->getHtml();
     }
@@ -91,7 +91,7 @@ abstract class HtmlInputSet
      * (i.e. all options are disabled).
      * @return bool TRUE if list will not be editabled, otherwise FALSE.
      */
-    public function disabled(bool $NewValue = null)
+    public function disabled(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Disabled = $NewValue ? true : false;

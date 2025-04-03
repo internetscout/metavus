@@ -1,0 +1,3 @@
+<FilesMatch "^securimage_(show|play)\.php$">
+  Require all granted
+</FilesMatch>

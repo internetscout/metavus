@@ -3,7 +3,7 @@
 #   FILE:  SearchParameterSetEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -12,6 +12,8 @@ namespace Metavus;
 
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\Date;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
@@ -26,10 +28,10 @@ class SearchParameterSetEditingUI
      *         created by the UI.  If this UI is incorporated into a form
      *         containing other input elements, they must have names that
      *         differ from this one.
-     * @param SearchParameterSet $SearchParams SearchParameterSet to display
+     * @param ?SearchParameterSet $SearchParams SearchParameterSet to display
      *  (OPTIONAL, uses an empty set if unspecified)
      */
-    public function __construct(string $FormFieldName, SearchParameterSet $SearchParams = null)
+    public function __construct(string $FormFieldName, ?SearchParameterSet $SearchParams = null)
     {
         $this->EditFormName = $FormFieldName;
 
@@ -59,10 +61,10 @@ class SearchParameterSetEditingUI
 
     /**
      * Get/set the list of allowed SchemaIds for this search.
-     * @param array $NewValue Updated array of SchemaIds to allow (OPTIONAL)
+     * @param ?array $NewValue Updated array of SchemaIds to allow (OPTIONAL)
      * @return array List of allowed Schema IDs
      */
-    public function allowedSchemaIds(array $NewValue = null) : array
+    public function allowedSchemaIds(?array $NewValue = null) : array
     {
         if ($NewValue !== null) {
             foreach ($NewValue as $SchemaId) {
@@ -86,8 +88,9 @@ class SearchParameterSetEditingUI
      *        (OPTIONAL, default *   NULL).
      * @param string $TableStyle CSS class to attach for this table
      *        (OPTIONAL, default NULL).
+     * @return void
      */
-    public function displayAsTable(string $TableId = null, string $TableStyle = null)
+    public function displayAsTable(?string $TableId = null, ?string $TableStyle = null): void
     {
         print('<table id="'.defaulthtmlentities($TableId).'" '
               .'class="'.defaulthtmlentities($TableStyle).'" '
@@ -99,17 +102,19 @@ class SearchParameterSetEditingUI
     /**
      * Display the table rows for the editing form, without the surrounding
      *         <table> tags.
+     * @return void
      */
-    public function displayAsRows()
+    public function displayAsRows(): void
     {
         $Fields = $this->flattenSearchParams(
             $this->SearchParams
         );
 
         # make sure the necessary javascript is required
-        $GLOBALS["AF"]->RequireUIFile("jquery-ui.js");
-        $GLOBALS["AF"]->RequireUIFile("CW-QuickSearch.js");
-        $GLOBALS["AF"]->RequireUIFile("SearchParameterSetEditingUI.js");
+        $AF = ApplicationFramework::getInstance();
+        $AF->requireUIFile("jquery-ui.js");
+        $AF->requireUIFile("CW-QuickSearch.js");
+        $AF->requireUIFile("SearchParameterSetEditingUI.js");
 
         # note that all of the fields we create for these rows will be named
         # $this->EditFormName.'[]' , combining them all into an array of results per
@@ -178,8 +183,8 @@ class SearchParameterSetEditingUI
 
                     # normalize search text for the fields that display text
                     $SearchText = $CurVal;
-                    if ($FieldId !== "X-KEYWORD-X") {
-                        $Field = new MetadataField($FieldId);
+                    if ($FieldId !== "X-KEYWORD-X" && $SearchText !== null) {
+                        $Field = MetadataField::getField($FieldId);
                         if (in_array($Field->type(), $StripEqualsTypes)) {
                             $SearchText = (StdLib::strpos($CurVal, "=") === 0) ?
                                 StdLib::substr($CurVal, 1) : $CurVal;
@@ -224,7 +229,7 @@ class SearchParameterSetEditingUI
             # extract and set the search logic, which is always the first
             # element in the HTML that we generate
             $Logic = array_shift($FormData);
-            end($GroupStack)->Logic($Logic);
+            end($GroupStack)->logic($Logic);
 
             while (count($FormData)) {
                 # first element of each row is a field id
@@ -235,7 +240,7 @@ class SearchParameterSetEditingUI
                     array_push($GroupStack, new SearchParameterSet());
                     # extract and set the search logic
                     $Logic = array_shift($FormData);
-                    end($GroupStack)->Logic($Logic);
+                    end($GroupStack)->logic($Logic);
                 } elseif ($FieldId == "X-END-SUBGROUP-X") {
                     $Subgroup = array_pop($GroupStack);
                     $Tgt = end($GroupStack);
@@ -246,7 +251,7 @@ class SearchParameterSetEditingUI
                     }
 
                     if ($Subgroup->parameterCount() > 0) {
-                        $Tgt->AddSet($Subgroup);
+                        $Tgt->addSet($Subgroup);
                     }
                 } else {
                     # for selectable fields, we'll have all possible
@@ -264,7 +269,7 @@ class SearchParameterSetEditingUI
                             continue;
                         }
                     } else {
-                        $Field = new MetadataField($FieldId);
+                        $Field = MetadataField::getField($FieldId);
                         $Factory = null;
 
                         # make sure we have factories for field types that need them
@@ -289,14 +294,18 @@ class SearchParameterSetEditingUI
                             case MetadataSchema::MDFTYPE_URL:
                             case MetadataSchema::MDFTYPE_TEXT:
                             case MetadataSchema::MDFTYPE_NUMBER:
-                            case MetadataSchema::MDFTYPE_DATE:
-                            case MetadataSchema::MDFTYPE_TIMESTAMP:
                                 # if we have no value for this field, no processing to do
                                 if (strlen($TextVal) == 0) {
                                     continue 2;
                                 }
                                 break;
 
+                            case MetadataSchema::MDFTYPE_DATE:
+                            case MetadataSchema::MDFTYPE_TIMESTAMP:
+                                if (!Date::isValidDate($TextVal)) {
+                                    continue 2;
+                                }
+                                break;
                             case MetadataSchema::MDFTYPE_TREE:
                             case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
                             case MetadataSchema::MDFTYPE_USER:
@@ -370,6 +379,11 @@ class SearchParameterSetEditingUI
                                 $Val = "=".$InputVal;
                                 break;
 
+                            case MetadataSchema::MDFTYPE_REFERENCE:
+                                # (data provide is an ItemId)
+                                $Val = "=".$SearchVal;
+                                break;
+
                             default:
                                 throw new Exception("Unsupported field type");
                         }
@@ -383,14 +397,14 @@ class SearchParameterSetEditingUI
                                 "Attempt to add subgroup to an empty set."
                             );
                         }
-                        $Tgt->AddSet($Val);
+                        $Tgt->addSet($Val);
                     } else {
                         if ($Tgt === false) {
                             throw new Exception(
                                 "Attempt to add value without any search parameters."
                             );
                         }
-                        $Tgt->AddParameter($Val, $Field);
+                        $Tgt->addParameter($Val, $Field);
                     }
                 }
             }
@@ -408,7 +422,7 @@ class SearchParameterSetEditingUI
     * @param SearchParameterSet|null $SearchParams New setting (OPTIONAL)
     * @return SearchParameterSet Current SearchParameterSet
     */
-    public function searchParameters(SearchParameterSet $SearchParams = null): SearchParameterSet
+    public function searchParameters(?SearchParameterSet $SearchParams = null): SearchParameterSet
     {
         if ($SearchParams !== null) {
             $this->SearchParams = clone $SearchParams;
@@ -427,7 +441,7 @@ class SearchParameterSetEditingUI
     * @return int Current maximum length of a field option list's label.
     *       Zero means no limit.
     */
-    public function maxFieldLabelLength(int $NewValue = null): int
+    public function maxFieldLabelLength(?int $NewValue = null): int
     {
         if (!is_null($NewValue)) {
             $this->MaxFieldLabelLength = $NewValue;
@@ -445,7 +459,7 @@ class SearchParameterSetEditingUI
     * @return int Current maximum length of a value option list's label.
     *       Zero means no limit.
     */
-    public function maxValueLabelLength(int $NewValue = null): int
+    public function maxValueLabelLength(?int $NewValue = null): int
     {
         if (!is_null($NewValue)) {
             $this->MaxValueLabelLength = $NewValue;
@@ -499,7 +513,7 @@ class SearchParameterSetEditingUI
         # Tree, CName, and Option fields
         $SearchStrings = $SearchParams->getSearchStrings();
         foreach ($SearchStrings as $FieldId => $Values) {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
             switch ($Field->type()) {
                 case MetadataSchema::MDFTYPE_TREE:
                     $Values = $this->normalizeTreeValues($Field, $Values);
@@ -539,8 +553,12 @@ class SearchParameterSetEditingUI
                     # so that we can extract the XYZ part with a substr() call
                     sort($Terms);
 
-                    $Field = new MetadataField($FieldId);
-                    $Item = $Field->getFactory()->getItem(substr($Terms[0], 1));
+                    $Field = MetadataField::getField($FieldId);
+
+                    $Term = substr($Terms[0], 1);
+                    $Item = (is_numeric($Term)) ?
+                        $Field->getFactory()->getItem($Term) :
+                        $Field->getFactory()->getItemByName($Term);
 
                     $Result[] = [
                         "FieldId" => $FieldId,
@@ -601,9 +619,32 @@ class SearchParameterSetEditingUI
             # '=XYZ' format for exact match
             } elseif (preg_match('%^=(.+)$%', $Value, $Matches)) {
                 $Item = $Factory->getItemByName($Matches[1]);
+            # otherwise, log a warning and check fallback matches
             } else {
-            # otherwise fall back to 'contains' the term
-                $Item = $Factory->getItem($Value);
+                # 'ItemId' format for exact match
+                if (is_numeric($Value)) {
+                    $Item = $Factory->getItem(intval($Value));
+                # 'XYZ' format for exact match
+                } else {
+                    $Item = $Factory->getItemByName($Value);
+                }
+
+                $AF = ApplicationFramework::getInstance();
+                if (is_null($Item)) {
+                    $AF->logError(
+                        ApplicationFramework::LOGLVL_WARNING,
+                        "Could not normalize '".$Value."', for field "
+                        .$Field->name().", removing it."
+                    );
+                    unset($Values[$Index]);
+                    continue;
+                } else {
+                    $AF->logError(
+                        ApplicationFramework::LOGLVL_WARNING,
+                        "Value '".$Value."' was not in an expected format"
+                        ." and was normalized to ItemID: ".$Item->id()."."
+                    );
+                }
             }
 
             $Values[$Index] = $Prefix.$Item->id();
@@ -632,10 +673,13 @@ class SearchParameterSetEditingUI
         }
 
         $Factory = $Field->getFactory();
+        $Result = [];
         foreach ($Values as $Index => $Value) {
             # =ItemId format
             if (preg_match('%^=([0-9]+)$%', $Value, $Matches)) {
-                $Item = $Factory->getItem($Matches[1]);
+                $Item = $Factory->itemExists($Matches[1]) ?
+                    $Factory->getItem($Matches[1]) :
+                    null;
             # =XYZ format
             } elseif (preg_match('%^=(.+)$%', $Value, $Matches)) {
                 $Item = $Factory->getItemByName($Matches[1]);
@@ -643,10 +687,10 @@ class SearchParameterSetEditingUI
             # otherwise, fall back to 'contains' the term
                 $Item = $Factory->getItemByName($Value);
             }
-            $Values[$Index] = "=".$Item->id();
+            $Result[$Index] = !is_null($Item) ? "=".$Item->id() : null;
         }
 
-        return $Values;
+        return $Result;
     }
 
     /**
@@ -686,7 +730,7 @@ class SearchParameterSetEditingUI
             return false;
         }
 
-        $Field = new MetadataField(key($SearchStrings));
+        $Field = MetadataField::getField(key($SearchStrings));
         if ($Field->type() != MetadataSchema::MDFTYPE_TREE) {
             return false;
         }
@@ -697,8 +741,9 @@ class SearchParameterSetEditingUI
     /**
     * Print HTML elements for the field selector.
     * @param string|null $FieldId Currently selected field.
+    * @return void
     */
-    private function printFieldSelector($FieldId)
+    private function printFieldSelector($FieldId): void
     {
         $ListName = $this->EditFormName."[]";
         $SelectedValue = [];
@@ -750,13 +795,15 @@ class SearchParameterSetEditingUI
     /**
     * Print HTML elements for the value selector for Option and Flag fields.
     * @param int|null $FieldId Currently selected FieldId.
-    * @param string $CurVal Currently selected value.
+    * @param string|null $CurVal Currently selected value.
+    * @return void
     */
-    private function printValueSelector($FieldId, string $CurVal)
+    private function printValueSelector($FieldId, ?string $CurVal): void
     {
         # parameters of the option list
         $ListName = $this->EditFormName."[]";
         $Options = [];
+        $DisabledOptions = [];
         $OptionClass = [];
         $SelectedValue = [];
 
@@ -786,62 +833,87 @@ class SearchParameterSetEditingUI
             }
         }
 
+        # include an "INVALID" option if we get a null value
+        # null is passed to this function to indicate an invalid value
+        if ($CurVal === null) {
+            $Key = $FieldId."-INVALID";
+            $Options[$Key] = "INVALID";
+            $OptionClass[$Key] = "field-id-".$FieldId;
+            $DisabledOptions[$Key] = 1;
+            $SelectedValue = $Key;
+        }
+
         # instantiate an option list and print
         $OptList = new HtmlOptionList($ListName, $Options, $SelectedValue);
         $OptList->classForList("mv-speui-field-value-select");
         $OptList->classForOptions($OptionClass);
         $OptList->maxLabelLength($this->MaxValueLabelLength);
+        $OptList->disabledOptions($DisabledOptions);
         $OptList->printHtml();
     }
 
     /**
-    * Output quicksearch field for ControlledName and Tree fields.
-    * @param int|null $FieldId Currently selected FieldId.
-    * @param string $CurVal Currently selected field value.
-    */
-    private function printQuicksearch($FieldId, string $CurVal)
+     * Output quicksearch html used for Controlled Name, Tree, User, and
+     * Reference fields.
+     * @param int|null $FieldId Currently selected FieldId. NULL when no field
+     *     is selected (Front-end JS will need inject a FieldId when a field
+     *     is selected for the quicksearch to function.)
+     * @param string|null $CurVal Currently selected field value.
+     * @return void
+     */
+    private function printQuicksearch($FieldId, ?string $CurVal): void
     {
         $ExactMatch = false;
         $ItemId = "";
 
         if ($FieldId !== null && $FieldId != "X-KEYWORD-X") {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
 
-            if (!isset($this->Factories[$FieldId])) {
-                $this->Factories[$FieldId] = false;
+            # perform type specific normalization of incoming value
+            switch ($Field->type()) {
+                case MetadataSchema::MDFTYPE_TREE:
+                    if (strlen($CurVal) > 0 && $CurVal[0] == "~") {
+                        $CurVal = substr($CurVal, 1);
+                    } else {
+                        $ExactMatch = true;
+                    }
+                    /* fall through */
 
-                $Factory = $Field->getFactory();
-                if ($Factory !== null) {
-                    $this->Factories[$FieldId] = $Factory;
-                }
-            }
+                case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
+                    if ($CurVal !== null) {
+                        $Item = $Field->getFactory()->getItem($CurVal);
+                        $ItemId = $Item->id();
+                        $CurVal = $Item->name();
+                    }
+                    break;
 
-            if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
-                if (strlen($CurVal) > 0 && $CurVal[0] == "~") {
-                    $CurVal = substr($CurVal, 1);
-                } else {
-                    $ExactMatch = true;
-                }
-            }
+                case MetadataSchema::MDFTYPE_REFERENCE:
+                    if (preg_match("/^=([0-9]+)/", $CurVal, $Matches)) {
+                        $Id = (int)$Matches[1];
+                        if (Record::itemExists($Id)) {
+                            $ItemId = $Id;
+                            $CurVal = (new Record($ItemId))->getMapped("Title");
+                        }
+                    }
+                    break;
 
-            if ($this->Factories[$FieldId] !== false) {
-                if ($Field->type() == MetadataSchema::MDFTYPE_USER) {
-                    $ItemId = $this->Factories[$FieldId]->getItemIdByName($CurVal);
-                } else {
-                    $Item = $this->Factories[$FieldId]->getItem($CurVal);
-                    $ItemId = $Item->id();
-                    $CurVal = $Item->name();
-                }
+                case MetadataSchema::MDFTYPE_USER:
+                    $ItemId = $Field->getFactory()->getItemIdByName($CurVal);
+                    break;
             }
         }
+
+        $OptList = new HtmlOptionList(
+            "",
+            ["~" => "Begins With", "" => "Is"],
+            $ExactMatch ? "" : "~"
+        );
+        $OptList->classForList("mv-speui-operator mv-speui-operator-tree");
 
         print '<span class="mv-speui-operator '
             .'mv-speui-operator-controlledname mv-speui-operator-user">'
             .'&nbsp;Is&nbsp;</span>';
-        print '<select class="mv-speui-operator mv-speui-operator-tree">'
-            .'<option value="~"'.(!$ExactMatch ? " selected" : "").'>Begins With</option>'
-            .'<option value=""'.($ExactMatch ? " selected" : "").'>Is</option>'
-            .'</select>';
+        print $OptList->getHtml();
         QuickSearchHelper::printQuickSearchField(
             QuickSearchHelper::DYNAMIC_SEARCH,
             $ItemId,
@@ -853,8 +925,9 @@ class SearchParameterSetEditingUI
 
     /**
      * Output template row for JS to copy when new fields are added.
+     * @return void
      */
-    private function printTemplateRow()
+    private function printTemplateRow(): void
     {
         # the .mv-speui-X css classes below are used by
         # SearchParameterSetEditingUI.js to locate and manipulate elements

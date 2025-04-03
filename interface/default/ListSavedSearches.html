@@ -2,21 +2,22 @@
 #   FILE:  ListSavedSearches.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
+namespace Metavus;
+
+use Exception;
 use Metavus\Plugins\SavedSearchMailings;
-use Metavus\TransportControlsUI;
-use Metavus\User;
 use ScoutLib\HtmlOptionList;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
 /**
  * Get HTML dropdown for email frequency of current search in list.
- * @param object $Item current saved search in list.
+ * @param SavedSearch $Item current saved search in list.
  * @return string Dropdown HTML dropdown for email frequency of current saved search.
  */
 function GetEmailFrequency($Item)
@@ -30,15 +31,28 @@ function GetEmailFrequency($Item)
     return $OptList->getHtml();
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
-PageTitle("Manage Saved Searches");
+# checks to see if required incoming variables are set
+if (!isset($H_StartingIndex)) {
+    throw new Exception("Required variable \$H_StartingIndex is not initialized");
+}
+if (!isset($H_ItemsPerPage)) {
+    throw new Exception("Required variable \$H_ItemsPerPage is not initialized");
+}
+if (!isset($H_SavedSearches)) {
+    throw new Exception("Required variable \$H_SavedSearches is not initialized");
+}
+if (!isset($H_SearchCount)) {
+    throw new Exception("Required variable \$H_SearchCount is not initialized");
+}
 
 $MailingsEnabled = $GLOBALS["G_PluginManager"]->pluginEnabled(
     "SavedSearchMailings"
 );
 
 $BaseLink = "index.php?P=ListSavedSearches";
+$TransferLink = "index.php?P=TransferSavedSearch&amp;ID=\$ID";
 $EditLink = "index.php?P=AdvancedSearch&amp;ID=\$ID";
 $DeleteLink = "index.php?P=ListSavedSearches&amp;AC=Delete&amp;ID=\$ID&amp;"
     .TransportControlsUI::PNAME_STARTINGINDEX."=".$H_StartingIndex;
@@ -65,7 +79,7 @@ $Fields = [
 if ($MailingsEnabled) {
     $Fields["Email"] = [
         "AllowHTML" => true,
-        "ValueFunction" => "GetEmailFrequency",
+        "ValueFunction" => "Metavus\\GetEmailFrequency",
     ];
 }
 
@@ -75,11 +89,16 @@ $ListUI->noItemsMessage("There are no searches currently saved.
     <a href='index.php?P=AdvancedSearch'>Advanced Search</a> page.");
 $ListUI->heading("Saved Searches");
 $ListUI->baseLink($BaseLink);
-$ListUI->addActionButton("Edit", $EditLink);
-$ListUI->addActionButton("Delete", $DeleteLink);
+if (CheckAuthorization(PRIV_USERADMIN)) {
+    $ListUI->addActionButton("Transfer", $TransferLink, "Exchange.svg");
+}
+$ListUI->addActionButton("Edit", $EditLink, "Pencil.svg");
+$ListUI->addActionButton("Delete", $DeleteLink, "Delete.svg");
 $ListUI->itemsPerPage($H_ItemsPerPage);
 $ListUI->fieldsSortableByDefault(false);
 
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Manage Saved Searches");
 ?>
 <form name="savedsearch" method="post" action="index.php?P=ListSavedSearches">
     <input type="hidden" name="AC" value="ChangeFrequency" />

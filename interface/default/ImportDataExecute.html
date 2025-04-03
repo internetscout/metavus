@@ -3,46 +3,75 @@
 #   FILE:  ImportDataExecute.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
-# ----- MAIN -----------------------------------------------------------------
+use Exception;
+use ScoutLib\ApplicationFramework;
 
+# ----- SETUP ----------------------------------------------------------------
 global $ReferenceMessages;
 
-$Header = ($ImportComplete) ? "Import Completed Successfully" : "Importing Data";
+if (!isset($H_ClassificationCount)) {
+    throw new Exception("H_ClassificationCount not defined.");
+}
+if (!isset($H_ControlledNameCount)) {
+    throw new Exception("H_ControlledNameCount not defined.");
+}
+if (!isset($H_DebugInfo)) {
+    throw new Exception("H_DebugInfo not defined.");
+}
+if (!isset($H_ImportComplete)) {
+    throw new Exception("H_ImportComplete not defined.");
+}
+if (!isset($H_ResourceCount)) {
+    throw new Exception("H_ResourceCount not defined.");
+}
+if (!isset($H_TotalLineCount)) {
+    throw new Exception("H_TotalLineCount not defined.");
+}
 
+$AF = ApplicationFramework::getInstance();
+
+$Header = ($H_ImportComplete) ? "Import Completed Successfully" : "Importing Data";
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1><?= $Header; ?></h1>
 
-<?PHP PrintDebugInfo(); ?>
+<?= $H_DebugInfo; ?>
 
 <table class="table table-striped">
     <tbody>
         <tr>
             <th>Lines Read</th>
-            <td><?= $TotalLineCount - 1; ?></td>
+            <td><?= $H_TotalLineCount - 1; ?></td>
         </tr>
         <tr>
             <th>Resources Added</th>
-            <td><?= $ResourceCount; ?></td>
+            <td><?= $H_ResourceCount; ?></td>
         </tr>
         <tr>
             <th>Controlled Names Added</th>
-            <td><?= $ControlledNameCount; ?></td>
+            <td><?= $H_ControlledNameCount; ?></td>
         </tr>
         <tr>
             <th>Classifications Added</th>
-            <td><?= $ClassificationCount; ?></td>
+            <td><?= $H_ClassificationCount; ?></td>
         </tr>
     </tbody>
 </table>
 
-<?PHP if ($ImportComplete) { ?>
+<?PHP if ($H_ImportComplete) { ?>
 <p>Both the search and recommender databases must be rebuilt so that searching
 and the recommender system will work correctly with the new resources.</p>
 
@@ -59,8 +88,6 @@ and the recommender system will work correctly with the new resources.</p>
     <?PHP } ?>
 <?PHP } else { ?>
     <form name="importdata" method="post" action="index.php?P=ImportDataExecute">
-        <button class="btn btn-danger mv-button-iconed" type="submit"
-            name="Submit" value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-            class="mv-button-icon" /> Cancel</button>
+        <?= $CancelButton->getHtml(); ?>
     </form>
 <?PHP } ?>

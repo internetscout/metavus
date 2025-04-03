@@ -77,8 +77,8 @@ $H_RebuildIsComplete = ($StartingResourceId == -1) ? true : false;
 
 # calculate percent complete
 $RFactory = new RecordFactory();
-$TotalResources = $RFactory->GetItemCount();
-$ResourcesProcessed = $RFactory->GetItemCount("RecordId < ${StartingResourceId}");
+$TotalResources = $RFactory->getItemCount();
+$ResourcesProcessed = $RFactory->getItemCount("RecordId < ".$StartingResourceId);
 $H_PercentRebuildComplete = sprintf(
     "%.1f",
     ($ResourcesProcessed * 100) / max(1, $TotalResources)

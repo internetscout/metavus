@@ -3,15 +3,14 @@
 #   FILE:  ManageSubscribers.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\ItemListUI;
-use Metavus\MetadataSchema;
 use Metavus\QuickSearchHelper;
 use Metavus\User;
-use Metavus\Plugins\Blog;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
@@ -44,13 +43,16 @@ function getUserInfo(int $UserId, string $UserField)
     return $UserData[$UserId][$UserField];
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$PageTitle = "Manage Subscribers";
 
+$AddUserButton = new HtmlButton("Add User");
+$AddUserButton->setIcon("Plus.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 if (isset($H_Error)) {
     print "<p class='alert alert-danger'>".$H_Error."</p>";
 }
-
-$PageTitle = "Manage Subscribers";
 
 PageTitle($PageTitle);
 ?>
@@ -62,9 +64,7 @@ PageTitle($PageTitle);
         false,
         "F_UserName"
     ); ?>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Add User"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add User</button>
+    <?= $AddUserButton->getHtml(); ?>
 </form>
 <?PHP
 # item list ui fields definitions

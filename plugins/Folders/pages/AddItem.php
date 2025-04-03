@@ -6,14 +6,15 @@
 #   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
@@ -24,7 +25,7 @@ if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
 }
 
 # get the folders plugin
-$FoldersPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$FoldersPlugin = Folders::getInstance();
 
 # set up variables
 $ItemId = StdLib::getArrayValue($_GET, "ItemId");
@@ -67,5 +68,4 @@ if (Record::ItemExists($ItemId)) {
 # This page does not output any HTML
 ApplicationFramework::getInstance()->suppressHTMLOutput();
 
-/** @phpstan-ignore-next-line */
 $FoldersPlugin->ProcessPageResponse($Errors);

@@ -3,20 +3,42 @@
 #   FILE:  ConfirmDeleteMetadataField.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
-$SafeFieldId = defaulthtmlentities($Field->Id());
-$SafeFieldName = defaulthtmlentities($Field->Name());
+use Exception;
 
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_Field)) {
+    throw new Exception("Field not defined.");
+}
+if (!isset($H_IsFinalTreeField)) {
+    throw new Exception("IsFinalTreeField not defined.");
+}
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->makeSubmitButton();
+$CancelButton->addSemanticClass("btn-danger");
+
+$DeleteButton = new HtmlButton("Delete Field");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->makeSubmitButton();
+
+$SafeFieldId = defaulthtmlentities($H_Field->Id());
+$SafeFieldName = defaulthtmlentities($H_Field->Name());
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Confirm Metadata Field Deletion</h1>
 
-<?PHP if ($IsFinalTreeField) { ?>
+<?PHP if ($H_IsFinalTreeField) { ?>
   <p class="alert alert-danger">
     <strong>
       <i><?= $SafeFieldName; ?></i> is the last tree field. It is
@@ -35,12 +57,8 @@ $SafeFieldName = defaulthtmlentities($Field->Name());
 <form method="post" action="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>">
   <input type="hidden" name="F_Confirmation" value="1" />
 
-  <?PHP if (!$IsFinalTreeField) { ?>
-  <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-    value="Delete Field"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-    class="mv-button-icon" /> Delete Field</button>
-  <?PHP } ?>
-  <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-    value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-    class="mv-button-icon" /> Cancel</button>
+    <?PHP if (!$H_IsFinalTreeField) { ?>
+        <?= $DeleteButton->getHtml() ?>
+    <?PHP } ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

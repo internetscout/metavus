@@ -3,12 +3,14 @@
 #   FILE:  ConfirmDeleteMetadataField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -36,10 +38,9 @@ function IsFinalTreeField(MetadataField $Field)
 
 # ----- MAIN -----------------------------------------------------------------
 
-global $Field;
-global $IsFinalTreeField;
-
 PageTitle("Confirm Metadata Field Deletion");
+
+$AF = ApplicationFramework::getInstance();
 
 # make sure the user can access this page
 if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
@@ -47,11 +48,11 @@ if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
 }
 
 $Schema = new MetadataSchema();
-$Field = new MetadataField(StdLib::getArrayValue($_GET, "Id"));
-$IsFinalTreeField = IsFinalTreeField($Field);
+$H_Field = MetadataField::getField(StdLib::getArrayValue($_GET, "Id"));
+$H_IsFinalTreeField = IsFinalTreeField($H_Field);
 
 # invalid field, go to the main page
-if ($Field->Status() != MetadataSchema::MDFSTAT_OK) {
+if ($H_Field->Status() != MetadataSchema::MDFSTAT_OK) {
     $AF->SetJumpToPage("DBEditor");
     return;
 }

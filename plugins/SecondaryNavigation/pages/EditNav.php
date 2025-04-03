@@ -3,15 +3,17 @@
 #   FILE:  EditNav.php (SecondaryNavigation plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+namespace Metavus;
 use Metavus\Plugins\SecondaryNavigation;
 use Metavus\Plugins\SecondaryNavigation\NavItem;
 use Metavus\Plugins\SecondaryNavigation\NavMenu;
-use Metavus\User;
 use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
 
 # ---------- EXPORTED FUNCTIONS ----------------------------------
 
@@ -20,7 +22,7 @@ use ScoutLib\StdLib;
  * @param NavMenu $NavMenu containing NavItems to display
  * @return array representing structure in which to display the NavItems
  */
-function getTree(NavMenu $NavMenu)
+function getTree(NavMenu $NavMenu): array
 {
     $ItemIds = $NavMenu->getItemIdsInOrder();
     $Tree = [];
@@ -40,16 +42,20 @@ $User = User::getCurrentUser();
 
 # go home if user isn't logged in
 if (!$User->isLoggedIn()) {
-    $GLOBALS["AF"]->setJumpToPage("Home");
+    $AF = ApplicationFramework::getInstance();
+    $AF->setJumpToPage("Home");
     return;
 }
 $H_NavMenu = new NavMenu($User->id());
 $H_Errors = [];
 $H_ButtonPushed = StdLib::getFormValue("Submit", "");
+$SecondaryNav = SecondaryNavigation::getInstance();
+$H_OfferedItems = $SecondaryNav->getOfferedNavItems();
 
 # get SecondaryNavigation plugin
-$SecondaryNav = $GLOBALS["G_PluginManager"]->getPluginForCurrentPage();
-$H_OfferedItems = $SecondaryNav->getOfferedNavItems();
+$SecondaryNavPlugin = SecondaryNavigation::getInstance();
+
+$H_OfferedItems = $SecondaryNavPlugin->getOfferedNavItems();
 # remove any items that are already present/user doesn't have privs for
 foreach ($H_OfferedItems as $Link => $Item) {
     if ($H_NavMenu->navItemExists($Link) || !$Item["Privs"]->meetsRequirements($User)) {
@@ -89,7 +95,7 @@ if ($H_ButtonPushed == "Add Item") {
         (new NavItem($ToDelete))->destroy();
     }
     # refresh offered items in case user deleted an offered item
-    $H_OfferedItems = $SecondaryNav->getOfferedNavItems();
+    $H_OfferedItems = $SecondaryNavPlugin->getOfferedNavItems();
     # remove any items that are already present/user doesn't have privs for
     foreach ($H_OfferedItems as $Link => $Item) {
         if ($H_NavMenu->navItemExists($Link) || !$Item["Privs"]->meetsRequirements($User)) {

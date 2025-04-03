@@ -3,7 +3,7 @@
 #   FILE:  ListPages.html (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -36,11 +36,11 @@ function GetLastModifiedText($Item)
 }
 
 # set up links
-$BaseLink = "index.php?P=P_Pages_ListPages&amp;CK=".$H_ListChecksum;
-$AddPageLink = "index.php?P=P_Pages_EditPage&amp;ID=NEW";
-$PageDisplayLink = "index.php?P=P_Pages_DisplayPage&amp;ID=\$ID";
-$PageEditLink = "index.php?P=P_Pages_EditPage&amp;ID=\$ID";
-$PageDeleteLink = "index.php?P=P_Pages_DeletePage&amp;ID=\$ID";
+$BaseLink = "index.php?P=P_Pages_ListPages&CK=".$H_ListChecksum;
+$AddPageLink = "index.php?P=P_Pages_EditPage&ID=NEW";
+$PageDisplayLink = "index.php?P=P_Pages_DisplayPage&ID=\$ID";
+$PageEditLink = "index.php?P=P_Pages_EditPage&ID=\$ID";
+$PageDeleteLink = "index.php?P=P_Pages_DeletePage&ID=\$ID";
 
 # get singleton objects
 $AnonUser = User::getAnonymousUser();

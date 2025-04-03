@@ -3,15 +3,17 @@
 #   FILE:  SearchResults.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
-
+use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
+
 
 $AF = ApplicationFramework::getInstance();
 
@@ -62,13 +64,31 @@ $User = User::getCurrentUser();
 
 # ----- ACCESS CONTROL -------------------------------------------------------
 
+# assume load is normal
+$H_HighLoad = false;
+
+# check for access by bots
 if ($GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") &&
     $GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForBot()) {
-    $AF->DoNotCacheCurrentPage();
+    $AF->doNotCacheCurrentPage();
     $H_IsBot = true;
     return;
 } else {
     $H_IsBot = false;
+}
+
+# for anon users
+if (!$User->isLoggedIn()) {
+    # check system load
+    $LoadAverage = sys_getloadavg();
+    $SysCfg = SystemConfiguration::getInstance();
+    $LoadCutoff = $SysCfg->getInt("AnonSearchCpuLoadCutoff");
+    if (is_array($LoadAverage) && ($LoadAverage[0] > $LoadCutoff)) {
+        $AF->doNotCacheCurrentPage();
+        header($_SERVER["SERVER_PROTOCOL"]." 429 Too Many Requests");
+        $H_HighLoad = true;
+        return;
+    }
 }
 
 # ----- CONFIGURATION  -------------------------------------------------------
@@ -164,7 +184,7 @@ function FilterInputValues($Value)
  * @param array $FormVars Form variable array (usually $_POST).
  * @return SearchParameterSet Parameters in SearchParameterSet object.
  */
-function GetSearchParametersFromForm($FormVars)
+function getSearchParametersFromForm($FormVars)
 {
     # retrieve user currently logged in
     $User = User::getCurrentUser();
@@ -187,7 +207,8 @@ function GetSearchParametersFromForm($FormVars)
     # track which fields were selected
     $SearchSelections = [];
 
-    while (isset($FormVars["F_SearchCat".$FormFieldIndex])) {
+    while (isset($FormVars["F_SearchCat".$FormFieldIndex])
+            && (strlen($FormVars["F_SearchCat".$FormFieldIndex]) > 0)) {
         # retrieve metadata field type for box
         $FieldKey = $FormVars["F_SearchCat".$FormFieldIndex];
 
@@ -207,8 +228,8 @@ function GetSearchParametersFromForm($FormVars)
                 $FieldIds = explode("-", $FieldKey);
 
                 if (count($FieldIds) == 1) {
-                    $Params->addParameter($Value, intval(current($FieldIds)));
-                } elseif (count($FieldIds) > 1) {
+                    $Params->addParameter($Value, intval($FieldIds[0]));
+                } else {
                     $Subgroup = new SearchParameterSet();
                     $Subgroup->logic("OR");
 
@@ -272,19 +293,22 @@ function GetSearchParametersFromForm($FormVars)
 
                     default:
                         # retrieve possible values for field
-                        $PossibleValues = $Field->GetPossibleValues();
+                        # valid values for user fields are those that are in use
+                        $PossibleValues = ($Field->type() ==
+                                MetadataSchema::MDFTYPE_USER) ?
+                                    $Field->getValuesInUse() :
+                                    $Field->getPossibleValues();
 
                         # for each value selected
                         $ValuesToAdd = [];
-                        foreach ($Values as $VIndex) {
+                        foreach ($Values as $TermId) {
                             # if value is a possible value for this field
-                            if (isset($PossibleValues[$VIndex])) {
+                            if (isset($PossibleValues[$TermId])) {
                                 # include value to be added to set
-                                $Value = $PossibleValues[$VIndex];
                                 if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
-                                    $ValuesToAdd[] = "^".$Value." --";
+                                    $ValuesToAdd[] = "^".$TermId;
                                 } else {
-                                    $ValuesToAdd[] = "=".$Value;
+                                    $ValuesToAdd[] = "=".$TermId;
                                 }
                             }
                         }
@@ -326,14 +350,14 @@ function GetSearchParametersFromForm($FormVars)
  * @param bool $ReverseOrder TRUE to reverse normal order.
  * @return bool TRUE to sort descending, or FALSE to sort ascending.
  */
-function GetFieldSortOrder($FieldId, $ReverseOrder)
+function getFieldSortOrder($FieldId, $ReverseOrder)
 {
     # if sorting on the pseudo-field "Relevance"
     if ($FieldId == "R") {
         # sort order is descending
         $SortDescending = true;
     } elseif (MetadataSchema::fieldExistsInAnySchema($FieldId)) {
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField((int)$FieldId);
 
         # determine sort order based on field type
         switch ($Field->type()) {
@@ -358,6 +382,51 @@ function GetFieldSortOrder($FieldId, $ReverseOrder)
 
     # return order to caller
     return $SortDescending;
+}
+
+/**
+ * Get search results tab to make active, based on whether the user
+ * had previously selected a tab or which type of item in the search
+ * results had the most items.
+ * @param array $SearchResults Nested arrays of search result data, with
+ *      the outer index being the item type.
+ * @return int Tab to make active, in the form of an item type.
+ */
+function getActiveTab(array $SearchResults): int
+{
+    if (!count($SearchResults)) {
+        return MetadataSchema::SCHEMAID_DEFAULT;
+    }
+
+    # determine default active tab based on number of results, using score
+    #       totals in cases where number of results are identical
+    foreach ($SearchResults as $ResultType => $ResultScores) {
+        if (!isset($HighestCount)
+                || !isset($ActiveTab)
+                || (count($ResultScores) > $HighestCount)) {
+            $HighestCount = count($ResultScores);
+            $ActiveTab = $ResultType;
+        } elseif (count($ResultScores) == $HighestCount) {
+            if (array_sum($ResultScores)
+                    > array_sum($SearchResults[$ActiveTab])) {
+                $ActiveTab = $ResultType;
+            }
+        }
+    }
+
+    # if the user has selected a tab
+    if (isset($_COOKIE["SearchResults_TabNo"])) {
+        # if we have results for that schema, use those
+        # otherwise, clear the selection
+        if (isset($SearchResults[$_COOKIE["SearchResults_TabNo"]])) {
+            $ActiveTab = $_COOKIE["SearchResults_TabNo"];
+        } else {
+            unset($_COOKIE["SearchResults_TabNo"]);
+            setcookie("SearchResults_TabNo", "", time() - 3600);
+        }
+    }
+
+    return $ActiveTab;
 }
 
 
@@ -385,6 +454,8 @@ $H_ResultsPerPage = $SearchParametersGottenFromForm ?
         StdLib::getArrayValue($_GET, "RP", $H_DefaultResultsPerPage);
 
 $LegacySortFields = (isset($_GET["SF"]) && is_array($_GET["SF"])) ? $_GET["SF"] : null;
+$H_SortDescending = [];
+$H_TransportUIs = [];
 foreach (MetadataSchema::getAllSchemaIds() as $SchemaId) {
     $Schema = new MetadataSchema($SchemaId);
     $TransportUI = new TransportControlsUI($SchemaId);
@@ -397,13 +468,13 @@ foreach (MetadataSchema::getAllSchemaIds() as $SchemaId) {
     if ($SchemaDefaultSortField === false) {
         $SchemaDefaultSortField = $DefaultSortFieldId;
     }
-    $TransportUI->defaultSortField($SchemaDefaultSortField);
+    $TransportUI->defaultSortField((string) $SchemaDefaultSortField);
     if ($SearchParametersGottenFromForm && isset($_POST["F_SortField"])) {
         $TransportUI->sortField($_POST["F_SortField"]);
     }
 
     # determine sort direction
-    $H_SortDescending[$SchemaId] = GetFieldSortOrder(
+    $H_SortDescending[$SchemaId] = getFieldSortOrder(
         $TransportUI->sortField(),
         $TransportUI->reverseSortFlag()
     );
@@ -485,6 +556,10 @@ if (isset($_GET["ID"]) && $User->IsLoggedIn()) {
     if ($SearchParametersGottenFromForm) {
         # construct new URL with all parameters
         $TransportUI = reset($H_TransportUIs);
+        if ($TransportUI === false) {
+            throw new Exception("Transport Controls UI is not available");
+        }
+
         $NewPageParameters = "SearchResults&"
                 .$H_SearchParams->urlParameterString()
                 .$TransportUI->urlParameterString(false);
@@ -499,7 +574,7 @@ if (isset($_GET["ID"]) && $User->IsLoggedIn()) {
         return;
     } elseif (!is_null($LegacySortFields)) {
         foreach ($H_TransportUIs as $SchemaId => $TransportUI) {
-            $Schema = new MetadataSchema($SchemaId);
+            $Schema = new MetadataSchema((int) $SchemaId);
             foreach ($LegacySortFields as $SortField) {
                 if ($Schema->fieldExists($SortField)) {
                     $TransportUI->sortField($SortField);
@@ -519,7 +594,7 @@ if ($H_SearchParams->ParameterCount()) {
         if ($SortField == "R") {
             $SortFields[$SchemaId] = null;
         } else {
-            $FieldExists = (new MetadataSchema($SchemaId))->fieldExists($SortField);
+            $FieldExists = (new MetadataSchema((int) $SchemaId))->fieldExists($SortField);
             $SortFields[$SchemaId] = $FieldExists ? $SortField : null;
             # if field doesn't exist, update TCUI's sort field
             if (!$FieldExists) {
@@ -536,6 +611,15 @@ if ($H_SearchParams->ParameterCount()) {
     $H_SearchTime = $SEngine->searchTime();
 
     $CacheExpirationTimestamp = false;
+
+    # filter out item types not to be displayed in search results in this interface
+    $IntCfg = InterfaceConfiguration::getInstance();
+    $ItemTypesToDisplay = $IntCfg->getArray("ItemTypesToDisplayInSearchResults");
+    foreach ($H_SearchResults as $SchemaId => $SchemaResults) {
+        if (!in_array($SchemaId, $ItemTypesToDisplay)) {
+            unset($H_SearchResults[$SchemaId]);
+        }
+    }
 
     # filter out any temporary or unviewable records
     foreach ($H_SearchResults as $SchemaId => $SchemaResults) {
@@ -580,9 +664,9 @@ if ($H_SearchParams->ParameterCount()) {
     }
 
     $PageExpirationDate = $AF->expirationDateForCurrentPage();
-    if ($CacheExpirationTimestamp !== false &&
-        ($PageExpirationDate === false ||
-        $CacheExpirationTimestamp < strtotime($PageExpirationDate))) {
+    if ($CacheExpirationTimestamp !== false
+            && ($PageExpirationDate === false
+                    || $CacheExpirationTimestamp < strtotime($PageExpirationDate))) {
         $AF->expirationDateForCurrentPage(
             date(StdLib::SQL_DATE_FORMAT, $CacheExpirationTimestamp)
         );
@@ -616,37 +700,7 @@ if ($H_SearchParams->ParameterCount()) {
         # dummy up empty result set so results pages is not completely empty
         $H_SearchResults[MetadataSchema::SCHEMAID_DEFAULT] = [];
     } else {
-        # determine default active tab based on number of results, using score
-        #       totals in cases where number of results are identical
-        foreach ($H_SearchResults as $ResultType => $ResultScores) {
-            if (!isset($HighestCount) || !isset($HighestCountType)
-                    || (count($ResultScores) > $HighestCount)) {
-                $HighestCount = count($ResultScores);
-                $HighestCountType = $ResultType;
-            } elseif (count($ResultScores) == $HighestCount) {
-                if (array_sum($ResultScores)
-                        > array_sum($H_SearchResults[$HighestCountType])) {
-                    $HighestCountType = $ResultType;
-                }
-            }
-        }
-
-        # set default active tab if a likely candidate was found
-        if (isset($HighestCountType)) {
-            $H_ActiveTab = $HighestCountType;
-        }
-
-        # if the user has selected a tab
-        if (isset($_COOKIE["SearchResults_TabNo"])) {
-            # if we have results for that schema, use those
-            # otherwise, clear the selection
-            if (isset($H_SearchResults[$_COOKIE["SearchResults_TabNo"]])) {
-                $H_ActiveTab = $_COOKIE["SearchResults_TabNo"];
-            } else {
-                unset($_COOKIE["SearchResults_TabNo"]);
-                setcookie("SearchResults_TabNo", "", time() - 3600);
-            }
-        }
+        $H_ActiveTab = getActiveTab($H_SearchResults);
     }
 } else {
     # load empty search parameter set and results

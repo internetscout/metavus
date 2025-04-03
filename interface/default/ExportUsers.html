@@ -3,12 +3,29 @@
 #   FILE:  ExportUsers.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Form)) {
+    throw new Exception("H_Form not defined.");
+}
+
+$ExportButton = new HtmlButton("Export Users");
+$ExportButton->setIcon("FileExport.svg");
+$ExportButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Export Users</h1>
@@ -44,10 +61,6 @@ provided. Click it to download the exported user file.</p>
 
 <form method="post" action="index.php?P=ExportUsersExecute">
     <?PHP $H_Form->DisplayFormTable(); ?>
-    <button type="submit" name="Submit" class="btn btn-primary mv-button-iconed"
-        value="Export Users"><img src="<?= $AF->GUIFile('FileExport.svg'); ?>" alt=""
-        class="mv-button-icon" /> Export Users</button>
-    <button type="submit" name="Submit" class="btn btn-primary mv-button-iconed"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $ExportButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>

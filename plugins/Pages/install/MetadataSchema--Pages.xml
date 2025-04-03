@@ -150,7 +150,8 @@
 		<SearchWeight>1</SearchWeight>
 		<RecommenderWeight>0</RecommenderWeight>
 		<UpdateMethod>OnRecordCreate</UpdateMethod>
-		<Editable>1</Editable>
+                <Editable>1</Editable>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
 	</MetadataField>
 	<MetadataField>
 		<Name>Last Modified By Id</Name>
@@ -165,7 +166,8 @@
 		<RecommenderWeight>0</RecommenderWeight>
 		<UsesQualifiers>0</UsesQualifiers>
 		<HasItemLevelQualifiers>0</HasItemLevelQualifiers>
-		<UpdateMethod>OnRecordChange</UpdateMethod>
+                <UpdateMethod>OnRecordChange</UpdateMethod>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
 		<Editable>0</Editable>
 	</MetadataField>
 	<MetadataField>
@@ -179,7 +181,8 @@
 		<IncludeInRecommender>0</IncludeInRecommender>
 		<DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
 		<RecommenderWeight>0</RecommenderWeight>
-		<UpdateMethod>OnRecordCreate</UpdateMethod>
+                <UpdateMethod>OnRecordCreate</UpdateMethod>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
 		<Editable>0</Editable>
 	</MetadataField>
 	<MetadataField>
@@ -193,7 +196,8 @@
 		<IncludeInRecommender>0</IncludeInRecommender>
 		<DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
 		<RecommenderWeight>0</RecommenderWeight>
-		<UpdateMethod>OnRecordChange</UpdateMethod>
+                <UpdateMethod>OnRecordChange</UpdateMethod>
+                <TriggersAutoUpdates>0</TriggersAutoUpdates>
 		<Editable>0</Editable>
 	</MetadataField>
         <MetadataField>

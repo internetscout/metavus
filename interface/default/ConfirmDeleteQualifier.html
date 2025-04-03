@@ -3,11 +3,15 @@
 #   FILE:  ConfirmDeleteQualifier.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Qualifier;
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -15,8 +19,9 @@ use Metavus\Qualifier;
 * Print out the name of all the qualifiers.
 * @param array $QualifierIds An array of qualifier IDs
 *       for the qualifiers whose name will be printed.
+* @return void
 */
-function PrintQualifierNames($QualifierIds)
+function PrintQualifierNames($QualifierIds): void
 {
     foreach ($QualifierIds as $QualifierId) {
         $Qualifier = new Qualifier($QualifierId);
@@ -25,8 +30,23 @@ function PrintQualifierNames($QualifierIds)
     }
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
+if (!isset($H_QualifierIds)) {
+    throw new Exception("H_QualifierIds not defined.");
+}
+if (!isset($H_QIString)) {
+    throw new Exception("H_QIString not defined.");
+}
+
+$DeleteButton = new HtmlButton("Delete");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->addSemanticClass("btn-danger");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Confirm Delete Qualifier(s)</h1>
@@ -41,10 +61,6 @@ classifications that use it and cannot be undone.</p>
 <form name="confirmdeletequalifier" method="post" action="index.php?P=ConfirmDeleteQualifier">
     <input type="hidden" name="OkayToDelete" value="1" />
     <input type="hidden" name="QI" value="<?= $H_QIString; ?>" />
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Delete"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete</button>
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $DeleteButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 </form>

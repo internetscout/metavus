@@ -1,0 +1,8 @@
+<vocabulary>
+    <name>Record Status</name>
+    <description>Intended for use in schema privileges, to control whether records are publicly-viewable.</description>
+    <version>1.0 (Feb 13 2023)</version>
+    <term>Extinct</term>
+    <term>Prepublication</term>
+    <term>Published</term>
+</vocabulary>

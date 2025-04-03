@@ -3,9 +3,11 @@
 #   FILE:  EditConfig.html (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+
+use Metavus\HtmlButton;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -23,10 +25,21 @@ function pe($MatchVal, $CurrVal)
     print(($CurrVal == $MatchVal) ? " checked" : "");
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$EditFormatButton = new HtmlButton("Edit");
+$EditFormatButton->setIcon("Pencil.svg");
 
+$SaveButton = new HtmlButton("Save Changes");
+$SaveButton->setIcon("Disk.svg");
+
+$AddFormatButton = new HtmlButton("Add Format");
+$AddFormatButton->setIcon("Plus.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle("OAI-PMH Server - Configuration");
-
 ?>
 
 <div class="container">
@@ -159,10 +172,8 @@ PageTitle("OAI-PMH Server - Configuration");
             ?>
         </td>
         <td>
-          <button type="submit" name="FormatEdit<?= $Index; ?>" value="Edit"
-                class="btn btn-primary mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Pencil.svg'); ?>" alt=""
-                class="mv-button-icon" /> Edit</button>
+            <?PHP $EditFormatButton->setName("FormatEdit$Index"); ?>
+            <?= $EditFormatButton->getHtml(); ?>
         </td>
       </tr>
             <?PHP $Index++;
@@ -170,16 +181,7 @@ PageTitle("OAI-PMH Server - Configuration");
     </tbody>
   </table>
 
-  <button type="submit" name="Submit" value="Save Changes"
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Disk.svg'); ?>"
-        alt="" class="mv-button-icon" /> Save Changes</button>
-  <button type="submit" name="Submit" value="Add Format"
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Plus.svg'); ?>"
-        alt="" class="mv-button-icon" /> Add Format</button>
-  <button type="submit" name="Submit" value="Cancel"
-        class="btn btn-danger mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Cross.svg'); ?>"
-        alt="" class="mv-button-icon" /> Cancel</button>
+  <?= $SaveButton->getHtml(); ?>
+  <?= $AddFormatButton->getHtml(); ?>
+  <?= $CancelButton->getHtml(); ?>
 </form>

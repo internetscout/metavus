@@ -3,7 +3,7 @@
 #   FILE:  ResourceSummary_Default.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -28,8 +28,9 @@ class ResourceSummary_Default extends ResourceSummary
 
     /**
      * Display (output HTML) for resource summary.
+     * @return void
      */
-    public function display()
+    public function display(): void
     {
         $AF = ApplicationFramework::getInstance();
         $Resource = $this->Resource;
@@ -112,7 +113,7 @@ class ResourceSummary_Default extends ResourceSummary
 
         # get link to full record page
         $FullRecordLink = htmlspecialchars(
-            preg_replace('%\$ID%', $Resource->Id(), $Schema->viewPage())
+            preg_replace('%\$ID%', $Resource->Id(), $Schema->getViewPage())
         );
         $FullRecordAltText = "View More Info for "
             .(isset($Title) ? htmlspecialchars(strip_tags($Title)) : "Resource");
@@ -160,7 +161,7 @@ class ResourceSummary_Default extends ResourceSummary
                             $StarCount
                         );
                         $RatingImg = ApplicationFramework::baseUrl()
-                            .$AF->GUIFile($RatingGraphic);
+                            .$AF->gUIFile($RatingGraphic);
                     }
                 } else {
                     $RatingString = $ResourceRating;
@@ -197,10 +198,13 @@ class ResourceSummary_Default extends ResourceSummary
             $Target = ' target="_blank"';
         }
         // @codingStandardsIgnoreStart
+        $HasRating = isset($RatingImg) && isset($RatingAltText);
+        $CanRate = isset($RatingString) && $RatingsEnabled;
+        $CanEdit = $this->Editable;
 ?>
 <div class="container-fluid mv-resourcesummary">
   <div class="row">
-    <div class="col-auto d-none d-sm-flex">
+    <div class="col-auto d-none <?= $this->ShowScreenshot ? "d-sm-flex" : "";?>">
       <?PHP $this->displayScreenshot($Title, $GoButtonOpenTag, $GoButtonCloseTag); ?>
     </div>
     <div class="col">
@@ -208,7 +212,7 @@ class ResourceSummary_Default extends ResourceSummary
         <div class="row align-items-end">
           <div class="col mr-auto">
               <?PHP if (isset($Title)) { ?>
-                  <h3 class="mv-resource-title"
+                  <h3 class="mv-resource-title" dir="auto"
                     ><?= $GoButtonOpenTag ?><?= $Title ?><?= $GoButtonCloseTag ?></h3>
               <?PHP if ($this->IncludeResourceType) { ?>
                 <span class="<?= $SchemaCSSName ?> mv-resourcesummary-resourcetype-tag"
@@ -216,34 +220,36 @@ class ResourceSummary_Default extends ResourceSummary
               <?PHP } ?>
             <?PHP } ?>
           </div>
+          <?PHP if ($HasRating || $CanRate || $CanEdit) { ?>
           <div class="col-auto">
             <ul class="list-group list-group-flush list-group-horizontal">
-              <?PHP if (isset($RatingImg) && isset($RatingAltText)) { ?>
+              <?PHP if ($HasRating) { ?>
                 <li class="list-group-item"
                   ><img src="<?= $RatingImg ?>" title="<?= $RatingAltText ?>" alt="<?= $RatingAltText ?>"
                         class="mv-rating-graphic" /></li>
-              <?PHP } else if (isset($RatingString) && $RatingsEnabled) { ?>
+              <?PHP } else if ($CanRate) { ?>
                 <li class="list-group-item"><?= $RatingString ?></li>
               <?PHP } ?>
-              <?PHP if ($this->Editable) { ?>
+              <?PHP if ($CanEdit) { ?>
                 <li class="list-group-item">
                   <a class="btn btn-primary btn-sm mv-button-iconed"
                      href="<?= $Resource->getEditPageUrl(); ?>"><img class="mv-button-icon"
-                         src="<?= $AF->GUIFile("Pencil.svg") ?>"
+                         src="<?= $AF->gUIFile("Pencil.svg") ?>"
                          alt="" /> Edit</a>
                 </li>
               <?PHP } ?>
-              <?PHP  $this->SignalInsertionPoint("Resource Summary Buttons"); ?>
+              <?PHP  $this->signalInsertionPoint("Resource Summary Buttons"); ?>
             </ul>
           </div>
+         <?PHP } ?>
         </div>
 
         <div class="row">
           <div class="col">
-            <div class="mv-description"><?= $Description ?></div>
+            <div class="mv-description" dir="auto"><?= $Description ?></div>
             <?PHP  if ($TitlesLinkTo == "URL") { ?>
             <div class="mv-moreinfo"><a href="<?= $FullRecordLink ?>"
-                      alt="<?= $FullRecordAltText ?>">(More Info)</a></div>
+                      title="<?= $FullRecordAltText ?>">(More Info)</a></div>
             <?PHP } ?>
 
             <?PHP  $this->signalInsertionPoint("After Resource Description");  ?>
@@ -266,8 +272,9 @@ class ResourceSummary_Default extends ResourceSummary
 
     /**
      * Display (output HTML) for compact resource summary.
+     * @return void
      */
-    public function displayCompact()
+    public function displayCompact(): void
     {
         $Resource = $this->Resource;
 
@@ -349,7 +356,7 @@ class ResourceSummary_Default extends ResourceSummary
 
         # get link to full record page
         $FullRecordLink = htmlspecialchars(
-            preg_replace('%\$ID%', $Resource->Id(), $Schema->viewPage())
+            preg_replace('%\$ID%', $Resource->Id(), $Schema->getViewPage())
         );
         $FullRecordLinkTag = "<a href=\"".$FullRecordLink."\""
                 ." title=\"View More Info for ".(isset($Title)
@@ -417,14 +424,15 @@ class ResourceSummary_Default extends ResourceSummary
     /**
      * Display screenshot associated with resource.
      * @param string $Title Title of resource.
-     * @param string $GoButtonOpenTag ?
-     * @param string $GoButtonCloseTag ?
+     * @param string $GoButtonOpenTag HTML to open the 'Go' button tag.
+     * @param string $GoButtonCloseTag HTML to close the 'Go' button tag.
+     * @return void
      */
     protected function displayScreenshot(
         string $Title,
         string $GoButtonOpenTag,
         string $GoButtonCloseTag
-    ) {
+    ): void {
         $GoButtonOpenTagNoFocus = str_replace(
             "href=",
             "tabindex=\"-1\" href=",
@@ -465,7 +473,6 @@ class ResourceSummary_Default extends ResourceSummary
         }
         ?>
       <div class="mv-content-resourcesummary-screenshot">
-        <?PHP if ($this->ShowScreenshot && !is_null($ScreenshotField)) { ?>
             <?PHP if (isset($Screenshot)) {  ?>
                 <?PHP if ($Screenshot instanceof \Metavus\Image) { ?>
                 <a href="<?= $FullImageUrl ?>"
@@ -474,16 +481,18 @@ class ResourceSummary_Default extends ResourceSummary
                 <?PHP } else { ?>
                     <?= $Screenshot; ?>
                 <?PHP } ?>
+            <?PHP } else {?>
+                <div class="mv-image-screenshot-container bg-transparent"></div>
             <?PHP } ?>
-        <?PHP } ?>
        </div>
         <?PHP
     }
 
     /**
      * Display hierarchical (Tree) values associated with resource.
+     * @return void
      */
-    protected function displayCategories()
+    protected function displayCategories(): void
     {
         $TreeFields = $this->Resource->getSchema()->getFields(
             MetadataSchema::MDFTYPE_TREE
@@ -518,8 +527,9 @@ class ResourceSummary_Default extends ResourceSummary
      * Print a UI element that allows users to quickly rate a resource.
      * @param int $ResourceId ID of the resource to apply the rating to.
      * @param int $UserRating User's current rating for the resource, if applicable.
+     * @return void
      */
-    protected static function displayFastRating(int $ResourceId, $UserRating = 0)
+    protected static function displayFastRating(int $ResourceId, $UserRating = 0): void
     {
         $AF = ApplicationFramework::getInstance();
         static $SupportJsDisplayed = false;
@@ -581,7 +591,7 @@ class ResourceSummary_Default extends ResourceSummary
         $RatingUrlHead = ApplicationFramework::baseUrl()."index.php?P=RateResource"
             ."&amp;F_ResourceId=".$ResourceId."&amp;F_Rating=";
         $ImageURLBase = ApplicationFramework::baseUrl()
-            .$AF->GUIFile($UserRatingGraphic);
+            .$AF->gUIFile($UserRatingGraphic);
         $ImageURLBase = preg_replace('/BigStars.*/', '', $ImageURLBase);
         $OnMouseOut = "SwapStars( '".$ResourceId."', ".$Stars.", true, '"
             .$ImageURLBase."' );";
@@ -621,7 +631,7 @@ class ResourceSummary_Default extends ResourceSummary
         // @codingStandardsIgnoreStart
 ?>
     <div class="RatingDiv mv-content-rating" id="RatingDiv<?= $ResourceId ?>">
-        <img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile($UserRatingGraphic); ?>"
+        <img src="<?= ApplicationFramework::baseUrl().$AF->gUIFile($UserRatingGraphic); ?>"
           width="75" height="16" border="0" usemap="#StarMap_<?= $ResourceId; ?>"
           id="Stars<?= $ResourceId; ?>" alt="<?= $RatingGraphicAlt; ?>" class="inline">
     </div>

@@ -29,10 +29,13 @@ $BootstrapBreakpointSmall: 767.98px;
 $BootstrapBreakpointMedium: 991.98px;
 $BootstrapBreakpointLarge: 1199.98px;
 
+
 /* ----- 2: HTML STYLES --------------------------------------------------- */
 
 a {
     color: black;
+    text-decoration: unset;
+
     span.mv-link-image {
         display: inline-block;
         svg {
@@ -89,13 +92,11 @@ html {
     font-size: 14px;
 }
 
-/**
- * NOTE: The styling for the file input is based on Bootstrap's ".btn" class.
- *       It's overrwriting some attribute values with those specified in ".btn-primary" class
- *       defined under the "BOOTSTRAP STYLES" section in this file.
- *       If changes were to be made to any of these two base classes,
- *       the same changes should be reflected here as well.
- */
+// The styling for the file input is based on Bootstrap's ".btn" class.
+//      It's overrwriting some attribute values with those specified in
+//      ".btn-primary" class defined under the "BOOTSTRAP STYLES" section in
+//      this file.  If changes were to be made to any of these two base classes,
+//      the same changes should be reflected here as well.
 input[type="file"]::file-selector-button {
     display: inline-block;
     font-weight: 400;
@@ -122,20 +123,24 @@ input[type="file"]::file-selector-button {
     }
 }
 
-p a:not(".btn") {
+ol, ul {
+    padding-left: 40px;
+}
+
+p a:not(.btn) {
     color: #606060;
     text-decoration: underline;
     text-decoration-color: #BBBBBB;
 }
 
-@media (max-width: 1199.98px) {
+@media (max-width: 1399.98px) {
     body {
         margin-left: 50px;
         margin-right: 50px;
     }
 }
 
-@media (max-width: 1091.98px) {
+@media (max-width: 1199.98px) {
     body {
         margin-left: 0;
         margin-right: 0;
@@ -155,16 +160,15 @@ p a:not(".btn") {
     }
 }
 
-/**
- * NOTE: The class ".btn-primary" attributes are explicity used in
- * input[type="file"]. If any changes were to be made to that class,
- * the same changes should be reflected on input[type="file"]
- * defined under the "HTML STYLES" section.
- */
+// NOTE: The class ".btn-primary" attributes are explicity used in
+// input[type="file"]. If any changes were to be made to that class,
+// the same changes should be reflected on input[type="file"]
+// defined under the "HTML STYLES" section.
 .btn-primary, .btn-danger, .btn-warning {
     background: #3F3D3B;
     border-color: black;
     color: white;
+    padding: 0.25rem 0.35rem 0 0.35rem;
 
     img[src$=".svg"] {
         filter: invert(100%);
@@ -174,14 +178,18 @@ p a:not(".btn") {
     }
 }
 
+.btn-primary[disabled] {
+  pointer-events: none;
+}
+
 .bg-secondary.text-white {
     .text-light {
         color: white !important;
     }
 }
 
-/* (for accessibility reasons, btn-sm should only be used for buttons */
-/*      that are not part of anonymous or primary functionality) */
+// (for accessibility reasons, btn-sm should only be used for buttons
+//      that are not part of anonymous or primary functionality)
 .btn-sm {
     font-size: 0.8rem;
     line-height: 1.0rem;
@@ -238,9 +246,36 @@ p a:not(".btn") {
     font-size: 1.273rem;
 }
 
-.thead-dark {
+// set gutters to 30px, restoring the default from Bootstrap 4.4
+.row:not(.g-0) {
+    --bs-gutter-x: 30px;
+}
+
+// set tables to have a transparent background, except for table variants
+//      that set their own background colors (restores Bootstrap 4.4 default behavior)
+.table:not(.table-active, .table-danger, .table-dark, .table-info, .table-light,
+           .table-primary, .table-secondary, .table-success, .table-warning)
+          > :not(caption)
+          > :not(.table-active, .table-danger, .table-dark, .table-info, .table-light,
+           .table-primary, .table-secondary, .table-success, .table-warning)
+          > :not(.table-active, .table-danger, .table-dark, .table-info, .table-light,
+           .table-primary, .table-secondary, .table-success, .table-warning) {
+    --bs-table-bg: transparent;
+}
+
+.table-dark {
     a {
         color: white;
+    }
+}
+
+// Per https://getbootstrap.com/docs/4.0/content/tables/ "All table styles are
+//      inherited in Bootstrap 4, meaning any nested tables will be styled in
+//      the same manner as the parent."  The mv-table-nostripes class can be
+//      used to remove stripes from a nested table.
+.table-striped tbody .mv-table-nostripes {
+    tr, th {
+        background-color: transparent;
     }
 }
 
@@ -276,7 +311,7 @@ li.ui-menu-item.ui-state-focus {
 }
 
 div.ui-menu-item-wrapper {
-    /* Override jquery-ui's desire to have white text in selected quickesarch items */
+    // override jquery-ui's desire to have white text in selected quickesarch items
     .mv-content-resourcesummary {
         color: black !important;
 
@@ -305,6 +340,78 @@ div.ui-menu-item-wrapper {
 
 /* ----- 5: LOCAL (NON-PAGE-SPECIFIC) STYLES - CLASS SELECTORS ------------ */
 
+.mv-button-disabled {
+    cursor: not-allowed !important;
+}
+
+.mv-checkboxset {
+    display: grid;
+    width: 100%;
+    writing-mode: vertical-lr;
+
+    .mv-inputset-item {
+        white-space: nowrap;
+        writing-mode: horizontal-tb;
+
+        input {
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        label {
+            display: inline-block;
+            white-space: normal;
+        }
+    }
+}
+
+.mv-collection-tile {
+    position: relative;
+    text-align: center;
+
+    h2 {
+        font-size: 2rem;
+    }
+    h3 {
+        font-size: 1.5rem;
+    }
+    h4 {
+        font-size: 1.1rem;
+    }
+
+    img:not(.mv-button-icon) {
+        border-radius: $BlockCornerRadius;
+        height: 150px;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        object-fit: contain;
+        width: 150px;
+        max-width: calc(100% - 5px);
+    }
+
+    .btn {
+        position: absolute;
+        right: 14px;
+        top: 5px;
+        z-index: 50;
+    }
+}
+
+.mv-button-disabled:hover {
+    background: #3F3D3B;
+    border-color: black;
+}
+
+.mv-feui-form {
+    .template_row {
+        display: none;
+    }
+}
+
+.mv-form-collapsible {
+    cursor: pointer;
+}
+
 span.mv-form-error,
 label.mv-form-error {
     background-color: transparent;
@@ -318,6 +425,224 @@ label.mv-form-error {
 span.mv-form-error,
 label.mv-form-error {
     border-color: #FF7777;
+}
+
+.mv-form-fieldtype-option {
+    td {
+        input + label {
+            margin-right: 2em;
+            display: inline;
+        }
+    }
+}
+
+.mv-form-fieldtype-privileges {
+    td {
+        padding: 0.2rem 0.7rem 0.2rem 0.7rem;
+    }
+
+    fieldset {
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+        vertical-align: middle;
+    }
+
+    .btn {
+        margin-right: 1.2rem;
+    }
+
+    .priv-set {
+        > button {
+            margin-top: 0.4rem;
+            margin-bottom: 0.4rem;
+        }
+
+        > p {
+            margin-top: 0.4rem;
+        }
+    }
+}
+
+.mv-form-fieldtype-quick_search {
+    textarea {
+        width: 100%;
+    }
+}
+
+.mv-form-fieldtype-search_parameters {
+    table {
+        margin-left: 0.4rem;
+    }
+
+    td {
+        padding: 0.2rem;
+
+        select {
+            vertical-align: top;
+        }
+    }
+
+    .mv-quicksearch {
+        display: inline-block;
+        margin-bottom: 4px;
+
+        textarea {
+            margin-bottom: -8px;
+        }
+    }
+
+    .mv-speui-add-field, .mv-speui-add-subgroup {
+        margin-top: 0.2rem;
+    }
+}
+
+.mv-form-filefield-table, .mv-form-image-table {
+    width: 100%;
+
+    tr {
+        background-color: inherit !important;
+    }
+
+    td {
+        padding: 0.25em;
+        border-top: none;
+    }
+
+    td:last-of-type {
+        text-align: right;
+        padding-right: 0;
+    }
+}
+
+tbody.mv-form-group + tbody.mv-form-group {
+    border-top-color: #32383e;
+    border-top-style: solid;
+    border-top-width: 2px;
+}
+
+tbody.mv-form-group {
+    th {
+        padding-right: 0;
+        text-align: right;
+
+        img {
+            float: left;
+        }
+
+        label:not(:empty)::after {
+            content: ":";
+        }
+    }
+
+    input {
+        max-width: 100%;
+    }
+
+    input[type="checkbox"] + label {
+        line-height: 1.2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .mv-mutable-widget {
+        display: inline-block;
+        width: 80%;
+    }
+
+    .mv-form-optlist {
+        display: inline-block;
+        width: 80%;
+    }
+
+    .mv-form-additional-html {
+        display: inline-block;
+        text-align: right;
+        vertical-align: top;
+        width: 20%;
+    }
+
+    .mv-form-additional-html:empty {
+        display: none;
+    }
+}
+
+.mv-form-group-header {
+    th {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+}
+
+.mv-form-group-hidden {
+    tr {
+        visibility: collapse;
+
+        // The preceding 'visibility: collapse' *should* be sufficient to
+        //      hide these elements, but alas Safari pretends that it's a
+        //      synonym for 'visibility: hidden'.  Work around that by
+        //      explicitly setting heights and margins on child elements to
+        //      collapse them.
+        // See https://developer.mozilla.org/en-US/docs/Web/CSS/visibility#Notes
+        td, th {
+            border-bottom-style: none;
+            border-bottom-width: 0;
+            border-top-style: none;
+            border-top-width: 0;
+            height: 0;
+            line-height: 0;
+            margin-bottom: 0;
+            margin-top: 0;
+            padding-bottom: 0;
+            padding-top: 0;
+
+            * {
+                border-bottom-width: 0;
+                border-top-width: 0;
+                display: block;
+                height: 0;
+                margin-bottom: 0;
+                margin-top: 0;
+                padding-bottom: 0;
+                padding-top: 0;
+            }
+        }
+    }
+}
+
+.mv-form-group-indicator {
+    width: 0.75em;
+    text-align: center;
+    display: inline-block;
+}
+
+.mv-form-image-left {
+    float: left;
+}
+
+.mv-form-image-right {
+    float: right;
+}
+
+.mv-form-image-table {
+    .mv-form-insert-btn {
+        min-width: 12ex;
+    }
+
+    button {
+        margin-bottom: 2px;
+        margin-left: 2px;
+    }
+
+    input[type="text"] {
+        width: 90%;
+    }
+
+    td:first-child {
+        width: 200px;
+    }
+
+    td:last-child {
+        width: 200px;
+    }
 }
 
 .mv-form-requiredfield {
@@ -335,9 +660,89 @@ label.mv-form-requiredfield {
     padding-right: 2px;
 }
 
+.mv-hero-container {
+    height: 430px;
+    left: -30px;
+    overflow: hidden;
+    position: relative;
+    width: calc(100% + 60px);
+
+    img {
+        margin-left: calc(50%);
+        position: absolute;
+        transform: translateX(-50%);
+    }
+}
+
+// responsiveness for FormUI
+@media (max-width: $BootstrapBreakpointMedium) {
+    .mv-form-table {
+        tbody {
+            display: block;
+        }
+
+        td {
+            border-top: none;
+            display: block;
+            padding: 5px;
+
+            input[type="text"] {
+                width: 100%;
+            }
+
+            input[type="password"] {
+                width: 100%;
+            }
+        }
+
+        th {
+            border-top: none;
+            display: block;
+            min-width: 0 !important;
+            padding: 5px;
+            text-align: left !important;
+
+            label {
+                margin-bottom: 0;
+            }
+        }
+
+        tr {
+            display: block;
+        }
+    }
+}
+
+@media (max-width: $BootstrapBreakpointSmall) {
+    .mv-form-table {
+        .mv-form-group {
+            .mv-form-additional-html {
+                display: block;
+            }
+
+            .mv-form-fieldtype-datetime {
+                input {
+                    max-width: calc(100% - 10ex);
+                }
+            }
+
+            .mv-form-image-table {
+                .mv-form-pseudolabel {
+                    display: block;
+                }
+            }
+
+            .mv-form-optlist {
+                width: 100%;
+            }
+        }
+    }
+}
+
 .mv-image-screenshot-container {
     background-color: #EBEBEB;
     height: 224px;
+    position: relative;
     width: 224px;
 
     img {
@@ -345,6 +750,17 @@ label.mv-form-requiredfield {
         position: absolute;
         top: 50%;
         transform: translateX(-50%) translateY(-50%);
+    }
+}
+
+.mv-inline-edit-controls {
+    float: right;
+    padding-right: 5px;
+}
+
+.mv-inline-edit-edit {
+    div[contenteditable] {
+        outline-style: none;
     }
 }
 
@@ -384,13 +800,25 @@ label.mv-form-requiredfield {
     }
 }
 
+// used to indicate items that are not visible to anonymous (not logged in) users
+.mv-notpublic:is(.blog-entry.mv-notpublic),             // for P_Blog_Entries
+.mv-notpublic:is(.mv-folders-resource.mv-notpublic),    // P_Folders_ViewFolder
+.mv-notpublic:is(li.mv-notpublic):not(.mv-notpublic .mv-notpublic) { // P_ManageFolders, folder sidebar
+  // important to override list-group-item
+  background-color: rgba(232 232 232 / 0.5) !important;
+}
+
 .mv-p-collage-wrapper {
     border-bottom: 2px solid #ebebeb;
     border-top: 2px solid #ebebeb;
     height: 420px;
-    margin: 14px -30px;
-    min-width: calc( 100% + 60px);
+    margin-bottom: 13px;
+    margin-left: -30px;
+    margin-top: 13px;
+    min-width: calc( 100% + 60px );
     overflow: hidden;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .mv-p-collage-rollover {
@@ -408,107 +836,35 @@ label.mv-form-requiredfield {
             object-fit: cover;
         }
     }
-
-    :not(.mv-p-collage-tile) {
-        img {
-            margin-left: 50%;
-            position: absolute;
-            transform: translateX(-50%);
-        }
-    }
 }
 
-#page-p_calendarfeed_buildfeed .mv-body {
-    .mv-p-calendarfeed-feeddescription {
-        margin-bottom: 2ex;
-        th {
-            text-align: right;
-            vertical-align: top;
-        }
-        th::after {
-            content: ":";
-        }
-        td {
-            padding-left: 1rem;
-        }
-    }
-    h2 {
-        margin-top: 2ex;
-    }
+.mv-quicksearch-menu {
+    -moz-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    -webkit-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    background-color: white;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    border: 1px solid #C3C3C3;
+    box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
+    position: fixed;
+    z-index: 100;
 }
 
-.mv-tab-container {
-    margin-bottom: 14px;
-    .ui-state-active {
-        border-color: #CCCCCC;
-        a {
-            color: #2B2B2B;
-        }
-    }
-    .ui-tabs-active {
-        background: #FFFFFF;
-    }
+.mv-quicksearch-message {
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
+    position: absolute;
 }
 
-// TILE SET - Set of rectangular containers that dynamically rearrange into
-//  rows depending on the width of the viewport.
-// USAGE:  Uses four nested <div> levels.  Apply the mv-tileset class to the
-//  top <div>, and then repeat at the second <div> level for each tile, with
-//  tile content inside the innermost <div>.  Second level <div> should include
-//  "col-xx-NN" classes (e.g. "col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2") to
-//  trigger responsive tile rearranging.
-.mv-tileset {
-    $SpaceBetweenTiles: 10px;
-    $TileBackgroundColor: #F4F4F4;
-    $TilePadding: 15px;
-    margin-left: 0 - $SpaceBetweenTiles;
-    margin-right: 0 - $SpaceBetweenTiles;
-    > div {
-        margin-bottom: $SpaceBetweenTiles * 2;
-        padding-left: $SpaceBetweenTiles;
-        padding-right: $SpaceBetweenTiles;
-        > div {
-            align-items: center;
-            background-color: $TileBackgroundColor;
-            border-radius: $BlockCornerRadius;
-            display: flex;
-            height: 100%;
-            > div {
-                padding: $TilePadding;
-                width: 100%;
-            }
-        }
-    }
+.mv-quicksearch-moreresults {
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
 }
 
-.mv-tile-collection {
-    text-align: center;
-
-    h2 {
-        font-size: 2rem;
-    }
-    h3 {
-        font-size: 1.5rem;
-    }
-    h4 {
-        font-size: 1.1rem;
-    }
-
-    img:not(.mv-button-icon) {
-        border-radius: $BlockCornerRadius;
-        height: 150px;
-        margin-bottom: 10px;
-        margin-top: 15px;
-        object-fit: contain;
-        width: 150px;
-    }
-
-    .btn {
-        position: absolute;
-        right: 14px;
-        top: 5px;
-        z-index: 50;
-    }
+.mv-radiobuttonset-item {
+    display: inline-block;
 }
 
 .mv-resourcesummary.container-fluid {
@@ -550,6 +906,7 @@ label.mv-form-requiredfield {
         font-size: 1.273rem;
         font-weight: 500;
         margin-bottom: 1rem;
+        width: 100%;
     }
 
     .list-group-horizontal {
@@ -637,333 +994,6 @@ div.mv-search-facets {
     }
 }
 
-.mv-skip-link {
-    a {
-        position: absolute;
-        top: -5em;
-        background: white;
-        z-index: 100;
-        padding: 10px;
-        border: 10px;
-    }
-
-    a:focus {
-        position: absolute;
-        top: 0 !important;
-        transition: top .1s ease-in;
-    }
-}
-
-.mv-stat-container {
-    .mv-range-button {
-        a {
-            color: black;
-        }
-    }
-}
-
-button.mv-timestamp-update {
-    float: right;
-}
-
-/* ----vvvv NEED ALPHABETIZATION vvvv---- */
-
-.mv-form-fieldtype-quick_search {
-    textarea {
-        width: 100%;
-    }
-}
-
-.mv-form-file-table, .mv-form-image-table {
-    width: 100%;
-
-    tr {
-        background-color: inherit !important;
-    }
-
-    td {
-        padding: 0.25em;
-        border-top: none;
-    }
-
-    td:last-of-type {
-        text-align: right;
-        padding-right: 0;
-    }
-}
-
-.mv-form-image-left {
-    float: left;
-}
-
-.mv-form-image-right {
-    float: right;
-}
-
-.mv-form-image-table {
-    .mv-form-insert-btn {
-        min-width: 12ex;
-    }
-
-    button {
-        margin-bottom: 2px;
-        margin-left: 2px;
-    }
-
-    input[type="text"] {
-        width: 90%;
-    }
-
-    td:first-child {
-        width: 200px;
-    }
-
-    td:last-child {
-        width: 200px;
-    }
-}
-
-.mv-form-fieldtype-option {
-    td {
-        input + label {
-            margin-right: 2em;
-            display: inline;
-        }
-    }
-}
-
-.mv-form-fieldtype-privileges {
-    td {
-        padding: 0.2rem 0.7rem 0.2rem 0.7rem;
-    }
-
-    fieldset {
-        padding-top: 0.3rem;
-        padding-bottom: 0.3rem;
-        vertical-align: middle;
-    }
-
-    .btn {
-        margin-right: 1.2rem;
-    }
-
-    .priv-set {
-        > button {
-            margin-top: 0.4rem;
-            margin-bottom: 0.4rem;
-        }
-
-        > p {
-            margin-top: 0.4rem;
-        }
-    }
-}
-
-.mv-form-fieldtype-search_parameters {
-    table {
-        margin-left: 0.4rem;
-    }
-
-    td {
-        padding: 0.2rem;
-
-        select {
-            vertical-align: top;
-        }
-    }
-
-    .mv-quicksearch {
-        display: inline-block;
-        margin-bottom: 4px;
-
-        textarea {
-            margin-bottom: -8px;
-        }
-    }
-
-    .mv-speui-add-field, .mv-speui-add-subgroup {
-        margin-top: 0.2rem;
-    }
-}
-
-.mv-form-group-indicator {
-    width: 0.75em;
-    text-align: center;
-    display: inline-block;
-}
-
-.mv-form-collapsible {
-    cursor: pointer;
-}
-
-.mv-form-group-header {
-    th {
-        user-select: none;
-        -webkit-user-select: none;
-    }
-}
-
-.mv-form-group-hidden {
-    tr {
-        visibility: collapse;
-
-        /*
-          'visibility: collapse' *should* be sufficient to hide these
-          elements, but alas Safari pretends that it's a synonym for
-          'visibility: hidden'. Work around that by explicitly setting
-          heights and margins on child elements to collapse them.
-          See https://developer.mozilla.org/en-US/docs/Web/CSS/visibility#Notes
-       */
-
-        td, th {
-            border-bottom-style: none;
-            border-bottom-width: 0;
-            border-top-style: none;
-            border-top-width: 0;
-            height: 0;
-            line-height: 0;
-            margin-bottom: 0;
-            margin-top: 0;
-            padding-bottom: 0;
-            padding-top: 0;
-
-            * {
-                border-bottom-width: 0;
-                border-top-width: 0;
-                display: block;
-                height: 0;
-                margin-bottom: 0;
-                margin-top: 0;
-                padding-bottom: 0;
-                padding-top: 0;
-            }
-        }
-    }
-}
-
-tbody.mv-form-group + tbody.mv-form-group {
-    border-top-color: #32383e;
-    border-top-style: solid;
-    border-top-width: 2px;
-}
-
-tbody.mv-form-group {
-    th {
-        padding-right: 0;
-        text-align: right;
-
-        img {
-            float: left;
-        }
-
-        label::after {
-            content: ":";
-        }
-    }
-
-    input {
-        max-width: 100%;
-    }
-
-    input[type="checkbox"] + label {
-        line-height: 1.2rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .mv-mutable-widget {
-        display: inline-block;
-        width: 80%;
-    }
-
-    .mv-form-optlist {
-        display: inline-block;
-        width: 80%;
-    }
-
-    .mv-form-additional-html {
-        display: inline-block;
-        text-align: right;
-        vertical-align: top;
-        width: 20%;
-    }
-
-    .mv-form-additional-html:empty {
-        display: none;
-    }
-}
-
-.mv-checkboxset {
-    display: grid;
-    width: 100%;
-    writing-mode: vertical-lr;
-
-    .mv-inputset-item {
-        white-space: nowrap;
-        writing-mode: horizontal-tb;
-
-        input {
-            display: inline-block;
-            vertical-align: top;
-        }
-
-        label {
-            display: inline-block;
-            white-space: normal;
-        }
-    }
-}
-
-.mv-radiobuttonset-item {
-    display: inline-block;
-}
-
-.priv-js-clone_target,
-button.priv-js-add {
-    display: none;
-}
-
-.mv-quicksearch-menu {
-    -moz-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
-    -webkit-box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
-    background-color: white;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
-    border: 1px solid #C3C3C3;
-    box-shadow: rgba(0, 0, 0, 0.3) 0 3px 8px;
-    position: fixed;
-    z-index: 100;
-}
-
-.mv-quicksearch-moreresults {
-    background-color: white;
-    border: 1px solid black;
-    padding: 5px;
-}
-
-.mv-quicksearch-message {
-    background-color: white;
-    border: 1px solid black;
-    padding: 5px;
-    position: absolute;
-}
-
-.mv-inline-edit-controls {
-    float: right;
-    padding-right: 5px;
-}
-
-.mv-inline-edit-edit {
-    div[contenteditable] {
-        outline-style: none;
-    }
-}
-
-.mv-feui-form {
-    .template_row {
-        display: none;
-    }
-}
-
 .mv-section-header h2 {
     margin-bottom: 1.4rem;
     text-transform: uppercase;
@@ -971,7 +1001,7 @@ button.priv-js-add {
 
 .mv-segment-toolbox {
     .mv-section-header {
-        font-size: 1.3 rem;
+        font-size: 1.3rem;
         padding-bottom: 1rem;
         padding-top: 1.5rem;
 
@@ -1015,79 +1045,95 @@ button.priv-js-add {
     }
 }
 
-/** Per https://getbootstrap.com/docs/4.0/content/tables/ "All table styles are inherited in Bootstrap 4, meaning any nested tables will be styled in the same manner as the parent."  The mv-table-nostripes class can be used to remove stripes from a nested table. */
-.table-striped tbody .mv-table-nostripes {
-    tr, th {
-        background-color: transparent;
+.mv-skip-link {
+    a {
+        position: absolute;
+        top: -5em;
+        background: white;
+        z-index: 100;
+        padding: 10px;
+        border: 10px;
+    }
+
+    a:focus {
+        position: absolute;
+        top: 0 !important;
+        transition: top .1s ease-in;
     }
 }
 
-// responsiveness for FormUI
-@media (max-width: $BootstrapBreakpointMedium) {
-    .mv-form-table {
-        tbody {
-            display: block;
-        }
-
-        td {
-            border-top: none;
-            display: block;
-            padding: 5px;
-
-            input[type="text"] {
-                width: 100%;
-            }
-
-            input[type="password"] {
-                width: 100%;
-            }
-        }
-
-        th {
-            border-top: none;
-            display: block;
-            min-width: 0 !important;
-            padding: 5px;
-            text-align: left !important;
-
-            label {
-                margin-bottom: 0;
-            }
-        }
-
-        tr {
-            display: block;
+.mv-stat-container {
+    .mv-range-button {
+        a {
+            color: black;
         }
     }
 }
 
-@media (max-width: $BootstrapBreakpointSmall) {
-    .mv-form-table {
-        .mv-form-group {
-            .mv-form-additional-html {
-                display: block;
-            }
+.mv-tab-container {
+    margin-bottom: 14px;
+    .ui-state-active {
+        border-color: #CCCCCC;
+        a {
+            color: #2B2B2B;
+        }
+    }
+    .ui-tabs-active {
+        background: #FFFFFF;
+    }
+}
 
-            .mv-form-fieldtype-datetime {
-                input {
-                    max-width: calc(100% - 10ex);
-                }
-            }
-
-            .mv-form-image-table {
-                .mv-form-pseudolabel {
-                    display: block;
-                }
-            }
-
-            .mv-form-optlist {
+// TILE SET - Set of rectangular containers that dynamically rearrange into
+//  rows depending on the width of the viewport.
+// USAGE:  Uses four nested <div> levels.  Apply the mv-tileset class to the
+//  top <div>, and then repeat at the second <div> level for each tile, with
+//  tile content inside the innermost <div>.  Second level <div> should include
+//  "col-xx-NN" classes (e.g. "col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2") to
+//  trigger responsive tile rearranging.
+.mv-tileset {
+    $SpaceBetweenTiles: 10px;
+    $TileBackgroundColor: #F4F4F4;
+    $TilePadding: 15px;
+    margin-left: 0 - $SpaceBetweenTiles;
+    margin-right: 0 - $SpaceBetweenTiles;
+    > div {
+        margin-bottom: $SpaceBetweenTiles * 2;
+        padding-left: $SpaceBetweenTiles;
+        padding-right: $SpaceBetweenTiles;
+        > div {
+            align-items: center;
+            background-color: $TileBackgroundColor;
+            border-radius: $BlockCornerRadius;
+            display: flex;
+            height: 100%;
+            > div {
+                padding: $TilePadding;
                 width: 100%;
             }
         }
     }
 }
+
+button.mv-timestamp-update {
+    float: right;
+}
+
 
 /* ----- 6: LOCAL (NON-PAGE-SPECIFIC) STYLES - ID SELECTORS --------------- */
+
+// db, execution, and memory stats blocks from the Developer plugin
+#mv-content-dbstats, #mv-content-executionstats, #mv-content-memstats {
+    background: white;
+
+    code {
+        word-break: break-all;
+    }
+}
+
+#mv-content-pagestats {
+    margin-top: 2em;
+    font-size: 0.8em;
+}
 
 #mv-content-primary-nav {
     align-items: start;
@@ -1142,11 +1188,6 @@ button.priv-js-add {
     }
 }
 
-#mv-content-pagestats {
-    margin-top: 2em;
-    font-size: 0.8em;
-}
-
 #mv-content-primary-nav, #mv-segment-footer {
     padding: 17px 33px;
 }
@@ -1181,6 +1222,7 @@ button.priv-js-add {
     padding-left: 0;
     padding-right: 0;
     padding-top: 10px;
+    width: 240px;
 
     a {
         color: white;
@@ -1315,6 +1357,11 @@ button.priv-js-add {
         }
     }
 
+    .col-12 {
+        max-width: calc(100% - 15px);
+        padding-left: 15px;
+    }
+
     .mv-secondary-navigation-menu-item {
         margin: 5px 10px 0px -10px;
     }
@@ -1429,13 +1476,6 @@ button.priv-js-add {
             display: inline-block;
             padding-top: 4px;
         }
-    }
-}
-
-div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
-    .ui-dialog-title {
-        font-size: 1.2em;
-        font-weight: bold;
     }
 }
 
@@ -1567,7 +1607,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
 }
 
 #page-displaycollection {
-    /* Collection description */
+    // Collection description
     h1 + div {
         margin-bottom: 2rem;
     }
@@ -1619,7 +1659,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
 #page-edituser {
     .mv-form-fieldtype-customcontent {
         .mv-itemlistui {
-            .thead-dark {
+            .table-dark {
                 th {
                     opacity: 0.66;
                     text-align: left;
@@ -1632,11 +1672,12 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
 #page-fullrecord {
     .mv-stdtitle {
         h1 {
-            margin-bottom: 0;
+            width: 100%;
         }
 
-        .btn {
+        .mv-btn-group {
             float: right;
+            margin-left: 10px;
         }
     }
     .mv-stdurl {
@@ -1728,7 +1769,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     }
 
     #mv-content-wrapper {
-        margin-top: 22px;
+        margin-top: 24px;
     }
 
     .mv-content-featuredresources {
@@ -1853,12 +1894,40 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     }
 }
 
+#page-p_calendarfeed_buildfeed .mv-body {
+    .mv-p-calendarfeed-feeddescription {
+        margin-bottom: 2ex;
+        th {
+            text-align: right;
+            vertical-align: top;
+        }
+        th::after {
+            content: ":";
+        }
+        td {
+            padding-left: 1rem;
+        }
+    }
+    h2 {
+        margin-top: 2ex;
+    }
+}
+
 #page-p_pages_displaypage {
     .mv-pages-edit-info {
         display: flex;
         flex-direction: row;
         justify-content: flex-end;
         margin-top: 42px;
+    }
+}
+
+#page-p_photolibrary_displayphoto {
+    .mv-body h2 + div {
+        padding-right: 0px;
+        .btn-sm {
+            float: right;
+        }
     }
 }
 
@@ -1906,7 +1975,6 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
 
         svg {
             fill: #5E6164;
-            margin-top: -6px;
             padding-right: 3px;
         }
     }
@@ -1939,7 +2007,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
         }
     }
 
-    .col.text-right {
+    .col.text-end {
         .mv-transport-controls {
             display: inline-block;
 
@@ -2082,9 +2150,27 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     }
 }
 
+#page-taskqueue {
+    #mv-reload-timer {
+        float: right;
+
+        span {
+            margin-left: 0;
+        }
+    }
+}
+
+#page-editoptionlist {
+    .mv-content-optionlist {
+        a.btn {
+            width: 10ex;
+        }
+    }
+}
+
 /* ----- 8: FONT DEFINITIONS ---------------------------------------------- */
 
-/* font-weight: 100 (Thin) */
+// font-weight: 100 (Thin)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 100;
@@ -2097,7 +2183,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-ThinItalic.ttf") format('truetype');
 }
 
-/* font-weight: 200 (ExtraLight) */
+// font-weight: 200 (ExtraLight)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 200;
@@ -2110,7 +2196,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-ExtraLightItalic.ttf") format('truetype');
 }
 
-/* font-weight: 300 (Light) */
+// font-weight: 300 (Light)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 300;
@@ -2123,7 +2209,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-LightItalic.ttf") format('truetype');
 }
 
-/* font-weight: 400 (Normal / Regular) */
+// font-weight: 400 (Normal / Regular)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: normal;
@@ -2135,7 +2221,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-Italic.ttf") format('truetype');
 }
 
-/* font-weight: 500 (Medium) */
+// font-weight: 500 (Medium)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 500;
@@ -2148,7 +2234,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-MediumItalic.ttf") format('truetype');
 }
 
-/* font-weight: 600 (Demibold) */
+// font-weight: 600 (Demibold)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 600;
@@ -2161,7 +2247,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-SemiBoldItalic.ttf") format('truetype');
 }
 
-/* font-weight: 700 (Bold) */
+// font-weight: 700 (Bold)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: bold;
@@ -2174,7 +2260,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-BoldItalic.ttf") format('truetype');
 }
 
-/* font-weight: 800 (Extra Bold) */
+// font-weight: 800 (Extra Bold)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 800;
@@ -2187,7 +2273,7 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     src: url("../fonts/LibreFranklin-ExtraBoldItalic.ttf") format('truetype');
 }
 
-/* font-weight: 900 (Black) */
+// font-weight: 900 (Black)
 @font-face {
     font-family: "LibreFranklin";
     font-weight: 900;
@@ -2198,4 +2284,21 @@ div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
     font-weight: 900;
     font-style: italic;
     src: url("../fonts/LibreFranklin-BlackItalic.ttf") format('truetype');
+}
+
+
+/* ----vvvv NEEDS ADDITIONAL EFFORT vvvv---- */
+
+// classes used by PrivilegeEditingUI -- need to have "mv-" added here and in code
+.priv-js-clone_target,
+button.priv-js-add {
+    display: none;
+}
+
+// classes used in various places -- need to have "mv-" added here and in code
+div.ui-dialog[aria-describedby="mv-vocabsearchpopup"] {
+    .ui-dialog-title {
+        font-size: 1.2em;
+        font-weight: bold;
+    }
 }

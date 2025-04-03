@@ -3,12 +3,12 @@
 #   FILE:  ResourceExporter.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2014-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\Folder;
 use Metavus\Plugin;
@@ -26,16 +26,16 @@ class ResourceExporter extends Plugin
     /**
      * Set plugin attributes.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Resource Exporter";
         $this->Version = "1.1.0";
         $this->Description = "Supports exporting resource metadata in"
                 ." various formats.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
 
         $this->addAdminMenuEntry(
@@ -50,7 +50,7 @@ class ResourceExporter extends Plugin
      * @return array Returns an array of events to be hooked into the application
      *      framework.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [
             "EVENT_HOURLY" => "CleanOutOldExports",
@@ -61,25 +61,25 @@ class ResourceExporter extends Plugin
      * Perform one-time plugin setup tasks.
      * @return string|null NULL on success or an error string on failure.
      */
-    public function install()
+    public function install(): ?string
     {
-        $this->configSetting("FormatParameterValues", []);
+        $this->setConfigSetting("FormatParameterValues", []);
         return null;
     }
 
     /**
      * Perform upgrade-tasks.
      * @param string $PreviousVersion Version we're coming from.
-     * @return NULL on success, error string on failure.
+     * @return string|null NULL on success, error string on failure.
      */
-    public function upgrade(string $PreviousVersion)
+    public function upgrade(string $PreviousVersion): ?string
     {
         if (version_compare($PreviousVersion, "1.1.0", "<")) {
-            $IdLists = $this->configSetting("SelectedFieldIdLists");
+            $IdLists = $this->getConfigSetting("SelectedFieldIdLists");
 
-            $Formats = $this->configSetting("SelectedFormats");
+            $Formats = $this->getConfigSetting("SelectedFormats");
             $DefaultFormat = current($this->getFormats());
-            $FormatParameters = $this->configSetting("FormatParameterValues");
+            $FormatParameters = $this->getConfigSetting("FormatParameterValues");
 
             if (is_array($IdLists)) {
                 $ExportConfigs = [];
@@ -90,14 +90,14 @@ class ResourceExporter extends Plugin
                         "FormatParams" => $FormatParameters,
                     ];
                 }
-                $this->configSetting("ExportConfigs", $ExportConfigs);
+                $this->setConfigSetting("ExportConfigs", $ExportConfigs);
 
                 foreach (
                     ["SelectedFieldIdLists", "SelectedFormats",
                         "FormatParameterValues"
                     ] as $Var
                 ) {
-                    $this->configSetting($Var, null);
+                    $this->setConfigSetting($Var, null);
                 }
             }
         }
@@ -111,10 +111,10 @@ class ResourceExporter extends Plugin
     /**
      * Clean out old export files.
      */
-    public function cleanOutOldExports()
+    public function cleanOutOldExports(): void
     {
         # retrieve list of exported files
-        $ExportedFiles = $this->configSetting("ExportedFiles");
+        $ExportedFiles = $this->getConfigSetting("ExportedFiles");
 
         # for each known exported file
         $NewExportedFiles = [];
@@ -130,7 +130,7 @@ class ResourceExporter extends Plugin
         }
 
         # save new list of exported files
-        $this->configSetting("ExportedFiles", $NewExportedFiles);
+        $this->setConfigSetting("ExportedFiles", $NewExportedFiles);
     }
 
 
@@ -152,7 +152,7 @@ class ResourceExporter extends Plugin
         $ExportFunc,
         $ExportedDataTypes,
         $Params = null
-    ) {
+    ): void {
         # check to make sure format name is not a duplicate
         if (array_key_exists($FormatName, $this->ExportFuncs)) {
             throw new Exception("Duplicate format name registered: ".$FormatName);
@@ -175,7 +175,7 @@ class ResourceExporter extends Plugin
      * @param string $FormatName Human-readable name of format.
      * @return bool TRUE if specified format is registered, otherwise FALSE.
      */
-    public function isRegisteredFormat($FormatName)
+    public function isRegisteredFormat($FormatName): bool
     {
         return array_key_exists($FormatName, $this->ExportFuncs)
                 ? true : false;
@@ -185,7 +185,7 @@ class ResourceExporter extends Plugin
      * Get list of registered formats.
      * @return array Array of names of registered formats.
      */
-    public function getFormats()
+    public function getFormats(): array
     {
         $Formats = [];
         foreach ($this->ExportFuncs as $FormatName => $Func) {
@@ -199,7 +199,7 @@ class ResourceExporter extends Plugin
      * @return array Array with names of registered formats for the index and
      *       arrays of metadata field types for the values.
      */
-    public function getExportedDataTypes()
+    public function getExportedDataTypes(): array
     {
         return $this->ExportedDataTypes;
     }
@@ -209,7 +209,7 @@ class ResourceExporter extends Plugin
      * @return array Array with names of registered formats for the index and
      *       export parameter sets for the values.
      */
-    public function getExportParameters()
+    public function getExportParameters(): array
     {
         return $this->ExportParameters;
     }
@@ -222,14 +222,14 @@ class ResourceExporter extends Plugin
      * @param array $FieldIds Array of IDs of metadata fields to export, or
      *       NULL to export all enabled fields.
      * @param array $ParamSettings Export parameter settings.
-     * @return int Number of resources exported, or NULL if export failed.
+     * @return int|null Number of resources exported, or NULL if export failed.
      */
     public function exportData(
         $FormatName,
         $SourceFolderId,
         $FieldIds,
         $ParamSettings
-    ) {
+    ): ?int {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
@@ -253,12 +253,12 @@ class ResourceExporter extends Plugin
 
         # construct file name
         $this->LastExportFileName = "tmp/"
-                ."ResourceExport-".sprintf("%04d", $User->Id())."-"
+                ."ResourceExport-".sprintf("%04d", $User->id())."-"
                 .date("ymd-His").".".$this->FileNameExtensions[$FormatName];
 
         # construct local file name
         $this->LastExportLocalFileName = "tmp/".$this->LastExportFileSecret."."
-                ."ResourceExport-".sprintf("%04d", $User->Id())."-"
+                ."ResourceExport-".sprintf("%04d", $User->id())."-"
                 .date("ymd-His").".".$this->FileNameExtensions[$FormatName];
 
         # attempt to export data
@@ -278,7 +278,7 @@ class ResourceExporter extends Plugin
 
         # save export values if export succeeded
         if ($ResourceCount !== null) {
-            $ExportedFiles = $this->configSetting("ExportedFiles");
+            $ExportedFiles = $this->getConfigSetting("ExportedFiles");
             if (!is_array($ExportedFiles)) {
                 $ExportedFiles = [];
             }
@@ -286,10 +286,10 @@ class ResourceExporter extends Plugin
                 "FileName" => $this->LastExportFileName,
                 "LocalFileName" => $this->LastExportLocalFileName,
                 "ExportTimestamp" => time(),
-                "ExporterId" => $User->Id(),
+                "ExporterId" => $User->id(),
                 "ResourceCount" => $ResourceCount
             ];
-            $this->configSetting("ExportedFiles", $ExportedFiles);
+            $this->setConfigSetting("ExportedFiles", $ExportedFiles);
         }
 
         # return number of resources exported to caller
@@ -301,7 +301,7 @@ class ResourceExporter extends Plugin
      * leading path and secret hash value in name).
      * @return string Local file name or NULL if no last exported file.
      */
-    public function lastExportLocalFileName()
+    public function lastExportLocalFileName(): string
     {
         return $this->LastExportLocalFileName;
     }
@@ -311,7 +311,7 @@ class ResourceExporter extends Plugin
      * user, with no leading path.(Not the name of the file stored locally.)
      * @return string File name or NULL if no last exported file.
      */
-    public function lastExportFileName()
+    public function lastExportFileName(): string
     {
         return $this->LastExportFileName;
     }
@@ -320,7 +320,7 @@ class ResourceExporter extends Plugin
      * Retrieve secret string used in local file name for last export.
      * @return string Secret string.
      */
-    public function lastExportFileSecret()
+    public function lastExportFileSecret(): string
     {
         return $this->LastExportFileSecret;
     }
@@ -329,7 +329,7 @@ class ResourceExporter extends Plugin
      * Retrieve error messages (if any) from last export.
      * @return array Array of error messages strings.
      */
-    public function lastExportErrorMessages()
+    public function lastExportErrorMessages(): array
     {
         return $this->LastExportErrors;
     }
@@ -337,13 +337,13 @@ class ResourceExporter extends Plugin
     /**
      * Retrieve info about exported file.
      * @param string $Secret Secret string that identifies file.
-     * @return array Associative array with "FileName", "LocalFileName",
+     * @return array|null Associative array with "FileName", "LocalFileName",
      *       "ExportTimestamp", "ExporterId", and "ResourceCount" entries,
      *       or NULL if no exported file found with specified secret.
      */
-    public function getExportedFileInfo($Secret)
+    public function getExportedFileInfo($Secret): ?array
     {
-        $ExportedFiles = $this->configSetting("ExportedFiles");
+        $ExportedFiles = $this->getConfigSetting("ExportedFiles");
         return (!is_array($ExportedFiles)
                 || !array_key_exists($Secret, $ExportedFiles))
                 ? null : $ExportedFiles[$Secret];

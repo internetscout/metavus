@@ -1,0 +1,120 @@
+<?PHP
+#
+#   FILE:  SelectPublisher.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get HTML for the grid of publishers used to select a folder owner.
+ * @return string HTML.
+ */
+function ownerSelectionButtons(string $LaunchId, array $OwnerIds) : string
+{
+    $Result = '<div>'
+        .'<div class="row mv-tileset">';
+
+    foreach ($OwnerIds as $Id) {
+        $Result .= ownerTile($LaunchId, $Id);
+    }
+
+    $Result .= '</div></div>';
+    return $Result;
+}
+
+/**
+ * Get HTML for a folder owner.
+ * @param int $OwnerId Owner to display.
+ * @return string HTML.
+ */
+function ownerTile(string $LaunchId, int $OwnerId)
+{
+    static $UserImageField = false;
+    static $SelectFolderUrl = false;
+
+    if ($UserImageField === false) {
+        $UserImageFieldId = EduLink::getInstance()
+            ->configSetting("UserAvatarField");
+        $UserImageField = strlen($UserImageFieldId) > 0 ?
+            MetadataField::getField($UserImageFieldId) :
+            null;
+    }
+
+    if ($SelectFolderUrl === false) {
+        $AF = ApplicationFramework::getInstance();
+        $SelectFolderUrl = $AF->baseUrl()."index.php"
+            ."?P=P_EduLink_SelectFolder"
+            ."&L=".$LaunchId;
+    }
+
+    $Owner = new User($OwnerId);
+
+    # use the tile set styles for layout
+    # see Metavus.scss, look for the comment about 'TILE SET'
+    $Result = '<div '
+        .'class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2">'
+        .'<div>'
+        .'<a class="btn btn-primary mv-p-edulink-user-button"'
+        .' href="'.$SelectFolderUrl."&amp;O=".$OwnerId.'">'
+        .'<div class="mv-p-edulink-tile">'
+        .'<div class="mv-p-edulink-tile-content">';
+
+    $FoundImage = false;
+    if (!is_null($UserImageField)) {
+        $Avatar = $Owner->get($UserImageField);
+        if (count($Avatar)) {
+            $FoundImage = true;
+            $Result .= (new Image($Avatar[0]))
+                ->getHtml("mv-image-preview");
+        }
+    }
+
+    if (!$FoundImage) {
+        $Result .= $Owner->getBestName();
+    }
+
+    $Result .= '</div></div></a>'
+        .'</div>'
+        .'</div>';
+
+    return $Result;
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+# check parameters
+if (!isset($H_LaunchId)) {
+    throw new Exception("H_LaunchId not defined.");
+}
+if (!isset($H_OwnerList)) {
+    throw new Exception("H_OwnerList not defined.");
+}
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+
+# ----- DISPLAY --------------------------------------------------------------
+
+include($AF->gUIFile("EduLink-StdPageStart.html"));
+?>
+<h2>Publishers</h2>
+<?PHP if (count($H_OwnerList) > 0) { ?>
+    <?= ownerSelectionButtons($H_LaunchId, $H_OwnerList) ?>
+<?PHP } else { ?>
+    <p>No publishers available.</p>
+<?PHP } ?>
+
+<?PHP
+include($AF->gUIFile("EduLink-StdPageEnd.html"));

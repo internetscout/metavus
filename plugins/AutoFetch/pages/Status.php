@@ -3,11 +3,14 @@
 #   FILE:  Status.php (AutoFetch plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-use Metavus\TransportControlsUI;
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\AutoFetch;
 use ScoutLib\StdLib;
 
 if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
@@ -18,7 +21,11 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
 define("TAB_ERRORS", 0);
 define("TAB_FETCHES", 1);
 
-$MyPlugin = $GLOBALS["G_PluginManager"]->GetPluginForCurrentPage();
+$AutoFetchPlugin = AutoFetch::getInstance();
+
+if (!($AutoFetchPlugin instanceof \Metavus\Plugins\AutoFetch)) {
+    throw new Exception("Retrieved plugin is not AutoFetch (should be impossible).");
+}
 
 # extract viewing parameters
 $H_ResultsPerPage = intval(StdLib::getFormValue("RP", 50));
@@ -26,14 +33,14 @@ $H_ResultsPerPage = intval(StdLib::getFormValue("RP", 50));
 $H_BaseLink = "index.php?P=P_AutoFetch_Status&amp;RP=".$H_ResultsPerPage;
 
 # get total number of URLs we're watching
-$H_NumberMonitored = $MyPlugin->GetUrlCount();
+$H_NumberMonitored = $AutoFetchPlugin->GetUrlCount();
 
 # get list of errors
-$H_ErrorList = $MyPlugin->GetErrorList();
+$H_ErrorList = $AutoFetchPlugin->GetErrorList();
 $H_TotalErrors = count($H_ErrorList);
 
 # get complete fetch log
-$H_FetchList = $MyPlugin->GetFetchList();
+$H_FetchList = $AutoFetchPlugin->GetFetchList();
 $H_TotalFetches = count($H_FetchList);
 
 # pull out the active tab, sort field, rev sort, and start index

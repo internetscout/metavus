@@ -2,21 +2,23 @@
 #
 #   FILE:  EditMessageTemplate.php (Mailer plugin)
 #
-#   Copyright 2012-2022 Edward Almasy and Internet Scout
+#   Copyright 2012-2024 Edward Almasy and Internet Scout
 #   http://scout.wisc.edu
 #
+# @scout:phpstan
 
+use Metavus\Plugins\Mailer;
 use Metavus\Record;
 use Metavus\RecordFactory;
 use Metavus\User;
-use ScoutLib\PluginManager;
 
 # check that user should be on this page
 CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
 # load up current templates
-$H_Plugin = PluginManager::getInstance()->getPluginForCurrentPage();
-$H_Templates = $H_Plugin->ConfigSetting("Templates");
+$H_Plugin = Mailer::getInstance();
+
+$H_Templates = $H_Plugin->getConfigSetting("Templates");
 
 # take action based on which button was pushed or which action was requested
 $Action = isset($_POST["Submit"]) ? $_POST["Submit"]
@@ -27,9 +29,9 @@ $H_TestSeed = isset($_POST["F_TestSeed"]) ? $_POST["F_TestSeed"]
         : (isset($_GET["TS"]) ? $_GET["TS"] : floor(time() / (60 * 60 * 24)));
 $H_TestIds = isset($_POST["F_TestIds"]) ? $_POST["F_TestIds"]
         : (isset($_GET["TI"]) ? $_GET["TI"]
-                : ($H_Plugin->ConfigSetting("TestResourceIds")
-                        ? $H_Plugin->ConfigSetting("TestResourceIds") : ""));
-$H_Plugin->ConfigSetting("TestResourceIds", $H_TestIds);
+                : ($H_Plugin->getConfigSetting("TestResourceIds")
+                        ? $H_Plugin->getConfigSetting("TestResourceIds") : ""));
+$H_Plugin->setConfigSetting("TestResourceIds", $H_TestIds);
 switch ($Action) {
     case "Add Template":
         # set up blank template
@@ -59,7 +61,7 @@ switch ($Action) {
         # delete template if it is not owned
         if (count($H_Plugin->FindTemplateUsers($TemplateId)) == 0) {
             unset($H_Templates[$TemplateId]);
-            $H_Plugin->ConfigSetting("Templates", $H_Templates);
+            $H_Plugin->setConfigSetting("Templates", $H_Templates);
         }
 
         # set flag to display template list
@@ -72,7 +74,7 @@ switch ($Action) {
         if ($TemplateId == "NEW") {
             # get next template ID
             $TemplateId = (($H_Templates === null) || !count($H_Templates)) ? 0
-                    : (max(array_keys($H_Templates)) + 1);
+                    : (intval(max(array_keys($H_Templates))) + 1);
         }
 
         # save template
@@ -88,7 +90,7 @@ switch ($Action) {
             "Headers" => $_POST["F_Headers"],
             "EmailPerResource" => isset($_POST["F_EmailPerResource"]) ? true : false,
         ];
-        $H_Plugin->ConfigSetting("Templates", $H_Templates);
+        $H_Plugin->setConfigSetting("Templates", $H_Templates);
         $H_Msgs[] = "<i>".htmlspecialchars($H_Templates[$TemplateId]["Name"])
                 ."</i> template saved.";
 
@@ -104,6 +106,8 @@ switch ($Action) {
 
                 # attempt to retrieve resources
                 foreach ($Ids as $Id) {
+                    # force value type to match argument type for subsequent calls
+                    $Id = (int)$Id;
                     if (Record::ItemExists($Id)) {
                         $Resources[$Id] = new Record($Id);
                     }
@@ -135,7 +139,7 @@ switch ($Action) {
                     ."</i> template.";
         }
 
-        # set display mode flag to editin or template list depending on actiong
+        # set display mode flag to editing or template list depending on action
         $H_DisplayMode = ($Action == "Test") ? "Editing" : "Listing";
         break;
 

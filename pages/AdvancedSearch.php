@@ -3,14 +3,19 @@
 #   FILE:  AdvancedSearch.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
 use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\DataCache;
+
+# how long to save data in the per-page cache
+const CACHE_TTL = 3600;
 
 $AF = ApplicationFramework::getInstance();
 
@@ -20,15 +25,43 @@ $AF->addMetaTag(["robots" => "noindex"]);
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
 /**
-* Get the list of allowed values for a field.
-* @param MetadataField $Field Field for which values are desired
-* @return array of possible values (Id => Name)
-*/
-function DeterminePossibleValues($Field)
+ * Get a DataCache for this page.
+ * @return DataCache Cache
+ */
+function getCache(): DataCache
 {
-    # for User fields, we want to list those with a specific set of privs
-    if ($Field->Type() == MetadataSchema::MDFTYPE_USER) {
-        $PossibleValues = $Field->GetPossibleValues();
+    static $Cache = false;
+    if ($Cache === false) {
+        $User = User::getCurrentUser();
+        $KeySuffix = "-".($User->id() ?? "NONE")."-";
+
+        $Cache = new DataCache("P-AdvancedSearch".$KeySuffix);
+    }
+
+    return $Cache;
+}
+
+/**
+ * Get the list of possible values for a searching field. For User fields,
+ * these will be all values that are assigned to a record. For Tree fields,
+ * this will be all values less than the configured maximum depth for the
+ * field. For other fields types, these will be all possible values.
+ * @param MetadataField $Field Field for which values are desired
+ * @return array of possible values (Id => Name)
+*/
+function determinePossibleValues(MetadataField $Field): array
+{
+    $Cache = getCache();
+    $CacheName = str_replace('\\', '_', __FUNCTION__);
+    $CacheData = $Cache->get($CacheName) ?? [];
+
+    $CacheKey = $Field->id();
+    if (array_key_exists($CacheKey, $CacheData)) {
+        return $CacheData[$CacheKey];
+    }
+
+    if ($Field->type() == MetadataSchema::MDFTYPE_USER) {
+        $PossibleValues = $Field->getValuesInUse();
     } elseif ($Field->Type() == MetadataSchema::MDFTYPE_TREE) {
         $MaxDepth = $Field->MaxDepthForAdvancedSearch();
         $AllValues = $Field->GetPossibleValues();
@@ -44,6 +77,9 @@ function DeterminePossibleValues($Field)
         $PossibleValues = $Field->GetPossibleValues();
     }
 
+    $CacheData[$CacheKey] = $PossibleValues;
+    $Cache->set($CacheName, $CacheData, CACHE_TTL);
+
     return $PossibleValues;
 }
 
@@ -53,20 +89,30 @@ function DeterminePossibleValues($Field)
 * @param array $PossibleValues Values to consider
 * @return array with keys giving disabled value ids.
 */
-function DetermineDisabledValues($Field, $PossibleValues)
+function determineDisabledValues(MetadataField $Field, array $PossibleValues): array
 {
     static $Factories;
-
-    # retrieve user currently logged in
-    $User = User::getCurrentUser();
 
     # user fields and trees don't support disabled values
     if ($Field->Type() == MetadataSchema::MDFTYPE_USER ||
         $Field->Type() == MetadataSchema::MDFTYPE_TREE) {
-        return array();
+        return [];
     }
 
+    $Cache = getCache();
+    $CacheName = str_replace('\\', '_', __FUNCTION__);
+    $CacheData = $Cache->get($CacheName) ?? [];
+
+    $CacheKey = $Field->id();
+    if (array_key_exists($CacheKey, $CacheData)) {
+        return $CacheData[$CacheKey];
+    }
+
+    # retrieve user currently logged in
+    $User = User::getCurrentUser();
+
     $SchemaId = $Field->SchemaId();
+    $Schema = new MetadataSchema($SchemaId);
 
     if (!isset($Factories[$SchemaId])) {
         $Factories[$SchemaId] = new RecordFactory($SchemaId);
@@ -98,6 +144,9 @@ function DetermineDisabledValues($Field, $PossibleValues)
         }
     }
 
+    $CacheData[$CacheKey] = $DisabledValues;
+    $Cache->set($CacheName, $CacheData, CACHE_TTL);
+
     return $DisabledValues;
 }
 
@@ -107,7 +156,7 @@ function DetermineDisabledValues($Field, $PossibleValues)
 * @param array $Values Values to convert
 * @return array of converted values
 */
-function ConvertValueNamesToIds($Field, $Values)
+function convertValueNamesToIds(MetadataField $Field, array $Values): array
 {
     switch ($Field->Type()) {
         case MetadataSchema::MDFTYPE_USER:
@@ -195,11 +244,21 @@ function ConvertValueNamesToIds($Field, $Values)
  * @param User $User User accessing the page.
  * @return array Array formatted for HtmlOptionList.
  */
-function GetTextFieldList(
+function getTextFieldList(
     array $AllSchemas,
     int $TextFieldTypes,
     User $User
 ) : array {
+
+    $Cache = getCache();
+    $CacheName = str_replace('\\', '_', __FUNCTION__);
+    $CacheData = $Cache->get($CacheName) ?? [];
+
+    $CacheKey = $TextFieldTypes;
+    if (array_key_exists($CacheKey, $CacheData)) {
+        return $CacheData[$CacheKey];
+    }
+
     $TextFieldsBySchema = [];
     $AllTextFields = [];
     foreach ($AllSchemas as $SchemaId => $Schema) {
@@ -247,6 +306,9 @@ function GetTextFieldList(
         }
     }
 
+    $CacheData[$CacheKey] = $Result;
+    $Cache->set($CacheName, $CacheData, CACHE_TTL);
+
     return $Result;
 }
 
@@ -257,7 +319,7 @@ function GetTextFieldList(
  * @param array $FieldsWithTextForms List of text field options.
  * @return array Field IDs for selected fields
  */
-function GetSelectedTextFieldList(
+function getSelectedTextFieldList(
     User $User,
     SearchParameterSet $SearchParams,
     array $FieldsWithTextForms
@@ -360,11 +422,20 @@ function GetSelectedTextFieldList(
  * @param User $User User accessing the page.
  * @return array Array formatted for HtmlOptionList.
  */
-function GetSearchLimitList(
+function getSearchLimitList(
     array $AllSchemas,
     array $SearchLimitTypes,
     User $User
 ) : array {
+    $Cache = getCache();
+    $CacheName = str_replace('\\', '_', __FUNCTION__);
+    $CacheData = $Cache->get($CacheName) ?? [];
+
+    $CacheKey = md5(implode("-", $SearchLimitTypes));
+    if (array_key_exists($CacheKey, $CacheData)) {
+        return $CacheData[$CacheKey];
+    }
+
     $Result = [];
 
     foreach ($AllSchemas as $SchemaId => $Schema) {
@@ -389,6 +460,51 @@ function GetSearchLimitList(
             }
         }
     }
+
+    $CacheData[$CacheKey] = $Result;
+    $Cache->set($CacheName, $CacheData, CACHE_TTL);
+
+    return $Result;
+}
+
+
+/**
+ * Get the list of fields to display as sort options.
+ * @param int $SortFieldTypes Bitmask of field types to include.
+ * @param User $User User accessing the page.
+ * @return array Array formatted for HtmlOptionList.
+ */
+function getSortOptions(int $SortFieldTypes, User $User): array
+{
+    $Cache = getCache();
+    $CacheName = str_replace('\\', '_', __FUNCTION__);
+    $CacheData = $Cache->get($CacheName) ?? [];
+
+    $CacheKey = $SortFieldTypes;
+    if (array_key_exists($CacheKey, $CacheData)) {
+        return $CacheData[$CacheKey];
+    }
+
+    $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
+
+    # construct a list of sort fields
+    $Result = array("R" => "Relevance");
+
+    # iterate over candidate fields, including those that belong
+    $Fields = $Schema->GetFields(
+        $SortFieldTypes,
+        MetadataSchema::MDFORDER_DISPLAY
+    );
+    foreach ($Fields as $FieldId => $Field) {
+        if ($Field->Enabled() &&
+            $Field->IncludeInSortOptions() &&
+            $Field->UserCanView($User)) {
+            $Result[$FieldId] = $Field->GetDisplayName();
+        }
+    }
+
+    $CacheData[$CacheKey] = $Result;
+    $Cache->set($CacheName, $CacheData, CACHE_TTL);
 
     return $Result;
 }
@@ -492,26 +608,11 @@ $H_SearchLimits = GetSearchLimitList(
     $User
 );
 
-# construct a list of sort fields
-$H_SortFields = array("R" => "Relevance");
-
-# iterate over candidate fields, including those that belong
-$Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
-$Fields = $Schema->GetFields(
-    $SortFieldTypes,
-    MetadataSchema::MDFORDER_DISPLAY
-);
-foreach ($Fields as $FieldId => $Field) {
-    if ($Field->Enabled() &&
-        $Field->IncludeInSortOptions() &&
-        $Field->UserCanView($User)) {
-        $H_SortFields[$FieldId] = $Field->GetDisplayName();
-    }
-}
+$H_SortFields = GetSortOptions($SortFieldTypes, $User);
 
 # use sort field from URL parameters if available and visible,
 #   otherwise default to relevance
-$DefaultSortField = $Schema->defaultSortField() ;
+$DefaultSortField = $AllSchemas[MetadataSchema::SCHEMAID_DEFAULT]->defaultSortField();
 $H_SelectedSortField =
     (isset($_GET["SF"]) && array_key_exists($_GET["SF"], $H_SortFields)) ?
     $_GET["SF"] : ($DefaultSortField === false ? "R" : $DefaultSortField);
@@ -544,7 +645,18 @@ if (isset($_GET["ID"])) {
 } else {
     # otherwise, pull the search information out of the URL
     $H_SearchParameters = new SearchParameterSet();
-    $H_SearchParameters->UrlParameters($_GET);
+    try {
+        $H_SearchParameters->UrlParameters($_GET);
+    } catch (Exception $Ex) {
+        # if search params were invalid, dump them and reload page w/o params
+        $AF->setJumpToPage("AdvancedSearch");
+        return;
+    }
+}
+
+# if we're refining a search, do not save to the static page cache
+if ($H_SearchParameters->parameterCount() > 0) {
+    $AF->doNotCacheCurrentPage();
 }
 
 # determine which search limits should be open
@@ -553,7 +665,7 @@ foreach ($H_SearchParameters->GetFields() as $FieldId) {
     # check if this field even exists
     if (MetadataSchema::FieldExistsInAnySchema($FieldId)) {
         # and if so mark it as open
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField($FieldId);
         if (isset($H_SearchLimits[$Field->SchemaId()][$FieldId])) {
             $OpenLimitSchemas[$Field->SchemaId()] = 1;
         }

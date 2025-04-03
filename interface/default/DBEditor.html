@@ -3,12 +3,14 @@
 #   FILE:  DBEditor.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
@@ -24,7 +26,7 @@ $AF->RequireUIFile('jquery-ui.js', ApplicationFramework::ORDER_FIRST);
  * Print a text metadata field row.
  * @param MetadataField $Field text metadata field
  */
-function PrintTextFieldRow(MetadataField $Field)
+function PrintTextFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -135,10 +137,10 @@ function PrintTextFieldRow(MetadataField $Field)
 }
 
 /**
- * Print an URL metadata field row.
+ * Print a URL metadata field row.
  * @param MetadataField $Field URL metadata field
  */
-function PrintUrlFieldRow(MetadataField $Field)
+function PrintUrlFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -252,7 +254,7 @@ function PrintUrlFieldRow(MetadataField $Field)
  * Print an Email metadata field row.
  * @param MetadataField $Field Email metadata field
  */
-function PrintEmailFieldRow(MetadataField $Field)
+function PrintEmailFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -366,7 +368,7 @@ function PrintEmailFieldRow(MetadataField $Field)
  * Print a paragraph metadata field row.
  * @param MetadataField $Field paragraph metadata field
  */
-function PrintParagraphFieldRow(MetadataField $Field)
+function PrintParagraphFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -480,7 +482,7 @@ function PrintParagraphFieldRow(MetadataField $Field)
  * Print a number metadata field row.
  * @param MetadataField $Field number metadata field
  */
-function PrintNumberFieldRow(MetadataField $Field)
+function PrintNumberFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -594,7 +596,7 @@ function PrintNumberFieldRow(MetadataField $Field)
  * Print a date metadata field row.
  * @param MetadataField $Field date metadata field
  */
-function PrintDateFieldRow(MetadataField $Field)
+function PrintDateFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -708,7 +710,7 @@ function PrintDateFieldRow(MetadataField $Field)
  * Print a timestamp metadata field row.
  * @param MetadataField $Field timestamp metadata field
  */
-function PrintTimestampFieldRow(MetadataField $Field)
+function PrintTimestampFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -822,7 +824,7 @@ function PrintTimestampFieldRow(MetadataField $Field)
  * Print a flag metadata field row.
  * @param MetadataField $Field flag metadata field
  */
-function PrintFlagFieldRow(MetadataField $Field)
+function PrintFlagFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -936,7 +938,7 @@ function PrintFlagFieldRow(MetadataField $Field)
  * Print a tree metadata field row.
  * @param MetadataField $Field tree metadata field
  */
-function PrintTreeFieldRow(MetadataField $Field)
+function PrintTreeFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1050,7 +1052,7 @@ function PrintTreeFieldRow(MetadataField $Field)
  * Print a controlled name metadata field row.
  * @param MetadataField $Field controlled name metadata field
  */
-function PrintControlledNameFieldRow(MetadataField $Field)
+function PrintControlledNameFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1164,7 +1166,7 @@ function PrintControlledNameFieldRow(MetadataField $Field)
  * Print an option metadata field row.
  * @param MetadataField $Field option metadata field
  */
-function PrintOptionFieldRow(MetadataField $Field)
+function PrintOptionFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1275,10 +1277,10 @@ function PrintOptionFieldRow(MetadataField $Field)
 }
 
 /**
- * Print an user metadata field row.
+ * Print a user metadata field row.
  * @param MetadataField $Field user metadata field
  */
-function PrintUserFieldRow(MetadataField $Field)
+function PrintUserFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1392,7 +1394,7 @@ function PrintUserFieldRow(MetadataField $Field)
  * Print a file metadata field row.
  * @param MetadataField $Field file metadata field
  */
-function PrintFileFieldRow(MetadataField $Field)
+function PrintFileFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1506,7 +1508,7 @@ function PrintFileFieldRow(MetadataField $Field)
  * Print an image metadata field row.
  * @param MetadataField $Field image metadata field
  */
-function PrintImageFieldRow(MetadataField $Field)
+function PrintImageFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1620,7 +1622,7 @@ function PrintImageFieldRow(MetadataField $Field)
  * Print a point metadata field row.
  * @param MetadataField $Field point metadata field
  */
-function PrintPointFieldRow(MetadataField $Field)
+function PrintPointFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1734,7 +1736,7 @@ function PrintPointFieldRow(MetadataField $Field)
  * Print a reference metadata field row.
  * @param MetadataField $Field reference metadata field
  */
-function PrintReferenceFieldRow(MetadataField $Field)
+function PrintReferenceFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1848,7 +1850,7 @@ function PrintReferenceFieldRow(MetadataField $Field)
  * Print a SearchParameterSet metadata field row.
  * @param MetadataField $Field SearchParameterSet metadata field
  */
-function PrintSearchParameterSetFieldRow(MetadataField $Field)
+function PrintSearchParameterSetFieldRow(MetadataField $Field): void
 {
     $P = new MfeFieldValuePrinter($Field);
     ?>
@@ -1958,16 +1960,102 @@ function PrintSearchParameterSetFieldRow(MetadataField $Field)
     <?PHP
 }
 
+/**
+ * Prints all fields for a schema, using its corresponding print function
+ *
+ * @param MetadataSchema $Schema The schema to print
+ * @param int $FieldType The type of field to print
+ * @return void
+ * @throws Exception
+ */
+function PrintFieldAttributes(MetadataSchema $Schema, int $FieldType): void
+{
+    $PrintFunctionMapping = [
+        MetadataSchema::MDFTYPE_CONTROLLEDNAME => "PrintControlledNameFieldRow",
+        MetadataSchema::MDFTYPE_DATE => "PrintDateFieldRow",
+        MetadataSchema::MDFTYPE_EMAIL => "PrintEmailFieldRow",
+        MetadataSchema::MDFTYPE_IMAGE => "PrintImageFieldRow",
+        MetadataSchema::MDFTYPE_FILE => "PrintFileFieldRow",
+        MetadataSchema::MDFTYPE_FLAG => "PrintFlagFieldRow",
+        MetadataSchema::MDFTYPE_NUMBER => "PrintNumberFieldRow",
+        MetadataSchema::MDFTYPE_OPTION => "PrintOptionFieldRow",
+        MetadataSchema::MDFTYPE_PARAGRAPH => "PrintParagraphFieldRow",
+        MetadataSchema::MDFTYPE_POINT => "PrintPointFieldRow",
+        MetadataSchema::MDFTYPE_REFERENCE => "PrintReferenceFieldRow",
+        MetadataSchema::MDFTYPE_SEARCHPARAMETERSET => "PrintSearchParameterSetFieldRow",
+        MetadataSchema::MDFTYPE_URL => "PrintUrlFieldRow",
+        MetadataSchema::MDFTYPE_USER => "PrintUserFieldRow",
+        MetadataSchema::MDFTYPE_TEXT => "PrintTextFieldRow",
+        MetadataSchema::MDFTYPE_TIMESTAMP => "PrintTimestampFieldRow",
+        MetadataSchema::MDFTYPE_TREE => "PrintTreeFieldRow"
+    ];
+
+    if (!array_key_exists($FieldType, $PrintFunctionMapping)) {
+        throw new Exception("$FieldType is not a valid field type");
+    }
+
+    $NameOfPrintFunction = "Metavus\\" . $PrintFunctionMapping[$FieldType];
+
+    if (!is_callable($NameOfPrintFunction)) {
+        throw new Exception("$NameOfPrintFunction is not callable");
+    }
+
+    # Get the fields for the schema
+    $Fields = $Schema->getFields(
+        $FieldType,
+        MetadataSchema::MDFORDER_ALPHABETICAL,
+        true
+    );
+
+    foreach ($Fields as $Field) {
+        $NameOfPrintFunction($Field);
+    }
+}
+
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Class used to make printing field values more convenient.
+ *
+ * These method declarations are here because this class is used to call methods
+ * of HumanMetadataField via its __call() method.
+ * @method void AllowHTML()
+ * @method void AllowMultiple()
+ * @method void AssociatedQualifierList()
+ * @method void DefaultQualifier()
+ * @method void DefaultValue()
+ * @method void Editable()
+ * @method void Enabled()
+ * @method void FlagOffLabel()
+ * @method void FlagOnLabel()
+ * @method void HasItemLevelQualifiers()
+ * @method void IncludeInAdvancedSearch()
+ * @method void IncludeInFacetedSearch()
+ * @method void IncludeInKeywordSearch()
+ * @method void IncludeInSortOptions()
+ * @method void MaxLength()
+ * @method void MaxValue()
+ * @method void MinValue()
+ * @method void NumAjaxResults()
+ * @method void Optional()
+ * @method void ParagraphCols()
+ * @method void ParagraphRows()
+ * @method void PointDecimalDigits()
+ * @method void PointPrecision()
+ * @method void SearchWeight()
+ * @method void ShowQualifiers()
+ * @method void TextFieldSize()
+ * @method void UpdateMethod()
+ * @method void UseForOaiSets()
+ * @method void UserPrivilegeRestrictions()
+ * @method void UsesQualifiers()
+ * @method void UseWysiwygEditor()
  */
 class MfeFieldValuePrinter
 {
 
     /**
-     * Setup the field value printer.
+     * Set up the field value printer.
      * @param MetadataField $MetadataField metadata field
      */
     public function __construct(MetadataField $MetadataField)
@@ -1982,10 +2070,16 @@ class MfeFieldValuePrinter
      * $this->HumanField->$Method($Arguments).
      * @param string $Method method name
      * @param array $Arguments method arguments
+     * @throws Exception
      */
-    public function __call($Method, $Arguments)
+    public function __call(string $Method, array $Arguments): void
     {
         $Callback = [$this->HumanField, $Method];
+
+        if (!is_callable($Callback)) {
+            throw new Exception("Method $Method not found in HumanMetadataField");
+        }
+
         $Value = call_user_func_array($Callback, $Arguments);
 
         print defaulthtmlentities($Value);
@@ -1995,7 +2089,7 @@ class MfeFieldValuePrinter
      * Print a 1 if the metadata field can be toggled (enabled/disabled) or a 0
      * if it can't be.
      */
-    public function fieldIsTogglable()
+    public function fieldIsTogglable(): void
     {
         if (!isset(self::$ActivePlugins)) {
             global $G_PluginManager;
@@ -2020,7 +2114,7 @@ class MfeFieldValuePrinter
     }
 
     /**
-     * @var array $ActivePlugins static array of active (enabled) plugins
+     * @var array|null $ActivePlugins static array of active (enabled) plugins
      */
     protected static $ActivePlugins;
 
@@ -2041,9 +2135,9 @@ class MfeFieldValuePrinter
  * name in parentheses if a label is set. The text will be properly escaped
  * HTML.
  * @param MetadataField $Field metadata field
- * @return the display text for the field as escaped HTML
+ * @return string the display text for the field as escaped HTML
  */
-function getFieldInfoDisplayText(MetadataField $Field)
+function getFieldInfoDisplayText(MetadataField $Field): string
 {
     $DisplayName = defaulthtmlentities($Field->GetDisplayName());
     $Name = defaulthtmlentities($Field->Name());
@@ -2056,7 +2150,7 @@ function getFieldInfoDisplayText(MetadataField $Field)
  * respectively.
  * @param MetadataField $Field metadata field
  */
-function printEnabledText(MetadataField $Field)
+function printEnabledText(MetadataField $Field): void
 {
     print $Field->Enabled() ? "enabled" : "disabled";
 }
@@ -2065,7 +2159,7 @@ function printEnabledText(MetadataField $Field)
  * Print the escaped metadata field ID.
  * @param MetadataField $Field metadata field
  */
-function printFieldIdText(MetadataField $Field)
+function printFieldIdText(MetadataField $Field): void
 {
     print defaulthtmlentities($Field->Id());
 }
@@ -2076,7 +2170,7 @@ function printFieldIdText(MetadataField $Field)
  * tooltip containing the field description.
  * @param MetadataField $Field metadata field
  */
-function printFieldNameText(MetadataField $Field)
+function printFieldNameText(MetadataField $Field): void
 {
     global $AF;
 
@@ -2093,7 +2187,7 @@ function printFieldNameText(MetadataField $Field)
       src="<?PHP $AF->PUIFile($HelpImage); ?>" alt="?" />
 <div id="<?= $TooltipId ?>" class="tooltip-dialog" style="display: none;"
   title="<?= $SafeFieldName ?>">
-  <p><?= defaulthtmlentities($Field->Description()) ?></p>
+  <p><?= $Field->Description() ?></p>
 </div>
     <?PHP } else { ?>
   <a href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>"
@@ -2109,36 +2203,22 @@ function printFieldNameText(MetadataField $Field)
  * editing page.
  * @param MetadataField $Field metadata field
  */
-function printEditText(MetadataField $Field)
+function printEditText(MetadataField $Field): void
 {
-    $AF = ApplicationFramework::getInstance();
     $SafeFieldId = defaulthtmlentities($Field->Id());
-    ?>
-  <a class="btn btn-primary btn-sm mv-button-iconed"
-      href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>">
-      <img class="mv-button-icon"
-        src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
-    <?PHP
-}
 
-/**
- * Print the active button class if the given display is chosen.
- * @param string $Display field setting group display, e.g., Metadata or Search
- */
-function printActive($Display)
-{
-    if ($Display == StdLib::getArrayValue($_GET, "View", "Metadata")) {
-        print "btn-primary";
-    } else {
-        print "btn-primary";
-    }
+    $EditButton = new HtmlButton("Edit");
+    $EditButton->setIcon("Pencil.svg");
+    $EditButton->setSize(HtmlButton::SIZE_SMALL);
+    $EditButton->setLink("index.php?P=EditMetadataField&Id=".$SafeFieldId);
+    print $EditButton->getHtml();
 }
 
 /**
 * Print an option list containing metadata schemas.
 * @param MetadataSchema $SchemaInUse Metadata schema in use.
 */
-function printSchemaOptionList(MetadataSchema $SchemaInUse)
+function printSchemaOptionList(MetadataSchema $SchemaInUse): void
 {
     $Options = [];
 
@@ -2152,9 +2232,40 @@ function printSchemaOptionList(MetadataSchema $SchemaInUse)
     $OptList->PrintHtml();
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_PromptDBRebuild)) {
+    throw new Exception("H_PromptDBRebuild not defined.");
+}
+if (!isset($H_Schema)) {
+    throw new Exception("H_Schema not defined.");
+}
 
 $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+
+$AddButton = new HtmlButton("Add New Field");
+$AddButton->setIcon("Plus.svg");
+$AddButton->setSize(HtmlButton::SIZE_MEDIUM);
+$AddButton->setLink("index.php?P=EditMetadataField&SC=".$SafeSchemaId);
+
+$EditButton = new HtmlButton("Edit");
+$EditButton->setIcon("Pencil.svg");
+$EditButton->setSize(HtmlButton::SIZE_MEDIUM);
+$EditButton->setLink("index.php?P=EditMetadataSchema&SC=".$SafeSchemaId);
+
+$MetadataButton = new HtmlButton("Metadata");
+$MetadataButton->setId("displayMetadataOnly");
+$MetadataButton->setOnclick("displayMetadataOnly()");
+
+$DisplayButton = new HtmlButton("Display");
+$DisplayButton->setId("displayDisplayOnly");
+$DisplayButton->setOnclick("displayDisplayOnly()");
+
+$AccessButton = new HtmlButton("Access");
+$AccessButton->setId("displayAccessOnly");
+
+$SearchButton = new HtmlButton("Search");
+$SearchButton->setId("displaySearchOnly");
+$SearchButton->setOnclick("displaySearchOnly()");
 
 $ChosenView = StdLib::getArrayValue($_GET, "View", "Metadata");
 $Views = [
@@ -2184,6 +2295,7 @@ $DisabledSettings = [
     ".mfe-field-pointdecimaldigits"
 ];
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <?PHP if (!ApplicationFramework::getInstance()->getInterfaceSetting("TooltipsUseDialogs")) { ?>
 <script>
@@ -2218,31 +2330,21 @@ $(document).tooltip();
     <div class="col">
       <h1>Metadata Field Editor</h1>
     </div>
-    <div class="col text-right">
-      <a class="btn btn-primary mv-button-iconed"
-        href="index.php?P=EditMetadataField&amp;SC=<?= $SafeSchemaId; ?>">
-        <img class="mv-button-icon"
-            src="<?= $AF->GUIFile('Plus.svg') ?>"/>Add New Field</a>
-      <a class="btn btn-primary mv-button-iconed"
-        href="index.php?P=EditMetadataSchema&amp;SC=<?= $SafeSchemaId; ?>">
-        <img class="mv-button-icon"
-            src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
+    <div class="col text-end">
+      <?= $AddButton->getHtml() ?>
+      <?= $EditButton->getHtml() ?>
     </div>
   </div>
 </div>
 
-<ul class="float-left list-inline mv-button-group mv-content-mfetabs">
-  <li class="list-inline-item"><button class="btn <?PHP PrintActive("Metadata"); ?>"
-      id="displayMetadataOnly">Metadata</button></li>
-  <li class="list-inline-item"><button class="btn <?PHP PrintActive("Display"); ?>"
-      id="displayDisplayOnly">Display</button></li>
-  <!--<li><button class="<?PHP PrintActive("Access"); ?>" id="displayAccessOnly"
-      onclick="UpdateView('Access);">Access</button></li>-->
-  <li class="list-inline-item"><button class="btn <?PHP PrintActive("Search"); ?>"
-      id="displaySearchOnly">Search</button></li>
+<ul class="float-start list-inline mv-button-group mv-content-mfetabs">
+  <li class="list-inline-item"><?= $MetadataButton->getHtml(); ?></li>
+  <li class="list-inline-item"><?= $DisplayButton->getHtml(); ?></li>
+  <!--<li><?= $AccessButton->getHtml(); ?></li>-->
+  <li class="list-inline-item"><?= $SearchButton->getHtml(); ?></li>
 </ul>
 
-<div class="float-right mv-content-mfetableoptions">
+<div class="float-end mv-content-mfetableoptions">
   <span class="mv-content-mfetoggledisabled">
     <input type="checkbox" id="toggleDisabled" checked />
     <label for="toggleDisabled">Hide Disabled Fields</label>
@@ -2255,7 +2357,7 @@ $(document).tooltip();
 
 <table class="table table-striped mv-content-mfe">
   <thead>
-    <tr class="thead-dark">
+    <tr class="table-dark">
       <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-enabled">
       Enabled
       </th>
@@ -2359,7 +2461,7 @@ $(document).tooltip();
     </tr>
   </thead>
   <tfoot>
-    <tr class="thead-dark">
+    <tr class="table-dark">
       <th class="mfe mfe-label mfe-type-text mfe-group-generic mfe-field-enabled">
       Enabled
       </th>
@@ -2462,98 +2564,146 @@ $(document).tooltip();
   </tfoot>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TEXT, null, true))) {  ?>
   <tbody id="text">
-    <tr class="thead-dark"><th colspan="44">Text Fields</th></tr>
-        <?PHP PrintTextFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Text Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_TEXT
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_URL, null, true))) {  ?>
   <tbody id="url">
-    <tr class="thead-dark"><th colspan="44">Url Fields</th></tr>
-        <?PHP PrintUrlFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Url Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_URL
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_EMAIL, null, true))) {  ?>
   <tbody id="email">
-          <tr class="thead-dark"><th colspan="44">Email Fields</th></tr>
-        <?PHP PrintEmailFieldAttributes($H_Schema); ?>
+          <tr class="table-dark"><th colspan="44">Email Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_EMAIL
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_PARAGRAPH, null, true))) {  ?>
   <tbody id="paragraph">
-    <tr class="thead-dark"><th colspan="44">Paragraph Fields</th></tr>
-        <?PHP PrintParagraphFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Paragraph Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_PARAGRAPH
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_NUMBER, null, true))) {  ?>
   <tbody id="number">
-    <tr class="thead-dark"><th colspan="44">Number Fields</th></tr>
-        <?PHP PrintNumberFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Number Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_NUMBER
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_DATE, null, true))) {  ?>
   <tbody id="date">
-    <tr class="thead-dark"><th colspan="44">Date Fields</th></tr>
-        <?PHP PrintDateFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Date Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_DATE
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TIMESTAMP, null, true))) {  ?>
   <tbody id="timestamp">
-    <tr class="thead-dark"><th colspan="44">Timestamp Fields</th></tr>
-        <?PHP PrintTimestampFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Timestamp Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_TIMESTAMP
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_FLAG, null, true))) {  ?>
   <tbody id="flag">
-    <tr class="thead-dark"><th colspan="44">Flag Fields</th></tr>
-        <?PHP PrintFlagFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Flag Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_FLAG
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TREE, null, true))) {  ?>
   <tbody id="tree">
-    <tr class="thead-dark"><th colspan="44">Tree Fields</th></tr>
-        <?PHP PrintTreeFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Tree Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_TREE
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME, null, true))) {  ?>
   <tbody id="controlledname">
-    <tr class="thead-dark"><th colspan="44">Controlled Name Fields</th></tr>
-        <?PHP PrintControlledNameFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Controlled Name Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_CONTROLLEDNAME
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_OPTION, null, true))) {  ?>
   <tbody id="option">
-    <tr class="thead-dark"><th colspan="44">Option Fields</th></tr>
-        <?PHP PrintOptionFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Option Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_OPTION
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_USER, null, true))) {  ?>
   <tbody id="user">
-    <tr class="thead-dark"><th colspan="44">User Fields</th></tr>
-        <?PHP PrintUserFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">User Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_USER
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_FILE, null, true))) {  ?>
   <tbody id="file">
-    <tr class="thead-dark"><th colspan="44">File Fields</th></tr>
-        <?PHP PrintFileFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">File Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_FILE
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_IMAGE, null, true))) {  ?>
   <tbody id="image">
-    <tr class="thead-dark"><th colspan="44">Image Fields</th></tr>
-        <?PHP PrintImageFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Image Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_IMAGE
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_POINT, null, true))) {  ?>
   <tbody id="point">
-    <tr class="thead-dark"><th colspan="44">Point Fields</th></tr>
-        <?PHP PrintPointFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Point Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_POINT
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_REFERENCE, null, true))) {  ?>
   <tbody id="reference">
-    <tr class="thead-dark"><th colspan="44">Reference Fields</th></tr>
-        <?PHP PrintReferenceFieldAttributes($H_Schema); ?>
+    <tr class="table-dark"><th colspan="44">Reference Fields</th></tr>
+        <?PHP PrintFieldAttributes(
+            $H_Schema,
+            MetadataSchema::MDFTYPE_REFERENCE
+        ); ?>
   </tbody>
   <?PHP  }  ?>
   <?PHP  if (count($H_Schema->GetFields(
@@ -2562,11 +2712,10 @@ $(document).tooltip();
       true
   ))) {  ?>
   <tbody id="searchparameterset">
-    <tr class="thead-dark"><th colspan="44">Search Parameter Set Fields</th></tr>
+    <tr class="table-dark"><th colspan="44">Search Parameter Set Fields</th></tr>
         <?PHP PrintFieldAttributes(
             $H_Schema,
-            MetadataSchema::MDFTYPE_SEARCHPARAMETERSET,
-            "Metavus\\PrintSearchParameterSetFieldRow"
+            MetadataSchema::MDFTYPE_SEARCHPARAMETERSET
         ); ?>
   </tbody>
   <?PHP  }  ?>
@@ -2575,11 +2724,8 @@ $(document).tooltip();
 <div class="container">
   <div class="row">
     <div class="col"></div>
-    <div class="col text-right">
-      <a class="btn btn-primary mv-button-iconed"
-        href="index.php?P=EditMetadataField">
-        <img class="mv-button-icon"
-            src="<?= $AF->GUIFile('Plus.svg') ?>"/>Add New Field</a>
+    <div class="col text-end">
+      <?= $AddButton->getHtml() ?>
     </div>
   </div>
 </div>
@@ -2680,37 +2826,8 @@ $(document).tooltip();
       $(".mfe-enabled, .mfe-disabled").removeClass(classes);
     }
 
-    function highlight(id) {
-      $(".mv-content-mfetabs li a").removeClass("btn-primary").addClass("btn-primary");
-      $("#"+id).removeClass("btn-primary").addClass("btn-primary");
-    }
-
-    var displayMetadataOnly = function() {
-      highlight("displayMetadataOnly");
-      $(".mfe-group-metadata").show();
-      $(".mfe-group-display, .mfe-group-search").hide();
-      return false;
-    };
-
-    var displayDisplayOnly = function() {
-      highlight("displayDisplayOnly");
-      $(".mfe-group-display").show();
-      $(".mfe-group-metadata, .mfe-group-search").hide();
-      return false;
-    };
-
-    var displaySearchOnly = function() {
-      highlight("displaySearchOnly");
-      $(".mfe-group-search").show();
-      $(".mfe-group-metadata, .mfe-group-display").hide();
-      return false;
-    };
-
     // MAIN
 
-    $("#displayMetadataOnly").click(displayMetadataOnly);
-    $("#displayDisplayOnly").click(displayDisplayOnly);
-    $("#displaySearchOnly").click(displaySearchOnly);
     $("#toggleDisabled").change(function(){
       var isChecked = $(this).is(":checked");
 
@@ -2724,4 +2841,22 @@ $(document).tooltip();
     $("#toggleDisabled").change();
 
   }());
+
+  function displayMetadataOnly() {
+    $(".mfe-group-metadata").show();
+    $(".mfe-group-display, .mfe-group-search").hide();
+    return false;
+  }
+
+  function displayDisplayOnly() {
+    $(".mfe-group-display").show();
+    $(".mfe-group-metadata, .mfe-group-search").hide();
+    return false;
+  }
+
+  function displaySearchOnly() {
+    $(".mfe-group-search").show();
+    $(".mfe-group-metadata, .mfe-group-display").hide();
+    return false;
+  }
 </script>

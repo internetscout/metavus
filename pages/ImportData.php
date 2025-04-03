@@ -6,10 +6,12 @@
 #   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\File;
 use Metavus\MetadataSchema;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -85,6 +87,14 @@ $FormFields = [
             .'default, "Title" AND "Description" are used to determine unique '
             .'records during import.',
     ],
+    "Delimiter" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Delimiter for Fields with Multiple Values",
+        "Help" => "Fields that allow multiple values to be selected "
+                ."will normally display the values on different rows. "
+                ."If a delimiter was specified when exporting to put the values on the same row "
+                ."separated by the given delimiter, the same delimiter should be specified here."
+    ],
     "File" => [
         "Type" => FormUI::FTYPE_FILE,
         "Label" => "File Name",
@@ -121,6 +131,7 @@ switch (StdLib::getFormValue($H_FormUI->getButtonName())) {
 }
 
 $ButtonPushed = StdLib::getFormValue("Submit");
+$AF = ApplicationFramework::getInstance();
 switch ($ButtonPushed) {
     case "Begin Import":
         # if the input provided was valid
@@ -130,19 +141,21 @@ switch ($ButtonPushed) {
             # save form values in session for ImportDataExecute to use
             $UniqueField = $FieldValues["UniqueField"];
             $Debug = $FieldValues["Debug"];
+            $Delimiter = $FieldValues["Delimiter"];
             $_SESSION["UniqueField"] = $UniqueField;
             $_SESSION["Debug"] = $Debug;
+            $_SESSION["Delimiter"] = $Delimiter;
             $Path = (new File($FieldValues["File"][0]))->GetNameOfStoredFile();
             $_SESSION["Path"] = $Path;
             $_SESSION["FileId"] = $FieldValues["File"][0];
 
             # go to ImportDataExecute
-            $GLOBALS["AF"]->SetJumpToPage("ImportDataExecute");
+            $AF->SetJumpToPage("ImportDataExecute");
         }
         break;
 
     case "Cancel":
-        $GLOBALS["AF"]->SetJumpToPage("SysAdmin");
+        $AF->SetJumpToPage("SysAdmin");
         break;
 
     default:

@@ -3,14 +3,13 @@
 #   FILE:  Folder_Test.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2023 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 // phpcs:disable PSR1.Classes.ClassDeclaration.MultipleClasses
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
@@ -510,7 +509,7 @@ class Folder_Test extends \PHPUnit\Framework\TestCase
         $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_RESOURCES);
         $SortFieldId = $Schema->getFieldIdByName("Title");
         $ValueCache = [];
-        $SortField = new MetadataField($SortFieldId);
+        $SortField = MetadataField::getField($SortFieldId);
 
         # load values of items not present in cache to cache
         # (value will be used later for sorting)

@@ -3,11 +3,12 @@
 #   FILE:  EditFormat.html (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\File;
+use Metavus\HtmlButton;
 use Metavus\MetadataSchema;
 use Metavus\QualifierFactory;
 use ScoutLib\ApplicationFramework;
@@ -46,15 +47,57 @@ function pe($ValOne, $ValTwo)
 {
     print(($ValOne == $ValTwo) ? " checked" : "");
 }
-function pd($ValOne, $ValTwo = true)
-{
-    print(($ValOne == $ValTwo) ? " disabled" : "");
-}
 
-# ----- MAIN -----------------------------------------------------------------
-
+# ----- SETUP ----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 
+$DeleteXsltFileButton = new HtmlButton("Delete");
+$DeleteXsltFileButton->addSemanticClass("btn-danger");
+$DeleteXsltFileButton->setIcon("Delete.svg");
+$DeleteXsltFileButton->setName("DeleteXsltFile");
+
+$UploadFileButton = new HtmlButton("Upload File");
+$UploadFileButton->setIcon("Upload.svg");
+
+$DeleteNamespaceButton = new HtmlButton("Delete");
+$DeleteNamespaceButton->addSemanticClass("btn-danger");
+$DeleteNamespaceButton->setIcon("Delete.svg");
+
+$DeleteElementButton = new HtmlButton("Delete");
+$DeleteElementButton->setIcon("Delete.svg");
+$DeleteElementButton->addSemanticClass("btn-danger");
+
+$DeleteQualifierButton = new HtmlButton("Delete");
+$DeleteQualifierButton->setIcon("Delete.svg");
+$DeleteQualifierButton->addSemanticClass("btn-danger");
+
+$SaveChangesButton = new HtmlButton("Save Changes");
+$SaveChangesButton->setIcon("Disk.svg");
+
+$AddNamespaceButton = new HtmlButton("Add Namespace");
+$AddNamespaceButton->setIcon("Plus.svg");
+
+$AddElementButton = new HtmlButton("Add Element");
+$AddElementButton->setIcon("Plus.svg");
+
+$AddQualifierButton = new HtmlButton("Add Qualifier");
+$AddQualifierButton->setIcon("Plus.svg");
+
+$DeleteFormatButton = new HtmlButton("Delete Format");
+$DeleteFormatButton->setIcon("Delete.svg");
+$DeleteFormatButton->addSemanticClass("btn-danger");
+
+if ($H_StdFormat) {
+    $AddNamespaceButton->disable();
+    $AddElementButton->disable();
+    $AddQualifierButton->disable();
+    $DeleteFormatButton->disable();
+}
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 PageTitle("OAI-PMH Server - Edit Format");
 ?>
 <div class="container">
@@ -178,84 +221,76 @@ PageTitle("OAI-PMH Server - Edit Format");
             <abbr title="Extensible Stylesheet Language Transformations">XSLT</abbr> File
           </label>
         </th>
-         <td colspan="3">
-           <?PHP if (isset($H_Format["XsltFileId"])) {
-                $ThisFile = new File(intval($H_Format["XsltFileId"]));
-                @pv($ThisFile->Name()); ?>
-             <input type="hidden" name="H_XsltFileId"
-                 value="<?PHP pv($H_Format["XsltFileId"]); ?>" />
-             <button type="submit" name="DeleteXsltFile" value="Delete"
-                class="btn btn-danger mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-                class="mv-button-icon" /> Delete</button>
-           <?PHP } else { ?>
-             <input type="file" id="F_XsltFile" name="F_XsltFile" />
-             <button type="submit" name="Submit" value="Upload File"
-                class="btn btn-primary mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Upload.svg'); ?>" alt=""
-                class="mv-button-icon" /> Upload File</button>
-           <?PHP } ?>
-         </td>
-       </tr>
-     </tbody>
-     <tbody>
-       <tr><th colspan="4" scope="rowgroup">Namespaces</th></tr>
-       <?PHP  if (!isset($H_Format["Namespaces"]) || !count($H_Format["Namespaces"])) {  ?>
-         <tr>
-           <td colspan="3">
-             <i>(no namespaces have been defined for this format)</i>
-           </td>
-         </tr>
-       <?PHP } else { ?>
-           <?PHP
+        <td colspan="3">
+        <?PHP if (isset($H_Format["XsltFileId"])) {
+            $ThisFile = new File(intval($H_Format["XsltFileId"]));
+            @pv($ThisFile->Name()); ?>
+            <input type="hidden" name="H_XsltFileId"
+              value="<?PHP pv($H_Format["XsltFileId"]); ?>" />
+            <?= $DeleteXsltFileButton->getHtml(); ?>
+        <?PHP } else { ?>
+            <input type="file" id="F_XsltFile" name="F_XsltFile" />
+            <?= $UploadFileButton->getHtml(); ?>
+        <?PHP } ?>
+        </td>
+      </tr>
+    </tbody>
+    <tbody>
+      <tr><th colspan="4" scope="rowgroup">Namespaces</th></tr>
+      <?PHP  if (!isset($H_Format["Namespaces"]) || !count($H_Format["Namespaces"])) {  ?>
+        <tr>
+          <td colspan="3">
+            <i>(no namespaces have been defined for this format)</i>
+          </td>
+        </tr>
+      <?PHP } else { ?>
+          <?PHP
             $Index = 0;
             foreach ($H_Format["Namespaces"] as $Name => $Url) { ?>
-       <tr>
-         <th>
+      <tr>
+        <th>
                 <?PHP if ($H_StdFormat) { ?>
-             <label for="F_NamespaceUrl<?PHP  pv($Index); ?>"><?PHP pv($Name); ?></label>
-             <input type="hidden" name="F_NamespaceName<?PHP pv($Index);  ?>"
-                    value="<?PHP  pv($Name);  ?>" />
+          <label for="F_NamespaceUrl<?PHP  pv($Index); ?>"><?PHP pv($Name); ?></label>
+          <input type="hidden" name="F_NamespaceName<?PHP pv($Index);  ?>"
+                 value="<?PHP  pv($Name);  ?>" />
                 <?PHP } else { ?>
-             <input type="text" name="F_NamespaceName<?PHP  pv($Index); ?>"
-                    value="<?PHP  pv($Name);  ?>" size="16" maxlength="80" />
+          <input type="text" name="F_NamespaceName<?PHP  pv($Index); ?>"
+                 value="<?PHP  pv($Name);  ?>" size="16" maxlength="80" />
                 <?PHP } ?>
           <input type="hidden" name="H_NamespaceIndex<?PHP pv($Index);  ?>"
                  value="<?PHP  pv($Name);  ?>" />
-         </th>
-         <td colspan="2">
-           <input type="text" id="F_NamespaceUrl<?PHP  pv($Index); ?>"
-                  name="F_NamespaceUrl<?PHP  pv($Index); ?>"
-                  value="<?PHP  pv($Url);  ?>" size="64" maxlength="80" />
-         </td>
-         <td>
-           <button type="submit" name="DeleteNamespace<?PHP pv($Index);  ?>" value="Delete"
-                class="btn btn-danger mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-                class="mv-button-icon" /> Delete</button>
-         </td>
-       </tr>
+        </th>
+        <td colspan="2">
+          <input type="text" id="F_NamespaceUrl<?PHP  pv($Index); ?>"
+                 name="F_NamespaceUrl<?PHP  pv($Index); ?>"
+                 value="<?PHP  pv($Url);  ?>" size="64" maxlength="80" />
+        </td>
+        <td>
+                <?PHP $DeleteNamespaceButton->setName("DeleteNamespace" . $Index); ?>
+                <?= $DeleteNamespaceButton->getHtml(); ?>
+        </td>
+      </tr>
                 <?PHP $Index++;
             } ?>
-       <?PHP } ?>
-     </tbody>
-     <tbody>
-       <tr><th colspan="4" scope="rowgroup">Elements</th></tr>
-       <tr><th>Local field</th>
-         <th>OAI field</th>
-         <th>Default value <img class="cw-form-instructions" style="vertical-align: sub;"
-              src="<?= $AF->gUIFile("help.png"); ?>"
-              alt="?" title="Value to use when the local field is unset."/></th>
-         <th></th>
-       </tr>
-       <?PHP  if (!isset($H_Format["Elements"]) || !count($H_Format["Elements"])) {  ?>
-         <tr>
-           <td colspan="4">
-             <i>(no elements have been defined for this format)</i>
-           </td>
-         </tr>
-       <?PHP } else { ?>
-           <?PHP
+      <?PHP } ?>
+    </tbody>
+    <tbody>
+      <tr><th colspan="4" scope="rowgroup">Elements</th></tr>
+      <tr><th>Local field</th>
+        <th>OAI field</th>
+        <th>Default value <img class="cw-form-instructions" style="vertical-align: sub;"
+             src="<?= $AF->gUIFile("help.png"); ?>"
+             alt="?" title="Value to use when the local field is unset."/></th>
+        <th></th>
+      </tr>
+      <?PHP  if (!isset($H_Format["Elements"]) || !count($H_Format["Elements"])) {  ?>
+        <tr>
+          <td colspan="4">
+            <i>(no elements have been defined for this format)</i>
+          </td>
+        </tr>
+      <?PHP } else { ?>
+          <?PHP
             $Index = 0;
             $Schema = new MetadataSchema();
             foreach ($H_Format["Elements"] as $Name => $Mapping) {
@@ -272,49 +307,47 @@ PageTitle("OAI-PMH Server - Edit Format");
                 );
 
                 $DefaultValue = (isset($H_Format["Defaults"][$Name])) ?
-                            $H_Format["Defaults"][$Name] : "" ;
+                    $H_Format["Defaults"][$Name] : "" ;
                 ?>
-         <tr>
-           <th>
+        <tr>
+          <th>
                 <?= $OptList; ?>
-             <input type="hidden" name="H_ElementIndex<?PHP pv($Index);  ?>"
-                    value="<?PHP  pv($Name);  ?>" />
-           </th>
-           <td>
+            <input type="hidden" name="H_ElementIndex<?PHP pv($Index);  ?>"
+                   value="<?PHP  pv($Name);  ?>" />
+          </th>
+          <td>
                 <?PHP if ($H_StdFormat) { ?>
                     <?PHP pv($Name); ?>
-               <input type="hidden" name="F_ElementName<?PHP  pv($Index); ?>"
-                      value="<?PHP  pv($Name);  ?>" />
+              <input type="hidden" name="F_ElementName<?PHP  pv($Index); ?>"
+                     value="<?PHP  pv($Name);  ?>" />
                 <?PHP } else { ?>
-               <input type="text" name="F_ElementName<?PHP  pv($Index); ?>"
-                      value="<?PHP  pv($Name);  ?>" size="32" maxlength="80" />
+              <input type="text" name="F_ElementName<?PHP  pv($Index); ?>"
+                     value="<?PHP  pv($Name);  ?>" size="32" maxlength="80" />
                 <?PHP } ?>
-           </td>
-           <td>
-             <input type="text" name="F_DefaultMapping<?PHP pv($Index); ?>"
-                    value="<?PHP pv($DefaultValue); ?>" />
-           </td>
-           <td>
-             <button type="submit" name="DeleteElement<?PHP pv($Index);  ?>" value="Delete"
-                class="btn btn-danger mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-                class="mv-button-icon" /> Delete</button>
-           </td>
+          </td>
+          <td>
+            <input type="text" name="F_DefaultMapping<?PHP pv($Index); ?>"
+                   value="<?PHP pv($DefaultValue); ?>" />
+          </td>
+          <td>
+                <?PHP $DeleteElementButton->setName("DeleteElement$Index"); ?>
+                <?= $DeleteElementButton->getHtml(); ?>
+          </td>
         </tr>
                 <?PHP $Index++;
             } ?>
-       <?PHP } ?>
-     </tbody>
-     <tbody>
-       <tr><th colspan="4" scope="rowgroup">Qualifiers</th></tr>
-       <?PHP  if (!isset($H_Format["Qualifiers"]) || !count($H_Format["Qualifiers"])) {  ?>
-         <tr>
-           <td colspan="4">
-             <i>(no qualifiers have been defined for this format)</i>
-           </td>
-         </tr>
-       <?PHP } else { ?>
-           <?PHP
+      <?PHP } ?>
+    </tbody>
+    <tbody>
+      <tr><th colspan="4" scope="rowgroup">Qualifiers</th></tr>
+      <?PHP  if (!isset($H_Format["Qualifiers"]) || !count($H_Format["Qualifiers"])) {  ?>
+        <tr>
+          <td colspan="4">
+            <i>(no qualifiers have been defined for this format)</i>
+          </td>
+        </tr>
+      <?PHP } else { ?>
+          <?PHP
             $Index = 0;
             $QFactory = new QualifierFactory();
             foreach ($H_Format["Qualifiers"] as $Name => $Mapping) {
@@ -324,59 +357,38 @@ PageTitle("OAI-PMH Server - Edit Format");
                     $Mapping
                 );
                 ?>
-         <tr>
-           <td>
+        <tr>
+          <td>
                 <?=  $OptList->GetHtml()  ?>
-             <input type="hidden" name="H_QualifierIndex<?PHP pv($Index);  ?>"
-                    value="<?PHP  pv($Name);  ?>" />
-           </td>
-           <td colspan="2">
+            <input type="hidden" name="H_QualifierIndex<?PHP pv($Index);  ?>"
+                   value="<?PHP  pv($Name);  ?>" />
+          </td>
+          <td colspan="2">
                 <?PHP if ($H_StdFormat) { ?>
                     <?PHP pv($Name); ?>
-               <input type="hidden" name="F_QualifierName<?PHP  pv($Index); ?>"
-                      value="<?PHP  pv($Name);  ?>" />
+              <input type="hidden" name="F_QualifierName<?PHP  pv($Index); ?>"
+                     value="<?PHP  pv($Name);  ?>" />
                 <?PHP } else { ?>
-               <input type="text" name="F_QualifierName<?PHP  pv($Index); ?>"
-                      value="<?PHP  pv($Name);  ?>" size="24" maxlength="80" />
+              <input type="text" name="F_QualifierName<?PHP  pv($Index); ?>"
+                     value="<?PHP  pv($Name);  ?>" size="24" maxlength="80" />
                 <?PHP } ?>
+          </td>
+           <td>
+                <?PHP $DeleteQualifierButton->setName("DeleteQualifier" . $Index); ?>
+                <?= $DeleteQualifierButton->getHtml(); ?>
            </td>
-            <td>
-              <button type="submit" name="DeleteQualifier<?= $Index; ?>" value="Delete"
-                class="btn btn-danger mv-button-iconed"><img
-                src="<?= $AF->GUIFile('Delete.svg'); ?>"
-                alt="" class="mv-button-icon" /> Delete</button>
-            </td>
-         </tr>
+        </tr>
                 <?PHP $Index++;
             } ?>
-       <?PHP } ?>
-     </tbody>
+      <?PHP } ?>
+    </tbody>
   </table>
-
-  <button type="submit" name="Submit" value="Save Changes"
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon" /> Save Changes</button>
-  <button type="submit" name="Submit" value="Add Namespace" <?PHP  pd($H_StdFormat);  ?>
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add Namespace</button>
-  <button type="submit" name="Submit" value="Add Element" <?PHP  pd($H_StdFormat);  ?>
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add Element</button>
-  <button type="submit" name="Submit" value="Add Qualifier" <?PHP  pd($H_StdFormat);  ?>
-        class="btn btn-primary mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add Qualifier</button>
-  <button type="submit" name="Submit" value="Delete Format" <?PHP  pd($H_StdFormat);  ?>
-        class="btn btn-danger mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete Format</button>
-  <button type="submit" name="Submit" value="Cancel"
-        class="btn btn-danger mv-button-iconed"><img
-        src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+    <?= $SaveChangesButton->getHtml(); ?>
+    <?= $AddNamespaceButton->getHtml(); ?>
+    <?= $AddElementButton->getHtml(); ?>
+    <?= $AddQualifierButton->getHtml(); ?>
+    <?= $DeleteFormatButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
 </form>
 
 <script type="text/javascript">

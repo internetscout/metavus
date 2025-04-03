@@ -3,12 +3,13 @@
 #   FILE:  SelectEditUserListComplete.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2003-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2003-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\User;
-use ScoutLib\Database;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
@@ -18,11 +19,10 @@ use ScoutLib\StdLib;
 /**
 * Confirm remove user(s).
 */
-function ConfirmRemoveUsers()
+function ConfirmRemoveUsers(): void
 {
-    $UserRemoveArray = array();
+    $UserRemoveArray = [];
 
-    reset($_POST);
     foreach ($_POST as $Var => $Value) {
         if (preg_match("/userid_([0-9]+)/", $Var)) {
             if (isset($Value)) {
@@ -33,36 +33,37 @@ function ConfirmRemoveUsers()
 
     $_SESSION["UserRemoveArray"] = $UserRemoveArray;
 
-    $GLOBALS["AF"]->SetJumpToPage("ConfirmRemoveUser");
+    ApplicationFramework::getInstance()->setJumpToPage("ConfirmRemoveUser");
 }
 
 /**
 * Remove user(s).
 */
-function RemoveUsers()
+function RemoveUsers(): void
 {
-    $UserRemoveArray = StdLib::getArrayValue($_SESSION, "UserRemoveArray", array());
+    $AF = ApplicationFramework::getInstance();
+    $UserRemoveArray = StdLib::getArrayValue($_SESSION, "UserRemoveArray", []);
 
     foreach ($UserRemoveArray as $UserId) {
         # don't let a user delete his or her own account
-        if ($UserId == User::getCurrentUser()->Id()) {
+        if ($UserId == User::getCurrentUser()->id()) {
             continue;
         }
 
         $RemoveUser = new User(intval($UserId));
-        $GLOBALS["AF"]->signalEvent(
+        $AF->signalEvent(
             "EVENT_USER_DELETED",
             [
-                "UserId" => $RemoveUser->Id(),
+                "UserId" => $RemoveUser->id(),
             ]
         );
-        $RemoveUser->Delete();
+        $RemoveUser->delete();
     }
 
     unset($_SESSION["UserRemoveArray"]);
     unset($_SESSION["OkayToRemoveUsers"]);
 
-    $GLOBALS["AF"]->SetJumpToPage("UserList");
+    $AF->setJumpToPage("UserList");
 }
 
 # ----- MAIN -----------------------------------------------------------------
@@ -72,14 +73,13 @@ if (!CheckAuthorization(PRIV_USERADMIN, PRIV_SYSADMIN)) {
     return;
 }
 
-# grab entry information from database
-$DB = new Database();
+$AF = ApplicationFramework::getInstance();
 
 $Submit = $_POST["Submit"];
 
 # check for Cancel button from previous screen
 if ($Submit == "Cancel") {
-    $AF->SetJumpToPage("UserList");
+    $AF->setJumpToPage("UserList");
 } elseif (substr($Submit, 0, 6) == "Remove") {
     # OK to remove selected user?
     if (isset($_SESSION["OkayToRemoveUsers"])) {

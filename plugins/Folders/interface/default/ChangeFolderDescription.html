@@ -3,15 +3,23 @@
 #   FILE:  ChangeFolderDescription.html (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
-# ----- MAIN -----------------------------------------------------------------
+use Metavus\HtmlButton;
 
+# ----- SETUP ----------------------------------------------------------------
 $SafeId = defaulthtmlentities($Id);
 $SafeDescription = defaulthtmlentities($Description);
 
+$ChangeFolderDescriptionButton = new HtmlButton("Change Folder Description");
+$ChangeFolderDescriptionButton->setIcon("Disk.svg");
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Change Folder Description</h1>
@@ -27,12 +35,6 @@ $SafeDescription = defaulthtmlentities($Description);
     <textarea name="FolderDescription"><?= $SafeDescription; ?></textarea>
   </p>
 
-  <button type="submit" value="Change Folder Description"
-    class="btn btn-primary mv-button-iconed"><img
-    src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-    class="mv-button-icon" /> Change Folder Description</button>
-  <button type="submit" name="Cancel" value="Cancel"
-    class="btn btn-danger mv-button-iconed"><img
-    src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-    class="mv-button-icon" /> Cancel</button>
+  <?= $ChangeFolderDescriptionButton->getHtml(); ?>
+  <?= $CancelButton->getHtml(); ?>
 </form>

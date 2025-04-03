@@ -66,7 +66,7 @@ function SiteUpgrade412_CreateMailerTemplates(): void
         return;
     }
 
-    $Mailer = $GLOBALS["G_PluginManager"]->getPlugin("Mailer");
+    $Mailer = $GLOBALS["G_PluginManager"]->getPlugin("Mailer", true);
     $MailerTemplates = $Mailer->getTemplateList();
 
     # set up missing templates
@@ -169,7 +169,7 @@ function SiteUpgrade412_PopulateFileChecksums(): void
     $FileIds = $DB->fetchColumn("FileId");
 
     foreach ($FileIds as $FileId) {
-        $GLOBALS["AF"]->queueUniqueTask(
+        ApplicationFramework::getInstance()->queueUniqueTask(
             "\\Metavus\\File::callMethod",
             [$FileId, "populateChecksum"],
             \ScoutLib\ApplicationFramework::PRIORITY_LOW,
@@ -188,7 +188,7 @@ function SiteUpgrade412_PopulateImageChecksums(): void
     $ImageIds = $DB->fetchColumn("ImageId");
 
     foreach ($ImageIds as $ImageId) {
-        $GLOBALS["AF"]->queueUniqueTask(
+        ApplicationFramework::getInstance()->queueUniqueTask(
             "\\Metavus\\Image::callMethod",
             [$ImageId, "populateChecksum"],
             \ScoutLib\ApplicationFramework::PRIORITY_LOW,
@@ -207,7 +207,7 @@ function SiteUpgrade412_PopulateImageLengths(): void
     $ImageIds = $DB->fetchColumn("ImageId");
 
     foreach ($ImageIds as $ImageId) {
-        $GLOBALS["AF"]->queueUniqueTask(
+        ApplicationFramework::getInstance()->queueUniqueTask(
             "\\Metavus\\Image::callMethod",
             [$ImageId, "populateLength"],
             \ScoutLib\ApplicationFramework::PRIORITY_LOW,
@@ -294,7 +294,7 @@ function SiteUpgrade412_AddAboutPage(): void
 
         # log a warning if the site admin will need to do something
         if (!$PagesEnabled) {
-            $GLOBALS["AF"]->logError(
+            ApplicationFramework::getInstance()->logError(
                 ApplicationFramework::LOGLVL_WARNING,
                 "Your about page has been moved to the Pages plugin. "
                 ."Enable the Pages plugin in order to access it."

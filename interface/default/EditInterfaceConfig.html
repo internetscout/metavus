@@ -3,16 +3,25 @@
 #   FILE:  EditInterfaceConfig.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
-
+use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
 # ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_Form)) {
+    throw new Exception("Variable \$H_Form not set.");
+}
+if (!isset($H_SelectedInterface)) {
+    throw new Exception("Variable \$H_SelectedInterface not set.");
+}
 
 $AF = ApplicationFramework::getInstance();
 $AvailableInterfaces = $AF->getUserInterfaces();
@@ -29,7 +38,7 @@ $InterfaceOptList->submitOnChange(true);
 PageTitle("Interface Configuration");
 
 ?>
-<form method="POST" action="?P=EditInterfaceConfig" class="priv-form">
+<form method="POST" action="?P=EditInterfaceConfig" enctype="multipart/form-data" class="priv-form">
 <span style="float: right;">Interface: <?PHP  $InterfaceOptList->printHtml();  ?></span>
 <h1>Interface Configuration</h1>
 <?PHP  FormUI::DisplayErrorBlock();  ?>

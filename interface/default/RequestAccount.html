@@ -3,15 +3,29 @@
 #   FILE:  RequestAccount.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
 use ScoutLib\Email;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_AccountCreatedSuccessfully)) {
+    throw new Exception("Variable \$H_AccountCreatedSuccessfully  not set.");
+}
+if (!isset($H_FormUI)) {
+    throw new Exception("Variable \$H_FormUI not set.");
+}
+
+$CreateAccountButton = new HtmlButton("Create Account");
+
+# ----- DISPLAY --------------------------------------------------------------
 if ($H_AccountCreatedSuccessfully) { ?>
     <h1>Activation Email Sent</h1>
 
@@ -39,7 +53,6 @@ if ($H_AccountCreatedSuccessfully) { ?>
 <form method="post" action="index.php?P=RequestAccount">
     <?PHP $H_FormUI->displayFormTable(); ?>
     <div class="mv-content-boundingbox">
-      <button class="btn btn-primary" type="submit" name="Submit" value="Create Account"
-              >Create Account</button>
+        <?= $CreateAccountButton->getHtml(); ?>
     </div>
 </form>

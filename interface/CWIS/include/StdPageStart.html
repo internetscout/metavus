@@ -11,10 +11,11 @@
 
 use Metavus\MetadataSchema;
 use Metavus\InterfaceConfiguration;
-use ScoutLib\ApplicationFramework;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # ----- CONFIGURATION --------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
 # (NOTE: The primary navigation menu can be modified here,
 #   but it may be preferable to modify or extend it by instead using the
@@ -74,7 +75,7 @@ $User = User::getCurrentUser();
 $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
 $MDTNavItems = [
     # Nav Item Label => Nav Item Link
-    "Add New Resource" => str_replace('$ID', "NEW", $Schema->editPage()),
+    "Add New Resource" => str_replace('$ID', "NEW", $Schema->getEditPage()),
     "Add New Controlled Name" => "index.php?P=AddControlledName",
     "Edit Controlled Names" => "index.php?P=EditControlledName&amp;FieldId=0",
     "Edit Option Lists" => "index.php?P=EditOptionList",
@@ -85,7 +86,7 @@ $MDTNavItems = [
 # (if right side is TRUE, item will be displayed)
 $MDTNavExclusions = [
     # Nav Item Link => Whether to Display (boolean)
-    str_replace('$ID', "NEW", $Schema->editPage())
+    str_replace('$ID', "NEW", $Schema->getEditPage())
             => $Schema->AuthoringPrivileges()->MeetsRequirements($User),
     "index.php?P=AddControlledName" => $User->HasPriv(PRIV_NAMEADMIN),
     "index.php?P=EditControlledName&amp;FieldId=0" => $User->HasPriv(PRIV_NAMEADMIN),
@@ -244,7 +245,10 @@ function DisplayNavItems($Items, $PossibleExclusions, $Event, $DisplayFunc, $Too
 
     # signal event to give plugins etc a chance to modify nav item list
     if ($Event !== null) {
-        $SignalResult = $GLOBALS["AF"]->SignalEvent($Event, ["NavItems" => $Items]);
+        $SignalResult = ApplicationFramework::getInstance()->SignalEvent(
+            $Event,
+            ["NavItems" => $Items]
+        );
         $Items = $SignalResult["NavItems"];
     }
 

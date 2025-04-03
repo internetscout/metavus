@@ -3,13 +3,12 @@
 #   FILE:  AutoFetch.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2017-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\File;
 use Metavus\FormUI;
@@ -26,17 +25,18 @@ class AutoFetch extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Auto Fetch";
-        $this->Version = "1.0.3";
+        $this->Version = "1.0.4";
         $this->Description =
             "Automatic downloading of files referenced in URL fields.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "http://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = false;
 
         $this->CfgSetup["TaskPriority"] = [
@@ -96,7 +96,7 @@ class AutoFetch extends Plugin
             "FieldTypes" => MetadataSchema::MDFTYPE_FLAG,
         ];
         $this->CfgSetup["SearchParams"] = [
-            "Type" => FormUI::FTYPE_METADATAFIELD,
+            "Type" => FormUI::FTYPE_SEARCHPARAMS,
             "Label" => "Search Parameters",
             "Help" => "Search parameters matching the resources that should "
                     ."be checked for files to retrieve.  When left blank, all "
@@ -134,42 +134,16 @@ class AutoFetch extends Plugin
      * Handle plugin installation.
      * @return null|string NULL if everything went OK or an error message otherwise
      */
-    public function install()
+    public function install(): ?string
     {
         return $this->createTables($this->SqlTables);
-    }
-
-    /**
-     * Handle plugin upgrades.
-     * @return null|string NULL on success, error string otherwise.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        $DB = new Database();
-        if (version_compare($PreviousVersion, "1.0.2", "<")) {
-            $DB->query(
-                "ALTER TABLE AutoFetch_ResourceUrlInts RENAME AutoFetch_RecordUrlInts"
-            );
-            $DB->query(
-                "ALTER TABLE AutoFetch_RecordUrlInts "
-                ."CHANGE COLUMN ResourceId RecordId INT NOT NULL"
-            );
-        }
-
-        if (version_compare($PreviousVersion, "1.0.3", "<")) {
-            $DB->query(
-                "ALTER TABLE AutoFetch_Urls "
-                ."CHANGE COLUMN LastCheck LastCheck TIMESTAMP DEFAULT NOW()"
-            );
-        }
-        return null;
     }
 
     /**
      * Handle plugin uninstallation.
      * @return null|string NULL on success, otherwise an error string.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         return $this->dropTables($this->SqlTables);
     }
@@ -178,10 +152,10 @@ class AutoFetch extends Plugin
      * Handle plugin initialization.
      * @return null|string NULL on success, error string on failure.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         if (!MetadataSchema::fieldExistsInAnySchema(
-            $this->configSetting("UrlSrcField")
+            $this->getConfigSetting("UrlSrcField")
         )) {
             return "A URL source field must be configured.";
         }
@@ -195,13 +169,13 @@ class AutoFetch extends Plugin
      * Tell the ApplicationFramework which events we'd like to hook.
      * @return array Events to hook
      */
-    public function hookEvents() : array
+    public function hookEvents(): array
     {
         $Events = [
             "EVENT_RESOURCE_FILE_DELETE" => "ClearLogForDeletedFiles",
         ];
 
-        if ($this->configSetting("EnableFetching")) {
+        if ($this->getConfigSetting("EnableFetching")) {
             $Events["EVENT_HOURLY"] = "CheckFileUrlsAndPotentiallyFetchThem";
         }
 
@@ -213,8 +187,9 @@ class AutoFetch extends Plugin
      * @param MetadataField $Field Field file is being deleted from.
      * @param Record $Resource Resource file is being deleted from.
      * @param File $File File to be deleted.
+     * @return void
      */
-    public function clearLogForDeletedFiles($Field, $Resource, $File)
+    public function clearLogForDeletedFiles($Field, $Resource, $File): void
     {
         # if a file has been deleted, also delete the log of when we
         # last fetched it
@@ -224,22 +199,25 @@ class AutoFetch extends Plugin
     /**
      * Perform periodic checking of monitored URLs, downloading a new
      * copy of the file they point to if it has changed.
+     * @return void
      */
-    public function checkFileUrlsAndPotentiallyFetchThem()
+    public function checkFileUrlsAndPotentiallyFetchThem(): void
     {
+        $AF = ApplicationFramework::getInstance();
+
         # if fetches are disabled, bail
-        if (!$this->configSetting("EnableFetching")) {
+        if (!$this->getConfigSetting("EnableFetching")) {
             return;
         }
 
         # if any monitored Urls are still being checked for file updates,
         # don't queue any new update checks yet
-        if ($GLOBALS["AF"]->getQueuedTaskCount([$this, "CheckForFileUpdates"])) {
+        if ($AF->getQueuedTaskCount([$this, "CheckForFileUpdates"])) {
             return;
         }
 
         # construct the list of Record IDs to check
-        $SearchParams = $this->configSetting("SearchParams");
+        $SearchParams = $this->getConfigSetting("SearchParams");
         if ($SearchParams->parameterCount() > 0) {
             $Engine = new SearchEngine();
             $SearchParams->itemTypes(MetadataSchema::SCHEMAID_DEFAULT);
@@ -262,7 +240,7 @@ class AutoFetch extends Plugin
         $this->DB->query(
             "SELECT Url FROM AutoFetch_Urls WHERE "
             ."TIMESTAMPDIFF(DAY,LastCheck,NOW()) > "
-            .intval($this->configSetting("CheckFrequency"))
+            .intval($this->getConfigSetting("CheckFrequency"))
             ." OR LastCheck = 0"
         );
         $Urls = $this->DB->fetchColumn("Url");
@@ -270,10 +248,10 @@ class AutoFetch extends Plugin
         # iterate over those URLs that need checking, queueing a task
         # for each of them
         foreach ($Urls as $Url) {
-            $GLOBALS["AF"]->queueUniqueTask(
+            $AF->queueUniqueTask(
                 [$this, "CheckForFileUpdates"],
                 [$Url],
-                $this->configSetting("TaskPriority"),
+                $this->getConfigSetting("TaskPriority"),
                 "Check file URL, downloading a copy of the file "
                 ."if it has changed since the last download."
             );
@@ -283,123 +261,186 @@ class AutoFetch extends Plugin
     /**
      * Check an individual url for updates.
      * @param string $Url Url to check
+     * @return void
      */
-    public function checkForFileUpdates($Url)
+    public function checkForFileUpdates(string $Url): void
     {
         # if fetches are disabled, bail
-        if (!$this->configSetting("EnableFetching")) {
+        if (!$this->getConfigSetting("EnableFetching")) {
             return;
         }
 
         $Result = $this->checkUrlForChanges($Url);
-        if ($Result["Status"] == "Changed") {
-            # figure out the desired file name, using
-            # Content-Disposition if available and falling back to
-            # parsing the URL if not
-            $FileName = null;
-            if (isset($Result["Headers"]["Content-Disposition"]) &&
-                strpos($Result["Headers"]["Content-Disposition"], "filename") !== false) {
-                // @codingStandardsIgnoreStart
-                # for details on Content-Disposition, see
-                # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
-                // @codingStandardsIgnoreEnd
 
-                # break the header up into semicolon-delimited parts
-                $HeaderParts = explode(";", $Result["Headers"]["Content-Disposition"]);
-                foreach ($HeaderParts as $Chunk) {
-                    # remove leading/trailing whitespace
-                    $Chunk = trim($Chunk);
-
-                    # look for a filename= field, taking its contents
-                    # if found but continuing to look
-                    if (preg_match("%^filename=\"(.*)\"$%", $Chunk, $Matches)) {
-                        $FileName = basename($Matches[1]);
-                    }
-
-                    # also look for filename*= (the MIME-encoded
-                    # version of filename=), taking its contents if
-                    # found and ceasing the search so as to prefer it
-                    # per Mozilla's docs
-                    if (preg_match("%^filename\\*=\"(.*)\"$%", $Chunk, $Matches)) {
-                        $DecodedName = iconv_mime_decode($Matches[1]);
-                        if ($DecodedName !== false) {
-                            $FileName = basename($DecodedName);
-                        }
-                        break;
-                    }
-                }
-            }
-
-            # if no file name was available from the HTTP headers,
-            # generate one from our URL
-            if ($FileName === null) {
-                $UrlPath = parse_url($Url, PHP_URL_PATH);
-                if (is_string($UrlPath)) {
-                    $FileName = basename(urldecode($UrlPath));
-                }
-            }
-
-            # get the list of Record IDs associated with this URL
-            $this->DB->query(
-                "SELECT RecordId FROM AutoFetch_RecordUrlInts "
-                ."WHERE UrlId = ".$Result["UrlId"]
-            );
-            $RecordIds = $this->DB->fetchColumn("RecordId");
-
-            # iterate over the associated resources
-            foreach ($RecordIds as $RecordId) {
-                $Resource = new Record($RecordId);
-
-                # toggle their notification flag
-                $Resource->set($this->configSetting("NotificationField"), 1);
-
-                # create a new file from the response body,
-                # associating it with our resource.
-                # we leave it to the site admin to inspect the newly
-                # download file to determine if they want to keep it, if
-                # they want to delete older versions, or if they want to
-                # move older versions to a Previous Version field.
-                $ThisFile = File::create(
-                    $Result["BodyFile"],
-                    $FileName,
-                    false
-                );
-                if (is_int($ThisFile)) {
-                    throw new Exception("Unable to create File (Src: \""
-                            .$Result["BodyFile"]."\"  Dst: \"".$FileName."\""
-                            ."  Err: ".$ThisFile.").");
-                }
-                $ThisFile->resourceId($RecordId);
-                $ThisFile->fieldId($this->configSetting("DstField"));
-
-                # add the fetch date as a comment
-                $ThisFile->comment(
-                    "Retrieved by AutoFetch on ".date("Y-m-d")
-                );
-
-                # log successful fetch
-                $this->DB->query(
-                    "INSERT INTO AutoFetch_FetchLog (Url, FileId, FetchDate) "
-                    ."VALUES ('".addslashes($Url)."',".$ThisFile->id().",NOW())"
-                );
-            }
-
-            # clean up response body
-            unlink($Result["BodyFile"]);
-        } elseif ($Result["Status"] == "HTTP-Error") {
-            $this->DB->query("INSERT INTO AutoFetch_Errors (UrlId, Error) "
-                       ."VALUES (".$Result["UrlId"].",".
-                       addslashes(
-                           $Result["Headers"]["Status-Line"]["StatusCode"].": "
-                           .$Result["Headers"]["Status-Line"]["ReasonPhrase"]
-                       )."')");
-        } elseif ($Result["Status"] == "Failed") {
-            $this->DB->query("INSERT INTO AutoFetch_Errors (UrlId, Error) "
-                       ."VALUES (".$Result["UrlId"].",".
-                       "'Curl Error: ".addslashes(
-                           $Result["CurlErrno"].": " .$Result["CurlError"]
-                       )."')");
+        # if file is unchanged, bail
+        if ($Result["Status"] == "Unchanged") {
+            return;
         }
+
+        # log errors
+        if (in_array($Result["Status"], ["HTTP-Error", "Failed"])) {
+            $Error = ($Result["Status"] == "HTTP-Error")
+                ? $Result["Headers"]["Status-Line"]["StatusCode"].": "
+                    .$Result["Headers"]["Status-Line"]["ReasonPhrase"]
+                : "Curl Error: ".$Result["CurlErrno"].": " .$Result["CurlError"];
+            $this->DB->query(
+                "INSERT INTO AutoFetch_Errors (UrlId, Error, ErrorDate) VALUES "
+                    ."(".$Result["UrlId"].",'". addslashes($Error)."',NOW()) AS new "
+                    ."ON DUPLICATE KEY UPDATE Error=new.Error, ErrorDate=new.ErrorDate"
+            );
+            return;
+        }
+
+        # otherwise, status *should* be "Changed"; verify that it is
+        if ($Result["Status"] != "Changed") {
+            throw new Exception(
+                "Invalid URL status: ".$Result["Status"]
+                ." (should be impossible)."
+            );
+        }
+
+        # figure out the desired file name, using
+        # Content-Disposition if available and falling back to
+        # parsing the URL if not
+        $FileName = null;
+        if (isset($Result["Headers"]["Content-Disposition"]) &&
+            strpos($Result["Headers"]["Content-Disposition"], "filename") !== false) {
+            // @codingStandardsIgnoreStart
+            # for details on Content-Disposition, see
+            # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
+            // @codingStandardsIgnoreEnd
+
+            # break the header up into semicolon-delimited parts
+            $HeaderParts = explode(";", $Result["Headers"]["Content-Disposition"]);
+            foreach ($HeaderParts as $Chunk) {
+                # remove leading/trailing whitespace
+                $Chunk = trim($Chunk);
+
+                # look for a filename= field, taking its contents
+                # if found but continuing to look
+                if (preg_match("%^filename=\"(.*)\"$%", $Chunk, $Matches)) {
+                    $FileName = basename($Matches[1]);
+                }
+
+                # also look for filename*= (the MIME-encoded
+                # version of filename=), taking its contents if
+                # found and ceasing the search so as to prefer it
+                # per Mozilla's docs
+                if (preg_match("%^filename\\*=\"(.*)\"$%", $Chunk, $Matches)) {
+                    $DecodedName = iconv_mime_decode($Matches[1]);
+                    if ($DecodedName !== false) {
+                        $FileName = basename($DecodedName);
+                    }
+                    break;
+                }
+            }
+        }
+
+        # if no file name was available from the HTTP headers,
+        # generate one from our URL
+        if ($FileName === null) {
+            $UrlPath = parse_url($Url, PHP_URL_PATH);
+            if (is_string($UrlPath)) {
+                $FileName = basename(urldecode($UrlPath));
+            }
+        }
+
+        # get the list of Record IDs associated with this URL
+        $this->DB->query(
+            "SELECT RecordId FROM AutoFetch_RecordUrlInts "
+            ."WHERE UrlId = ".$Result["UrlId"]
+        );
+        $RecordIds = $this->DB->fetchColumn("RecordId");
+
+        if (count($RecordIds) == 0) {
+            $this->resetUrlInfo($Result["UrlId"]);
+            throw new Exception(
+                "URL not associated with any RecordIds "
+                ."(should be impossible)."
+            );
+        }
+
+        # iterate over the associated resources
+        foreach ($RecordIds as $RecordId) {
+            $Resource = new Record($RecordId);
+
+            # if a notification field was configured, toggle it
+            # (when no field is selected, gCS() returns an empty string)
+            $NotificationField = $this->getConfigSetting("NotificationField");
+            if (strlen($NotificationField) > 0) {
+                $Resource->set($NotificationField, 1);
+            }
+
+            # create a new file from the response body,
+            # associating it with our resource.
+            # we leave it to the site admin to inspect the newly
+            # download file to determine if they want to keep it, if
+            # they want to delete older versions, or if they want to
+            # move older versions to a Previous Version field.
+            $ThisFile = File::create(
+                $Result["BodyFile"],
+                $FileName,
+                false
+            );
+            if (is_int($ThisFile)) {
+                $this->resetUrlInfo($Result["UrlId"]);
+                throw new Exception(
+                    "Unable to create File ("
+                    ."Src: \"" .$Result["BodyFile"]."\"  "
+                    ."Dst: \"".$FileName."\"  "
+                    ."Err: ".$ThisFile.")."
+                );
+            }
+
+            # add the fetch date as a comment
+            $ThisFile->comment(
+                "Retrieved by AutoFetch on ".date("Y-m-d")
+            );
+
+            $DstField = $this->getConfigSetting("DstField");
+
+            # iterate over the files currently in our destination field, deleting any
+            # that have the same name as the file we just downloaded
+            $AttachedFiles = $Resource->get($DstField);
+            foreach ($AttachedFiles as $AttachedFileId => $AttachedFileName) {
+                if ($AttachedFileName == $FileName) {
+                    $Resource->clear($DstField, $AttachedFileId);
+                }
+            }
+
+            # add our file to the record
+            $Resource->set($DstField, $ThisFile);
+
+            # look up the ID of our newly attached file
+            $FileId = null;
+            $AttachedFiles = $Resource->get($DstField);
+            foreach ($AttachedFiles as $AttachedFileId => $AttachedFileName) {
+                if ($AttachedFileName == $FileName) {
+                    $FileId = $AttachedFileId;
+                    break;
+                }
+            }
+
+            # ensure FileId is not null
+            if (is_null($FileId)) {
+                throw new Exception(
+                    "File not attached to record after Record::set()."
+                        ." (should be impossible)"
+                );
+            }
+
+            # our copy is now a duplicate, so delete it
+            $ThisFile->destroy();
+
+            # log successful fetch
+            $this->DB->query(
+                "INSERT INTO AutoFetch_FetchLog (Url, FileId, FetchDate) "
+                ."VALUES ('".addslashes($Url)."',".$FileId.",NOW())"
+            );
+        }
+
+        # clean up response body
+        unlink($Result["BodyFile"]);
     }
 
     /**
@@ -453,7 +494,7 @@ class AutoFetch extends Plugin
      *      with the inner array containing the following keys: UrlId,
      *      RecordId, Url, LastCheck.
      */
-    public function getRecentlyFetchedUrls($NumToGet = 10): array
+    public function getRecentlyFetchedUrls(int $NumToGet = 10): array
     {
         # pull information from the db on recently fetched resources,
         # using RecordUrlInts to associate Urls with their
@@ -475,18 +516,17 @@ class AutoFetch extends Plugin
      * Add URLs to our to-check list from a list of resources.
      * @param array $RecordIds Record IDs to add.
      */
-    private function addUrlsFromResources($RecordIds)
+    private function addUrlsFromResources(array $RecordIds): void
     {
-
-        $ParId = $this->configSetting("SrcField");
+        $ParId = $this->getConfigSetting("SrcField");
         if (MetadataSchema::fieldExistsInAnySchema($ParId)) {
-            $ParField = new MetadataField($ParId);
+            $ParField = MetadataField::getField($ParId);
         } else {
             $ParField = false;
         }
 
-        $UrlField = new MetadataField(
-            $this->configSetting("UrlSrcField")
+        $UrlField = MetadataField::getField(
+            $this->getConfigSetting("UrlSrcField")
         );
 
         $Exts = $this->allowedExtensions();
@@ -543,11 +583,11 @@ class AutoFetch extends Plugin
      * Get the list of allowed extensions.
      * @return array of allowed file extensions (lower case, without leading dots).
      */
-    private function allowedExtensions()
+    private function allowedExtensions(): array
     {
         $Exts = [];
 
-        $Tmp =  preg_split('%\s+%', $this->configSetting("FileExtensions"));
+        $Tmp =  preg_split('%\s+%', $this->getConfigSetting("FileExtensions"));
         if ($Tmp === false) {
             return [];
         }
@@ -576,7 +616,7 @@ class AutoFetch extends Plugin
      *     status will have CurlErrno and CurlError keys describing the
      *     failure.
      */
-    private function checkUrlForChanges($Url)
+    private function checkUrlForChanges(string $Url): array
     {
         # pull out what we know about this url
         $UrlInfo = $this->getUrlInfo($Url);
@@ -596,6 +636,11 @@ class AutoFetch extends Plugin
         if ($ResultFile !== false) {
             # parse the headers out of the response file
             $HeaderSize = curl_getinfo($Context, CURLINFO_HEADER_SIZE);
+            if ($HeaderSize < 1) {
+                throw new Exception(
+                    "Zero sized reply headers (should be impossible)."
+                );
+            }
             $HeaderString = fread($ResultFile, $HeaderSize);
             if ($HeaderString === false) {
                 throw new Exception(
@@ -685,7 +730,7 @@ class AutoFetch extends Plugin
      *      remote server gave. These files are created with tmpfile(), so PHP
      *      will automatically clean them up.  On failure, FALSE.
      */
-    private function fetchFromUrl($Context, $UrlInfo)
+    private function fetchFromUrl($Context, array $UrlInfo)
     {
         # create a temp file to store responses
         $TempFile = tmpfile();
@@ -735,7 +780,7 @@ class AutoFetch extends Plugin
      * @return array Array where keys are header names and values are
      * header content
      */
-    private static function headerStringToArray($HeaderString)
+    private static function headerStringToArray(string $HeaderString): array
     {
         # convert the headers into an array
         $Headers = [];
@@ -774,7 +819,7 @@ class AutoFetch extends Plugin
      * Url, LastModified, ETag, Hash, Length, LastCheck.  Urls that
      * were never checked will have a LastCheck data of 0000-00-00.
      */
-    private function getUrlInfo($Url, $AddIfMissing = false)
+    private function getUrlInfo(string $Url, bool $AddIfMissing = false): array
     {
         if ($AddIfMissing) {
             $this->DB->query(
@@ -816,37 +861,91 @@ class AutoFetch extends Plugin
      * @param int $UrlId UrlId to update.
      * @param array $Data Fetch result in the format returned by
      *     AutoFetch::checkUrlForChanges().
+     * @return void
      */
-    private function updateUrlInfo($UrlId, $Data)
+    private function updateUrlInfo(int $UrlId, array $Data): void
     {
-        # build up an UPDATE
-        $Query = "UPDATE AutoFetch_Urls SET ";
+        # array of values to save, keyed by column name
+        $Values = [
+            "Status" => "NULL",
+            "HttpResponse" => "NULL",
+            "ETag" => "NULL",
+            "LastModified" => "NULL",
+            "Hash" => "NULL",
+            "Length" => "NULL",
+            "LastCheck" => "NOW()",
+        ];
 
-        # include the ETag if present
-        if (isset($Data["Headers"]["ETag"])) {
-            $Query .= "ETag = '".addslashes($Data["Headers"]["ETag"])."', ";
+        # include HTTP response
+        if (isset($Data["Headers"]["Status-Line"]["StatusCode"])) {
+            $Values["HttpResponse"] = $Data["Headers"]["Status-Line"]["StatusCode"];
         }
 
-        # include Last-Modified if present
-        if (isset($Data["Headers"]["Last-Modified"])) {
-            $Query .= "LastModified = '".addslashes(
-                $Data["Headers"]["Last-Modified"]
-            )."', " ;
+        # include ETag and LastModified if present
+        $HeaderFields = [
+            "ETag" => "ETag",
+            "Last-Modifed" => "LastModified",
+        ];
+        foreach ($HeaderFields as $Header => $Column) {
+            if (isset($Data["Headers"][$Header])) {
+                $Values[$Column] = "'".addslashes($Data["Headers"][$Header])."'";
+            }
         }
 
-        # include content hash if present
-        if (isset($Data["Hash"])) {
-            $Query .= "Hash = '".addslashes($Data["Hash"])."', " ;
+        # include Status, and Hash if present
+        $Fields = ["Status", "Hash"];
+        foreach ($Fields as $Field) {
+            if (isset($Data[$Field])) {
+                $Values[$Field] = "'".addslashes($Data[$Field])."'";
+            }
         }
 
         # include content length if present
         if (isset($Data["Length"])) {
-            $Query .= "Length = ".intval($Data["Length"]).", " ;
+            $Values["Length"] = intval($Data["Length"]);
         }
 
-        # update for the given UrlId
-        $Query .= "LastCheck = NOW() WHERE UrlId=".intval($UrlId) ;
+        # build an update query
+        $Setters = array_map(
+            function ($Col, $Val) {
+                return $Col." = ".$Val;
+            },
+            array_keys($Values),
+            $Values
+        );
 
+        $Query = "UPDATE AutoFetch_Urls SET ".implode(", ", $Setters)
+                ." WHERE UrlId=".$UrlId;
+        $this->DB->query($Query);
+    }
+
+    /**
+     * Reset Url Info for a given Url Id. Should be called after an error
+     * occurs that prevented the fetched file from being attached to its
+     * associated records.
+     * @param int $UrlId UrlId to update.
+     * @return void
+     */
+    private function resetUrlInfo(int $UrlId): void
+    {
+        $Columns = [
+            "HttpResponse",
+            "ETag",
+            "LastModified",
+            "Hash",
+            "Length",
+        ];
+
+        # build an update query
+        $Setters = array_map(
+            function ($Col) {
+                return $Col." = NULL";
+            },
+            $Columns
+        );
+
+        $Query = "UPDATE AutoFetch_Urls SET ".implode(", ", $Setters)
+            ." WHERE UrlId=".$UrlId;
         $this->DB->query($Query);
     }
 
@@ -854,8 +953,9 @@ class AutoFetch extends Plugin
      * Clean stale data out of plugin tables.
      * @param array $RecordIds Array of Record IDs currently being
      *   monitored.
+     * @return void
      */
-    private function cleanStaleData($RecordIds)
+    private function cleanStaleData(array $RecordIds): void
     {
         # remove Record IDs from our intersection table that don't appear in our
         # search results
@@ -881,7 +981,7 @@ class AutoFetch extends Plugin
         $this->DB->query(
             "DELETE FROM AutoFetch_Errors WHERE "
             ."TIMESTAMPDIFF(DAY,ErrorDate,NOW()) > "
-            .$this->configSetting("ErrorLogLifetime")
+            .$this->getConfigSetting("ErrorLogLifetime")
         );
     }
 
@@ -890,6 +990,8 @@ class AutoFetch extends Plugin
         "Urls" => "CREATE TABLE IF NOT EXISTS AutoFetch_Urls (
             UrlId INT AUTO_INCREMENT,
             Url TEXT,
+            Status TEXT,
+            HttpResponse TEXT,
             LastModified TEXT,
             ETag TEXT,
             Hash TEXT,

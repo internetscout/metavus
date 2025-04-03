@@ -3,16 +3,36 @@
 #   FILE:  SearchResults.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
+# bail out if under a high load
+if (!isset($H_HighLoad)) {
+    throw new Exception("Required variable \$H_HighLoad was not initialized");
+}
+$AF = ApplicationFramework::getInstance();
+if ($H_HighLoad) {
+    $H_MaintTitle = "Anonymous Searches Limited";
+    $H_MaintMessage = "Because the site is currently under high load, searches"
+            ." by anonymous users are being limited.<br/> Please try your search"
+            ." again later, or log in before searching, if you have an account.";
+    $MaintFile = is_readable("local/interface/default/MaintenanceMode.html")
+            ? "local/interface/default/MaintenanceMode.html"
+            : "interface/default/MaintenanceMode.html";
+    include($MaintFile);
+    $AF->suppressStandardPageStartAndEnd();
+    return;
+}
+
 # if this access came from an unwanted bot, bail and complain
+if (!isset($H_IsBot)) {
+    throw new Exception("Required variable \$H_IsBot was not initialized");
+}
 if ($H_IsBot) {
     print "<p>Please do not spider search results in an automated fashion. "
         ."It can generate significant system load. ";
@@ -213,12 +233,13 @@ function GetSortControls(
     </form>
 
     <?PHP
+        $AF = ApplicationFramework::getInstance();
         # provide the opportunity to append HTML to controls
         $OurLink = urlencode("index.php?".http_build_query($_GET));
-        $GLOBALS["AF"]->SignalEvent(
+        $AF->SignalEvent(
             "EVENT_HTML_INSERTION_POINT",
             [
-                $GLOBALS["AF"]->GetPageName(),
+                $AF->GetPageName(),
                 "Search Results Buttons",
                 [
                     "ItemType" => $ItemType,
@@ -392,7 +413,7 @@ function printSearchResults(
     # load sort controls HTML
     $Schema = new MetadataSchema($ItemType);
     $SortField = (($SortFieldId != "R") && $Schema->ItemExists($SortFieldId))
-            ? new MetadataField($SortFieldId) : null;
+            ? MetadataField::getField($SortFieldId) : null;
 
     # add a new local default sort field option (Relevance) to the list of available sort fields
     $SortableFields = ["R" => "(Relevance)"] + $Schema->getSortFields();
@@ -433,7 +454,7 @@ function printSearchResults(
         $SearchResults
     );
 
-    $FacetUI->baseLink($BaseLink);
+    $FacetUI->setBaseLink($BaseLink);
 
     # load resources to be displayed
     $ResultsToDisplay = [];
@@ -485,7 +506,7 @@ function printSearchResults(
             <?PHP # ----- FACETED SEARCH BLOCK ---------------------------- ?>
             <div class="col-3 mv-narrow-your-search bg-light border rounded">
                 <p><strong>Narrow&nbsp;Your&nbsp;Search</strong></p>
-                <?PHP $FacetUI->printSearchFacets(); ?>
+                <?= $FacetUI->getHtml(); ?>
             </div>
             <div class="col">
                 <?PHP
@@ -550,11 +571,12 @@ function printSearchResults(
 </div>
 
 <?PHP
+$AF = ApplicationFramework::getInstance();
 # ----- TAB HEADER ----------------------------------------------------------
 $UseTabs = (count($H_SearchResults) > 1);
 if ($UseTabs) {
-    $GLOBALS["AF"]->requireUIFile('jquery-ui.js');
-    $GLOBALS["AF"]->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
+    $AF->requireUIFile('jquery-ui.js');
+    $AF->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
     ?>
     <div id="mv-tabs">
     <ul class="mv-tab-nav">
@@ -599,7 +621,7 @@ if ($UseTabs) {
 # ----- SUPPORTING JAVASCRIPT -----------------------------------------------
 # (ORDER_FIRST is needed so that jquery.cookie.js will be loaded at the top of
 #  the page such that the JS code below can actually use it)
-$GLOBALS["AF"]->requireUIFile('jquery.cookie.js', ApplicationFramework::ORDER_FIRST);
+$AF->requireUIFile('jquery.cookie.js', ApplicationFramework::ORDER_FIRST);
 
 if ($UseTabs) {
     # (get array with item types for index and indexes of item tabs

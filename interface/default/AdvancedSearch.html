@@ -3,25 +3,29 @@
 #   FILE:  AdvancedSearch.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
+use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\SearchEngine;
 
-PageTitle("Advanced Search");
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
-* Display search limit form entry for a specified field type.
-* @param array $Fields Fields that have search limits (FieldId => LabelToDisplay)
-* @param array $SearchValues Values set for this search
-* @param int $TypeMask Bitmask of MetadataSchema::MDFTYPE_ values
-*     specifying which fields to display
-*/
-function DisplayLimits($Fields, $SearchParameters, $TypeMask)
+ * Display search limit form entry for a specified field type.
+ * @param array $Fields Fields that have search limits (FieldId => LabelToDisplay)
+ * @param SearchParameterSet $SearchParameters Values set for this search
+ * @param int $TypeMask Bitmask of MetadataSchema::MDFTYPE_ values
+ *     specifying which fields to display
+ * @return void
+ */
+function DisplayLimits($Fields, $SearchParameters, $TypeMask) : void
 {
     if (count($Fields) == 0) {
         return;
@@ -32,13 +36,18 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask)
 
     print "<div>";
     foreach ($Fields as $FieldId => $DisplayName) {
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField($FieldId);
 
         if ($Field->Type() & $TypeMask) {
             $CurrentValues = $SearchParameters->GetSearchStringsForField($FieldId);
 
+            # (ignore phpstan errors for functions defined in AdvancedSearch.php)
+
+            // @phpstan-ignore function.notFound
             $CurrentValues = ConvertValueNamesToIds($Field, $CurrentValues);
+            // @phpstan-ignore function.notFound
             $PossibleValues = DeterminePossibleValues($Field);
+            // @phpstan-ignore function.notFound
             $DisabledOptions = DetermineDisabledValues($Field, $PossibleValues);
 
             $AllowMultiple =
@@ -64,7 +73,6 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask)
                 );
 
                 $OptionList->PrintHtml();
-
                 print "</div>";
             }
         }
@@ -72,6 +80,85 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask)
     print "</div>";
 }
 
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_FieldsHavingTextForms)) {
+    throw new Exception("H_FieldsHavingTextForms not defined.");
+}
+if (!isset($H_OpenByDefault)) {
+    throw new Exception("H_OpenByDefault not defined.");
+}
+if (!isset($H_OpenSearchLimits)) {
+    throw new Exception("H_OpenSearchLimits not defined.");
+}
+if (!isset($H_RecordsPerPage)) {
+    throw new Exception("H_RecordsPerPage not defined.");
+}
+if (!isset($H_SavedSearches)) {
+    throw new Exception("H_SavedSearches not defined.");
+}
+if (!isset($H_SchemaNames)) {
+    throw new Exception("H_SchemaNames not defined.");
+}
+if (!isset($H_SearchLimits)) {
+    throw new Exception("H_SearchLimits not defined.");
+}
+if (!isset($H_SearchParameters)) {
+    throw new Exception("H_SearchParameters not defined.");
+}
+if (!isset($H_SelectedFields)) {
+    throw new Exception("H_SelectedFields not defined.");
+}
+if (!isset($H_SelectedSortField)) {
+    throw new Exception("H_SelectedSortField not defined.");
+}
+if (!isset($H_SortFields)) {
+    throw new Exception("H_SortFields not defined.");
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$SearchButton = new HtmlButton("Search");
+$SearchButton->setIcon("MagnifyingGlass.svg");
+$SearchButton->setSize(HtmlButton::SIZE_SMALL);
+$SearchButton->makeSubmitButton();
+
+$ShowAllButton = new HtmlButton("Show All");
+$ShowAllButton->setIcon("Maximize.svg");
+$ShowAllButton->addClass("mv-limits-showall");
+$ShowAllButton->setOnclick("showAllLimits()");
+$ShowAllButton->setSize(HtmlButton::SIZE_SMALL);
+
+$HideAllButton = new HtmlButton("Hide All");
+$HideAllButton->setIcon("Minimize.svg");
+$HideAllButton->addClass("mv-limits-hideall");
+$HideAllButton->setOnclick("hideAllLimits()");
+$HideAllButton->setSize(HtmlButton::SIZE_SMALL);
+
+$SaveButton = new HtmlButton("Save");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->setSize(HtmlButton::SIZE_SMALL);
+$SaveButton->makeSubmitButton();
+
+$ClearButton = new HtmlButton("Clear");
+$ClearButton->setIcon("Broom.svg");
+$ClearButton->setSize(HtmlButton::SIZE_SMALL);
+$ClearButton->setTitle("Reset all search terms");
+$ClearButton->setLink("index.php?P=AdvancedSearch");
+
+$CheckIfButton = new HtmlButton("Allow Unassigned Values");
+$CheckIfButton->setIcon("Check.svg");
+$CheckIfButton->addClass("toggle-disabled");
+$CheckIfButton->setSize(HtmlButton::SIZE_SMALL);
+
+$AddFieldButton = new HtmlButton("Add Field");
+$AddFieldButton->setIcon("Plus.svg");
+$AddFieldButton->addClass("mv-content-addfield");
+$AddFieldButton->setSize(HtmlButton::SIZE_SMALL);
+$AddFieldButton->setOnclick("addFieldClick()");
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Advanced Search");
 ?>
 <script type="text/javascript" src="<?PHP $AF->PUIFile("jquery.cookie.js"); ?>"></script>
 <div class="container">
@@ -82,7 +169,7 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask)
   </div>
 </div>
 
-<?PHP if (!is_null($H_Error)) {
+<?PHP if (isset($H_Error)) {
       print "<ul class=\"mv-form-error\"><li>".$H_Error."</li></ul>";
 } ?>
 
@@ -161,16 +248,10 @@ foreach ($H_SelectedFields as $FieldId) {
       <div class="row">
         <div class="col mv-search-header">
           <h2 class="mv-limits-main mv-limits-header">Limits (Optional)</h2>
-          <button type="button" class="mv-limits-showall btn btn-primary btn-sm mv-button-iconed"
-            ><img src="<?= $AF->GUIFile('Expand.svg'); ?>" alt=""
-            class="mv-button-icon" /> Show all</button>
-          <button type="button" class="mv-limits-hideall btn btn-primary btn-sm mv-button-iconed"
-            ><img src="<?= $AF->GUIFile('Minimize.svg'); ?>" alt=""
-            class="mv-button-icon" /> Hide all</button>
+          <?= $ShowAllButton->getHtml() ?>
+          <?= $HideAllButton->getHtml() ?>
           <?PHP if (CheckAuthorization(PRIV_RESOURCEADMIN)) { ?>
-           <button type="button" class="toggle-disabled btn btn-primary btn-sm mv-button-iconed"
-            ><img src="<?= $AF->GUIFile('Check.svg'); ?>" alt=""
-            class="mv-button-icon" /> Allow Unassigned Values</button>
+                <?= $CheckIfButton->getHtml() ?>
           <?PHP } ?>
         </div>
       </div>
@@ -199,22 +280,14 @@ foreach ($H_SelectedFields as $FieldId) {
 
     <div id="mv-form-buttons" style="clear: both;" class="container">
       <div class="row">
-        <div class="col-4 text-left">
-          <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-            value="Search"><img src="<?= $AF->GUIFile('MagnifyingGlass.svg'); ?>" alt=""
-            class="mv-button-icon" /> Search</button>
-          <?PHP if (User::getCurrentUser()->IsLoggedIn()) { ?>
-          <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-            value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-            class="mv-button-icon" /> Save</button>
-          <?PHP } ?>
-          <a class="btn btn-primary mv-button-iconed"
-             title="Reset all search terms"
-             href="index.php?P=AdvancedSearch"
-            ><img src="<?= $AF->GUIFile('Broom.svg'); ?>" alt=""
-                class="mv-button-icon" /> Clear</a>
+        <div class="col-4 text-start">
+            <?= $SearchButton->getHtml() ?>
+            <?PHP if (User::getCurrentUser()->IsLoggedIn()) { ?>
+                <?= $SaveButton->getHtml() ?>
+            <?PHP } ?>
+            <?= $ClearButton->getHtml(); ?>
         </div>
-        <div class="col text-right mv-container-right">
+        <div class="col text-end mv-container-right">
           <?PHP if (isset($H_SavedSearch)) { ?>
           <input type="hidden" name="F_SavedSearchId"
                  value="<?= $H_SavedSearch->Id(); ?>">
@@ -389,65 +462,18 @@ if (count($H_SavedSearches)) {
 <script type="text/javascript">
 var OpenSearchLimits = [ <?= implode(",", $H_OpenSearchLimits); ?> ];
 var DisplayByDefault = "<?= $H_OpenByDefault; ?>";
+// total number of text fields
+var TotalFields = <?= count($H_SelectedFields); ?>;
 
 (function() {
-    // total number of text fields
-    var TotalFields = <?= count($H_SelectedFields); ?>;
-
     // Create, properly position, and show the add field link
-    tgtElement = $('.mv-advanced-operations-column',
+    var tgtElement = $('.mv-advanced-operations-column',
                      $("#F_SearchText"+(TotalFields-1)).parent().parent());
 
-    $('<button type="button" class="btn btn-primary btn-sm mv-content-addfield mv-button-iconed">' +
-      '<img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt="+" class="mv-button-icon" /> ' +
-      'Add Field</button>').appendTo(tgtElement);
+    $('<?= $AddFieldButton->getHtml(); ?>').appendTo(tgtElement);
 
     // make text display a cursor on hover
     $(".mv-limits-header").css("cursor", "pointer");
-
-    // add a field
-    function addFieldClick(event) {
-        // don't follow href if JS is enabled.
-        event.preventDefault();
-
-        // get the first field and clone it
-        var $clone = $(".mv-clone-parent").first().clone();
-
-        // input id and select id
-        var iid = "F_SearchText"+TotalFields;
-        var sid = "F_SearchCat"+TotalFields;
-
-        // update the select box's attributes
-        $("select", $clone).attr({ id: sid, name: sid });
-
-        // randomly select an option in the select box
-        $("select option:selected", $clone).removeAttr("selected");
-        var $options = $("select option", $clone);
-        var random = Math.floor(Math.random() * ($options.size() + 1));
-        $($options.get(random)).attr("selected", "selected");
-
-        // update the input box's attributes
-        $("input", $clone).attr({ id: iid, name: iid}).val('');
-
-        // add clone to parent and increment field total
-        $(".mv-content-searchfields").append($clone);
-        TotalFields++;
-
-        //Remove the add-field button and move to new location
-        var button = $(".mv-content-addfield").detach();
-
-        // we always place the add field button row at the end of the list of options
-        $(".mv-advanced-operations-column").last().append(button);
-
-        // readjust scrolling if difference is > 8 pixels
-        var offset = parseInt($("#AdvancedSearchEnd").position().top - $(window).height());
-        if (offset > 10) {
-            $(window).scrollTop(offset)
-        }
-    };
-
-    // set the initial button click handler listener
-    $("button.mv-content-addfield.btn").click(addFieldClick);
 
     // show/hide limits
     $(".mv-limits-entries").each( function(){
@@ -469,31 +495,66 @@ var DisplayByDefault = "<?= $H_OpenByDefault; ?>";
       container.slideToggle();
       $(".mv-limits-status", $(this)).toggle();
     });
-
-    $(".mv-limits-showall").click(function(){
-        $(".mv-limits-entries").each(function(){
-            if (!$(this).is(':visible')) {
-                $(this).slideToggle();
-                $(".mv-limits-status", $(this).parent()).toggle();
-                $.cookie("mv-limits-"+ $(this).data('schemaid'), 1);
-            }
-        });
-    });
-
-    $(".mv-limits-hideall").click(function(){
-        $(".mv-limits-entries").each(function(){
-            if ($(this).is(':visible')) {
-                $(this).slideToggle();
-                $(".mv-limits-status", $(this).parent()).toggle();
-                $.cookie("mv-limits-"+ $(this).data('schemaid'), 0);
-            }
-        });
-    });
 }());
-</script>
 
-<script type="text/javascript">
-    $("input[type=hidden][name=F_JscptSpmbt]", $(this)).val("8304RPC");
+function addFieldClick() {
+    // get the first field and clone it
+    var $clone = $(".mv-clone-parent").first().clone();
+
+    // input id and select id
+    var iid = "F_SearchText"+TotalFields;
+    var sid = "F_SearchCat"+TotalFields;
+
+    // update the select box's attributes
+    $("select", $clone).attr({ id: sid, name: sid });
+
+    // randomly select an option in the select box
+    $("select option:selected", $clone).removeAttr("selected");
+    var $options = $("select option", $clone);
+    var random = Math.floor(Math.random() * ($options.size() + 1));
+    $($options.get(random)).attr("selected", "selected");
+
+    // update the input box's attributes
+    $("input", $clone).attr({ id: iid, name: iid}).val('');
+
+    // add clone to parent and increment field total
+    $(".mv-content-searchfields").append($clone);
+    TotalFields++;
+
+    //Remove the add-field button and move to new location
+    var button = $(".mv-content-addfield").detach();
+
+    // we always place the add field button row at the end of the list of options
+    $(".mv-advanced-operations-column").last().append(button);
+
+    // readjust scrolling if difference is > 8 pixels
+    var offset = parseInt($("#AdvancedSearchEnd").position().top - $(window).height());
+    if (offset > 10) {
+        $(window).scrollTop(offset)
+    }
+}
+
+function showAllLimits() {
+    $(".mv-limits-entries").each(function(){
+        if (!$(this).is(':visible')) {
+            $(this).slideToggle();
+            $(".mv-limits-status", $(this).parent()).toggle();
+            $.cookie("mv-limits-"+ $(this).data('schemaid'), 1);
+        }
+    });
+}
+
+function hideAllLimits() {
+    $(".mv-limits-entries").each(function(){
+        if ($(this).is(':visible')) {
+            $(this).slideToggle();
+            $(".mv-limits-status", $(this).parent()).toggle();
+            $.cookie("mv-limits-"+ $(this).data('schemaid'), 0);
+        }
+    });
+}
+
+$("input[type=hidden][name=F_JscptSpmbt]", $(this)).val("8304RPC");
 </script>
 
 <?PHP if (CheckAuthorization(PRIV_RESOURCEADMIN)) { ?>

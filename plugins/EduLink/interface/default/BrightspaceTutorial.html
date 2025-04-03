@@ -1,0 +1,51 @@
+<?PHP
+#
+#   FILE:  BrightspaceTutorial.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Metavus\Plugins\EduLink;
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+?>
+<h1>Embedding a resource in Brightspace</h1>
+
+<ol>
+  <li>Select a course to edit and navigate to the front page for that
+    course.</li>
+
+  <li>Select <i>Content</i> from the course menu.<br/>
+    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_1.jpg") ?>"/>
+  </li>
+
+  <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
+    from the <i>Existing Activities</i> drop down menu.<br/>
+    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_2.jpg") ?>"/>
+  </li>
+
+  <li>Use the search box and/or the facets shown at right to locate
+    the resource(s) you want.</li>
+
+  <li>Use the <i>Select</i> buttons to make your resource selections.<br/>
+    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_3.jpg") ?>"/></li>
+
+  <li>When you've selected all the resources you want, press the <i>Send
+      to LMS</i> button to forward your selections back to Brightspace.<br/>
+    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_4.jpg") ?>"/></li>
+
+  <li>Your selected resource(s) will now appear in the course content list.</li>
+</ol>
+
+<style type="text/css">
+li + li {
+  margin-top: 0.75em;
+}
+</style>

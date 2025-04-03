@@ -3,17 +3,14 @@
 #   FILE:  SearchParameterSet.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
-use ScoutLib\SearchEngine;
-use ScoutLib\StdLib;
 
 /**
  * Set of parameters used to perform a search.
@@ -32,7 +29,7 @@ class SearchParameterSet
      * @throws InvalidArgumentException If incoming set data appears invalid.
      * @see SearchParameterSet::Data()
      */
-    public function __construct(string $Data = null)
+    public function __construct(?string $Data = null)
     {
         # if set data supplied
         if ($Data !== null) {
@@ -70,7 +67,7 @@ class SearchParameterSet
      * @return string Current logic value ("AND" or "OR").
      * @throws InvalidArgumentException If new value is not "AND" or "OR".
      */
-    public static function defaultLogic(string $NewValue = null): string
+    public static function defaultLogic(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             if (($NewValue != "AND") && ($NewValue != "OR")) {
@@ -90,7 +87,7 @@ class SearchParameterSet
      * @return callable Current CanonicalFieldFunction.
      * @throws InvalidArgumentException If function supplied is not null or callable.
      */
-    public static function canonicalFieldFunction(callable $Func = null)
+    public static function canonicalFieldFunction(?callable $Func = null)
     {
         if (is_callable($Func)) {
             self::$CanonicalFieldFunction = $Func;
@@ -108,7 +105,7 @@ class SearchParameterSet
      * @return callable Current PrintableFieldFunction.
      * @throws InvalidArgumentException If function supplied is not null or callable.
      */
-    public static function printableFieldFunction(callable $Func = null)
+    public static function printableFieldFunction(?callable $Func = null)
     {
         if (is_callable($Func)) {
             self::$PrintableFieldFunction = $Func;
@@ -127,7 +124,7 @@ class SearchParameterSet
      * @return callable Current PrintableValueFunction.
      * @throws InvalidArgumentException If function supplied is not null or callable.
      */
-    public static function printableValueFunction(callable $Func = null)
+    public static function printableValueFunction(?callable $Func = null)
     {
         if (is_callable($Func)) {
             self::$PrintableValueFunction = $Func;
@@ -147,12 +144,12 @@ class SearchParameterSet
      * the field to search can be anything accepted by that function, otherwise
      * the $Field argument must be a type usable as an array index (e.g. an
      * integer or a string).
-     * @param mixed $SearchStrings String or array of strings to search for.
-     * @param mixed $Field Field to search.  (OPTIONAL – defaults to
+     * @param string|array $SearchStrings String or array of strings to search for.
+     * @param mixed $Field Field to search.  (OPTIONAL - defaults to
      *       keyword search if no field specified)
      * @see SearchParameterSet::canonicalFieldFunction()
      */
-    public function addParameter($SearchStrings, $Field = null)
+    public function addParameter($SearchStrings, $Field = null): void
     {
         # normalize field value if supplied
         $Field = self::normalizeField($Field);
@@ -183,7 +180,7 @@ class SearchParameterSet
      *       search match if no field specified)
      * @see SearchParameterSet::canonicalFieldFunction()
      */
-    public function removeParameter($SearchStrings, $Field = null)
+    public function removeParameter($SearchStrings, $Field = null): void
     {
         # normalize field value if supplied
         $Field = self::normalizeField($Field);
@@ -302,7 +299,7 @@ class SearchParameterSet
                 if (!is_array($ItemTypes)) {
                     $ItemTypes = [$ItemTypes];
                 }
-                $this->ItemTypes = $ItemTypes;
+                $this->ItemTypes = array_unique($ItemTypes);
             }
         }
         return $this->ItemTypes;
@@ -332,7 +329,7 @@ class SearchParameterSet
      * @param bool|array $NewValue Boolean value or array of boolean values
      *       indexed by item type.  If TRUE, results will be sorted in descending
      *       order, otherwise results will be sending in ascending order.  (OPTIONAL)
-     * @return boolean|array Boolean value or array of boolean values indexed by
+     * @return bool|array Boolean value or array of boolean values indexed by
      *       item type.  If TRUE, results will be sorted in descending order
      *       otherwise if FALSE, results will be sorted in ascending order.
      */
@@ -348,7 +345,7 @@ class SearchParameterSet
      * Add subgroup of search parameters to set.
      * @param SearchParameterSet $Set Subgroup to add.
      */
-    public function addSet(SearchParameterSet $Set)
+    public function addSet(SearchParameterSet $Set): void
     {
         $this->Subgroups[] = $Set;
     }
@@ -386,7 +383,7 @@ class SearchParameterSet
         $SearchStrings = $this->SearchStrings;
         if ($IncludeSubgroups) {
             foreach ($this->Subgroups as $Group) {
-                $SubStrings = $Group->GetSearchStrings(true);
+                $SubStrings = $Group->getSearchStrings(true);
                 foreach ($SubStrings as $Field => $Strings) {
                     if (isset($SearchStrings[$Field])) {
                         $SearchStrings[$Field] = array_merge(
@@ -426,7 +423,7 @@ class SearchParameterSet
                 # add any strings from that subgroup
                 $Strings = array_merge(
                     $Strings,
-                    $Group->GetSearchStringsForField($Field)
+                    $Group->getSearchStringsForField($Field)
                 );
             }
         }
@@ -492,7 +489,7 @@ class SearchParameterSet
      * @return string Current search parameter set data (opaque value).
      * @throws InvalidArgumentException If incoming set data appears invalid.
      */
-    public function data(string $NewValue = null): string
+    public function data(?string $NewValue = null): string
     {
         # if new data supplied
         if ($NewValue !== null) {
@@ -517,7 +514,7 @@ class SearchParameterSet
             }
         }
         if ($this->ItemTypes !== false) {
-            $Data["ItemTypes"] = $this->ItemTypes;
+            $Data["ItemTypes"] = array_unique($this->ItemTypes);
         }
         return serialize($Data);
     }
@@ -560,16 +557,8 @@ class SearchParameterSet
         # get/set parameters
         $Params = $this->urlParameters($NewValue);
 
-        # combine values into string
-        $ParamString = "";
-        $Separator = "";
-        foreach ($Params as $Index => $Value) {
-            $ParamString .= $Separator.$Index."=".urlencode($Value);
-            $Separator = "&";
-        }
-
-        # return string to caller
-        return $ParamString;
+        # assemble into string and return it to caller
+        return http_build_query($Params);
     }
 
     /**
@@ -623,6 +612,11 @@ class SearchParameterSet
         # for each keyword search string
         $Descriptions = array();
         foreach ($this->KeywordSearchStrings as $SearchString) {
+            # skip empty keyword search strings
+            if (!strlen($SearchString)) {
+                continue;
+            }
+
             # escape search string if appropriate
             if ($IncludeHtml) {
                 $SearchString = defaulthtmlentities($SearchString);
@@ -645,7 +639,8 @@ class SearchParameterSet
                     $SearchString,
                     $Matches
                 );
-                $Operator = ($MatchResult == 1) ? $Matches[1] : null;
+                $Operator = ($MatchResult == 1 && isset($Matches[1])) ?
+                    $Matches[1] : null;
 
                 # determine operator phrase
                 if (($MatchResult == 1) && isset($OperatorPhrases[$Operator])) {
@@ -679,20 +674,29 @@ class SearchParameterSet
                     $SearchString = defaulthtmlentities($SearchString);
                 }
 
+                # assemble printable version of value
+                $Value = $LiteralStart.$SearchString.$LiteralEnd;
+
+                # handle empty search strings for equality and inequality
+                if (!strlen($SearchString)) {
+                    if (($OpPhrase == "is") || ($OpPhrase == "is not")) {
+                        $Value = "empty";
+                    }
+                }
+
                 # handle special case of dates relative to current time
                 if (strcasecmp($SearchString, "now") == 0) {
                     if (($Operator == "<") || ($Operator == "<=")) {
                         $OpPhrase = "is in the past";
-                        $SearchString = "";
+                        $Value = "";
                     } elseif (($Operator == ">") || ($Operator == ">=")) {
                         $OpPhrase = "is in the future";
-                        $SearchString = "";
+                        $Value = "";
                     }
                 }
 
                 # assemble field and operator and value into description
-                $Descriptions[] = $FieldName." ".$OpPhrase." "
-                        .$LiteralStart.$SearchString.$LiteralEnd;
+                $Descriptions[] = $FieldName." ".$OpPhrase." ".$Value;
             }
         }
 
@@ -701,7 +705,7 @@ class SearchParameterSet
             # if subgroup is not empty
             if ($Subgroup->ParameterCount() > 0) {
                 # retrieve description for subgroup
-                $SubgroupDescrip = $Subgroup->TextDescription(
+                $SubgroupDescrip = $Subgroup->textDescription(
                     $IncludeHtml,
                     $StartWithBreak,
                     $TruncateLongWordsTo,
@@ -771,7 +775,7 @@ class SearchParameterSet
      * @param string $Pattern Regular expression pattern.
      * @param string $Replacement Replacement string.
      */
-    public function replaceSearchString(string $Pattern, string $Replacement)
+    public function replaceSearchString(string $Pattern, string $Replacement): void
     {
         # modify our fielded search strings
         foreach ($this->SearchStrings as $Field => $Strings) {
@@ -948,7 +952,7 @@ class SearchParameterSet
      * Set search parameters from legacy array format.
      * @param array $SearchGroups Legacy format search groups.
      */
-    public function setFromLegacyArray(array $SearchGroups)
+    public function setFromLegacyArray(array $SearchGroups): void
     {
         # clear current settings
         $this->KeywordSearchStrings = array();
@@ -977,7 +981,7 @@ class SearchParameterSet
      * Set search parameters from legacy URL string.
      * @param string $ParameterString Legacy url string.
      */
-    public function setFromLegacyUrl(string $ParameterString)
+    public function setFromLegacyUrl(string $ParameterString): void
     {
         # clear current settings
         $this->KeywordSearchStrings = array();
@@ -1057,7 +1061,7 @@ class SearchParameterSet
      * @param callable $Func Function to convert legacy URL parameter
      *     values into modern versions
      */
-    public static function setLegacyUrlTranslationFunction(callable $Func)
+    public static function setLegacyUrlTranslationFunction(callable $Func): void
     {
         self::$LegacyUrlTranslationFunction = $Func;
     }
@@ -1069,16 +1073,16 @@ class SearchParameterSet
      * descriptions. Must take a string as input and return a possibly
      * modified string.
      */
-    public static function setTextDescriptionFilterFunction(callable $Func)
+    public static function setTextDescriptionFilterFunction(callable $Func): void
     {
         self::$TextDescriptionFilterFunction = $Func;
     }
 
     /**
      * Translate legacy search values to modern equivalents if possible.
-     * @param mixed $Field Supplied field
-     * @param mixed $Values Supplied values
-     * @return array of translated values
+     * @param mixed $Field Supplied field.
+     * @param mixed $Values Supplied values.
+     * @return array Translated values.
      */
     public static function translateLegacySearchValues($Field, $Values): array
     {
@@ -1121,7 +1125,7 @@ class SearchParameterSet
      * @param string $Serialized Set data.
      * @throws InvalidArgumentException If incoming set data appears invalid.
      */
-    private function loadFromData(string $Serialized)
+    private function loadFromData(string $Serialized): void
     {
         # unpack new data
         $Data = @unserialize($Serialized);
@@ -1150,7 +1154,7 @@ class SearchParameterSet
 
         # load any item type restrictions
         if (isset($Data["ItemTypes"])) {
-            $this->ItemTypes = $Data["ItemTypes"];
+            $this->ItemTypes = array_unique($Data["ItemTypes"]);
         }
     }
 
@@ -1197,7 +1201,7 @@ class SearchParameterSet
      * Load from legacy format search group.
      * @param array $Group Legacy search group
      */
-    private function loadFromLegacyGroup(array $Group)
+    private function loadFromLegacyGroup(array $Group): void
     {
         # set logic appropriately
         $this->logic(
@@ -1338,7 +1342,7 @@ class SearchParameterSet
      * @see SearchParameterSet::getAsUrlParameters()
      * @throws InvalidArgumentException If some new settings are invalid.
      */
-    private function setFromUrlParameters($UrlParameters)
+    private function setFromUrlParameters($UrlParameters): void
     {
         # if string was passed in
         if (is_string($UrlParameters)) {
@@ -1412,6 +1416,10 @@ class SearchParameterSet
                             = $SearchString;
                 }
             }
+        }
+
+        if (is_array($this->ItemTypes)) {
+            $this->ItemTypes = array_unique($this->ItemTypes);
         }
 
         # if subgroups were found

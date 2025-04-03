@@ -3,16 +3,15 @@
 #   FILE:  DBExportField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Classification;
-use Metavus\ClassificationFactory;
-use Metavus\ControlledName;
-use Metavus\ControlledNameFactory;
-use Metavus\MetadataField;
-use Metavus\MetadataSchema;
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
@@ -21,7 +20,7 @@ use ScoutLib\StdLib;
 /**
 * Initialize variables (first time through they will be null).
 */
-function InitExportVars()
+function InitExportVars(): void
 {
     global $FSeek, $FieldCount;
 
@@ -37,7 +36,7 @@ function InitExportVars()
 /**
 * Perform action. This is the main event.
 */
-function DoWhileLoop()
+function DoWhileLoop(): void
 {
     global $fpo, $FieldCount;
     global $Field, $FSeek;
@@ -55,6 +54,8 @@ function DoWhileLoop()
         $Factory = new ControlledNameFactory();
     } elseif ($Field->Type() == MetadataSchema::MDFTYPE_OPTION) {
         $Factory = new ControlledNameFactory();
+    } else {
+        throw new Exception("Unexpected field type (".$Field->type().").");
     }
 
     $ItemIds = $Factory->GetItemIds("FieldId = ".$Field->Id());
@@ -81,6 +82,8 @@ function DoWhileLoop()
 
 # ----- MAIN -----------------------------------------------------------------
 
+$AF = ApplicationFramework::getInstance();
+
 # non-standard global variables
 global $FSeek;
 global $Field;
@@ -96,7 +99,7 @@ $ClassDB = new Database();
 
 $Schema = new MetadataSchema();
 $FieldId = StdLib::getArrayValue($_GET, "Id");
-$Field = new MetadataField($FieldId);
+$Field = MetadataField::getField($FieldId);
 
 $TempDir = realpath(__DIR__."/../tmp/")."/";
 
@@ -138,6 +141,7 @@ if (!isset($_SESSION["ExportPath"])) {
     $BaseName = $FileNamePrefix."_".date("YmdHis").".txt";
     $ExportPath = $TmpDir.$BaseName;
 } else {
+    $BaseName = "";
     $ExportPath = $_SESSION["ExportPath"];
 }
 

@@ -3,19 +3,18 @@
 #   FILE:  MyResourceViews.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout::phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\MetadataSchema;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
-use ScoutLib\PluginManager;
 
 /**
  * Plugin that adds the recently viewed resources for the current user to the
@@ -25,18 +24,19 @@ class MyResourceViews extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "My Resource Views";
         $this->Version = "1.1.0";
         $this->Description = "Displays list of resources that user"
-                ." has most recently viewed in a box in the sidebar.";
+                ." has most recently viewed.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "MetricsRecorder" => "1.1.1",
         ];
         $this->EnabledByDefault = true;
@@ -77,7 +77,7 @@ class MyResourceViews extends Plugin
      *      string or array of strings containing error message(s) indicating
      *      why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         # register our insertion keywords
         $AF = ApplicationFramework::getInstance();
@@ -99,20 +99,20 @@ class MyResourceViews extends Plugin
         $User = User::getCurrentUser();
 
         # return nothing if no user logged in
-        if (!$User->IsLoggedIn()) {
+        if (!$User->isLoggedIn()) {
             return "";
         }
 
         $Box = "";
         # get the list length + 5 in case some resources cannot be displayed
-        $NumToFetch = $this->configSetting("ListLength") + 5;
+        $NumToFetch = $this->getConfigSetting("ListLength") + 5;
 
         # retrieve list of resources recently viewed by user
-        $PluginMgr = PluginManager::getInstance();
-        $MRecorder = $PluginMgr->getPlugin("MetricsRecorder");
-        $Views = $MRecorder->getFullRecordViews($User, $NumToFetch);
+        $MetricsRecorderPlugin = MetricsRecorder::getInstance();
+        $Views = $MetricsRecorderPlugin->getFullRecordViews($User, $NumToFetch);
 
         # get the resources from the views
+        $Resources = [];
         foreach ($Views as $View) {
             # if resource still exists
             if (Record::itemExists($View["ResourceId"])) {
@@ -123,7 +123,7 @@ class MyResourceViews extends Plugin
                 #       and user can view the resource
                 if (in_array(
                     $Resource->getSchemaId(),
-                    $this->configSetting("ResourceTypeToInclude")
+                    $this->getConfigSetting("ResourceTypeToInclude")
                 )
                 && $Resource->userCanView($User)) {
                     # add resource to display list
@@ -143,7 +143,7 @@ class MyResourceViews extends Plugin
                     ];
 
                     # stop if enough resources have been found
-                    if (count($Resources) >= $this->configSetting("ListLength")) {
+                    if (count($Resources) >= $this->getConfigSetting("ListLength")) {
                         break;
                     }
                 }
@@ -151,12 +151,13 @@ class MyResourceViews extends Plugin
         }
 
         # if there were resources found
-        if (isset($Resources)) {
+        if (count($Resources)) {
             ob_start();
             ?><div class="mv-section mv-section-simple mv-html5-section">
                 <div class="mv-section-header mv-html5-header">
-                    <img src="<?= $GLOBALS["AF"]->gUIFile("EyeOpen.svg") ?>" alt="">
-                    <span><?= htmlspecialchars($this->configSetting("BoxHeader")) ?></span>
+                    <img src="<?=
+                        ApplicationFramework::getInstance()->gUIFile("EyeOpen.svg") ?>" alt="">
+                    <span><?= htmlspecialchars($this->getConfigSetting("BoxHeader")) ?></span>
                 </div>
                 <div class="mv-section-body">
                     <ul class="mv-bullet-list">
@@ -167,7 +168,7 @@ class MyResourceViews extends Plugin
 
                             # format view label
                             $Title = $Rsrc["Resource"]->getMapped("Title");
-                            $Label = strip_tags($Title);
+                            $Label = strip_tags($Title ?? "");
 
                             # add resource view to list in box
                             ?><li>

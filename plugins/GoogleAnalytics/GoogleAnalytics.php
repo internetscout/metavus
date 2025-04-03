@@ -3,13 +3,12 @@
 #   FILE:  GoogleAnalytics.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\WebAnalyticsPlugin;
 use ScoutLib\ApplicationFramework;
 
@@ -25,17 +24,18 @@ class GoogleAnalytics extends WebAnalyticsPlugin
 
     /**
      * Set plugin attributes.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Google Analytics";
         $this->Version = "1.2.0";
         $this->Description = "Add Google Analytics tracking code to the HTML"
                 ." page header.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = false;
     }
 
@@ -43,8 +43,10 @@ class GoogleAnalytics extends WebAnalyticsPlugin
      * Set up configuration options.
      * @return NULL on success or a string on failure.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
+        $AF = ApplicationFramework::getInstance();
+
         $this->CfgSetup["TrackingId"] = [
             "Type" => "Text",
             "Label" => "Default Tracking ID",
@@ -78,7 +80,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
             "Default" => true,
         ];
 
-        $AlternateDomains = $GLOBALS["AF"]->getAlternateDomains();
+        $AlternateDomains = $AF->getAlternateDomains();
         foreach ($AlternateDomains as $Domain) {
             $this->CfgSetup["TrackingId_".$Domain] = [
                 "Type" => "Text",
@@ -117,11 +119,11 @@ class GoogleAnalytics extends WebAnalyticsPlugin
      * @return string|null NULL if initialization was successful, otherwise a string containing
      *       an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         # if we do not have a GA tracking ID
-        if ((strlen($this->configSetting("TrackingId") ?? "") == 0)
-                && (strlen($this->configSetting("SiteVerificationCode") ?? "") == 0)) {
+        if ((strlen($this->getConfigSetting("TrackingId") ?? "") == 0)
+                && (strlen($this->getConfigSetting("SiteVerificationCode") ?? "") == 0)) {
             # return error message about no tracking ID
             return "Either a Google Analytics tracking ID or a Google"
                     ." verification code has not been set.";
@@ -138,7 +140,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
      * @return Array of method names to hook indexed by the event constants
      *       or names to hook them to.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return ["EVENT_IN_HTML_HEADER" => "PrintTrackingCode"];
     }
@@ -149,9 +151,11 @@ class GoogleAnalytics extends WebAnalyticsPlugin
     /**
      * HOOKED METHOD: PrintTrackingCode
      * Write the code for Google Analytics tracking to output.
+     * @return void
      */
-    public function printTrackingCode()
+    public function printTrackingCode(): void
     {
+        $AF = ApplicationFramework::getInstance();
         $TrackingId = $this->getSettingForCurrentDomain("TrackingId");
         $SiteVerificationCode = $this->getSettingForCurrentDomain("SiteVerificationCode");
 
@@ -181,7 +185,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
                     m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
                     })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
                     ga('create', '<?= $TrackingId  ?>', 'auto');
-                    <?PHP  if ($this->configSetting("EnhancedLinkAttribution")) {  ?>
+                    <?PHP  if ($this->getConfigSetting("EnhancedLinkAttribution")) {  ?>
                     ga('require', 'linkid', 'linkid.js');
                     <?PHP  }  ?>
                     ga('send', 'pageview');
@@ -193,7 +197,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
         }
 
         if (strlen($SiteVerificationCode)) {
-            $GLOBALS["AF"]->addMetaTag(
+            $AF->addMetaTag(
                 ["google-site-verification" => $SiteVerificationCode]
             );
         }
@@ -204,12 +208,16 @@ class GoogleAnalytics extends WebAnalyticsPlugin
 
     /**
      * Validate a GA tracking id.
-     * @param string $TrackingId Tracking ID to check.
+     * @param ?string $TrackingId Tracking ID to check.
      * @return bool TRUE for valid IDs, FALSE otherwise
      */
     public static function validateGoogleAnalyticsTrackingId(
-        string $TrackingId
+        ?string $TrackingId
     ) : bool {
+        if (is_null($TrackingId)) {
+            return false;
+        }
+
         # See https://developers.google.com/tag-platform/devguides/existing
         # for some notes about tag formats. Docs there are pretty loose about
         # what characters are allowed for 'X', so we've assumed any alphanumeric could

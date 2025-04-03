@@ -1,0 +1,53 @@
+<?PHP
+#
+#   FILE:  EditFolderSettings.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# if there was an error, report it and exit
+if (isset($H_Error)) {
+    print "<h1>Edit Folder Settings</h1>";
+    print "<div class='alert alert-danger'>".$H_Error."</div>";
+    return;
+}
+
+# verify that required incoming variables are set
+if (!isset($H_FolderId)) {
+    throw new Exception("Variable \$H_FolderId not set.");
+}
+if (!isset($H_FormUI)) {
+    throw new Exception("Variable \$H_FormUI not set.");
+}
+
+$SaveButton = new HtmlButton("Save");
+$SaveButton->makeSubmitButton();
+$SaveButton->setName($H_FormUI->getButtonName());
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->makeSubmitButton();
+$CancelButton->setName($H_FormUI->getButtonName());
+
+# ----- DISPLAY --------------------------------------------------------------
+
+PageTitle("Edit Folder Settings");
+?>
+<h1>Edit Folder Settings</h1>
+<?PHP  FormUI::DisplayErrorBlock();  ?>
+<form method="POST"
+      enctype="multipart/form-data"
+      action="index.php?P=P_Folders_EditFolderSettings&ID=<?= $H_FolderId ?>"
+      class="mv-feui-form">
+  <?PHP  $H_FormUI->DisplayFormTable();  ?>
+  <?= $SaveButton->getHtml() ?>
+  <?= $CancelButton->getHtml() ?>
+</form>

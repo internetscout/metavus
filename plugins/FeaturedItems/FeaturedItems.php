@@ -3,13 +3,12 @@
 #   FILE:  FeaturedItems.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2022-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\ClassificationFactory;
 use Metavus\FormUI;
 use Metavus\MetadataField;
@@ -32,17 +31,18 @@ class FeaturedItems extends Plugin
 
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Featured Items";
         $this->Version = "1.0.1";
-        $this->Description = "A configurable list of featured items.";
+        $this->Description = "Display a configurable list of featured items.";
         $this->Author = "Internet Scout";
-        $this->Url = "http://metavus.net";
+        $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
         ];
         $this->EnabledByDefault = true;
     }
@@ -52,7 +52,7 @@ class FeaturedItems extends Plugin
      * @return string|null Returns NULL if installation succeeded, otherwise a string
      *       containing an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
         # use Date of Record Creation as default sorting field
         $Schema = new MetadataSchema();
@@ -68,32 +68,14 @@ class FeaturedItems extends Plugin
     }
 
     /**
-     * Perform any work needed when the plugin is upgraded to a new version
-     * (for example, adding fields to database tables).
-     * @param string $PreviousVersion The version number of this plugin that was
-     *         previously installed.
-     * @return NULL if upgrade succeeded, otherwise a string containing
-     *         an error message indicating why upgrade failed.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            $this->setConfigSetting("FeaturedResourceCache", null);
-            $this->setConfigSetting("FeaturedResourceCacheUpdated", null);
-        }
-
-        return null;
-    }
-
-    /**
      * Set up plugin configuration options.
      * @return null|string if configuration setup succeeded, otherwise a string with
      *       an error message indicating why config setup failed.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $CachedOptions = !$this->onOurConfigPage() ?
-            $this->configSetting("CachedOptions") : null;
+            $this->getConfigSetting("CachedOptions") : null;
         if (is_array($CachedOptions)) {
             $GroupingFields = $CachedOptions["GroupingFields"];
             $SortingFields = $CachedOptions["SortingFields"];
@@ -122,7 +104,7 @@ class FeaturedItems extends Plugin
                 }
                 $GroupingFields[$SchemaNames[$SchemaId]] = $AllGroupingFields;
             }
-            $this->configSetting(
+            $this->setConfigSetting(
                 "CachedOptions",
                 [
                     "GroupingFields" => $GroupingFields,
@@ -221,7 +203,7 @@ class FeaturedItems extends Plugin
      * @return NULL if initialization was successful, otherwise a string
      *       containing an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         (ApplicationFramework::getInstance())->registerInsertionKeywordCallback(
             "P-FEATUREDITEMS-DISPLAYFEATUREDITEMS",
@@ -229,6 +211,12 @@ class FeaturedItems extends Plugin
             [],
             ["NumItems"]
         );
+
+        Record::registerObserver(
+            Record::EVENT_ADD | Record::EVENT_SET | Record::EVENT_REMOVE,
+            [$this, "resourceUpdated"]
+        );
+
         return null;
     }
 
@@ -239,9 +227,6 @@ class FeaturedItems extends Plugin
     public function hookEvents(): array
     {
         $Events = [
-            "EVENT_RESOURCE_ADD" => "resourceUpdated",
-            "EVENT_RESOURCE_MODIFY" => "resourceUpdated",
-            "EVENT_RESOURCE_DELETE" => "resourceUpdated",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "handleConfigChange",
         ];
 
@@ -256,7 +241,7 @@ class FeaturedItems extends Plugin
      * @param array $Values All setting values.
      * @return string|null NULL on successful validation, error string otherwise.
      */
-    public static function validateField($FieldName, $Value, $Values)
+    public static function validateField($FieldName, $Value, $Values): ?string
     {
         $Schema = new MetadataSchema((int)$Values["ItemType"]);
         $FieldId = (int)$Value;
@@ -268,7 +253,7 @@ class FeaturedItems extends Plugin
         }
 
         if (!$Schema->fieldExists($FieldId)) {
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
             return "Field ".$Field->name()." does not exist for type ".
                 $Schema->name().".";
         }
@@ -288,9 +273,11 @@ class FeaturedItems extends Plugin
     public function displayFeaturedItems($NumItems = null): string
     {
         $FeaturedItems = $this->getFeaturedItems($NumItems);
+        $ShowScreenshot = RecordFactory::recordIdListHasAnyScreenshots($FeaturedItems);
         ob_start();
         foreach ($FeaturedItems as $RecordId) {
             $Summary = ResourceSummary::create($RecordId);
+            $Summary->showScreenshot($ShowScreenshot);
             $Summary->display();
         }
         $FeaturedItemsHtml = ob_get_clean();
@@ -361,9 +348,11 @@ class FeaturedItems extends Plugin
 
     /**
      * Callback executed whenever a resource is updated, i.e., added or modified.
+     * @param int $Events Record::EVENT_* values OR'd together.
      * @param Record $Resource Just-updated resource.
+     * @return void
      */
-    public function resourceUpdated(Record $Resource)
+    public function resourceUpdated(int $Events, Record $Resource): void
     {
         $this->clearCaches();
     }
@@ -374,13 +363,14 @@ class FeaturedItems extends Plugin
      * @param string $ConfigSetting Setting to change.
      * @param mixed $OldValue Old value of setting.
      * @param mixed $NewValue New value of setting.
+     * @returnvoid
      */
     public function handleConfigChange(
         string $PluginName,
         string $ConfigSetting,
         $OldValue,
         $NewValue
-    ) {
+    ): void {
         if ($PluginName == $this->Name) {
             $this->clearCaches();
         }
@@ -453,7 +443,7 @@ class FeaturedItems extends Plugin
         int $FieldId,
         int $Limit
     ): array {
-        $GroupingField = new MetadataField($FieldId);
+        $GroupingField = MetadataField::getField($FieldId);
 
         # reduce down to the first 10 * $Limit records for consideration
         $RecordIds = array_slice($RecordIds, 0, 10 * $Limit, true);
@@ -523,8 +513,9 @@ class FeaturedItems extends Plugin
 
     /**
      * Clear plugin caches.
+     * @return void
      */
-    private function clearCaches()
+    private function clearCaches(): void
     {
         $this->setConfigSetting("FeaturedItemCache", null);
         $this->setConfigSetting("FeaturedItemCacheLastUpdateTime", null);

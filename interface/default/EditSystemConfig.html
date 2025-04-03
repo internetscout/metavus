@@ -3,14 +3,19 @@
 #   FILE:  EditSystemConfig.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
-# ----- SETUP ----------------------------------------------------------------
+use Exception;
 
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_Form)) {
+    throw new Exception("H_Form not defined.");
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 

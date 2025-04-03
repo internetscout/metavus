@@ -3,14 +3,12 @@
 #   FILE:  Developer.php (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Plugins\UrlChecker\InvalidUrl;
-use Metavus\Plugins\UrlChecker\Record;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\PluginManager;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -21,7 +19,7 @@ global $G_NextUrlsToBeChecked;
 PageTitle("URL Checker Developer Page");
 CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
 
-$MyPlugin = PluginManager::getInstance()->getPluginForCurrentPage();
+$MyPlugin = \Metavus\Plugins\UrlChecker::getInstance();
 
 $G_Info = $MyPlugin->getInformation();
 $G_NextResourcesToBeChecked = $MyPlugin->getNextResourcesToBeChecked();

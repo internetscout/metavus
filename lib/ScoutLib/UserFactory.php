@@ -3,13 +3,12 @@
 #   FILE:  UserFactory.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2020-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\Database;
@@ -56,7 +55,7 @@ class UserFactory
         string $PasswordAgain,
         string $EMail,
         string $EMailAgain,
-        array $IgnoreErrorCodes = null
+        ?array $IgnoreErrorCodes = null
     ) {
 
         # check incoming values
@@ -189,7 +188,7 @@ class UserFactory
      *      user count.  (OPTIONAL)
      * @return int Count of users.
      */
-    public function getUserCount(string $Condition = null): int
+    public function getUserCount(?string $Condition = null): int
     {
         return $this->DB->queryValue("SELECT COUNT(*) AS UserCount FROM APUsers"
             . ($Condition ? " WHERE " . $Condition : ""), "UserCount");
@@ -251,7 +250,7 @@ class UserFactory
      * @return array Array of User objects, with IDs for the index.
      */
     public function getRecentlyLoggedInUsers(
-        string $Since = null,
+        ?string $Since = null,
         int $Limit = 10
     ): array {
         # get users recently logged in during the last 24 hours if no date given
@@ -448,10 +447,10 @@ class UserFactory
      */
     public function getMatchingUsers(
         string $SearchString,
-        string $FieldName = null,
+        ?string $FieldName = null,
         string $SortFieldName = "UserName",
         int $ResultsStartAt = 0,
-        int $ReturnNumber = null
+        ?int $ReturnNumber = null
     ): array {
 
         # start with empty array (to prevent array errors)

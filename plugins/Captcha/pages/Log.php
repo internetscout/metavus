@@ -3,11 +3,12 @@
 #   FILE:  Log.php (Captcha plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\ItemListUI;
+use Metavus\Plugins\Captcha;
 use Metavus\User;
 use Metavus\UserFactory;
 use ScoutLib\StdLib;
@@ -66,7 +67,11 @@ $IpLogFields = [
 ] + $CommonLogFields;
 
 
-$CPlugin = $GLOBALS["G_PluginManager"]->getPluginForCurrentPage();
+$CPlugin = Captcha::getInstance();
+
+if (!($CPlugin instanceof \Metavus\Plugins\Captcha)) {
+    throw new Exception("Retrieved plugin is not Captcha (should be impossible).");
+}
 
 $ItemsPerPage = 50;
 

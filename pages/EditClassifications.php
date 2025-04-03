@@ -3,50 +3,27 @@
 #   FILE:  EditClassifications.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\StdLib;
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-/**
-* Get the classification hierarchy ending at the given classification.
-* @param Classification $Classification The classification to end at.
-* @return Returns an array of classifications for the hierarchy.
-*/
-function GetClassificationHierarchy(Classification $Classification)
-{
-    $Hierarchy = array($Classification);
-
-    # add the classifications in reverse order
-    while ($Classification->ParentId() > 0) {
-        $Classification = new Classification($Classification->ParentId());
-        $Hierarchy[] = $Classification;
-    }
-
-    # reverse the hierarchy so that it is in the correct order
-    $Hierarchy = array_reverse($Hierarchy);
-
-    return $Hierarchy;
-}
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
 * Get the metadata schema to use.
 * @param Classification $Parent Optional parent to use as context.
-* @return Returns a metadata schema object.
+* @return MetadataSchema Returns a metadata schema object.
 */
-function GetSchema(Classification $Parent = null)
+function GetSchema(?Classification $Parent = null) : MetadataSchema
 {
     # give priority to the parent ID
     if (!is_null($Parent)) {
-        $Field = new MetadataField($Parent->FieldId());
+        $Field = MetadataField::getField($Parent->FieldId());
 
         if ($Field->Status() === MetadataSchema::MDFSTAT_OK) {
             return new MetadataSchema($Field->SchemaId());
@@ -62,13 +39,15 @@ function GetSchema(Classification $Parent = null)
 * Get the metadata field to use.
 * @param Classification $Parent Optional parent to use as context.
 * @param MetadataSchema $Schema Optional schema to use for context.
-* @return Returns a metadata field or NULL if one couldn't be retrieved.
+* @return ?MetadataField Returns a metadata field or NULL if one couldn't be retrieved.
 */
-function GetField(Classification $Parent = null, MetadataSchema $Schema = null)
-{
+function GetField(
+    ?Classification $Parent = null,
+    ?MetadataSchema $Schema = null
+) : ?MetadataField {
     # give priority to the parent ID
     if (!is_null($Parent)) {
-        $Field = new MetadataField($Parent->FieldId());
+        $Field = MetadataField::getField($Parent->FieldId());
 
         if ($Field->Status() === MetadataSchema::MDFSTAT_OK) {
             return $Field;
@@ -80,7 +59,7 @@ function GetField(Classification $Parent = null, MetadataSchema $Schema = null)
 
     # a field ID was given in the URL
     if (isset($FieldId)) {
-        $Field = new MetadataField($FieldId);
+        $Field = MetadataField::getField($FieldId);
 
         if ($Field->Status() === MetadataSchema::MDFSTAT_OK) {
             return $Field;
@@ -117,15 +96,15 @@ function GetField(Classification $Parent = null, MetadataSchema $Schema = null)
 * @param Classification $Parent The parent classification.
 * @param MetadataField $Field The field to use if the parent isn't given.
 * @param string $SearchParams Search parameter string.
-* @return Returns an array of classifications when there are less than
+* @return array Returns an array of classifications when there are less than
 * NumClassesPerBrowsePage of them, and an array of arrays of
 * classifications (one per alphabet letter) otherwise.
 */
 function GetClassifications(
-    Classification $Parent = null,
-    MetadataField $Field = null,
+    ?Classification $Parent = null,
+    ?MetadataField $Field = null,
     $SearchParams = null
-) {
+) : array {
     $CFactory = new ClassificationFactory(
         ($Field !== null) ? $Field->Id() : null
     );
@@ -210,7 +189,7 @@ try {
     $H_Errors[] = "Invalid parameters specified";
 }
 
-# if there were errors in the paremeters, stop processing
+# if there were errors in the parameters, stop processing
 if (count($H_Errors)) {
     return;
 }

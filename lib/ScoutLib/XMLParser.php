@@ -3,7 +3,7 @@
 #   FILE:  XMLParser.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2005-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2005-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 
@@ -369,7 +369,7 @@ class XMLParser
      * @param string $ElementName Name of element.
      * @param array $ElementAttribs Attributes.
      */
-    private function openTag($Parser, $ElementName, $ElementAttribs)
+    private function openTag($Parser, $ElementName, $ElementAttribs): void
     {
         # add new tag to list
         $NewTagIndex = count($this->TagNames);
@@ -387,7 +387,7 @@ class XMLParser
      * @param object $Parser XML parser.
      * @param string $Data Data found.
      */
-    private function receiveData($Parser, $Data)
+    private function receiveData($Parser, $Data): void
     {
         # add data to currently open tag
         $this->TagData[$this->CurrentParseIndex] .= $Data;
@@ -398,7 +398,7 @@ class XMLParser
      * @param object $Parser XML parser.
      * @param string $ElementName Name of element.
      */
-    private function closeTag($Parser, $ElementName)
+    private function closeTag($Parser, $ElementName): void
     {
         # if we have an open tag and closing tag matches currently open tag
         if (($this->CurrentParseIndex >= 0)
@@ -544,7 +544,7 @@ class XMLParser
      * Rebuild internal list of tags with the same tag name and same parent
      * as current.
      */
-    private function rebuildItemList()
+    private function rebuildItemList(): void
     {
         # get list of tags with the same parent as current tag
         $SameParentTags = array_keys(
@@ -576,7 +576,7 @@ class XMLParser
     /**
      * Internal method for debugging.
      */
-    private function dumpInternalArrays()
+    private function dumpInternalArrays(): void
     {
         foreach ($this->TagNames as $Index => $Name) {
             printf(

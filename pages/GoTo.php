@@ -6,6 +6,7 @@
 #   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
 use ScoutLib\ApplicationFramework;

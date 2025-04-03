@@ -3,15 +3,47 @@
 #   FILE:  AddQualifier.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
+namespace Metavus;
+
+use Exception;
 use Metavus\FormUI;
 use Metavus\ItemListUI;
 
-PageTitle("Add/Edit Qualifiers");
+# ----- MAIN -----------------------------------------------------------------
 
+if (!isset($H_FormUI)) {
+    throw new Exception("H_FormUI not defined.");
+}
+if (!isset($H_Qualifiers)) {
+    throw new Exception("H_Qualifiers not defined.");
+}
+
+$QualifierFactory = new QualifierFactory();
+
+PageTitle("Add/Edit Qualifiers");
+$SubmitButton = new HtmlButton("Add");
+$SubmitButton->setIcon("EyeOpen.svg");
+$SubmitButton->makeSubmitButton();
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+$CancelButton->makeSubmitButton();
+
+$SaveButton = new HtmlButton("Save");
+$SaveButton->setIcon("Disk.svg");
+$SaveButton->makeSubmitButton();
+
+$DeleteSelectedButton = new HtmlButton("Delete Selected");
+$DeleteSelectedButton->setIcon("Delete.svg");
+$DeleteSelectedButton->makeSubmitButton();
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <div class="mv-content-sectioned">
@@ -25,14 +57,9 @@ PageTitle("Add/Edit Qualifiers");
 <form method="post" action="index.php?P=AddQualifier">
     <?PHP $H_FormUI->DisplayFormTable(); ?>
 
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Add"><img src="<?= $AF->GUIFile('Plus.svg'); ?>" alt=""
-        class="mv-button-icon" /> Add</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Cancel"><img src="<?= $AF->GUIFile('Cross.svg'); ?>" alt=""
-        class="mv-button-icon" /> Cancel</button>
+        <?= $SubmitButton->getHtml() ?>             
+        <?= $CancelButton->getHtml() ?>
 </form>
-
 <?PHP if ($QualifierFactory->GetItemCount()) { ?>
 <h2>Edit Existing Qualifiers</h2>
 
@@ -106,15 +133,8 @@ Guide</i></a>.</p>
     ?>
 <form name="updatequalifiers" action="index.php?P=AddQualifier" method="post">
     <?PHP $ListUI->Display($H_Qualifiers); ?>
-
-    <button class="btn btn-primary mv-button-iconed" type="submit" name="Submit"
-        value="Save"><img src="<?= $AF->GUIFile('Disk.svg'); ?>" alt=""
-        class="mv-button-icon" /> Save</button>
-    <button class="btn btn-danger mv-button-iconed" type="submit" name="Submit"
-        value="Delete Selected"><img src="<?= $AF->GUIFile('Delete.svg'); ?>" alt=""
-        class="mv-button-icon" /> Delete Selected</button>
+    <?= $SaveButton->getHtml() ?>
+    <?= $DeleteSelectedButton->getHtml() ?>
 </form>
-
+</div>
 <?PHP } ?>
-
-</div

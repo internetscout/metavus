@@ -3,17 +3,14 @@
 #   FILE:  PopulateField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\MetadataField;
-use Metavus\MetadataSchema;
-use Metavus\VocabularyFactory;
+namespace Metavus;
 
-PageTitle("Populate Metadata Field");
-
-# ----- CONFIGURATION  -------------------------------------------------------
+# ----- MAIN -----------------------------------------------------------------
 
 # location of vocabulary (.voc) files
 $PathToVocabularyFiles = "data/Vocabularies/";
@@ -29,16 +26,16 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
 if (isset($_GET["ID"])) {
     $FieldId = intval($_GET["ID"]);
     if (MetadataSchema::FieldExistsInAnySchema($FieldId)) {
-        $G_Field = new MetadataField($FieldId);
+        $H_Field = MetadataField::getField($FieldId);
     }
 }
-if (!isset($G_Field) || ($G_Field->Status() != MetadataSchema::MDFSTAT_OK)) {
-    $G_ErrorMessages[] = "Could not load metadata field.";
-} elseif (!($G_Field->Type() & (MetadataSchema::MDFTYPE_CONTROLLEDNAME |
+if (!isset($H_Field) || ($H_Field->Status() != MetadataSchema::MDFSTAT_OK)) {
+    $H_ErrorMessages[] = "Could not load metadata field.";
+} elseif (!($H_Field->Type() & (MetadataSchema::MDFTYPE_CONTROLLEDNAME |
                               MetadataSchema::MDFTYPE_OPTION |
                               MetadataSchema::MDFTYPE_TREE))) {
-    $G_ErrorMessages[] =
-            "The <i>".$G_Field->GetDisplayName()
+    $H_ErrorMessages[] =
+            "The <i>".$H_Field->GetDisplayName()
             ."</i> field is not one of the"
             ." types for which population is support.  Only <b>Controlled Name</b>,"
             ." <b>Option</b>, and <b>Tree</b> fields can be populated with"
@@ -49,27 +46,27 @@ if (!isset($G_Field) || ($G_Field->Status() != MetadataSchema::MDFSTAT_OK)) {
 if (isset($_GET["VH"])) {
     # load specified vocabulary
     $VocFact = new VocabularyFactory($PathToVocabularyFiles);
-    $G_Vocabulary = $VocFact->GetVocabularyByHash($_GET["VH"]);
-    if ($G_Vocabulary === null) {
-        $G_ErrorMessages[] = "No vocabulary file found with specified hash.";
+    $H_Vocabulary = $VocFact->GetVocabularyByHash($_GET["VH"]);
+    if ($H_Vocabulary === null) {
+        $H_ErrorMessages[] = "No vocabulary file found with specified hash.";
     } else {
         # if vocabulary import was confirmed
-        if (isset($_GET["CP"]) && !isset($G_ErrorMessages)) {
+        if (isset($_GET["CP"]) && !isset($H_ErrorMessages) && isset($H_Field)) {
             # import specified vocabulary
-            $G_IsVocabImport = true;
+            $H_IsVocabImport = true;
 
-            $G_AddedItemCount = $G_Field->LoadVocabulary($G_Vocabulary);
+            $H_AddedItemCount = $H_Field->LoadVocabulary($H_Vocabulary);
         } else {
             # set flag to indicate preview/confirm
-            $G_IsVocabPreview = true;
+            $H_IsVocabPreview = true;
         }
     }
 } else {
     # load available vocabularies
     $VocFact = new VocabularyFactory($PathToVocabularyFiles);
-    $G_Vocabularies = $VocFact->GetVocabularies();
-    if (count($G_Vocabularies) == 0) {
-        $G_ErrorMessages[] = "No vocabulary files found in <i>"
+    $H_Vocabularies = $VocFact->GetVocabularies();
+    if (count($H_Vocabularies) == 0) {
+        $H_ErrorMessages[] = "No vocabulary files found in <i>"
                            .$PathToVocabularyFiles."</i>.";
     }
 }

@@ -3,15 +3,15 @@
 #   FILE:  Event.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\CalendarEvents;
-
 use DateTime;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\CalendarEvents;
 use Metavus\Record;
 use Metavus\User;
 use Metavus\UserFactory;
@@ -59,7 +59,7 @@ class Event extends Record
     {
         # if clean URLs are available
         if (ApplicationFramework::getInstance()->cleanUrlSupportAvailable()) {
-            $Plugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+            $Plugin = CalendarEvents::getInstance();
 
             # base part of the URL
             $Url = $Plugin->CleanUrlPrefix() . "/" . urlencode((string)$this->Id()) . "/";
@@ -100,7 +100,7 @@ class Event extends Record
     {
         # if clean URLs are available
         if (ApplicationFramework::getInstance()->cleanUrlSupportAvailable()) {
-            $Plugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+            $Plugin = CalendarEvents::getInstance();
 
             # base part of the URL
             $Url = $Plugin->CleanUrlPrefix() . "/ical/" . urlencode((string)$this->Id()) . "/";
@@ -313,25 +313,49 @@ class Event extends Record
      */
     public function startDateForDisplay(): string
     {
-        if ($this->Get("All Day")) {
-            $DateRange = GetPrettyDateRangeInParts(
-                $this->Get("Start Date"),
-                $this->Get("End Date")
-            );
+        # do not show the the year on the start date unless the event only
+        # spans one day *and* the start date is not in the current year
+        $StartDateYear = $this->startDateAsObject()->format("Y");
 
-            # if date range was invalid display --
-            if (is_null($DateRange)) {
-                return "--";
-            }
-
-            return $DateRange["Start"];
+        if ((($StartDateYear == $this->endDateAsObject()->format("Y"))
+                && ($this->spanInDays() > 1))
+                || $StartDateYear == date("Y") ) {
+                $OmitYearFromStartDate = true;
+        } else {
+                $OmitYearFromStartDate = false;
         }
 
-        return str_replace(
-            '12:00am',
-            '',
-            StdLib::getPrettyTimestamp($this->Get("Start Date"), false)
-        );
+        # getPrettyDate returns a date with the name of the month spelled out,
+        # also puts the "th" on August 5th
+        # passing true to getPrettyTimestamp sets the verbose option to use the
+        # longer form expression of the date
+        $FormattedStartDate =
+                StdLib::getPrettyDate($this->Get("Start Date"), true);
+
+        # if date range was invalid display --
+        if ($FormattedStartDate == "--") {
+            return "--";
+        }
+
+        # strings used to determine when a date is too pretty
+        $TooPretty = [
+            "Today", "Yesterday", "Tomorrow", "Sunday", "Monday", "Tuesday",
+            "Wednesday", "Thursday", "Friday", "Saturday"
+        ];
+
+        # if the date is "too pretty"
+        if (in_array($FormattedStartDate, $TooPretty)) {
+            $DateFormat = $OmitYearFromStartDate ?
+                    str_replace(", Y", "", Event::DATE_FOR_DISPLAY) :
+                    Event::DATE_FOR_DISPLAY;
+            return $this->startDateAsObject()->format($DateFormat);
+        }
+
+        if ($OmitYearFromStartDate) {
+            $FormattedStartDate =
+                    str_replace(", ".$StartDateYear, "", $FormattedStartDate);
+        }
+        return $FormattedStartDate;
     }
 
     /**
@@ -340,25 +364,33 @@ class Event extends Record
      */
     public function endDateForDisplay(): string
     {
-        if ($this->Get("All Day")) {
-            $DateRange = GetPrettyDateRangeInParts(
-                $this->Get("Start Date"),
-                $this->Get("End Date")
-            );
+        # passing true to getPrettyTimestamp sets the verbose option to use the
+        # longer form expression of the date
+        $FormattedEndDate = StdLib::getPrettyDate($this->Get("End Date"), true);
 
-            # if date range was invalid, display --
-            if (is_null($DateRange)) {
-                return "--";
-            }
-
-            return $DateRange["End"];
+        # if date range was invalid display --
+        if ($FormattedEndDate == "--") {
+            return "--";
         }
 
-        return str_replace(
-            '12:00am',
-            '',
-            StdLib::getPrettyTimestamp($this->Get("End Date"), false)
-        );
+        # strings used to determine when a date is too pretty
+        $TooPretty = [
+            "Today", "Yesterday", "Tomorrow", "Sunday", "Monday", "Tuesday",
+            "Wednesday", "Thursday", "Friday", "Saturday"
+        ];
+
+        # drop the year off of the date format if the year is the current year
+        if (in_array($FormattedEndDate, $TooPretty)) {
+            if (date("Y") == date("Y", strtotime($this->get("End Date")))) {
+                # if the end date is in the current year, remove the year
+                # from the date format
+                $DateFormat =  str_replace(", Y", "", Event::DATE_FOR_DISPLAY);
+            } else {
+                $DateFormat = Event::DATE_FOR_DISPLAY;
+            }
+            return $this->EndDateAsObject()->format($DateFormat);
+        }
+        return $FormattedEndDate;
     }
 
     /**
@@ -367,11 +399,29 @@ class Event extends Record
      */
     public function startDateTimeForDisplay(): string
     {
-        return str_replace(
-            '12:00am',
-            '',
-            StdLib::getPrettyTimestamp($this->Get("Start Date"))
-        );
+        $StartDate = $this->startDateForDisplay();
+        # startDateForDisplay calls getPrettyTimestamp and avoids using
+        # named days of the week or yesterday/today/tomorrow
+
+        $StartTime = date("g:ia", strtotime($this->Get("Start Date")));
+        $DateWithTime = $StartDate." at ".$StartTime;
+
+        # passing true to getPrettyTimestamp sets that function's
+        # "verbose" option, which indicates the long form string
+        # expression of the date should be returned
+
+        # if both the start or end date is not midnight, print the start time
+        # even if it *is* midnight
+        if ($this->checkIfStartAndEndTimesAreBothMidnight()) {
+            return str_replace(
+                [" at 12:00am"],
+                "",
+                $DateWithTime
+            );
+        }
+        # if the start and end time are not both midnight, print the start time
+        # even if it *is* midnight
+        return $DateWithTime;
     }
 
     /**
@@ -380,11 +430,31 @@ class Event extends Record
      */
     public function endDateTimeForDisplay(): string
     {
-        return str_replace(
-            '12:00am',
-            '',
-            StdLib::getPrettyTimestamp($this->Get("End Date"))
-        ) ;
+        $PartsOfTimestampToRemove = [];
+
+        if ($this->checkIfStartAndEndTimesAreBothMidnight()) {
+            # if both start and end time are midnight, exclude the end time
+            # from the printed date and time
+            # EndDateAsObject() returns the time as "12:00am", not "at 12:00am"
+            $PartsOfTimestampToRemove = ["at 12:00am", "12:00am"];
+        }
+
+        # if the event spans one day, print only the time and not the end date
+        if ($this->spanInDays() == 1) {
+            $DatePart =
+                    StdLib::getPrettyDate($this->Get("End Date"), true)." at ";
+            $PartsOfTimestampToRemove [] = $DatePart;
+        }
+
+        # passing true to getPrettyTimestamp sets the verbose option to use the
+        # longer form expression of the date
+        $EndDate = str_replace(
+            $PartsOfTimestampToRemove,
+            "",
+            StdLib::getPrettyTimestamp($this->Get("End Date"), true)
+        );
+
+        return $EndDate;
     }
 
     /**
@@ -706,6 +776,21 @@ class Event extends Record
         return $this->GetTimestampPrefix($this->Get("End Date"));
     }
 
+   /**
+    * Check if both the start and end time of an event are midnight.
+    * @return bool True if the start and end time of an event are both
+    *         midnight, false otherwise.
+    */
+    public function checkIfStartAndEndTimesAreBothMidnight(): bool
+    {
+        $StartTime = date("g:ia", strtotime($this->Get("Start Date")));
+        $EndTime = date("g:ia", strtotime($this->Get("End Date")));
+        if ($StartTime == "12:00am" && $EndTime == "12:00am") {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Format a user's name for display, using the real name if available and the
      * user name otherwise.
@@ -819,7 +904,7 @@ class Event extends Record
      * stored in the Resources table.
      *@param string $ClassName Class name to set values for.
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         if (!isset(self::$ItemIdColumnNames[$ClassName])) {
             self::$ItemIdColumnNames[$ClassName] = "RecordId";

@@ -3,13 +3,12 @@
 #   FILE:  MessageFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ItemFactory;
 
 /**
@@ -42,7 +41,7 @@ class MessageFactory extends ItemFactory
      * @param int $Count Number of messages to retrieve.  (OPTIONAL)
      * @return array Array of Message objectss.
      */
-    public function getMessagesPostedByUser(int $UserId, int $Count = null): array
+    public function getMessagesPostedByUser(int $UserId, ?int $Count = null): array
     {
         # retrieve message IDs posted by specified user
         $Messages = [];

@@ -3,22 +3,24 @@
 #   FILE:  Captcha.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\Plugin;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
+use ScoutLib\StdLib;
 
 class Captcha extends Plugin
 {
     /**
      * Register the Captcha plugin
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "CAPTCHA Anti-Spam";
         $this->Version = "1.1.0";
@@ -28,7 +30,7 @@ class Captcha extends Plugin
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
-        $this->Requires = [ "MetavusCore" => "1.0.0"];
+        $this->Requires = [ "MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
 
         $this->CfgSetup = [
@@ -76,7 +78,7 @@ class Captcha extends Plugin
     /**
      * Initialize the plugin.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         if (isset($_SESSION[self::SESSION_ALREADY_SOLVED]) &&
             $_SESSION[self::SESSION_ALREADY_SOLVED] === true) {
@@ -90,7 +92,7 @@ class Captcha extends Plugin
     /**
      * Install the Captcha plugin.
      */
-    public function install()
+    public function install(): ?string
     {
         $Result = $this->checkCacheDirectory();
         if (!is_null($Result)) {
@@ -104,7 +106,7 @@ class Captcha extends Plugin
      * Uninstall the plugin.
      * @return NULL|string : NULL if successful or an error message otherwise
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         $Path = $this->getCachePath();
         if (file_exists($Path)) {
@@ -114,7 +116,7 @@ class Captcha extends Plugin
                 unlink($Path."/.htaccess");
             }
 
-            if (!RemoveFromFilesystem($Path)) {
+            if (!StdLib::deleteDirectoryTree($Path)) {
                 return "Could not delete the cache directory.";
             }
         }
@@ -123,73 +125,10 @@ class Captcha extends Plugin
     }
 
     /**
-     * Upgrade the Captcha plugin.
-     * @param string $PreviousVersion Old version to upgrade from
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        if (is_null($this->DB)) {
-            $this->DB = new Database();
-        }
-
-        # ugprade from versions < 1.0.1 to 2.0.0
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            $Method = $this->DB->queryValue("
-                SELECT V FROM CaptchaPrefs
-                WHERE K='Method'", "Method");
-
-            # migrate existing plugin configuration from the database
-            $this->configSetting("Method", $Method);
-
-            # new image dimensions configuration
-            $this->configSetting("Width", 115);
-            $this->configSetting("Height", 40);
-        }
-
-        # upgrade from version 1.0.1 to 1.0.2
-        if (version_compare($PreviousVersion, "1.0.2", "<")) {
-            $Method = $this->configSetting("Method");
-
-            # disabling from the preferences is no longer an option since it's
-            # assumed when enabling/disabling the plugin
-            if (is_null($Method) || $Method == "None" || $Method == "Disabled") {
-                $this->configSetting("Method", "Securimage");
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.0.3", "<")) {
-            $this->configSetting("CaptchaCommentPost", true);
-            $this->configSetting("CaptchaMessagePost", true);
-            $this->configSetting("CaptchaFeedback", true);
-            $this->configSetting("CaptchaSignup", true);
-        }
-
-        if (version_compare($PreviousVersion, "1.0.4", "<")) {
-            $this->DB->query("ALTER TABLE CaptchaIpLog "
-                ."RENAME TO Captcha_IpLog");
-            $this->DB->query("ALTER TABLE CaptchaUserLog "
-                ."RENAME TO Captcha_UserLog");
-        }
-
-        if (version_compare($PreviousVersion, "1.0.5", "<")) {
-            $this->configSetting("DisplayIfLoggedIn", true);
-        }
-
-        if (version_compare($PreviousVersion, "1.1.0", "<")) {
-            $Result = $this->checkCacheDirectory();
-            if (!is_null($Result)) {
-                return $Result;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Hook CAPTCAH plugin into the event system.
      * @return array Events to hook.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         return [
             "EVENT_USER_LOGIN" => "resetState",
@@ -201,7 +140,7 @@ class Captcha extends Plugin
      *  Add a View Captcha Logs entry to the system administration menu
      * @return Array of pages to add.
      */
-    public function sysAdminMenu()
+    public function sysAdminMenu(): array
     {
         return [
             "Log" => "View Captcha Logs",
@@ -216,13 +155,15 @@ class Captcha extends Plugin
      */
     public function getCaptchaHtml(string $UniqueKey = "") : string
     {
+        $AF = ApplicationFramework::getInstance();
+
         # do not cache pages where a Captcha may be displayed
-        $GLOBALS["AF"]->DoNotCacheCurrentPage();
+        $AF->doNotCacheCurrentPage();
 
         $Html = "";
 
         if (User::getCurrentUser()->isLoggedIn()
-            && !$this->configSetting("DisplayIfLoggedIn")) {
+            && !$this->getConfigSetting("DisplayIfLoggedIn")) {
             return $Html;
         }
 
@@ -230,7 +171,7 @@ class Captcha extends Plugin
             return $Html;
         }
 
-        $Method = $this->configSetting("Method");
+        $Method = $this->getConfigSetting("Method");
         switch ($Method) {
             case "Securimage":
                 $Html = $this->getSecurimageCaptchaHtml($UniqueKey);
@@ -256,7 +197,7 @@ class Captcha extends Plugin
      *    TRUE: Captcha displayed and successfully solved
      *    FALSE: Captcha displayed but solved incorrectly
      */
-    public function verifyCaptcha(string $UniqueKey = "")
+    public function verifyCaptcha(string $UniqueKey = ""): ?bool
     {
         # if the user has already solved a captcha, don't prompt them anymore
         if ($this->AlreadySolved) {
@@ -268,7 +209,7 @@ class Captcha extends Plugin
 
         # attempt to validate the captcha, using whatever backend
         # is appropriate for our selected method
-        $Method = $this->configSetting("Method");
+        $Method = $this->getConfigSetting("Method");
         switch ($Method) {
             case "Securimage":
                 $Result = $this->verifySecurimageCaptcha($UniqueKey);
@@ -298,7 +239,7 @@ class Captcha extends Plugin
     /**
      * When a user logs out, clear the flag indicating that they've solved a captcha.
      */
-    public function resetState()
+    public function resetState(): void
     {
         if (isset($_SESSION[self::SESSION_ALREADY_SOLVED])) {
             unset($_SESSION[self::SESSION_ALREADY_SOLVED]);
@@ -372,7 +313,7 @@ class Captcha extends Plugin
     /**
      * Update captcha view logs after a captcha has been displayed.
      */
-    private function updateCaptchaViewLogs()
+    private function updateCaptchaViewLogs(): void
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -407,7 +348,7 @@ class Captcha extends Plugin
      * @param bool $Result TRUE when the captcha was solved correctly, FALSE
      *   when it was not
      */
-    private function updateCaptchaAttemptLogs(bool $Result)
+    private function updateCaptchaAttemptLogs(bool $Result): void
     {
         # retrieve user currently logged in
         $User = User::getCurrentUser();
@@ -438,15 +379,17 @@ class Captcha extends Plugin
      *   others on the page.
      * @return string Captcha HTML.
      */
-    private function getSecurimageCaptchaHtml(string $UniqueKey)
+    private function getSecurimageCaptchaHtml(string $UniqueKey): string
     {
+        $AF = ApplicationFramework::getInstance();
+
         require_once(
             dirname(__FILE__)."/lib/securimage/securimage.php"
         );
 
         $Options = [
             'input_name' => 'captcha_code_'.$UniqueKey,
-            'securimage_path' => $GLOBALS["AF"]->baseUrl()
+            'securimage_path' => $AF->baseUrl()
                 ."plugins/Captcha/lib/securimage/",
             'namespace' => $UniqueKey,
             'image_width' => $this->getConfigSetting("Width"),
@@ -474,7 +417,7 @@ class Captcha extends Plugin
      *    FALSE: Captcha displayed but solved incorrectly
      *    or honeypot form field filled out
      */
-    private function verifySecurimageCaptcha(string $UniqueKey)
+    private function verifySecurimageCaptcha(string $UniqueKey): ?bool
     {
         require_once(
             dirname(__FILE__)."/lib/securimage/securimage.php"
@@ -514,7 +457,7 @@ class Captcha extends Plugin
      * @return null|string NULL on success, error string describing the
      *   problem otherwise.
      */
-    private function checkCacheDirectory()
+    public function checkCacheDirectory(): ?string
     {
         $Path = $this->getCachePath();
 
@@ -550,7 +493,7 @@ class Captcha extends Plugin
     const SESSION_ALREADY_SOLVED = "Captcha_AlreadySolved";
 
     private $AlreadySolved = false;
-    private $DB = null;
+    public $DB = null;
 
     private $SqlTables = [
         "IpLog" => "CREATE TABLE Captcha_IpLog (

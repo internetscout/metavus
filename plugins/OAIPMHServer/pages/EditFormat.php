@@ -3,11 +3,14 @@
 #   FILE:  EditFormat.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use Metavus\File;
+use Metavus\Plugins\OAIPMHServer;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 
 if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
@@ -15,32 +18,30 @@ if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
 }
 
 /**
-* Remove format.
-* @param string $FormatName Name of format.
-*/
-function DeleteFormat($FormatName)
+ * Remove format.
+ * @param string $FormatName Name of format.
+ */
+function DeleteFormat($FormatName): void
 {
     # load existing formats
-    $Plugin = PluginManager::getInstance()
-        ->getPlugin("OAIPMHServer");
-    $Formats = $Plugin->configSetting("Formats");
+    $OAIPMHServerPlugin = OAIPMHServer::getInstance();
+    $Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
 
     unset($Formats[$FormatName]);
 
-    $Plugin->configSetting("Formats", $Formats);
+    $OAIPMHServerPlugin->setConfigSetting("Formats", $Formats);
 }
 
 /**
-* Save changes to format.
-* @param array $Format New format settings.
-* @param string $FormatName Name of format.
-*/
-function SaveChanges($Format, $FormatName)
+ * Save changes to format.
+ * @param array $Format New format settings.
+ * @param string $FormatName Name of format.
+ */
+function SaveChanges($Format, $FormatName): void
 {
     # load existing formats
-    $Plugin = PluginManager::getInstance()
-        ->getPlugin("OAIPMHServer");
-    $Formats = $Plugin->configSetting("Formats");
+    $OAIPMHServerPlugin = OAIPMHServer::getInstance();
+    $Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
 
     # if format name changed
     $OldFormatName = $_POST["H_FormatName"];
@@ -62,7 +63,7 @@ function SaveChanges($Format, $FormatName)
 
     # save format
     $Formats[$FormatName] = $Format;
-    $Plugin->configSetting("Formats", $Formats);
+    $OAIPMHServerPlugin->setConfigSetting("Formats", $Formats);
 }
 
 # define a template format with default values
@@ -77,6 +78,8 @@ $FormatTemplate = [
     "Qualifiers" => ["" => -1],
     "Defaults" => []
 ];
+
+$AF = ApplicationFramework::getInstance();
 
 # if we are coming in from format editing form
 if (isset($_POST["H_FormatName"])) {
@@ -258,7 +261,9 @@ if (isset($_POST["H_FormatName"])) {
             break;
 
         case "Delete Item":
-            unset($Format[$ItemTypeToDelete."s"][$ItemToDelete]);
+            if (isset($ItemTypeToDelete) && isset($ItemToDelete)) {
+                unset($Format[$ItemTypeToDelete."s"][$ItemToDelete]);
+            }
             SaveChanges($Format, $FormatName);
             break;
 
@@ -327,9 +332,8 @@ if (isset($_POST["H_FormatName"])) {
         $H_Format = $FormatTemplate;
     } else {
         # if specified format is available
-        $Plugin = PluginManager::getInstance()
-            ->getPlugin("OAIPMHServer");
-        $Formats = $Plugin->configSetting("Formats");
+        $OAIPMHServerPlugin = OAIPMHServer::getInstance();
+        $Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
         $H_FormatName = $_GET["FN"];
         if (isset($Formats[$H_FormatName])) {
             # retrieve format to be edited

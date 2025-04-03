@@ -3,13 +3,12 @@
 #   FILE:  SystemConfiguration.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2019-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
-
 use InvalidArgumentException;
 
 /**
@@ -40,7 +39,7 @@ class SystemConfiguration extends Datastore
      *      and "Description" entries for each setting.  (OPTIONAL)
      * @return array Current configuration settings list.
      */
-    public static function settings(array $NewValue = null): array
+    public static function settings(?array $NewValue = null): array
     {
         if ($NewValue !== null) {
             static::checkFieldsList($NewValue);
@@ -59,7 +58,7 @@ class SystemConfiguration extends Datastore
      *      settings.  (OPTIONAL)
      * @return string Current name of table.
      */
-    public static function dbTableName(string $NewValue = null): string
+    public static function dbTableName(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             static::$OurDbTableName = $NewValue;
@@ -77,7 +76,7 @@ class SystemConfiguration extends Datastore
      * @param string $SettingName Name of setting.
      * @param array $Value New value for setting.
      */
-    public function overrideArray(string $SettingName, array $Value)
+    public function overrideArray(string $SettingName, array $Value): void
     {
         $this->checkFieldNameAndType($SettingName, [ self::TYPE_ARRAY ]);
         self::checkValue($this->Fields[$SettingName], $SettingName, $Value);
@@ -91,7 +90,7 @@ class SystemConfiguration extends Datastore
      * @param string $SettingName Name of setting.
      * @param bool $Value New value for setting.
      */
-    public function overrideBool(string $SettingName, bool $Value)
+    public function overrideBool(string $SettingName, bool $Value): void
     {
         $this->checkFieldNameAndType($SettingName, [ self::TYPE_BOOL ]);
         self::checkValue($this->Fields[$SettingName], $SettingName, $Value);
@@ -105,7 +104,7 @@ class SystemConfiguration extends Datastore
      * @param string $SettingName Name of setting.
      * @param string $Value New value for setting.
      */
-    public function overrideDatetime(string $SettingName, string $Value)
+    public function overrideDatetime(string $SettingName, string $Value): void
     {
         $this->checkFieldNameAndType($SettingName, [ self::TYPE_DATETIME ]);
         self::checkValue($this->Fields[$SettingName], $SettingName, $Value);
@@ -119,7 +118,7 @@ class SystemConfiguration extends Datastore
      * @param string $SettingName Name of setting.
      * @param float $Value New value for setting.
      */
-    public function overrideFloat(string $SettingName, float $Value)
+    public function overrideFloat(string $SettingName, float $Value): void
     {
         $this->checkFieldNameAndType($SettingName, [ self::TYPE_FLOAT ]);
         self::checkValue($this->Fields[$SettingName], $SettingName, $Value);
@@ -133,7 +132,7 @@ class SystemConfiguration extends Datastore
      * @param string $SettingName Name of setting.
      * @param int $Value New value for setting.
      */
-    public function overrideInt(string $SettingName, int $Value)
+    public function overrideInt(string $SettingName, int $Value): void
     {
         $this->checkFieldNameAndType($SettingName, [ self::TYPE_INT ]);
         self::checkValue($this->Fields[$SettingName], $SettingName, $Value);
@@ -147,7 +146,7 @@ class SystemConfiguration extends Datastore
      * @param string $SettingName Name of setting.
      * @param string $Value New value for setting.
      */
-    public function overrideString(string $SettingName, string $Value)
+    public function overrideString(string $SettingName, string $Value): void
     {
         $this->checkFieldNameAndType($SettingName, [ self::TYPE_STRING ]);
         self::checkValue($this->Fields[$SettingName], $SettingName, $Value);
@@ -170,7 +169,7 @@ class SystemConfiguration extends Datastore
      * Clear any existing override value for a setting.
      * @param string $SettingName Name of setting.
      */
-    public function clearOverride(string $SettingName)
+    public function clearOverride(string $SettingName): void
     {
         if (!isset($this->Fields[$SettingName])) {
             throw new InvalidArgumentException("Invalid setting name \""

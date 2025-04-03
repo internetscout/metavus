@@ -3,13 +3,14 @@
 #   FILE:  OAIItem.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\OAIPMHServer;
 
+use InvalidArgumentException;
 use Metavus\Image;
 use Metavus\MetadataSchema;
 use Metavus\Record;
@@ -32,6 +33,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * @param array $RepDescr Repository description info.
      * @param array $SearchInfo Additional search data to be included with
      *       item metadata.  (OPTIONAL)
+     * @throws InvalidArgumentException in case Item ID is invalid
      */
     public function __construct($ItemId, array $RepDescr, $SearchInfo = null)
     {
@@ -46,14 +48,11 @@ class OAIItem implements \ScoutLib\OAIItem
 
         # if resource ID was invalid
         if (!Record::ItemExists($ItemId)) {
-            # set status to -1 to indicate constructor failure
-            $this->LastStatus = -1;
+            # throw exception with reason to indicate constructor failure
+            throw new InvalidArgumentException("Item ID is invalid.");
         } else {
             # create resource object
             $this->Resource = new Record($ItemId);
-
-            # set status to 1 to indicate constructor success
-            $this->LastStatus = 1;
 
             # if cumulative rating data is available for this resource
             if (InterfaceConfiguration::getInstance()->getBool("ResourceRatingsEnabled")
@@ -236,21 +235,10 @@ class OAIItem implements \ScoutLib\OAIItem
         return $this->SearchInfo;
     }
 
-    /**
-     * Check whether object constructor succeeded.
-     * @return int 1 if constructor succeeded, or -1 if it failed.
-     */
-    public function status()
-    {
-        return $this->LastStatus;
-    }
-
-
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $Id;
     private $Resource;
-    private $LastStatus;
     private $RepDescr;
     private $SearchInfo;
 

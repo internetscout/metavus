@@ -3,15 +3,13 @@
 #   FILE:  EditClassification.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-use Metavus\Classification;
-use Metavus\FormUI;
-use Metavus\MetadataField;
-use Metavus\Qualifier;
+namespace Metavus;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
@@ -33,7 +31,7 @@ $H_ConfirmDelete = false;
 # retrieve class info from DB, as well as it's associated Field ID and list of qualifiers to display
 $H_ClassId = StdLib::getFormValue("ClassificationId", StdLib::getFormValue("F_ClassificationId"));
 $H_Class = new Classification($H_ClassId);
-$Field = new MetadataField($H_Class->fieldId());
+$Field = MetadataField::getField($H_Class->fieldId());
 
 # instantiate form fields
 $FormFields = [
@@ -98,6 +96,7 @@ $H_JumpParams =
     . ((isset($_GET["ParentId"])) ? ("&ParentId=" . intval($_GET["ParentId"])) : "")
     . ((isset($_GET["FieldId"])) ? ("&FieldId=" . intval($_GET["FieldId"])) : "");
 
+$AF = ApplicationFramework::getInstance();
 switch ($ButtonPushed) {
     case "Save Changes":
         # check values and bail out if any are invalid
@@ -122,7 +121,7 @@ switch ($ButtonPushed) {
         $H_Class->recalcDepthAndFullName();
 
         # go back to EditClassifications
-        $GLOBALS["AF"]->SetJumpToPage("EditClassifications" . $H_JumpParams);
+        $AF->SetJumpToPage("EditClassifications" . $H_JumpParams);
         return;
     case "Delete Classification":
         # display confirm delete page
@@ -142,13 +141,14 @@ switch ($ButtonPushed) {
             $Child->destroy(false, true, true);
         }
         $H_Class->destroy(false, true, true);
-        $GLOBALS["AF"]->SetJumpToPage("EditClassifications" . $H_JumpParams);
+        $AF->SetJumpToPage("EditClassifications" . $H_JumpParams);
         return;
     case "Cancel":
-        # if we're cancelling deletion, go back to EditClassification rather than EditClassifications
+        # if we're cancelling deletion, go back to EditClassification
+        #       rather than EditClassifications
         if (array_key_exists("F_ClassificationId", $_POST)) {
             break;
         }
-        $GLOBALS["AF"]->SetJumpToPage("EditClassifications" . $H_JumpParams);
+        $AF->SetJumpToPage("EditClassifications" . $H_JumpParams);
         return;
 }

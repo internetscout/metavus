@@ -3,12 +3,13 @@
 #   FILE:  InlineEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
+use ScoutLib\ApplicationFramework;
 
 /**
  * Provide a div that can be edited in place on the page.
@@ -45,7 +46,7 @@ class InlineEditingUI
      * @param string $NewValue Updated value
      * @return string Display data
      */
-    public function htmlToDisplay(string $NewValue = null) : string
+    public function htmlToDisplay(?string $NewValue = null) : string
     {
         if (!is_null($NewValue)) {
             $this->DisplayData = $NewValue;
@@ -61,7 +62,7 @@ class InlineEditingUI
      * @param string $NewValue Updated value
      * @return string Source data
      */
-    public function sourceData(string $NewValue = null) : string
+    public function sourceData(?string $NewValue = null) : string
     {
         if (!is_null($NewValue)) {
             $this->SourceData = $NewValue;
@@ -76,7 +77,7 @@ class InlineEditingUI
      * @param array $Selectors Selectors in jQuery format.
      * @return array Current list of selectors.
      */
-    public function onEditShowSelectors(array $Selectors = null)
+    public function onEditShowSelectors(?array $Selectors = null)
     {
         return $this->JSControlsSelectorsForEvent("onedit", $Selectors);
     }
@@ -87,7 +88,7 @@ class InlineEditingUI
      * @param array $Selectors Selectors in jQuery format.
      * @return array Current list of selectors.
      */
-    public function onChangeShowSelectors(array $Selectors = null)
+    public function onChangeShowSelectors(?array $Selectors = null)
     {
         return $this->JSControlsSelectorsForEvent("onchange", $Selectors);
     }
@@ -98,7 +99,7 @@ class InlineEditingUI
      * @param array $Selectors Selectors in jQuery format.
      * @return array Current list of selectors.
      */
-    public function onDiscardShowSelectors(array $Selectors = null)
+    public function onDiscardShowSelectors(?array $Selectors = null)
     {
         return $this->JSControlsSelectorsForEvent("ondiscard", $Selectors);
     }
@@ -109,7 +110,7 @@ class InlineEditingUI
      * @param array $Selectors Selectors in jQuery format.
      * @return array Current list of selectors.
      */
-    public function onCancelShowSelectors(array $Selectors = null)
+    public function onCancelShowSelectors(?array $Selectors = null)
     {
         return $this->JSControlsSelectorsForEvent("oncancel", $Selectors);
     }
@@ -120,17 +121,18 @@ class InlineEditingUI
      * @param array $Selectors Selectors in jQuery format.
      * @return array Current list of selectors.
      */
-    public function onSaveShowSelectors(array $Selectors = null)
+    public function onSaveShowSelectors(?array $Selectors = null)
     {
         return $this->JSControlsSelectorsForEvent("onsave", $Selectors);
     }
 
     /**
      * Get HTML for the editing controls (e.g., Save and Cancel buttons).
+     * @return string Editing controls HTML.
      */
-    public function getEditingControlsHtml()
+    public function getEditingControlsHtml(): string
     {
-        $LoadingImg = $GLOBALS["AF"]->GUIFile(self::LOADING_IMG_FILE_NAME);
+        $LoadingImg = ApplicationFramework::getInstance()->gUIFile(self::LOADING_IMG_FILE_NAME);
 
         $Html = '<div class="mv-inline-edit-controls" '
             .'data-editor="'.$this->EditorNumber.'">';
@@ -148,11 +150,13 @@ class InlineEditingUI
 
     /**
      * Get HTML for an inline editing widget.
+     * @return string Editing widget HTML.
      */
-    public function getHtml()
+    public function getHtml(): string
     {
-        require_once($GLOBALS["AF"]->gUIFile("CKEditorSetup.php"));
-        $GLOBALS["AF"]->requireUIFile("InlineEditingUI.js");
+        $AF = ApplicationFramework::getInstance();
+        require_once($AF->gUIFile("CKEditorSetup.php"));
+        $AF->requireUIFile("InlineEditingUI.js");
 
         $Html = '<div class="mv-inline-edit-display" '
             .'data-editor="'.$this->EditorNumber.'">'
@@ -163,7 +167,7 @@ class InlineEditingUI
             .'style="display: none; clear: both;">'
             .'<div class="mv-inline-edit-error alert alert-danger" style="display: none"></div>'
             .'<div id="mv-inline-'.$this->EditorNumber.'" contenteditable="true">'
-            .$GLOBALS["AF"]->escapeInsertionKeywords($this->sourceData())
+            .$AF->escapeInsertionKeywords($this->sourceData())
             .'</div>'
             .'</div>'
             .'<script type="text/javascript">'
@@ -188,8 +192,9 @@ class InlineEditingUI
 
     /**
      * Print an inline editing widget.
+     * @return void
      */
-    public function display()
+    public function display(): void
     {
         print $this->getHtml();
     }
@@ -231,7 +236,7 @@ class InlineEditingUI
      * @param array $Selectors New value to set (OPTIONAL)
      * @return array Current list of selectors for the specified event.
      */
-    private function JSControlsSelectorsForEvent(string $EventName, array $Selectors = null)
+    private function JSControlsSelectorsForEvent(string $EventName, ?array $Selectors = null)
     {
         if (!array_key_exists($EventName, $this->ControlsSelectors)) {
             throw new \Exception("Invalid event name provided: ".$EventName);
@@ -278,7 +283,7 @@ class InlineEditingUI
 
         if (isset($Icons[$ButtonName])) {
             $Html .= ' mv-button-iconed">'
-                .'<img src="'.$GLOBALS["AF"]->gUIFile($Icons[$ButtonName]).'" '
+                .'<img src="'.ApplicationFramework::getInstance()->gUIFile($Icons[$ButtonName]).'" '
                 .'class="mv-button-icon" alt="">';
         } else {
             $Html .= '">';

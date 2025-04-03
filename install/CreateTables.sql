@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS MetadataFields (
     Optional                        INT DEFAULT 1,
     CopyOnResourceDuplication       INT DEFAULT 1,
     Editable                        INT DEFAULT 1,
+    TriggersAutoUpdates             INT DEFAULT 1,
     AllowMultiple                   INT DEFAULT 0,
     IncludeInKeywordSearch          INT DEFAULT 0,
     IncludeInAdvancedSearch         INT DEFAULT 0,
@@ -205,6 +206,7 @@ CREATE TABLE IF NOT EXISTS ReferenceInts (
     FieldId       INT DEFAULT NULL,
     SrcRecordId INT DEFAULT NULL,
     DstRecordId INT DEFAULT NULL,
+    INDEX         Index_FD (FieldId, DstRecordId),
     UNIQUE        UIndex_FSD (FieldId, SrcRecordId, DstRecordId)
 );
 
@@ -439,6 +441,7 @@ CREATE TABLE IF NOT EXISTS Folders (
     FolderName              TEXT DEFAULT NULL,
     NormalizedName          TEXT DEFAULT NULL,
     FolderNote              TEXT DEFAULT NULL,
+    CoverImageId            INT DEFAULT NULL,
     IsShared                INT DEFAULT 0,
     ContentType             INT DEFAULT -1,
     INDEX                   Index_O (OwnerId),

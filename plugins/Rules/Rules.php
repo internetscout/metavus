@@ -3,13 +3,12 @@
 #   FILE:  Rules.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\FormUI;
 use Metavus\Plugin;
 use Metavus\Plugins\Rules\Rule;
@@ -21,29 +20,29 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 
 /**
-* Plugin for defining and acting upon rules that describe a change in one or
-* more metadata field states and actions to take when those changes are detected.
-**/
+ * Plugin for defining and acting upon rules that describe a change in one or
+ * more metadata field states and actions to take when those changes are detected.
+ */
 class Rules extends Plugin
 {
 
     # ---- STANDARD PLUGIN INTERFACE -----------------------------------------
 
     /**
-    * Set the plugin attributes.  At minimum this method MUST set $this->Name
-    * and $this->Version.  This is called when the plugin is initially loaded.
-    */
-    public function register()
+     * Set the plugin attributes.  At minimum this method MUST set $this->Name
+     * and $this->Version.  This is called when the plugin is initially loaded.
+     */
+    public function register(): void
     {
         $this->Name = "Rules";
-        $this->Version = "2.1.0";
+        $this->Version = "2.1.1";
         $this->Description = "Allows specifying rules that describe changes"
                 ." in metadata that will trigger email to be sent or other"
                 ." actions.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = [ "MetavusCore" => "1.0.0" ];
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = [ "MetavusCore" => "1.2.0" ];
         $this->EnabledByDefault = true;
 
         $this->CfgSetup["MinutesBetweenChecks"] = [
@@ -81,84 +80,57 @@ class Rules extends Plugin
      *      string or array of strings containing error message(s) indicating
      *      why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
-        Rule::setDefaultUser($this->configSetting("DefaultUser")[0]);
+        Rule::setDefaultUser($this->getConfigSetting("DefaultUser")[0]);
+
+        Record::registerObserver(
+            Record::EVENT_SET,
+            [$this, "resourceModifiedRuleCheck"]
+        );
+
         return null;
     }
 
     /**
-    * Perform any work needed when the plugin is first installed (for example,
-    * creating database tables).
-    * @return null|string NULL if installation succeeded, otherwise a string
-    *       containing an error message indicating why installation failed.
-    */
-    public function install()
+     * Perform any work needed when the plugin is first installed (for example,
+     * creating database tables).
+     * @return null|string NULL if installation succeeded, otherwise a string
+     *       containing an error message indicating why installation failed.
+     */
+    public function install(): ?string
     {
-        $this->configSetting(
+        $this->setConfigSetting(
             "DefaultUser",
             [ (new UserFactory())->getSiteOwner() ]
         );
 
         # create database tables
-        return $this->createTables(Rule::SQL_TABLES);
+        $DB = new Database();
+        return $DB->createTables(Rule::SQL_TABLES);
     }
 
     /**
-    * Perform any work needed when the plugin is uninstalled.
-    * @return null|string NULL if uninstall succeeded, otherwise a string
-    *       containing an error message indicating why uninstall failed.
-    */
-    public function uninstall()
+     * Perform any work needed when the plugin is uninstalled.
+     * @return null|string NULL if uninstall succeeded, otherwise a string
+     *       containing an error message indicating why uninstall failed.
+     */
+    public function uninstall(): ?string
     {
         # drop database tables
-        return $this->dropTables(Rule::SQL_TABLES);
+        $DB = new Database();
+        return $DB->dropTables(Rule::SQL_TABLES);
     }
 
     /**
-    * Upgrade from a previous version.
-    * @param string $PreviousVersion Previous version of the plugin.
-    * @return null|string Returns NULL on success and an error message otherwise.
-    */
-    public function upgrade(string $PreviousVersion)
-    {
-        if (version_compare($PreviousVersion, "2.0.0", "<")) {
-            return $this->createTables(Rule::SQL_TABLES);
-        }
-
-        if (version_compare($PreviousVersion, "2.0.1", "<")) {
-            $RFactory = new RuleFactory();
-            foreach ($RFactory->getItems() as $RuleId => $Rule) {
-                if ($Rule->action() == Rule::ACTION_SENDEMAIL) {
-                    $ActionParams = $Rule->actionParameters();
-                    if (!array_key_exists("ConfirmBeforeSending", $ActionParams)) {
-                        $ActionParams["ConfirmBeforeSending"] = false;
-                        $Rule->actionParameters($ActionParams);
-                    }
-                }
-            }
-        }
-
-        if (version_compare($PreviousVersion, "2.1.0", "<")) {
-            $this->configSetting(
-                "DefaultUser",
-                [ (new UserFactory())->getSiteOwner() ]
-            );
-        }
-
-        return null;
-    }
-
-    /**
-    * Hook the events into the application framework.
-    * @return array Returns an array of events to be hooked into the application
-    *      framework.
-    */
+     * Hook the events into the application framework.
+     * @return array Returns an array of events to be hooked into the application
+     *      framework.
+     */
     public function hookEvents(): array
     {
         return [
             "EVENT_PERIODIC" => "periodicRuleCheck",
-            "EVENT_RESOURCE_MODIFY" => "resourceModifiedRuleCheck",
             "EVENT_USER_PRIVILEGES_CHANGED" => "userPrivChangeRuleUpdate",
         ];
     }
@@ -171,12 +143,13 @@ class Rules extends Plugin
      * changes from the point where this method was called.
      * @param int $UserId ID of user to reset.
      */
-    public static function resetRulesForUser(int $UserId)
+    public static function resetRulesForUser(int $UserId): void
     {
+        $AF = ApplicationFramework::getInstance();
         # if there are search index rebuild tasks running or queued
-        if ($GLOBALS["AF"]->taskIsInQueue(["\\Metavus\\SearchEngine", "runUpdateForItem"])) {
+        if ($AF->taskIsInQueue(["\\Metavus\\SearchEngine", "runUpdateForItem"])) {
             # requeue ourselves
-            $GLOBALS["AF"]->requeueCurrentTask();
+            $AF->requeueCurrentTask();
             return;
         }
 
@@ -187,16 +160,17 @@ class Rules extends Plugin
     }
 
     /**
-    * Check rules when run as a background task.
-    */
-    public function checkRules()
+     * Check rules when run as a background task.
+     */
+    public function checkRules(): void
     {
+        $AF = ApplicationFramework::getInstance();
         # if there are search index rebuild tasks running or queued or
         #   if there's a reset task queued (because of user priv update)
-        if ($GLOBALS["AF"]->taskIsInQueue(["\\Metavus\\SearchEngine", "runUpdateForItem"])
-                || $GLOBALS["AF"]->taskIsInQueue([__CLASS__, "resetRulesForUser"])) {
+        if ($AF->taskIsInQueue(["\\Metavus\\SearchEngine", "runUpdateForItem"])
+                || $AF->taskIsInQueue([__CLASS__, "resetRulesForUser"])) {
             # requeue ourselves and exit
-            $GLOBALS["AF"]->requeueCurrentTask();
+            $AF->requeueCurrentTask();
             return;
         }
 
@@ -212,7 +186,7 @@ class Rules extends Plugin
      * List rules from command line.  (Developer plugin command.)
      * Usage:  mvus plugin command rules list (or mvus pl com ru list)
      */
-    public function commandList()
+    public function commandList(): void
     {
         $Frequencies = [
             60 => "Hourly",
@@ -242,7 +216,7 @@ class Rules extends Plugin
      * Usage:  mvus plugin command rules enable RuleID (or mvus pl com ru enable RuleID)
      * @param array $Args Command line arguments to rule.
      */
-    public function commandEnable(array $Args)
+    public function commandEnable(array $Args): void
     {
         $Rules = $this->convertCommandLineRuleArgument($Args);
         if ($Rules === false) {
@@ -266,7 +240,7 @@ class Rules extends Plugin
      * Usage:  mvus plugin command rules disable RuleID (or mvus pl com ru disable RuleID)
      * @param array $Args Command line arguments to rule.
      */
-    public function commandDisable(array $Args)
+    public function commandDisable(array $Args): void
     {
         $Rules = $this->convertCommandLineRuleArgument($Args);
         if ($Rules === false) {
@@ -290,7 +264,7 @@ class Rules extends Plugin
      * Usage:  mvus plugin command rules run RuleID (or mvus pl com ru run RuleID)
      * @param array $Args Command line arguments to rule.
      */
-    public function commandRun(array $Args)
+    public function commandRun(array $Args): void
     {
         $Rules = $this->convertCommandLineRuleArgument($Args);
         if ($Rules === false) {
@@ -310,33 +284,35 @@ class Rules extends Plugin
         }
     }
 
-
     # ---- HOOKED METHODS ----------------------------------------------------
 
     /**
-    * Check rules and take any corresponding actions (hooked to EVENT_PERIODIC).
-    * @param string|null $LastRunAt Date and time the event was last run, in SQL
-    *       date format, or NULL if unknown. (Passed in by the event signaler,
-    *       but not used)
-    * @return int Number of minutes before the even should be run again.
-    */
+     * Check rules and take any corresponding actions (hooked to EVENT_PERIODIC).
+     * @param string|null $LastRunAt Date and time the event was last run, in SQL
+     *       date format, or NULL if unknown. (Passed in by the event signaler,
+     *       but not used)
+     * @return int Number of minutes before the even should be run again.
+     */
     public function periodicRuleCheck($LastRunAt): int
     {
         # check the rules and take any necessary actions
         $this->checkRules();
 
         # return to caller the number of minutes before we should check again
-        return $this->configSetting("MinutesBetweenChecks");
+        return $this->getConfigSetting("MinutesBetweenChecks");
     }
 
     /**
-    * Queue task to check rules and take any corresponding actions (hooked
-    * to EVENT_RESOURCE_MODIFY).
-    * @param Record $Resource The Resource that has been modified.
-    *       (passed in from the Event signaler, but not used)
-    */
-    public function resourceModifiedRuleCheck(Record $Resource)
+     * Queue task to check rules and take any corresponding actions (hooked
+     * to Record::EVENT_SET observer).
+     * @param int $Events Record::EVENT_* values OR'd together.
+     * @param Record $Resource The Resource that has been modified.
+     *       (passed in from the Event signaler, but not used)
+     */
+    public function resourceModifiedRuleCheck(int $Events, Record $Resource): void
     {
+        $AF = ApplicationFramework::getInstance();
+
         # queue rule check task with (if possible) lower priority than
         #       search index rebuild
         $RuleCheckCallback = [$this, "checkRules"];
@@ -349,7 +325,7 @@ class Rules extends Plugin
         $Description = "Check automation rules after modification of"
                 ." <a href=\"r".$Resource->id()."\"><i>"
                 .$Resource->getMapped("Title")."</i></a>";
-        $GLOBALS["AF"]->queueUniqueTask(
+        $AF->queueUniqueTask(
             $RuleCheckCallback,
             [],
             $Priority,
@@ -358,17 +334,18 @@ class Rules extends Plugin
     }
 
     /**
-    * Queue a task to check all rules but do NOT take corresponding
-    * actions (hooked to EVENT_USER_PRIVILEGES_CHANGED).
-    * @param int $UserId User whose privileges were updated.
-    * @param array $OldPrivileges Privileges user previously had.
-    * @param array $NewPrivileges Privileges user has now.
-    */
+     * Queue a task to check all rules but do NOT take corresponding
+     * actions (hooked to EVENT_USER_PRIVILEGES_CHANGED).
+     * @param int $UserId User whose privileges were updated.
+     * @param array $OldPrivileges Privileges user previously had.
+     * @param array $NewPrivileges Privileges user has now.
+     */
     public function userPrivChangeRuleUpdate(
         int $UserId,
         array $OldPrivileges,
         array $NewPrivileges
-    ) {
+    ): void {
+        $AF = ApplicationFramework::getInstance();
         $RuleCheckCallback = [$this, "resetRulesForUser"];
         $SearchEnginePriority = SystemConfiguration::getInstance()->getInt(
             "SearchEngineUpdatePriority"
@@ -377,7 +354,7 @@ class Rules extends Plugin
             $SearchEnginePriority
         );
         $Description = "Reset rules for user after modification of user privileges.";
-        $GLOBALS["AF"]->queueUniqueTask(
+        $AF->queueUniqueTask(
             $RuleCheckCallback,
             [$UserId],
             $Priority,

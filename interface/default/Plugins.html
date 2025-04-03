@@ -3,12 +3,15 @@
 #   FILE:  Plugins.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-use Metavus\ItemListUI;
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -95,6 +98,7 @@ function getContentForActions(Plugin $Plugin): string
     $Content = "<span>";
     $Attribs = $Plugin->getAttributes();
     $BaseName = $Plugin->getBaseName();
+    $AF = ApplicationFramework::getInstance();
     if ($Plugin->isInstalled()) {
         $CfgLink = !is_null($Attribs["CfgPage"]) && strlen($Attribs["CfgPage"]) ?
                 $Attribs["CfgPage"]
@@ -104,13 +108,13 @@ function getContentForActions(Plugin $Plugin): string
         if (strlen($CfgLink)) {
             $Content .= "<a href='".$CfgLink."'>"
                     ."<img class='mv-plugin-settings-cog' src='"
-                    .$GLOBALS["AF"]->gUIFile("settings.png")
+                    .$AF->gUIFile("settings.png")
                     ."' alt='Configure' title='Configure' /></a>";
         }
         if (($BaseName != "CWISCore") && ($BaseName != "MetavusCore")) {
             $Content .= "<a href='index.php?P=PluginUninstall&amp;PN=".$BaseName."'>"
                     ."<img src='"
-                    .$GLOBALS["AF"]->gUIFile("cross_gray.png")
+                    .$AF->gUIFile("cross_gray.png")
                     ."' alt='Uninstall' title='Uninstall' /></a>";
         }
     }
@@ -128,11 +132,7 @@ function getCssClassForPluginRow(Plugin $Plugin)
     return (!$Plugin->isReady()) ? "text-muted" : "";
 }
 
-
-# ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Plugins");
-
+# ----- SETUP ----------------------------------------------------------------
 if (!isset($H_StatusMsgs)) {
     throw new Exception("Status messages not loaded.");
 }
@@ -160,29 +160,29 @@ foreach ($Plugins as $Plugin) {
 $ListFields = [
     "Enabled" => [
         "Heading" => "",
-        "ValueFunction" => "getContentForEnabled",
+        "ValueFunction" => "Metavus\\getContentForEnabled",
         "AllowHTML" => true,
     ],
     "Name" => [
-        "ValueFunction" => "getContentForName",
-        "ClassFunction" => "getCssClassForPluginRow",
+        "ValueFunction" => "Metavus\\getContentForName",
+        "CssClassFunction" => "Metavus\\getCssClassForPluginRow",
     ],
     "Version" => [
         "Heading" => "Ver",
-        "ClassFunction" => "getCssClassForPluginRow",
+        "ClassFunction" => "Metavus\\getCssClassForPluginRow",
     ],
     "Description" => [
-        "ClassFunction" => "getCssClassForPluginRow",
+        "ClassFunction" => "Metavus\\getCssClassForPluginRow",
         "AllowHTML" => true,
     ],
     "Dependencies" => [
-        "ValueFunction" => "getContentForDependencies",
-        "ClassFunction" => "getCssClassForPluginRow",
+        "ValueFunction" => "Metavus\\getContentForDependencies",
+        "ClassFunction" => "Metavus\\getCssClassForPluginRow",
         "AllowHTML" => true,
     ],
     "Actions" => [
         "Heading" => "",
-        "ValueFunction" => "getContentForActions",
+        "ValueFunction" => "Metavus\\getContentForActions",
         "AllowHTML" => true,
     ],
 ];
@@ -195,6 +195,8 @@ $LocalListUI = clone $BaseListUI;
 $BaseListUI->heading("Base Plugins");
 $LocalListUI->heading("Local Plugins");
 
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Plugins");
 ?>
 
 <h1>Plugins</h1>

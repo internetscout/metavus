@@ -3,12 +3,11 @@
 #   FILE:  BarChart.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 namespace Metavus;
-
 use Exception;
 
 /**
@@ -27,7 +26,7 @@ class BarChart extends Chart_Base
      *   bar names and the values give bar heights for charts with
      *   multiple bars.  (OPTIONAL)
      */
-    public function data($NewValue = null)
+    public function data($NewValue = null): array
     {
         # normalize data to array of arrays format if necessary
         if (($NewValue !== null) && !is_array(reset($NewValue))) {
@@ -81,7 +80,7 @@ class BarChart extends Chart_Base
      * @param string $NewValue Label to use.
      * @return string Current YLabel.
      */
-    public function yLabel(string $NewValue = null)
+    public function yLabel(?string $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->YLabel = $NewValue;
@@ -112,7 +111,7 @@ class BarChart extends Chart_Base
      * @param bool $NewValue TRUE to enable zooming, or FALSE to disable.
      * @return bool Current Zoom setting.
      */
-    public function zoom(bool $NewValue = null)
+    public function zoom(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Zoom = $NewValue;
@@ -125,7 +124,7 @@ class BarChart extends Chart_Base
      * @param bool $NewValue TRUE to enable autoscale, or FALSE to disable.
      * @return bool Current Autoscale setting.
      */
-    public function autoscale(bool $NewValue = null)
+    public function autoscale(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Autoscale = $NewValue;
@@ -155,7 +154,7 @@ class BarChart extends Chart_Base
      * @return bool Current Subchart setting.
      * @see https://c3js.org/samples/options_subchart.html
      */
-    public function subchart(bool $NewValue = null)
+    public function subchart(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Subchart = $NewValue;
@@ -169,7 +168,7 @@ class BarChart extends Chart_Base
      * @param bool $NewValue TRUE to enable gapless display, or FALSE to disable.
      * @return bool Current Gapless setting.
     */
-    public function gapless(bool $NewValue = null)
+    public function gapless(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Gapless = $NewValue;
@@ -182,7 +181,7 @@ class BarChart extends Chart_Base
      * @param bool $NewValue TRUE to generate a stacked chart.
      * @return bool Current stacking setting.
      */
-    public function stacked(bool $NewValue = null)
+    public function stacked(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Stacked = $NewValue;
@@ -196,7 +195,7 @@ class BarChart extends Chart_Base
      * @return bool Current horizontal setting.
      * @throws Exception If an invalid value is supplied.
      */
-    public function horizontal(bool $NewValue = null)
+    public function horizontal(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Horizontal = $NewValue;
@@ -209,7 +208,7 @@ class BarChart extends Chart_Base
      * @param bool $NewValue TRUE to show grid lines.
      * @return bool Current grid line sitting.
      */
-    public function gridlines(bool $NewValue = null)
+    public function gridlines(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->Gridlines = $NewValue;
@@ -223,7 +222,7 @@ class BarChart extends Chart_Base
      * @param bool $NewValue TRUE to show category labels.
      * @return bool Current category labels setting.
      */
-    public function showCategoryLabels(bool $NewValue = null)
+    public function showCategoryLabels(?bool $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->ShowCategoryLabels = $NewValue;
@@ -235,7 +234,7 @@ class BarChart extends Chart_Base
      * Output chart HTML.
      * @param string $ContainerId HTML Id for the chart container.
      */
-    public function display(string $ContainerId)
+    public function display(string $ContainerId): void
     {
         if ($this->Autoscale && $this->AutoscaleMin !== false) {
             ob_start();
@@ -337,7 +336,7 @@ class BarChart extends Chart_Base
      * Prepare data for plotting.
      * @see ChartBase::prepareData().
      */
-    protected function prepareData()
+    protected function prepareData(): void
     {
         # input data is
         #  [ CatNameOrTimestamp => [Data1 => Val, Data2 => Val, ...], ... ]
@@ -622,7 +621,7 @@ class BarChart extends Chart_Base
 
         switch ($this->AxisType) {
             case self::AXIS_TIME_DAILY:
-                return strtotime(date("Y-m-d 00:00:00", $TS));
+                $Time = strtotime(date("Y-m-d 00:00:00", $TS));
                 break;
 
             case self::AXIS_TIME_WEEKLY:
@@ -635,17 +634,25 @@ class BarChart extends Chart_Base
                 $Month = $DateInfo["tm_mon"] + 1;
                 $Day = $DateInfo["tm_mday"] - $DateInfo["tm_wday"];
 
-                return mktime(0, 0, 0, $Month, $Day, $Year);
+                $Time = mktime(0, 0, 0, $Month, $Day, $Year);
                 break;
 
             case self::AXIS_TIME_MONTHLY:
-                return strtotime(date("Y-m-01 00:00:00", $TS));
+                $Time = strtotime(date("Y-m-01 00:00:00", $TS));
                 break;
 
             case self::AXIS_TIME_YEARLY:
-                return strtotime(date("Y-01-01 00:00:00", $TS));
+                $Time = strtotime(date("Y-01-01 00:00:00", $TS));
                 break;
+
+            default:
+                throw new Exception("Unknown axis type (".$this->AxisType.").");
         }
+
+        if ($Time === false) {
+            throw new Exception("strtotime() conversion failed.");
+        }
+        return $Time;
     }
 
     /**
@@ -663,7 +670,11 @@ class BarChart extends Chart_Base
             self::AXIS_TIME_YEARLY => "year",
         ];
 
-        return strtotime($ThisBin." + 1 ".$Units[$this->AxisType]);
+        $Time = strtotime($ThisBin." + 1 ".$Units[$this->AxisType]);
+        if ($Time === false) {
+            throw new Exception("strtotime() conversion failed.");
+        }
+        return $Time;
     }
 
     /**

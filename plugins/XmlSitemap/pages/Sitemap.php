@@ -7,8 +7,11 @@
 #   http://metavus.net
 #
 
-$GLOBALS["AF"]->SuppressHTMLOutput();
+use Metavus\Plugins\XmlSitemap;
+use ScoutLib\ApplicationFramework;
+
+ApplicationFramework::getInstance()->SuppressHTMLOutput();
 
 # output the XML sitemap
-$MyPlugin = $GLOBALS["G_PluginManager"]->GetPluginForCurrentPage();
+$MyPlugin = XmlSitemap::getInstance();
 print $MyPlugin->GetSitemap();

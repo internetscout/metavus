@@ -49,8 +49,9 @@ class NavMenu extends ItemFactory
     /**
      * Reorder the NavMenu according to the passed array
      * @param array $NavOrder array of NavItem IDs
+     * @return void
      */
-    public function reorder($NavOrder)
+    public function reorder($NavOrder): void
     {
         $Previous = null;
         foreach ($NavOrder as $ItemId => $Parent) {

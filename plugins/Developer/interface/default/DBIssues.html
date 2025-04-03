@@ -3,16 +3,22 @@
 #   FILE:  DBIssues.html (Developer plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\HtmlButton;
 use Metavus\ItemListUI;
 
 $IssueListFields = [
 
 ];
 
+# ----- SETUP ----------------------------------------------------------------
+$CleanButton = new HtmlButton("Clean");
+$CleanButton->setIcon("Broom.svg");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?><h1>Database Integrity Checks</h1><?PHP
 
 if (isset($H_StatusMsgs)) {
@@ -32,9 +38,7 @@ if (count($IssueInfo)) {
     ?>
         <form method="POST" action="?P=P_Developer_DBIssues">
         <input type="hidden" name="F_IssueName" value="<?= $IssueName ?>">
-        <button type="submit" name="Submit" value="Clean"
-            class="btn btn-primary mv-button-iconed"><img src="<?= $AF->GUIFile('Broom.svg'); ?>"
-            alt="" class="mv-button-icon" /> Clean</button>
+        <?= $CleanButton->getHtml(); ?>
         </form>
         <?PHP
 } else {

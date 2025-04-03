@@ -3,17 +3,18 @@
 #   File:  EventFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\CalendarEvents;
-
+use Metavus\Plugins\CalendarEvents;
 use Metavus\RecordFactory;
 use Metavus\SearchEngine;
 use Metavus\SearchParameterSet;
 use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
 
 class EventFactory extends RecordFactory
 {
@@ -22,7 +23,7 @@ class EventFactory extends RecordFactory
      */
     public function __construct()
     {
-        $CalPlugin = PluginManager::getInstance()->getPlugin("CalendarEvents");
+        $CalPlugin = CalendarEvents::getInstance();
         parent::__construct($CalPlugin->getSchemaId());
     }
 
@@ -48,6 +49,8 @@ class EventFactory extends RecordFactory
         if ($ReleasedOnly) {
             $Query .= " AND `".$ReleaseFlagName."` = '1' ";
         }
+
+        $Query .= $this->getSqlConditionForOwner();
 
         # execute the query
         $FirstMonth = $this->DB->query($Query, "FirstMonth");
@@ -86,6 +89,8 @@ class EventFactory extends RecordFactory
             $Query .= " AND `".$ReleaseFlagName."` = '1' ";
         }
 
+        $Query .= $this->getSqlConditionForOwner();
+
         # execute the query
         $LastMonth = $this->DB->query($Query, "LastMonth");
 
@@ -99,6 +104,39 @@ class EventFactory extends RecordFactory
 
         # normalize the month and return
         return date("F Y", $Timestamp);
+    }
+
+    /**
+     * Return array of item IDs.
+     * @param string $Condition For compatibility with
+     *   ItemFactory::getItemIds. Should always be null.
+     * @param bool $IncludeTempItems Whether to include temporary items
+     *   in returned set.(OPTIONAL, defaults to FALSE)
+     * @param string $SortField For compatibility with
+     *   ItemFactory::getItemIds. Should always be null.
+     * @param bool $SortAscending If TRUE, sort items in ascending order,
+     *   otherwise sort items in descending order. (OPTIONAL, and
+     *   only meaningful if a sort field is specified.)
+     * @return array Item IDs.
+     */
+    public function getItemIds(
+        ?string $Condition = null,
+        bool $IncludeTempItems = false,
+        ?string $SortField = null,
+        bool $SortAscending = true
+    ): array {
+        $AllItemIds = parent::getItemIds(
+            $Condition,
+            $IncludeTempItems,
+            $SortField,
+            $SortAscending
+        );
+
+        if ($this->OwnerId === false) {
+            return $AllItemIds;
+        }
+
+        return $this->filterEventsByOwner($AllItemIds, $this->OwnerId);
     }
 
     /**
@@ -201,16 +239,13 @@ class EventFactory extends RecordFactory
      * @param string $EndMonth The last date of the specified month,
      *      used as the end point for retrieving events. (OPTIONAL, defaults
      *      to using the current date and timestamp)
-     * @param int $OwnerId The ID of the owner. (OPTIONAL, defaults to null
-     *      for no owner)
      * @return array Event IDs, sorted by descending order of start date,
      *      end date, and then title.
      */
     public function getIdsOfPastEvents(
         bool $ReleasedOnly = true,
-        int $Limit = null,
-        string $EndMonth = null,
-        int $OwnerId = null
+        ?int $Limit = null,
+        ?string $EndMonth = null
     ): array {
         # get the database field names
         $EndDateFieldName = $this->Schema->getField("End Date")->dBFieldName();
@@ -226,11 +261,7 @@ class EventFactory extends RecordFactory
             $Condition = " (".$EndDateFieldName." <= '".$EndMonth."')";
         }
 
-        # get all events regardless of owner
-        $AllEventIds = $this->getEventIds($Condition, $ReleasedOnly, $Limit, false);
-
-        # return events with the desired owner
-        return $this->filterEventsByOwner($AllEventIds, $OwnerId);
+        return $this->getEventIds($Condition, $ReleasedOnly, $Limit, false);
     }
 
     /**
@@ -242,16 +273,13 @@ class EventFactory extends RecordFactory
      * @param string $StartDate The first date for consideration for
      *      retrieving events, formatted as "Y-M-D H:M:S". (OPTIONAL, defaults
      *      to using the current date and timestamp)
-     * @param int $OwnerId The ID of the owner. (OPTIONAL, defaults to null
-     *      for no owner)
      * @return array Event IDs, sorted by descending order of start date,
      *      end date, and then title.
      */
     public function getIdsOfUpcomingEvents(
         bool $ReleasedOnly = true,
-        int $Limit = null,
-        string $StartDate = null,
-        int $OwnerId = null
+        ?int $Limit = null,
+        ?string $StartDate = null
     ): array {
         # get the database field names for the date fields
         $StartDateFieldName = $this->Schema->getField("Start Date")->dBFieldName();
@@ -267,11 +295,65 @@ class EventFactory extends RecordFactory
             $Condition = " (".$StartDateFieldName." >= '".$StartDate."')";
         }
 
-        # get all events regardless of owner
-        $AllEventIds = $this->getEventIds($Condition, $ReleasedOnly, $Limit, true);
+        return $this->getEventIds($Condition, $ReleasedOnly, $Limit, true);
+    }
 
-        # return events with the desired owner
-        return $this->filterEventsByOwner($AllEventIds, $OwnerId);
+    /**
+     * Get the IDs for past events, defined as those with an end date between
+     * the present to 12 months in the past.
+     * @param bool $ReleasedOnly Set to TRUE to get only events with the
+     *      "Release Flag" field set to TRUE. (OPTIONAL, defaults to TRUE)
+     * @param int $Limit Number of events to return. (OPTIONAL, defaults
+     *      to all events)
+     * @return array Event IDs, sorted by descending order of start date,
+     *      end date, and then title.
+     */
+    public function getIdsOfPastEventsForYear(
+        bool $ReleasedOnly = true,
+        ?int $Limit = null
+    ): array {
+
+        # get the database field names
+        $EndDateFieldName = $this->Schema->getField("End Date")->dBFieldName();
+
+        # get events that ended before now, up to one year in the past
+        $SafeTodayWithTime = date(StdLib::SQL_DATE_FORMAT);
+
+        $LastYear = strtotime("now - 1 year");
+        $EndMonth = date(StdLib::SQL_DATE_FORMAT, $LastYear);
+
+        $Condition = " (".$EndDateFieldName." < '".$SafeTodayWithTime."')";
+        $Condition .= " AND (".$EndDateFieldName." >= '".$EndMonth."')";
+
+        return $this->getEventIds($Condition, $ReleasedOnly, $Limit, false);
+    }
+
+    /**
+     * Get the IDs for upcoming events, defined as those with a start date
+     * between the present, up to 12 months in the future.
+     * @param bool $ReleasedOnly Set to TRUE to get only events with the
+     *      "Release Flag" field set to TRUE.  (OPTIONAL, defaults to TRUE)
+     * @param int $Limit Number of events to return.  (OPTIONAL, defaults
+     *      to all events)
+     * @return array Event IDs, sorted by descending order of start date,
+     *      end date, and then title.
+     */
+    public function getIdsOfUpcomingEventsForYear(
+        bool $ReleasedOnly = true,
+        ?int $Limit = null
+    ): array {
+        # get the database field names for the date fields
+        $StartDateFieldName = $this->Schema->getField("Start Date")->dBFieldName();
+
+        $NextYear = strtotime("now + 1 year");
+        $StartDate = date(StdLib::SQL_DATE_FORMAT, $NextYear);
+
+        $SafeTodayWithTime = date(StdLib::SQL_DATE_FORMAT);
+        $Condition =
+                " (".$StartDateFieldName." > '".$SafeTodayWithTime."')";
+        $Condition .= " AND (".$StartDateFieldName." <= '".$StartDate."')";
+
+        return $this->getEventIds($Condition, $ReleasedOnly, $Limit, true);
     }
 
     /**
@@ -285,7 +367,7 @@ class EventFactory extends RecordFactory
      */
     public function getUpcomingEvents(
         bool $ReleasedOnly = true,
-        int $Limit = null
+        ?int $Limit = null
     ): array {
         $Ids = $this->getIdsOfUpcomingEvents($ReleasedOnly, $Limit);
         $Events = [];
@@ -310,35 +392,20 @@ class EventFactory extends RecordFactory
         # get the month range
         $SafeTodayWithTime = date("Y-m-d H:i:s");
 
-        # construct the first part of the query
-        $PastEventsCount = $this->DB->queryValue(
-            "SELECT COUNT(*) as EventCount FROM Records "
-            ."WHERE `RecordId` >= 0 "
-            ."AND `SchemaId` = ".$this->SchemaId
-            ." ".($ReleasedOnly ? "AND `".$ReleaseFlagName."` = 1" : "")
-            ." AND (`".$EndDateName."` < '".$SafeTodayWithTime."')",
-            "EventCount"
-        );
+        # get an SQL condition, if one is required
+        $Condition = $this->getSqlConditionForOwner();
 
         # rather than doing complex SQL query logic, just get the count of all
         # of the events and subtract the others below
-        $AllEventsCount = $this->DB->queryValue(
-            "
-            SELECT COUNT(*) as EventCount FROM Records
-            WHERE `RecordId` >= 0
-            AND `SchemaId` = '".$this->SchemaId."'
-            ".($ReleasedOnly ? "AND `".$ReleaseFlagName."` = 1" : ""),
-            "EventCount"
-        );
+        $AllEventsCount = strlen($Condition) ?
+            $this->getItemCount(preg_replace('/^ AND /', '', $Condition)) :
+            $this->getItemCount();
 
-        $FutureEventsCount = $this->DB->queryValue(
-            "
-            SELECT COUNT(*) as EventCount FROM Records
-            WHERE `RecordId` >= 0
-            AND `SchemaId` = ".$this->SchemaId.
-            " ".($ReleasedOnly ? "AND `".$ReleaseFlagName."` = 1" : "")."
-            AND (`".$StartDateName."` > '".$SafeTodayWithTime."')",
-            "EventCount"
+        $PastEventsCount = $this->getItemCount(
+            "(`".$EndDateName."` < '".$SafeTodayWithTime."')".$Condition
+        );
+        $FutureEventsCount = $this->getItemCount(
+            "(`".$StartDateName."` > '".$SafeTodayWithTime."')".$Condition
         );
 
         # return the counts
@@ -417,6 +484,8 @@ class EventFactory extends RecordFactory
             $Query .= " AND `".$ReleaseFlagName."` = '1' ";
         }
 
+        $Query .= $this->getSqlConditionForOwner();
+
         # this may be a very long query and could have very long results
         # avoid caching it
         $PreviousSetting = $this->DB->caching();
@@ -426,6 +495,19 @@ class EventFactory extends RecordFactory
         $this->DB->caching($PreviousSetting);
 
         return $Result;
+    }
+
+    /**
+     * Limit the events retrieved by the getXX methods based on the event
+     * owner.
+     * @param int|null|false $OwnerId Owner restriction - an int giving an
+     *   OwnerId for events with that owner, NULL for events with no owner,
+     *   or FALSE to disable filtering and retrieve all events regardless of
+     *   ownership. By default only unowned events are returned.
+     */
+    public function limitRetrievedEventsToOwnerId($OwnerId) : void
+    {
+        $this->OwnerId = $OwnerId;
     }
 
     /**
@@ -492,7 +574,7 @@ class EventFactory extends RecordFactory
     protected function getEventIds(
         string $Condition,
         bool $ReleasedOnly = true,
-        int $Limit = null,
+        ?int $Limit = null,
         bool $SortAscending = true
     ): array {
         $TitleName = $this->Schema->getField("Title")->dBFieldName();
@@ -514,6 +596,8 @@ class EventFactory extends RecordFactory
         # add the condition string
         $Query .= " AND " . $Condition;
 
+        $Query .= $this->getSqlConditionForOwner();
+
         # add sorting parameters
         $SortingKeyword = $SortAscending ? "ASC" : "DESC";
         $Query .= " ORDER BY ".$StartDateName." ".$SortingKeyword.", ";
@@ -530,5 +614,33 @@ class EventFactory extends RecordFactory
 
         # return the IDs
         return $this->DB->fetchColumn("RecordId");
+    }
+
+
+    # ---- PRIVATE INTERFACE -------------------------------------------------
+    private $OwnerId = null; # by default, get events with no owner
+
+    /**
+     * Get SQL condition to apply an owner limitation if one is set.
+     * @return string SQL condition. If non-empty, it will include the leading AND.
+     */
+    private function getSqlConditionForOwner() : string
+    {
+        if ($this->OwnerId === false) {
+            return "";
+        }
+
+        $OwnerFieldId = $this->Schema->getField("Owner")->id();
+
+        if ($this->OwnerId === null) {
+            return " AND RecordId NOT IN ("
+                ."SELECT RecordId FROM RecordUserInts"
+                ." WHERE FieldId = ".$OwnerFieldId.")";
+        }
+
+        return " AND RecordId IN ("
+            ."SELECT RecordId FROM RecordUserInts"
+            ." WHERE FieldId = ".$OwnerFieldId
+            ." AND UserId=".intval($this->OwnerId).")";
     }
 }

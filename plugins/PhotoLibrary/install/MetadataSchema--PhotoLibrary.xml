@@ -1,0 +1,528 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetadataSchema>
+  <StandardFieldMapping>
+    <StandardName>Title</StandardName>
+    <Name>Title</Name>
+  </StandardFieldMapping>
+  <StandardFieldMapping>
+    <StandardName>Description</StandardName>
+    <Name>Description</Name>
+  </StandardFieldMapping>
+  <StandardFieldMapping>
+    <StandardName>Screenshot</StandardName>
+    <Name>Photo</Name>
+  </StandardFieldMapping>
+  <AuthoringPrivileges>
+    <UsesAndLogic>FALSE</UsesAndLogic>
+    <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+  </AuthoringPrivileges>
+  <EditingPrivileges>
+    <UsesAndLogic>FALSE</UsesAndLogic>
+    <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+  </EditingPrivileges>
+  <ViewingPrivileges>
+    <UsesAndLogic>FALSE</UsesAndLogic>
+    <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    <AddCondition>
+      <Field>Record Status</Field>
+      <Value>Published</Value>
+    </AddCondition>
+    <AddCondition>
+      <Field>Added By Id</Field>
+    </AddCondition>
+  </ViewingPrivileges>
+  <MetadataField>
+    <Name>Title</Name>
+    <Type>TEXT</Type>
+    <CopyOnResourceDuplication>1</CopyOnResourceDuplication>
+    <Description>Name by which the image is formally known.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <Optional>0</Optional>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxLength>100</MaxLength>
+    <RecommenderWeight>0</RecommenderWeight>
+    <SearchWeight>5</SearchWeight>
+    <TextFieldSize>60</TextFieldSize>
+  </MetadataField>
+  <MetadataField>
+    <Name>Photo</Name>
+    <Type>IMAGE</Type>
+    <Description>Still, digital image or snapshot to be attached to a resource metadata record for illustration or other purposes. Acceptable file formats are .jpg, .bmp, and gif (depending on what is supported by the PHP version installed on your web server). The Description element provides text that is used by screen readers and search engine spiders, and can be searched via Keyword and Advanced Search.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <Optional>0</Optional>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <RecommenderWeight>0</RecommenderWeight>
+    <SearchWeight>3</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Description</Name>
+    <Type>PARAGRAPH</Type>
+    <AllowHTML>1</AllowHTML>
+    <Description>Text describing the scope, subject matter, and usefulness of the image.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <ParagraphCols>76</ParagraphCols>
+    <ParagraphRows>12</ParagraphRows>
+    <RecommenderWeight>0</RecommenderWeight>
+    <SearchWeight>2</SearchWeight>
+    <UseWysiwygEditor>1</UseWysiwygEditor>
+  </MetadataField>
+  <MetadataField>
+    <Name>Megapixels</Name>
+    <Type>NUMBER</Type>
+    <Description>The megapixels of an image. Extracted from the image.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxValue>9999</MaxValue>
+    <MinValue>1</MinValue>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Location</Name>
+    <Type>TEXT</Type>
+    <Description>The location of where the image was taken.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxLength>100</MaxLength>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+    <TextFieldSize>50</TextFieldSize>
+  </MetadataField>
+  <MetadataField>
+    <Name>Photo Download Clicks</Name>
+    <Type>NUMBER</Type>
+    <Description>The number of times an image file has been clicked and downloaded.</Description>
+    <Enabled>1</Enabled>
+    <MaxValue>9999</MaxValue>
+    <MinValue>1</MinValue>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+    <ViewingPrivileges>
+      <UsesAndLogic>TRUE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Publisher</Name>
+    <Type>CONTROLLEDNAME</Type>
+    <AjaxThreshold>1</AjaxThreshold>
+    <AuthoringPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddCondition>
+        <Field>Added By Id</Field>
+      </AddCondition>
+    </AuthoringPrivileges>
+    <CopyOnResourceDuplication>1</CopyOnResourceDuplication>
+    <Description>An entity responsible for making the image available.</Description>
+    <Editable>1</Editable>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddCondition>
+        <Field>Added By Id</Field>
+      </AddCondition>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <NumAjaxResults>50</NumAjaxResults>
+    <OptionListThreshold>1</OptionListThreshold>
+    <Optional>1</Optional>
+    <RecommenderWeight>0</RecommenderWeight>
+    <SearchGroupLogic>2</SearchGroupLogic>
+    <SearchWeight>3</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Subject</Name>
+    <Type>CONTROLLEDNAME</Type>
+    <AjaxThreshold>50</AjaxThreshold>
+    <Description>Terms or a nonhierarchical string of terms relating the resource's content.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInFacetedSearch>1</IncludeInFacetedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <NumAjaxResults>50</NumAjaxResults>
+    <OptionListThreshold>25</OptionListThreshold>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchGroupLogic>2</SearchGroupLogic>
+    <SearchWeight>3</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Date Created</Name>
+    <Type>DATE</Type>
+    <Description>The year the photo was taken. Records a date in a standard format. Users do not need to enter the date in this format. The software will translate a provided date into the standard format (YYYY-MM-DD).</Description>
+    <Editable>1</Editable>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>TRUE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <Instructions>YYYY: Four digit year of publication. YYYY-MM: Four digit year with a two digit month. YYYY-MM-DD: Four digit year with two digit month and two digit day. Automatically extracted from image.</Instructions>
+    <Optional>1</Optional>
+    <SearchWeight>1</SearchWeight>
+    <TextFieldSize>10</TextFieldSize>
+  </MetadataField>
+  <MetadataField>
+    <Name>Width</Name>
+    <Type>NUMBER</Type>
+    <Description>The width of an image. Extracted from the image</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxValue>9999</MaxValue>
+    <MinValue>1</MinValue>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Alternate Title</Name>
+    <Type>TEXT</Type>
+    <Description>Variant name by which the resource may be known. &#13;
+Alternate titles should include the full spelling of any abbreviations or numbers used in the title line.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <MaxLength>200</MaxLength>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+    <TextFieldSize>120</TextFieldSize>
+  </MetadataField>
+  <MetadataField>
+    <Name>Original File Name</Name>
+    <Type>TEXT</Type>
+    <Description>Name by which the resource is formally known. Keep the file name that was given by the submitter.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <MaxLength>150</MaxLength>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>18</SearchWeight>
+    <TextFieldSize>100</TextFieldSize>
+  </MetadataField>
+  <MetadataField>
+    <Name>Internal Notes</Name>
+    <Type>PARAGRAPH</Type>
+    <AllowHTML>1</AllowHTML>
+    <AuthoringPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </AuthoringPrivileges>
+    <Description>Administrative notes.</Description>
+    <Editable>1</Editable>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <Optional>1</Optional>
+    <ParagraphCols>50</ParagraphCols>
+    <ParagraphRows>4</ParagraphRows>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Date Record Checked</Name>
+    <Type>TIMESTAMP</Type>
+    <DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
+    <Description>Date record was last reviewed. &#13;
+&lt;p&gt;Click the update button when cataloging a new resource record or after the resource record has been checked/updated in its entirety.&lt;/p&gt;</Description>
+    <Editable>1</Editable>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>TRUE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <SearchWeight>1</SearchWeight>
+    <UpdateMethod>Button</UpdateMethod>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Record Status</Name>
+    <Type>OPTION</Type>
+    <Description>This internal administrative feature allows resource administrators to withhold record from public view and searching. Intended to provide a method for internal review and editing. The record will only be available for view by authorized resource editors and site administrator and is not available in the Advanced search. This is a required field. Required fields may not be customized as to the field type or disabled. In the Administration database editor feature, portal administrators may set the default value for this field.</Description>
+    <Editable>1</Editable>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>FALSE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <RecommenderWeight>0</RecommenderWeight>
+    <SearchGroupLogic>2</SearchGroupLogic>
+    <SearchWeight>3</SearchWeight>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Date Of Record Creation</Name>
+    <Type>TIMESTAMP</Type>
+    <DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
+    <Description>Date the image record was created.</Description>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <SearchWeight>1</SearchWeight>
+    <UpdateMethod>OnRecordCreate</UpdateMethod>
+    <TriggersAutoUpdates>0</TriggersAutoUpdates>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Date Of Record Release</Name>
+    <Type>TIMESTAMP</Type>
+    <DateFormat>YYYY-MM-DD HH:MM:SS</DateFormat>
+    <Description>Date the image record was released.</Description>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>TRUE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <SearchWeight>1</SearchWeight>
+    <UpdateMethod>OnRecordRelease</UpdateMethod>
+    <TriggersAutoUpdates>0</TriggersAutoUpdates>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Date Last Modified</Name>
+    <Type>TIMESTAMP</Type>
+    <Description>This is a time stamp recording the last time anything in a given resource record was altered. This date cannot be manually edited.</Description>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>TRUE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <SearchWeight>1</SearchWeight>
+    <UpdateMethod>OnRecordChange</UpdateMethod>
+    <TriggersAutoUpdates>0</TriggersAutoUpdates>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Added By Id</Name>
+    <Type>USER</Type>
+    <AuthoringPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </AuthoringPrivileges>
+    <Description>System supplied field which records the account name of the person creating the resource record. This field cannot be directly edited. All resource editors login name with automatically appear as an option in the Metadata Tool search limits and on the full record display.</Description>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <TriggersAutoUpdates>0</TriggersAutoUpdates>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <SearchWeight>1</SearchWeight>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>TRUE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Last Modified By Id</Name>
+    <Type>USER</Type>
+    <AuthoringPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </AuthoringPrivileges>
+    <Description>System supplied field which records the account name of the person who last modified the resource record. This field cannot be directly edited. All resource editors login name with automatically appear as an option in the Metadata Tool search limits and on the full record display.</Description>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <TriggersAutoUpdates>0</TriggersAutoUpdates>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <SearchWeight>1</SearchWeight>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddSubset>
+        <UsesAndLogic>TRUE</UsesAndLogic>
+        <AddCondition>
+          <Field>Added By Id</Field>
+        </AddCondition>
+      </AddSubset>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Cumulative Rating</Name>
+    <Type>NUMBER</Type>
+    <Description>This field records the evaluative ratings given to a particular resource by portal users.</Description>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </EditingPrivileges>
+    <Enabled>1</Enabled>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxValue>5</MaxValue>
+    <MinValue>0</MinValue>
+    <Optional>1</Optional>
+    <RecommenderWeight>0</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+    <TriggersAutoUpdates>0</TriggersAutoUpdates>
+  </MetadataField>
+  <MetadataField>
+    <Name>Image Format</Name>
+    <Type>OPTION</Type>
+    <Description>The image file format of the photo.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchGroupLogic>2</SearchGroupLogic>
+    <SearchWeight>1</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Recorded GPS Coordinates</Name>
+    <Type>POINT</Type>
+    <Description>The longitude and latitude of a location. Extracted from the image.</Description>
+    <Enabled>1</Enabled>
+    <Optional>1</Optional>
+    <PointDecimalDigits>5</PointDecimalDigits>
+    <PointPrecision>8</PointPrecision>
+    <TextFieldSize>10</TextFieldSize>
+    <ViewingPrivileges>
+      <UsesAndLogic>TRUE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </ViewingPrivileges>
+  </MetadataField>
+  <MetadataField>
+    <Name>Keyword(s)</Name>
+    <Type>PARAGRAPH</Type>
+    <AuthoringPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_COLLECTIONADMIN</AddPrivilege>
+    </AuthoringPrivileges>
+    <Description>Words or short phrases that describe the content of the image.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <Optional>1</Optional>
+    <ParagraphCols>50</ParagraphCols>
+    <ParagraphRows>4</ParagraphRows>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>4</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>File Size in KB</Name>
+    <Type>NUMBER</Type>
+    <Description>The size of the image file in kilobytes (KB).</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxValue>9999</MaxValue>
+    <MinValue>1</MinValue>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Rights Statement</Name>
+    <Type>OPTION</Type>
+    <Description>Rights statement for the image.</Description>
+    <Editable>1</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchGroupLogic>2</SearchGroupLogic>
+    <SearchWeight>3</SearchWeight>
+  </MetadataField>
+  <MetadataField>
+    <Name>Height</Name>
+    <Type>NUMBER</Type>
+    <Description>The height of an image. Extracted from the image.</Description>
+    <Enabled>1</Enabled>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxValue>9999</MaxValue>
+    <MinValue>1</MinValue>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>1</SearchWeight>
+  </MetadataField>
+</MetadataSchema>

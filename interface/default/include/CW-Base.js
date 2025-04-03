@@ -27,29 +27,6 @@ cw.extend = function(subclass, base) {
 };
 
 /**
- * Construct a callback referring the method of a instantiated object.
- * Additional arguments to this function will be used as arguments to the
- * callback. The additional arguments will come before any arguments passed to
- * the callback when executed. For example, if passing the integer "1" as an
- * additional argument, the callback this function returns will pass in the
- * integer "1" as the first argument and then any other arguments passed in at
- * the time it was called.
- * @param object object an instantiated object
- * @param function method a method (function) of the object
- * @param ... additional arguments
- * @return a callback for the method of the object
- */
-cw.bindObjectMethodCallback = function(object, method) {
-    var parameters = Array.prototype.slice.call(arguments).slice(2);
-
-    return function(){
-        return method.apply(
-            object,
-            parameters.concat(Array.prototype.slice.call(arguments).slice(0)));
-    };
-};
-
-/**
 * Get the base URL for the page.
 * @return Returns the base URL for the page.
 */
@@ -106,10 +83,10 @@ $(document).on('keydown', function(e) {
  *   FALSE to omit them
  */
 // eslint-disable-next-line no-unused-vars
-function mvInsertImage(editorInstance, side, imageUrl, altText, addCaption) {
+function mv_insertImage(editorInstance, side, imageUrl, altText, addCaption) {
     var html = '<div class="mv-form-image-' + side + '">' +
         '<img src="' + imageUrl + '" ' +
-        'alt="' + altText + '"/>';
+        'alt="' + altText.replaceAll('"', '&quot;') + '"/>';
 
     if (addCaption) {
         html = html +
@@ -155,6 +132,26 @@ function mvInsertImage(editorInstance, side, imageUrl, altText, addCaption) {
     // eslint-disable-next-line no-undef
     range.moveToPosition(element, CKEDITOR.POSITION_BEFORE_START);
     editorInstance.insertHtml(html, 'unfiltered_html', range);
+}
+
+/**
+ * Remove all instances of the divs containing a specified image
+ * (added with an Insert button) from content being edited in a
+ * CKEditor instance.
+ * @param CKEditor editorInstance Editor to remove from
+ * @param string imageUrl Url to the image
+ */
+// eslint-disable-next-line no-unused-vars
+function mv_removeImage(editorInstance, imageUrl) {
+    var Images = editorInstance.editable().find('img[src="'+imageUrl+'"]').toArray();
+    Images.forEach(function(Element) {
+        var Container = Element.getParent();
+        if (Container.getName() == "div" &&
+            (Container.hasClass("mv-form-image-left") ||
+             Container.hasClass("mv-form-image-right"))) {
+            Container.remove();
+        }
+    });
 }
 
 // JS code to add responsivness to FormUI that cannot be implemented

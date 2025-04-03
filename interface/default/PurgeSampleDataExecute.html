@@ -3,12 +3,28 @@
 #   FILE:  PurgeSampleDataExecute.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
 
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_ClassificationCount)) {
+    throw new Exception("H_ClassificationCount not defined.");
+}
+if (!isset($H_ControlledNameCount)) {
+    throw new Exception("H_ControlledNameCount not defined.");
+}
+if (!isset($H_ResourceCount)) {
+    throw new Exception("H_ResourceCount not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+PageTitle("Purge Sample Data");
 ?>
 
 <h1>Sample Data Purge Completed Successfully</h1>
@@ -17,15 +33,15 @@
     <tbody>
         <tr>
             <th>Resources Deleted</th>
-            <td><?= $ResourceCount; ?></td>
+            <td><?= $H_ResourceCount; ?></td>
         </tr>
         <tr>
             <th>Classifications Deleted</th>
-            <td><?= $ClassificationCount; ?></td>
+            <td><?= $H_ClassificationCount; ?></td>
         </tr>
         <tr>
             <th>Controlled Names Deleted</th>
-            <td><?= $ControlledNameCount; ?></td>
+            <td><?= $H_ControlledNameCount; ?></td>
         </tr>
     </tbody>
 </table>

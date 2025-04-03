@@ -1,0 +1,318 @@
+<?PHP
+#
+#   FILE:  LTIHome.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\EduLink;
+use Metavus\Plugins\EduLink\ResourceSelectionUI;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\Folders\FolderFactory;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+/**
+ * Get the records for a given subject term, filtered to include only those that
+ * will appear on this page.
+ * @param SearchParameterSet $SearchParams Search parameters for the desired term.
+ * @param array $AllItemIds IDs of all publicly visible items that
+ *     could be shown via the current page.
+ * @return array The subset of results displayed on this page that have the
+ *   desired term.
+ */
+function getResultsForTerm(
+    SearchParameterSet $SearchParams,
+    array $AllItemIds
+) : array {
+    static $Engine = false;
+    static $Plugin = false;
+
+    if ($Engine === false) {
+        $Engine = new SearchEngine();
+    }
+
+    if ($Plugin === false) {
+        $Plugin = EduLink::getInstance();
+    }
+
+    $SearchResults = $Plugin->getCachedSearchResults($SearchParams);
+    if (is_null($SearchResults)) {
+        $SearchResults = $Engine->search($SearchParams);
+
+        $Plugin->cacheSearchResults(
+            $SearchParams,
+            $SearchResults
+        );
+    }
+
+    return array_intersect_key(
+        $SearchResults,
+        array_fill_keys($AllItemIds, true)
+    );
+}
+
+/**
+ * Get HTML for browsing records by subject area.
+ * @param string $LaunchId LaunchId for current page.
+ * @param string $BaseLink Base link for page.
+ * @param array $AllItemIds IDs of all publicly visible items that
+ *     could be shown via the current page.
+ * @return string Html
+ */
+function getBrowsingHtml(
+    string $LaunchId,
+    string $BaseLink,
+    array $AllItemIds
+) : string {
+    $Plugin = EduLink::getInstance();
+
+    $BrowsingFieldId = $Plugin->getConfigSetting("BrowsingField");
+
+    if (strlen($BrowsingFieldId) == 0) {
+        return "";
+    }
+
+    $Html = $Plugin->getCachedSubjectListHtml($AllItemIds);
+    if (!is_null($Html)) {
+        return str_replace("X-LAUNCHID-X", $LaunchId, $Html);
+    }
+
+    $Html = "<div class='mv-p-edulink-browse'>";
+
+    $BrowsingField = MetadataField::getField($BrowsingFieldId);
+    $ClassFactory = $BrowsingField->getFactory();
+    $ToplevelTerms = $ClassFactory->getItems("Depth = 0");
+
+    $Engine = new SearchEngine();
+
+    foreach ($ToplevelTerms as $Term) {
+        $SearchParams = new SearchParameterSet();
+        $SearchParams->addParameter(
+            "^".$Term->id(),
+            $BrowsingField
+        );
+        $SearchParams->itemTypes(MetadataSchema::SCHEMAID_DEFAULT);
+
+        $SearchResults = getResultsForTerm($SearchParams, $AllItemIds);
+        if (count($SearchResults) == 0) {
+            continue;
+        }
+
+        $TermName = $Term->segmentName();
+        $TermId = $Term->id();
+        $SearchParamString = $SearchParams->urlParameterString();
+
+        $ParentHtml = "<a href='".$BaseLink."&amp;".$SearchParamString."'>"
+            .$TermName."</a>";
+
+        $Children = $ClassFactory->getItems("ParentId = ".$TermId);
+
+        $ChildHtml = "";
+        foreach ($Children as $Child) {
+            $SearchParams = new SearchParameterSet();
+            $SearchParams->itemTypes(MetadataSchema::SCHEMAID_DEFAULT);
+            $SearchParams->addParameter(
+                "^".$Child->id(),
+                $BrowsingField
+            );
+
+            $SearchResults = getResultsForTerm($SearchParams, $AllItemIds);
+            if (count($SearchResults) == 0) {
+                continue;
+            }
+
+            $ChildName = $Child->segmentName();
+            $SearchParamString = $SearchParams->urlParameterString();
+
+            $ChildHtml .= "<li><a href='".$BaseLink."&amp;".$SearchParamString."'>"
+                .$ChildName."</a></li>";
+        }
+
+        $ChildHtml = strlen($ChildHtml) > 0 ? "<ul>".$ChildHtml."</ul>" : "";
+
+        $Html .= "<div class='mv-p-edulink-browse-term-container "
+            ."mv-p-edulink-browse-classification-".$TermId."'>"
+            ."<p class='mv-p-edulink-browse-toggle' tabindex='0' role='button'>"
+            ."<span class='mv-p-edulink-browse-control mv-p-edulink-browse-show'>[+]</span>"
+            ."<span class='mv-p-edulink-browse-control mv-p-edulink-browse-hide' "
+            ."style='display: none'>[-]</span> ".$TermName."</p>"
+            ."<ul class='mv-p-edulink-browse-terms' style='display: none'><li>".$ParentHtml
+            .$ChildHtml
+            ."</li></ul></div>";
+    }
+
+    $Html .= "</div>";
+
+    $Plugin->cacheSubjectListHtml(
+        $AllItemIds,
+        str_replace($LaunchId, "X-LAUNCHID-X", $Html)
+    );
+
+    return $Html;
+}
+
+# ----- SETUP ----------------------------------------------------------------
+if (!isset($H_AllRecords)) {
+    throw new Exception("H_AllRecords not defined.");
+}
+if (!isset($H_BaseLink)) {
+    throw new Exception("H_BaseLink not defined.");
+}
+if (!isset($H_LaunchId)) {
+    throw new Exception("H_LaunchId not defined.");
+}
+if (!isset($H_SearchParams)) {
+    throw new Exception("H_SearchParams not defined.");
+}
+if (!isset($H_SearchParamsProvided)) {
+    throw new Exception("H_SearchParamsProvided not defined.");
+}
+if (!isset($H_SelectedRecordIds)) {
+    throw new Exception("H_SelectedRecordIds not defined.");
+}
+if (!isset($H_Records)) {
+    throw new Exception("H_Records not defined.");
+}
+if (!isset($H_TransportUI)) {
+    throw new Exception("H_TransportUI not defined.");
+}
+if (!isset($H_FacetUI)) {
+    throw new Exception("H_FacetUI not defined.");
+}
+
+$AF = ApplicationFramework::getInstance();
+$Plugin = EduLink::getInstance();
+$User = User::getCurrentUser();
+
+$Keywords = implode(" ", $H_SearchParams->getKeywordSearchStrings());
+
+$IconFiles = [
+    'ArrowUpInsideCircle.svg',
+    'Bullhorn2.svg',
+    'SearchResults.svg',
+    'Meeple.svg',
+    'OpenFolder.svg',
+];
+foreach ($IconFiles as $IconFile) {
+    $AF->doNotUrlFingerprint($IconFile);
+}
+
+$SelectionUI = new ResourceSelectionUI(
+    $H_Records,
+    $H_SelectedRecordIds
+);
+
+$SearchButton = new HtmlButton("");
+$SearchButton->setIcon("MagnifyingGlass.svg");
+$SearchButton->setValue("Search");
+$SearchButton->setAriaLabel("Search");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+// phpcs:disable Generic.Files.LineLength.MaxExceeded
+// phpcs:disable Generic.WhiteSpace.ScopeIndent.Incorrect
+// phpcs:disable Squiz.WhiteSpace.ScopeClosingBrace.Indent
+include($AF->gUIFile("EduLink-StdPageStart.html"));
+?>
+<form id="mv-selection-form" method="post" enctype="multipart/form-data"
+      action="<?= $H_BaseLink ?>">
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <?= $SelectionUI->selectedRecordListHtml() ?>
+      <div class="mv-search-results">
+        <?PHP if ($H_SearchParamsProvided) { ?>
+        <h2><?= file_get_contents($AF->gUIFile('SearchResults.svg')) ?> Search Results</h2>
+        <?PHP if (strlen(trim($Keywords)) > 0) { ?>
+        <p><b><?= $H_TransportUI->itemCount() ?></b> results for <b><i><?= htmlspecialchars($Keywords) ?></i></b></p>
+        <?PHP } ?>
+        <?PHP $H_TransportUI->display() ?>
+        <?PHP } else { ?>
+        <?= getBrowsingHtml($H_LaunchId, $H_BaseLink, $H_AllRecords) ?>
+        <h2 class="mv-new-resources"><?= file_get_contents($AF->gUIFile('Bullhorn2.svg')) ?> New Resources</h2>
+        <?PHP } ?>
+        <?= $SelectionUI->recordListHtml() ?>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="mv-p-edulink-search-text-container">
+        <input type="text" name="F_Keywords" placeholder="search" value="<?= $Keywords ?>"
+               /><?= $SearchButton->getHtml(); ?>
+      </div>
+      <div class="mv-p-edulink-search-facet-container">
+        <?= $H_FacetUI->getHtml(); ?>
+      </div>
+    </div>
+  </div>
+</div>
+</form>
+
+<script type='text/javascript'>
+(function () {
+    /**
+     * Add js event handlers needed for the resource selection page
+     */
+    function setUpEventHandlers() {
+        // add handler for facet and transport clicks that will retain the search phrase
+        var loadingClasses = ".mv-search-facets, .mv-transport-controls, .mv-p-edulink-browse, " +
+            ".mv-logo-container";
+        $("a", loadingClasses).on('click', function(event) {
+            event.preventDefault();
+            setTimeout(function() { $("#mv-p-edulink-loading-overlay").show(); }, 250);
+
+            $('#mv-selection-form').attr('action', $(this).attr('href'));
+            $('#mv-selection-form').submit();
+        });
+
+        // handle click on headers for terms in the subject area browse
+        $(".mv-p-edulink-browse-toggle").on('click', function() {
+            $("span.mv-p-edulink-browse-show, span.mv-p-edulink-browse-hide", this).toggle();
+            $("ul.mv-p-edulink-browse-terms", $(this).parent()).toggle();
+        });
+        // handle keypress for same
+        $(".mv-p-edulink-browse-toggle").on('keypress', function(event) {
+            // on enter (13) or space (32), simulate click
+            if (event.which == 13 || event.which == 32) {
+                $(this).trigger('click');
+            }
+        });
+
+        // fix hitting enter in the search box
+        $("input[name='F_Keywords']").on('keydown', function(event){
+            if (event.key == "Enter") {
+                event.preventDefault();
+                setTimeout(function() { $("#mv-p-edulink-loading-overlay").show(); }, 250);
+                $('#mv-selection-form').submit();
+            }
+        });
+
+    }
+
+
+    /**
+     * Rearrange search facets into our desired order.
+     */
+    function fixFacetOrder() {
+        // rearrange into our desired ordering
+        promoteFacet("Language");
+        promoteFacet("Classification");
+        promoteFacet("Resource Type");
+    }
+
+    $(document).ready(function(){
+        fixFacetOrder();
+        setUpEventHandlers();
+    });
+})();
+</script>
+
+<?PHP
+include($AF->gUIFile("EduLink-StdPageEnd.html"));

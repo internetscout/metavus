@@ -3,15 +3,15 @@
 #   FILE:  EditResource.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Record;
 use Metavus\RecordEditingUI;
-use Metavus\RecordFactory;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
@@ -28,7 +28,7 @@ if (is_null($H_ResourceId) ||
     ($H_ResourceId != "NEW" && !Record::itemExists($H_ResourceId))) {
     # for users without (Personal)? Resource Admin or Release Admin,
     # use checkAuthorization() to display a permission denied message
-    checkAuthorization(
+    CheckAuthorization(
         PRIV_RESOURCEADMIN,
         PRIV_COLLECTIONADMIN,
         PRIV_RELEASEADMIN
@@ -78,7 +78,7 @@ if (!$H_Resource->userCanModify($User)) {
 }
 
 # redirect to correct URL if this is not the right editing page for record
-$EditUrl = $H_Resource->getSchema()->editPage();
+$EditUrl = $H_Resource->getSchema()->getEditPage();
 $EditUrlArgString = parse_url($EditUrl, PHP_URL_QUERY);
 $EditUrl = str_replace('$ID', (string)$H_ResourceId, $EditUrl);
 if ($EditUrlArgString !== false) {
@@ -117,7 +117,7 @@ if (empty($_POST)) {
 }
 
 # if a button in the EditingUI was pushed, process its actions
-switch (StdLib::getFormValue($H_RecordEditingUI->getButtonName())) {
+switch ($H_RecordEditingUI->getSubmitButtonValue()) {
     case "Upload":
         $H_RecordEditingUI->handleUploads();
         break;

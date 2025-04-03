@@ -3,13 +3,12 @@
 #   FILE:  File.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2010-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2010-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\Database;
 use ScoutLib\Item;
@@ -46,7 +45,7 @@ class File extends Item
      */
     public static function create(
         string $SourceFile,
-        string $DesiredFileName = null,
+        ?string $DesiredFileName = null,
         bool $MoveSourceFile = true
     ) {
                 # check that file exists
@@ -164,7 +163,7 @@ class File extends Item
      * @param string $NewValue The new comment on the file.  (OPTIONAL)
      * @return string The comment on the file.
      */
-    public function comment(string $NewValue = null): string
+    public function comment(?string $NewValue = null): string
     {
         return $this->DB->updateValue("FileComment", $NewValue);
     }
@@ -174,7 +173,7 @@ class File extends Item
      * @param int $NewValue The new field ID of the File.  (OPTIONAL)
      * @return int The field ID of the File.
      */
-    public function fieldId(int $NewValue = null): int
+    public function fieldId(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("FieldId", $NewValue);
     }
@@ -184,7 +183,7 @@ class File extends Item
      * @param int $NewValue The new resource ID of the File.  (OPTIONAL)
      * @return int The resource ID of the File.
      */
-    public function resourceId(int $NewValue = null): int
+    public function resourceId(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("RecordId", $NewValue);
     }
@@ -219,8 +218,9 @@ class File extends Item
     /**
      * Deletes the file and removes its entry from the database. Other methods
      * are invalid after calling this.
+     * @return void
      */
-    public function destroy()
+    public function destroy(): void
     {
         # delete file
         $FileName = $this->getNameOfStoredFile();

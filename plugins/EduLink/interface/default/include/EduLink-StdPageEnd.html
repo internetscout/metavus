@@ -1,0 +1,23 @@
+<?PHP
+#
+#   FILE:  EduLink-StdPageEnd.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Metavus\Plugins\EduLink;
+
+# ----- DISPLAY --------------------------------------------------------------
+?>
+    <div class="mv-p-edulink-footer">
+    <?= EduLink::getInstance()->getFooterText() ?>
+    </div>
+    </main>
+  </div>
+</body>
+</html>

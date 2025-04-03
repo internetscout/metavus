@@ -3,7 +3,7 @@
 #   FILE:  SearchEngine.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -166,16 +166,22 @@ class SearchEngine extends \ScoutLib\SearchEngine
         $SearchPhrase = strtolower(addslashes($Phrase));
 
         # query DB for matching list based on field type
-        $Field = new MetadataField((int)$FieldId);
+        $Field = MetadataField::getField((int)$FieldId);
         switch ($Field->type()) {
             case MetadataSchema::MDFTYPE_TEXT:
             case MetadataSchema::MDFTYPE_PARAGRAPH:
-            case MetadataSchema::MDFTYPE_FILE:
             case MetadataSchema::MDFTYPE_URL:
             case MetadataSchema::MDFTYPE_EMAIL:
                 $QueryString = "SELECT DISTINCT RecordId FROM Records "
                         ."WHERE POSITION('".$SearchPhrase."'"
                             ." IN LOWER(`".$Field->dBFieldName()."`)) ";
+                break;
+
+            case MetadataSchema::MDFTYPE_FILE:
+                $QueryString = "SELECT DISTINCT RecordId FROM Files "
+                        ."WHERE FieldId = ".$FieldId
+                        ." AND (POSITION('".$SearchPhrase."' IN LOWER(FileName))"
+                        ." OR POSITION('".$SearchPhrase."' IN LOWER(FileComment)))";
                 break;
 
             case MetadataSchema::MDFTYPE_IMAGE:
@@ -322,7 +328,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 continue;
             }
 
-            $Field = new MetadataField($FieldId);
+            $Field = MetadataField::getField($FieldId);
             $Operator = $Operators[$Index];
             $Value = $Values[$Index];
 
@@ -372,9 +378,22 @@ class SearchEngine extends \ScoutLib\SearchEngine
 
                 case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
                     $QueryIndex = "RecordNameInts".$FieldId;
-                    $Queries[$QueryIndex] = $this->getComparisonQueryForControlledName(
+                    if ($Operator == "!=") {
+                        # separate exclusion queries from regular queries
+                        $QueryIndex .= "X";
+                        # if no exclusion query started yet, start one
+                        if (!isset($Queries[$QueryIndex])) {
+                            $Queries[$QueryIndex] = [
+                                "IsExclusion" => true,
+                                "SchemaId" => $Field->schemaId()
+                            ];
+                        }
+                    }
+
+                    $Queries[$QueryIndex] =
+                    $this->getComparisonQueryForControlledName(
                         $Queries[$QueryIndex] ?? [],
-                        $Operator,
+                        ($Operator == "!=" ) ? "=" : $Operator,
                         $Value,
                         $FieldId
                     );
@@ -382,12 +401,25 @@ class SearchEngine extends \ScoutLib\SearchEngine
 
                 case MetadataSchema::MDFTYPE_OPTION:
                     $QueryIndex = "RecordNameInts".$FieldId;
-                    $Queries[$QueryIndex] = $this->getComparisonQueryForOption(
-                        $Queries[$QueryIndex] ?? [],
-                        $Operator,
-                        $Value,
-                        $FieldId
-                    );
+                    if ($Operator == "!=") {
+                        # separate exclusion queries from regular queries
+                        $QueryIndex .= "X";
+                        # if no exclusion query started yet, start one
+                        if (!isset($Queries[$QueryIndex])) {
+                            $Queries[$QueryIndex] = [
+                                "IsExclusion" => true,
+                                "SchemaId" => $Field->schemaId()
+                            ];
+                        }
+                    }
+
+                    $Queries[$QueryIndex] =
+                            $this->getComparisonQueryForOption(
+                                $Queries[$QueryIndex] ?? [],
+                                ($Operator == "!=") ? "=" : $Operator,
+                                $Value,
+                                $FieldId
+                            );
                     break;
 
                 case MetadataSchema::MDFTYPE_TREE:
@@ -426,14 +458,16 @@ class SearchEngine extends \ScoutLib\SearchEngine
                     break;
 
                 case MetadataSchema::MDFTYPE_DATE:
-                    $Date = new Date($Value);
-                    if ($Date->precision()) {
-                        $QueryConditions["Records"][] =
-                                " ( ".$Date->sqlCondition(
-                                    $Field->dBFieldName()."Begin",
-                                    $Field->dBFieldName()."End",
-                                    $Operator
-                                )." ) ";
+                    if (Date::isValidDate($Value)) {
+                        $Date = new Date($Value);
+                        if ($Date->precision()) {
+                            $QueryConditions["Records"][] =
+                                    " ( ".$Date->sqlCondition(
+                                        $Field->dBFieldName()."Begin",
+                                        $Field->dBFieldName()."End",
+                                        $Operator
+                                    )." ) ";
+                        }
                     }
                     break;
 
@@ -558,56 +592,71 @@ class SearchEngine extends \ScoutLib\SearchEngine
         if (isset($Queries)) {
             # for each assembled query
             foreach ($Queries as $QueryIndex => $Query) {
-                # if query does not have multiple parts
+                if (isset($Query["IsExclusion"])) {
+                    $SchemaId = $Query["SchemaId"];
+                    $IsExclusion = $Query["IsExclusion"];
+                    unset($Query["IsExclusion"]);
+                    unset($Query["SchemaId"]);
+                } else {
+                    $IsExclusion = false;
+                    $SchemaId = null;
+                }
+                # For searches that exclude terms, we find the records that
+                # should not match the search (those with excluded terms), then
+                # remove those records from the full list of records in the
+                # schema. To get the list of exclusions we need to switch the
+                # logic. For example, if the search was:
+                # Format != html AND format != docx, the records to exclude will
+                # be those where Format = html OR Format = docx - the ones
+                # where either term matches.
+                # This is a consequence of DeMorgan's law. (In cases where the
+                # search was Format != html OR format != docx, the records to
+                # exclude will be those have BOTH html and docx as values for
+                # Format.)
+
+                $RequireAllTerms = $IsExclusion
+                        ? ($Logic == "OR") : ($Logic == "AND");
+
                 if (isset($Query["Query"])) {
-                    # if query was flagged to be closed
-                    if (isset($Query["Close"])) {
-                        # add closing paren
-                        $Query["Query"] .= ") ";
-
-                        # if query had multiple values and AND logic
-                        if (($Logic == "AND")
-                                && ($Query["Count"] > 1)) {
-                            # add grouping logic
-                            $Query["Query"] .= "GROUP BY RecordId"
-                                    ." HAVING COUNT(DISTINCT ".$Query["Column"]
-                                    .") = ".$Query["Count"];
-                        }
-                    }
-
-                    # perform query and retrieve IDs
-                    $this->dMsg(5, "Performing comparison query <i>".$Query["Query"]."</i>");
-                    $this->DB->query($Query["Query"]);
-                    $ResourceIds = $this->DB->fetchColumn("RecordId");
+                    # query does not have multiple parts
+                    $ResourceIds =
+                            $this->runComparisonQuery(
+                                $Query["Query"],
+                                $Query["Count"] ?? 0,
+                                $Query["Column"] ?? "",
+                                $Query["Close"] ?? false,
+                                $RequireAllTerms
+                            );
                     $this->dMsg(5, "Comparison query produced <i>"
                             .count($ResourceIds)."</i> results");
                 } else {
                     # for each part of query
                     $ResourceIds = [];
                     foreach ($Query as $PartIndex => $PartQuery) {
-                        # add closing paren if query was flagged to be closed
-                        if (isset($PartQuery["Close"])) {
-                            $PartQuery["Query"] .= ") ";
-                            if (($Logic == "AND")
-                                    && ($PartQuery["Count"] > 1)) {
-                                $PartQuery["Query"] .= "GROUP BY RecordId"
-                                        ." HAVING COUNT(DISTINCT ".$PartQuery["Column"]
-                                        .") = ".$PartQuery["Count"];
-                            }
-                        }
+                        $ResourceIds =
+                                $ResourceIds +
+                                $this->runComparisonQuery(
+                                    $PartQuery["Query"],
+                                    $PartQuery["Count"] ?? 0,
+                                    $PartQuery["Column"] ?? "",
+                                    $PartQuery["Close"] ?? false,
+                                    $RequireAllTerms
+                                );
 
-                        # perform query and retrieve IDs
-                        $this->dMsg(5, "Performing comparison query <i>"
-                                .$PartQuery["Query"]."</i>");
-                        $this->DB->query($PartQuery["Query"]);
-                        $ResourceIds = $ResourceIds
-                                + $this->DB->fetchColumn("RecordId");
                         $this->dMsg(5, "Comparison query produced <i>"
                                 .count($ResourceIds)."</i> results");
                     }
                 }
 
-                # if we already have some results
+                if ($IsExclusion) {
+                    # for exclusion search, results are all of the schema's
+                    # records that do *not* match the exclusion query
+
+                    $RFactory = new RecordFactory($SchemaId);
+                    $AllRecordsInSchema = $RFactory->getItemIds();
+                    $ResourceIds = array_diff($AllRecordsInSchema, $ResourceIds);
+                }
+
                 if (!is_null($Results)) {
                     # if search logic is set to AND
                     if ($Logic == "AND") {
@@ -623,6 +672,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 }
             }
         }
+
         # if all fields passed are invalid (e.g., deleted)
         if (is_null($Results)) {
             $Results = [];
@@ -631,6 +681,61 @@ class SearchEngine extends \ScoutLib\SearchEngine
         # return results to caller
         return $Results;
     }
+
+
+    /**
+     * Complete and execute the provided comparison query and return IDs of
+     * matching records. Query is completed with a GROUP BY ... HAVING
+     * clause that implements AND logic if all searched terms should be
+     * included in the results.
+     * @param string $Query An SQL query segment for this field.
+     * @param int $Count The count of values being compared for this segment.
+     * @param string $Column The database column the value is being compared
+     *         against.
+     * @param bool $Close If set, the segment needs a a closing parenthese
+     *         added.
+     * @param boolean $RequireAllTerms TRUE if all of the searched terms must
+     *         be present in matched records.
+     * @return array IDs of resources that match the query.
+     */
+    private function runComparisonQuery(
+        string $Query,
+        int $Count,
+        string $Column,
+        bool $Close,
+        bool $RequireAllTerms
+    ): array {
+        # The HAVING clause specifies conditions that apply to groups of records
+        # defined by GROUP BY (here, "RecordId"). Whether each of these groups
+        # is included in the set of result or not is determined by the clause:
+        # "HAVING COUNT(DISTINCT Col) = N"
+        # This will only include the IDs of records that match exactly N of the
+        # searched terms, where N is the number of terms. Therefore, all of the
+        # terms have to have been matched for the ID of a record to be included
+        # in the search results if GROUP BY.. HAVING is included with the query.
+
+        # If query was flagged to be closed (because it might cover multiple
+        # terms), add closing paren
+        if ($Close == true) {
+            $Query .= ") ";
+            if ($RequireAllTerms
+                    && ($Count > 1)) {
+                $Query .= "GROUP BY RecordId"
+                        ." HAVING COUNT(DISTINCT ".$Column
+                        .") = ".$Count;
+            }
+        }
+
+        # perform query and retrieve IDs
+        $this->dMsg(5, "Performing comparison query <i>" .$Query."</i>");
+        $this->DB->query($Query);
+        $ResourceIds = $this->DB->fetchColumn("RecordId");
+        $this->dMsg(5, "Comparison query produced <i>"
+                .count($ResourceIds)."</i> results");
+
+        return $ResourceIds;
+    }
+
 
     /**
      * Build or extend SQL query for comparison to controlled name value for
@@ -811,7 +916,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 Classification::itemExists((int)$Matches[1])) {
                 $Term = (new Classification((int)$Matches[1]))->name();
             } else {
-                $Term = $Matches[2];
+                $Term = isset($Matches[2]) ? $Matches[2] : "";
             }
 
             # add text comparison SQL for value and any descendants in tree
@@ -871,8 +976,9 @@ class SearchEngine extends \ScoutLib\SearchEngine
      * @param mixed $ItemOrItemId Item to update.
      * @param int $TaskPriority Priority for the task, if the default
      *         is not suitable
+     * @return void
      */
-    public static function queueUpdateForItem($ItemOrItemId, int $TaskPriority = null)
+    public static function queueUpdateForItem($ItemOrItemId, ?int $TaskPriority = null): void
     {
         if (is_numeric($ItemOrItemId)) {
             $ItemId = (int)$ItemOrItemId;
@@ -908,8 +1014,9 @@ class SearchEngine extends \ScoutLib\SearchEngine
     /**
      * Update search index for an item.
      * @param int $ItemId Item to update.
+     * @return void
      */
-    public static function runUpdateForItem(int $ItemId)
+    public static function runUpdateForItem(int $ItemId): void
     {
         # bail out if item no longer exists
         try {
@@ -968,6 +1075,8 @@ class SearchEngine extends \ScoutLib\SearchEngine
             Record::getSchemasForRecords(array_keys($SearchResults))
         );
 
+        # iterate over our schemas and build a list of the Tree and Controlled
+        # Name / Option fields for which we want to generate facets
         $TreeFieldIds = [];
         $CNameFieldIds = [];
         foreach ($SchemaIds as $SchemaId) {
@@ -975,9 +1084,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
 
             $TreeFields = $Schema->getFields(MetadataSchema::MDFTYPE_TREE);
             foreach ($TreeFields as $Field) {
-                if ($Field->includeInFacetedSearch() &&
-                    ($Field->facetsShowOnlyTermsUsedInResults() ||
-                     $Field->searchGroupLogic() == self::LOGIC_AND)) {
+                if ($Field->includeInFacetedSearch()) {
                     $TreeFieldIds[] = $Field->id();
                 }
             }
@@ -987,9 +1094,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 MetadataSchema::MDFTYPE_CONTROLLEDNAME
             );
             foreach ($CNameFields as $Field) {
-                if ($Field->includeInFacetedSearch() &&
-                    ($Field->facetsShowOnlyTermsUsedInResults() ||
-                     $Field->searchGroupLogic() == self::LOGIC_AND)) {
+                if ($Field->includeInFacetedSearch()) {
                     $CNameFieldIds[] = $Field->id();
                 }
             }
@@ -1121,7 +1226,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
             # which would be appropriate for that field
             foreach ($SuggestionsById as $FieldId => $FieldValues) {
                 try {
-                    $ThisField = new MetadataField((int)$FieldId);
+                    $ThisField = MetadataField::getField((int)$FieldId);
                 } catch (Exception $Exception) {
                     $ThisField = null;
                 }
@@ -1155,8 +1260,9 @@ class SearchEngine extends \ScoutLib\SearchEngine
      * Set the default priority for background tasks.
      * @param int $NewPriority New task priority (one of
      *     ApplicationFramework::PRIORITY_*)
+     * @return void
      */
-    public static function setUpdatePriority(int $NewPriority)
+    public static function setUpdatePriority(int $NewPriority): void
     {
         self::$TaskPriority = $NewPriority;
     }
@@ -1168,7 +1274,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
      * @param int $NewValue Updated value.
      * @return int current value
      */
-    public static function numResourcesForFacets(int $NewValue = null)
+    public static function numResourcesForFacets(?int $NewValue = null)
     {
         if (!is_null($NewValue)) {
             self::$NumResourcesForFacets = $NewValue;
@@ -1239,7 +1345,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         $SearchGroups,
         int $StartingResult = 0,
         int $NumberOfResults = 10,
-        string $SortByField = null,
+        ?string $SortByField = null,
         bool $SortDescending = true
     ) {
 
@@ -1307,7 +1413,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
 
             # no change if classification specified comes from a different field
             $Classification = new Classification($ItemId);
-            $Field = new MetadataField(
+            $Field = MetadataField::getField(
                 $Classification->fieldId()
             );
             if ($Field->name() != $FieldName) {
@@ -1333,8 +1439,8 @@ class SearchEngine extends \ScoutLib\SearchEngine
     public static function thereAreIndexUpdateTasksInQueue()
     {
         $AF = ApplicationFramework::getInstance();
-        $Tasks = $AF->taskMgr()->getRunningTaskList()
-                + $AF->taskMgr()->getQueuedTaskList();
+        $Tasks = $AF->getRunningTaskList()
+                + $AF->getQueuedTaskList();
         foreach ((array)$Tasks as $TaskId => $TaskInfo) {
             if (strpos($TaskInfo["Description"], "Update search data for") === 0) {
                 return true;
@@ -1506,7 +1612,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                     );
                 }
             } else {
-                $NormalizedValue = addslashes($Value);
+                return null;
             }
 
             # build SQL conditional
@@ -1525,6 +1631,9 @@ class SearchEngine extends \ScoutLib\SearchEngine
                         : substr($Operator, 1);
             }
 
+            if (!Date::isValidDate($Value)) {
+                return null;
+            }
             # use Date object method to build conditional
             $Date = new Date($Value);
             if ($Date->precision()) {

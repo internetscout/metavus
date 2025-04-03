@@ -3,13 +3,12 @@
 #   FILE:  FileFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2007-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2007-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\ItemFactory;
@@ -26,7 +25,7 @@ class FileFactory extends ItemFactory
      * Object constructor.
      * @param int $FieldId Metadata field ID.  (OPTIONAL)
      */
-    public function __construct(int $FieldId = null)
+    public function __construct(?int $FieldId = null)
     {
         # save field ID for our later use
         $this->FieldId = $FieldId;
@@ -113,8 +112,9 @@ class FileFactory extends ItemFactory
     /**
      * Queue tasks to check the fixity of files that have not been checked in
      * self::$FixityCheckInterval days.
+     * @return void
      */
-    public static function queueFixityChecks()
+    public static function queueFixityChecks(): void
     {
         $DB = new Database();
         $DB->query(

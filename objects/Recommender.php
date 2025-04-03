@@ -3,19 +3,18 @@
 #   FILE:  Recommender.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
+use ScoutLib\StdLib;
 
 class Recommender extends \ScoutLib\Recommender
 {
-
     /**
      * Recommender object constructor.
      */
@@ -110,24 +109,23 @@ class Recommender extends \ScoutLib\Recommender
      */
     public function getFieldValue(int $ItemId, string $FieldName)
     {
-        static $Resources;
-
         # if resource not already loaded
-        if (!isset($Resources[$ItemId])) {
+        if (!isset(self::$RecordCache[$ItemId])) {
             # get resource object
-            $Resources[$ItemId] = new Record($ItemId);
+            self::$RecordCache[$ItemId] = new Record($ItemId);
 
             # if cached resource limit exceeded
-            if (count($Resources) > 100) {
+            if (count(self::$RecordCache) > 100) {
                 # dump oldest resource
-                reset($Resources);
-                $DumpedItemId = key($Resources);
-                unset($Resources[$DumpedItemId]);
+                reset(self::$RecordCache);
+                $DumpedItemId = key(self::$RecordCache);
+                unset(self::$RecordCache[$DumpedItemId]);
             }
         }
 
         # retrieve field value from resource object and return to caller
-        $FieldValue = $Resources[$ItemId]->Get($FieldName);
+        $FieldValue = self::$RecordCache[$ItemId]->get($FieldName);
+
         return $FieldValue;
     }
 
@@ -136,8 +134,9 @@ class Recommender extends \ScoutLib\Recommender
      * @param mixed $ItemOrItemId Item or an int item id to update
      * @param mixed $TaskPriority Priority to use for this task, if the default
      *    is not suitable
+     * @return void
      */
-    public function queueUpdateForItem($ItemOrItemId, $TaskPriority = null)
+    public function queueUpdateForItem($ItemOrItemId, $TaskPriority = null): void
     {
         if (is_numeric($ItemOrItemId)) {
             $ItemId = (int)$ItemOrItemId;
@@ -152,10 +151,12 @@ class Recommender extends \ScoutLib\Recommender
             $TaskPriority = self::$TaskPriority;
         }
 
+        $AF = ApplicationFramework::getInstance();
+
         $TaskDescription = "Update recommender data for"
             ." <a href=\"r".$ItemId."\"><i>"
             .$Item->GetMapped("Title")."</i></a>";
-        $GLOBALS["AF"]->QueueUniqueTask(
+        $AF->queueUniqueTask(
             [__CLASS__, "RunUpdateForItem"],
             [intval($ItemId), 0],
             $TaskPriority,
@@ -167,8 +168,9 @@ class Recommender extends \ScoutLib\Recommender
      * Perform recommender db updates for a specified item (usually in the background)
      * @param int $SourceItemId ItemId for the source item in this update
      * @param int $StartingIndex Starting index of the destination items
+     * @return void
      */
-    public static function runUpdateForItem($SourceItemId, $StartingIndex)
+    public static function runUpdateForItem($SourceItemId, $StartingIndex): void
     {
         # check that resource still exists
         $RFactory = new RecordFactory();
@@ -182,14 +184,23 @@ class Recommender extends \ScoutLib\Recommender
             $Recommender = new Recommender();
         }
 
+        $AF = ApplicationFramework::getInstance();
+
+        # determine a percent memory threshold for when we want to clear caches,
+        # set higher than what Database does automatically so that this will
+        # trigger first and give us deterministic behavior
+        $PercentMemThreshold =
+            100 * (Database::getThresholdForCacheClearing() /
+                   StdLib::getPhpMemoryLimit()) + 10;
+
         # if starting update for source item
         if ($StartingIndex == 0) {
             # clear data for item
-            $Recommender->DropItem($SourceItemId);
+            $Recommender->dropItem($SourceItemId);
         }
 
         # load array of item IDs and pare down to those in same schema as source item
-        $TargetItemIds = $Recommender->GetItemIds();
+        $TargetItemIds = $Recommender->getItemIds();
         $SourceSchemaIds = $RFactory->getItemIds();
         $TargetItemIds = array_values(array_intersect(
             $TargetItemIds,
@@ -197,42 +208,46 @@ class Recommender extends \ScoutLib\Recommender
         ));
         $TargetCount = count($TargetItemIds);
 
+        # start with an initial estimate of 90s to update an item
+        # (this is 1.5x typical times for our production sites in 2023)
+        $ExecutionTime = 90;
+
         # while not last item ID and not out of time
         for ($Index = $StartingIndex; $Index < $TargetCount; $Index++) {
             # if target ID points to non-temporary entry
             if ($TargetItemIds[$Index] >= 0) {
+                # if running low on memory, clear caches (Database caches are
+                # also cleared so we don't end up in a situation where we're
+                # repeatedly clearing Recommender's caches just to have Database
+                # sitting there on a fat stack of memory and laughing at our
+                # efforts)
+                if (StdLib::getPercentFreeMemory() < $PercentMemThreshold) {
+                    Database::clearCaches();
+                    static::clearCaches();
+                }
+
+                # bail out if out of memory or not enough time for another update
+                if (($AF->getSecondsBeforeTimeout() < ($ExecutionTime * 2))
+                    || (StdLib::getFreeMemory() < 8000000)) {
+                    break;
+                }
+
                 # update correlation for source item and current item
                 $StartTime = microtime(true);
-                $Recommender->UpdateContentCorrelation(
+                $Recommender->updateContentCorrelation(
                     $SourceItemId,
                     $TargetItemIds[$Index]
                 );
                 $ExecutionTime = microtime(true) - $StartTime;
-
-                # clear all caches if memory has run low
-                if ($GLOBALS["AF"]->GetFreeMemory() < 8000000) {
-                    Database::caching(false);
-                    Database::caching(true);
-                    self::clearCaches();
-                    if (function_exists("gc_collect_cycles")) {
-                        gc_collect_cycles();
-                    }
-                }
-
-                # bail out if out of memory or not enough time for another update
-                if (($GLOBALS["AF"]->GetSecondsBeforeTimeout() < ($ExecutionTime * 2))
-                    || ($GLOBALS["AF"]->GetFreeMemory() < 8000000)) {
-                    break;
-                }
             }
         }
 
         # if all correlations completed for source item
         if ($Index >= $TargetCount) {
             # periodically prune correlations if enough time remaining
-            if (($GLOBALS["AF"]->GetSecondsBeforeTimeout() > 20)
+            if (($AF->getSecondsBeforeTimeout() > 20)
                 && (rand(1, 10) == 1)) {
-                $Recommender->PruneCorrelations();
+                $Recommender->pruneCorrelations();
             }
         } else {
             # requeue updates for remaining items
@@ -240,7 +255,7 @@ class Recommender extends \ScoutLib\Recommender
             $TaskDescription = "Update recommender data for"
                 ." <a href=\"r".$SourceItemId."\"><i>"
                 .$Item->getMapped("Title")."</i></a>";
-            $GLOBALS["AF"]->QueueUniqueTask(
+            $AF->queueUniqueTask(
                 [__CLASS__, "RunUpdateForItem"],
                 [(int)$SourceItemId, $Index],
                 ApplicationFramework::PRIORITY_LOW
@@ -252,21 +267,34 @@ class Recommender extends \ScoutLib\Recommender
      * Set the default priority for background tasks.
      * @param mixed $NewPriority New task priority (one of
      *     ApplicationFramework::PRIORITY_*)
+     * @return void
      */
-    public static function setUpdatePriority($NewPriority)
+    public static function setUpdatePriority($NewPriority): void
     {
         self::$TaskPriority = $NewPriority;
+    }
+
+    /**
+     * Clear internal caches.
+     * @return void
+     */
+    public static function clearCaches(): void
+    {
+        parent::clearCaches();
+        self::$RecordCache = [];
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     private $Schema;
     private static $TaskPriority = ApplicationFramework::PRIORITY_BACKGROUND;
+    private static $RecordCache = [];
 
     /**
      * Load internal item ID cache (if not already loaded).
+     * @return void
      */
-    protected function loadItemIds()
+    protected function loadItemIds(): void
     {
         # if item IDs not already loaded
         if (!isset($this->ItemIds)) {

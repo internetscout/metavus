@@ -3,7 +3,7 @@
 #   FILE:  PageFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -53,7 +53,7 @@ class PageFactory extends RecordFactory
         foreach ($Ids as $Id) {
             # retrieve clean URL
             $Page = new Page($Id);
-            $Url = trim($Page->Get("Clean URL"));
+            $Url = trim($Page->Get("Clean URL") ?? "");
 
             # add to list if non-empty, including tabs
             if (strlen($Url) > 0) {

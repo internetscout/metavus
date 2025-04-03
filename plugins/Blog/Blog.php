@@ -3,13 +3,12 @@
 #   FILE:  Blog.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Exception;
 use Metavus\ControlledName;
 use Metavus\ControlledNameFactory;
@@ -21,6 +20,11 @@ use Metavus\Plugin;
 use Metavus\Plugins\Blog\BlogEntryUI;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\Plugins\Blog\EntryFactory;
+use Metavus\Plugins\CleanURLs;
+use Metavus\Plugins\Mailer;
+use Metavus\Plugins\MetricsReporter;
+use Metavus\Plugins\MetricsRecorder;
+use Metavus\Plugins\SecondaryNavigation;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\RecordFactory;
@@ -28,6 +32,7 @@ use Metavus\SearchEngine;
 use Metavus\SystemConfiguration;
 use Metavus\InterfaceConfiguration;
 use Metavus\User;
+use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Email;
@@ -135,11 +140,11 @@ class Blog extends Plugin
         $this->Name = "Blog";
         $this->Version = "1.0.26";
         $this->Description = "Adds blog functionality.";
-        $this->Author = "Internet Scout";
+        $this->Author = "Internet Scout Research Group";
         $this->Url = "http://metavus.net";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "MetricsRecorder" => "1.2.4",
             "MetricsReporter" => "0.9.2",
             "SocialMedia" => "1.1.0",
@@ -187,7 +192,7 @@ class Blog extends Plugin
      * @return NULL if configuration setup succeeded, otherwise a string with
      *       an error message indicating why config setup failed.
      */
-    public function setUpConfigOptions()
+    public function setUpConfigOptions(): ?string
     {
         $this->CfgSetup["BlogManagerPrivs"] = [
             "Type" => FormUI::FTYPE_PRIVILEGES,
@@ -266,23 +271,15 @@ class Blog extends Plugin
      * @return NULL if initialization was successful, otherwise a string
      *       containing an error message indicating why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         $AF = ApplicationFramework::getInstance();
         $PluginMgr = PluginManager::getInstance();
 
-        foreach ($this->configSetting("BlogSettings") as $BlogId => $BlogSettings) {
+        foreach ($this->getConfigSetting("BlogSettings") as $BlogId => $BlogSettings) {
             if (isset($BlogSettings["CleanUrlPrefix"]) &&
                 strlen($BlogSettings["CleanUrlPrefix"]) > 0) {
                 $RegexCleanUrlPrefix = preg_quote($BlogSettings["CleanUrlPrefix"]);
-
-                # clean URL for viewing a single blog entry
-                $AF->addCleanUrlWithCallback(
-                    "%^".$RegexCleanUrlPrefix."/([0-9]+)(/[^/]*)?$%",
-                    "P_Blog_Entry",
-                    ["ID" => "$1"],
-                    [$this, "CleanUrlTemplate"]
-                );
 
                 # clean URL for viewing all blog entries
                 $AF->addCleanUrl(
@@ -291,11 +288,18 @@ class Blog extends Plugin
                     ["BlogId" => $BlogId],
                     $BlogSettings["CleanUrlPrefix"]."/"
                 );
+
+                $AF->addCleanUrl(
+                    "%^".$RegexCleanUrlPrefix."/?([0-9]+)%",
+                    "P_Blog_Entry",
+                    ["ID" => "\$1"],
+                    $BlogSettings["CleanUrlPrefix"]."/\$ID"
+                );
             }
         }
 
         # register our events with metrics recorder
-        $PluginMgr->GetPlugin("MetricsRecorder")->RegisterEventType(
+        MetricsRecorder::getInstance()->registerEventType(
             "Blog",
             "ViewEntry"
         );
@@ -322,8 +326,8 @@ class Blog extends Plugin
         ], true);
 
         # if MetricsRecorder is enabled, register our subscriber count event
-        if ($PluginMgr->PluginEnabled("MetricsRecorder")) {
-            $PluginMgr->GetPlugin("MetricsRecorder")->RegisterEventType(
+        if ($PluginMgr->pluginReady("MetricsRecorder")) {
+            MetricsRecorder::getInstance()->registerEventType(
                 $this->Name,
                 "NumberOfSubscribers"
             );
@@ -334,7 +338,7 @@ class Blog extends Plugin
             $EditingPrivs = (new MetadataSchema($this->getSchemaId()))
                 ->editingPrivileges();
 
-            $SecondaryNav = $PluginMgr->getPlugin("SecondaryNavigation");
+            $SecondaryNav = SecondaryNavigation::getInstance();
             $SecondaryNav->offerNavItem(
                 "Blog Entries",
                 "index.php?P=P_Blog_ListEntries",
@@ -342,6 +346,11 @@ class Blog extends Plugin
                 "View a list of all user created blogs."
             );
         }
+
+        Record::registerObserver(
+            Record::EVENT_ADD | Record::EVENT_SET,
+            [$this, "resourceEdited"]
+        );
 
         # report success
         return null;
@@ -351,7 +360,7 @@ class Blog extends Plugin
      * Install this plugin.
      * @return string|null Returns NULL if everything went OK or an error message otherwise.
      */
-    public function install()
+    public function install(): ?string
     {
         $IntConfig = InterfaceConfiguration::getInstance();
 
@@ -361,7 +370,7 @@ class Blog extends Plugin
         $DefaultPrivs->addPrivilege(PRIV_SYSADMIN);
 
         # use the default privs as the default privs to view metrics
-        $this->configSetting("BlogManagerPrivs", $DefaultPrivs);
+        $this->setConfigSetting("BlogManagerPrivs", $DefaultPrivs);
 
         # create a new metadata schema and save its ID
         $Schema = MetadataSchema::create(
@@ -374,8 +383,8 @@ class Blog extends Plugin
             "Blog Entry"
         );
         $Schema->setItemClassName("Metavus\\Plugins\\Blog\\Entry");
-        $Schema->editPage("index.php?P=EditResource&ID=\$ID");
-        $this->configSetting("MetadataSchemaId", $Schema->id());
+        $Schema->setEditPage("index.php?P=EditResource&ID=\$ID");
+        $this->setConfigSetting("MetadataSchemaId", $Schema->id());
 
         # populate our new schema with fields from XML file
         $BaseName = $this->getBaseName();
@@ -406,7 +415,7 @@ class Blog extends Plugin
         $SubscribeField->enabled(false);
 
         # change the subscribe field label to match the blog name
-        $SubscribeField->label("Subscribe to ".$this->configSetting("BlogName"));
+        $SubscribeField->label("Subscribe to ".$this->getConfigSetting("BlogName"));
 
         # get the file that holds the default categories
         $DefaultCategoriesFile = @fopen($this->getDefaultCategoriesFile(), "r");
@@ -415,7 +424,7 @@ class Blog extends Plugin
         }
 
         # get the categories
-        $Categories = @fgetcsv($DefaultCategoriesFile);
+        $Categories = @fgetcsv($DefaultCategoriesFile, null, ",", "\"", "\\");
         if ($Categories === false) {
             return "Could not parse the default categories";
         }
@@ -430,7 +439,7 @@ class Blog extends Plugin
         @fclose($DefaultCategoriesFile);
 
         # create ConfigSetting "BlogSettings"
-        $this->configSetting("BlogSettings", []);
+        $this->setConfigSetting("BlogSettings", []);
 
         # create the default blog
         $DefaultBlog = $this->createBlog($IntConfig->getString("PortalName")." Blog");
@@ -468,423 +477,10 @@ class Blog extends Plugin
     }
 
     /**
-     * Upgrade from a previous version.
-     * @param string $PreviousVersion Previous version of the plugin.
-     * @return string|null Returns NULL on success and an error message otherwise.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        # upgrade from versions < 1.0.1 to 1.0.1
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            $DB = new Database();
-            $SchemaId = $this->getSchemaId();
-
-            # first, see if the schema attributes already exist
-            $DB->query("
-                SELECT * FROM MetadataSchemas
-                WHERE SchemaId = '".intval($SchemaId)."'");
-
-            # if the schema attributes don't already exist
-            if (!$DB->numRowsSelected()) {
-                $AuthorPriv = [PRIV_NEWSADMIN, PRIV_SYSADMIN];
-                $Result = $DB->query("
-                    INSERT INTO MetadataSchemas
-                    (SchemaId, Name, AuthoringPrivileges, ViewPage) VALUES (
-                    '".intval($SchemaId)."',
-                    'Blog',
-                    '".$DB->escapeString(serialize($AuthorPriv))."',
-                    'index.php?P=P_Blog_Entry&ID=\$ID')");
-
-                # if the upgrade failed
-                if ($Result === false) {
-                    return "Could not add the metadata schema attributes";
-                }
-            }
-        }
-
-        # upgrade from versions < 1.0.2 to 1.0.2
-        if (version_compare($PreviousVersion, "1.0.2", "<")) {
-            # be absolutely sure the privileges are correct
-            $AuthoringPrivs = new PrivilegeSet();
-            $AuthoringPrivs->addPrivilege(PRIV_NEWSADMIN);
-            $AuthoringPrivs->addPrivilege(PRIV_SYSADMIN);
-            $MetricsPrivs = [PRIV_NEWSADMIN, PRIV_SYSADMIN];
-            $Schema = new MetadataSchema($this->getSchemaId());
-            $Schema->authoringPrivileges($AuthoringPrivs);
-            $this->configSetting("BlogManagerPrivs", $MetricsPrivs);
-        }
-
-        # upgrade from versions < 1.0.3 to 1.0.3
-        if (version_compare($PreviousVersion, "1.0.3", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-
-            # setup the default privileges for authoring and editing
-            $DefaultPrivs = new PrivilegeSet();
-            $DefaultPrivs->addPrivilege(PRIV_NEWSADMIN);
-            $DefaultPrivs->addPrivilege(PRIV_SYSADMIN);
-
-            # the authoring and viewing privileges are the defaults
-            $Schema->authoringPrivileges($DefaultPrivs);
-            $Schema->viewingPrivileges($DefaultPrivs);
-
-            # the editing privileges are a bit different
-            $EditingPrivs = $DefaultPrivs;
-            $EditingPrivs->addCondition($Schema->getField(self::AUTHOR_FIELD_NAME));
-            $Schema->editingPrivileges($EditingPrivs);
-
-            # set defaults for the view metrics privileges
-            $this->configSetting(
-                "BlogManagerPrivs",
-                [PRIV_NEWSADMIN, PRIV_SYSADMIN]
-            );
-        }
-
-        # upgrade to 1.0.4
-        if (version_compare($PreviousVersion, "1.0.4", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-
-            # setup the privileges for viewing
-            $ViewingPrivs = new PrivilegeSet();
-            $ViewingPrivs->addPrivilege(PRIV_NEWSADMIN);
-            $ViewingPrivs->addPrivilege(PRIV_SYSADMIN);
-
-            # set the viewing privileges
-            $Schema->viewingPrivileges($ViewingPrivs);
-        }
-
-        # upgrade to 1.0.6
-        if (version_compare($PreviousVersion, "1.0.6", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-
-            # get the publication date field
-            $PublicationDate = $Schema->getField(self::PUBLICATION_DATE_FIELD_NAME);
-
-            # setup the privileges for viewing
-            $ViewingPrivs = new PrivilegeSet();
-            $ViewingPrivs->addPrivilege(PRIV_NEWSADMIN);
-            $ViewingPrivs->addPrivilege(PRIV_SYSADMIN);
-            $ViewingPrivs->addCondition($PublicationDate, "now", "<");
-
-            # set the viewing privileges
-            $Schema->viewingPrivileges($ViewingPrivs);
-        }
-
-        # upgrade to 1.0.7
-        if (version_compare($PreviousVersion, "1.0.7", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-
-            # try to create the notifications field if necessary
-            if (!$Schema->fieldExists(self::NOTIFICATIONS_FIELD_NAME)) {
-                if ($Schema->addFieldsFromXmlFile(
-                    "plugins/".$this->getBaseName()."/install/MetadataSchema--"
-                    .$this->getBaseName().".xml"
-                ) === false) {
-                    return "Error loading Blog metadata fields from XML: ".implode(
-                        " ",
-                        $Schema->errorMessages("AddFieldsFromXmlFile")
-                    );
-                }
-            }
-
-            $UserSchema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
-
-            # try to create the subscription field if necessary
-            if (!$UserSchema->fieldExists(self::SUBSCRIPTION_FIELD_NAME)) {
-                if ($Schema->addFieldsFromXmlFile(
-                    "plugins/".$this->getBaseName()."/install/MetadataSchema--"
-                    ."User.xml"
-                ) === false) {
-                    return "Error loading User metadata fields from XML: ".implode(
-                        " ",
-                        $Schema->errorMessages("AddFieldsFromXmlFile")
-                    );
-                }
-
-                # disable the subscribe field until an notification e-mail template is
-                # selected
-                $Field = $UserSchema->getField(self::SUBSCRIPTION_FIELD_NAME);
-                $Field->enabled(false);
-            }
-        }
-
-        # upgrade to 1.0.8
-        if (version_compare($PreviousVersion, "1.0.8", "<")) {
-            $UserSchema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
-            $SubscribeField = $UserSchema->getField(self::SUBSCRIPTION_FIELD_NAME);
-            $BlogName = $this->configSetting("BlogName");
-
-            # if a non-blank blog name is available
-            if (strlen(trim($BlogName))) {
-                # change the subscribe field's label to reflect the blog name
-                $SubscribeField->label("Subscribe to ".$BlogName);
-            # otherwise clear the label
-            } else {
-                $SubscribeField->label(null);
-            }
-        }
-
-        # upgrade to 1.0.9
-        if (version_compare($PreviousVersion, "1.0.9", "<")) {
-            # set the resource name for the blog schema
-            $Schema = new MetadataSchema($this->getSchemaId());
-            $Schema->resourceName("Blog Entry");
-        }
-
-        # upgrade to 1.0.10
-        if (version_compare($PreviousVersion, "1.0.10", "<")) {
-            # set the notification login prompt
-            $this->configSetting("Please log in to subscribe to notifications"
-                    ." of new blog posts.");
-        }
-
-        # upgrade to 1.0.14
-        if (version_compare($PreviousVersion, "1.0.14", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-            # add new blog name field
-            if ($Schema->addFieldsFromXmlFile(
-                "plugins/".$this->getBaseName()."/install/MetadataSchema--"
-                .$this->getBaseName().".xml"
-            ) === false) {
-                return "Error loading Blog metadata fields from XML: ".implode(
-                    " ",
-                    $Schema->errorMessages("AddFieldsFromXmlFile")
-                );
-            }
-
-            # create ConfigSetting "BlogSettings"
-            $this->configSetting("BlogSettings", []);
-
-            # convert current blog to a newly created blog
-            $DefaultBlogId = $this->createBlog($this->configSetting("BlogName"));
-            $this->blogSettings($DefaultBlogId, $this->getBlogConfigTemplate());
-
-            # copy the plugin ConfigSettings that should apply to the default blog
-            # into blog settings instead
-            foreach ([
-                "BlogName",
-                "BlogDescription",
-                "EnableComments",
-                "ShowAuthor",
-                "MaxTeaserLength",
-                "EntriesPerPage",
-                "CleanUrlPrefix",
-                "NotificationLoginPrompt"
-            ] as $ToMigrate) {
-                $this->blogSetting(
-                    $DefaultBlogId,
-                    $ToMigrate,
-                    $this->configSetting($ToMigrate)
-                );
-            }
-
-            # upgrade current blog entries to include Blog Name field
-            $BlogNameToSet = [];
-            $BlogNameToSet[$DefaultBlogId] = 1;
-
-            $Factory = new RecordFactory($this->getSchemaId());
-            foreach ($Factory->getItemIds() as $Id) {
-                $BlogEntry = new Entry($Id);
-                $BlogEntry->set(self::BLOG_NAME_FIELD_NAME, $BlogNameToSet);
-            }
-
-            # Create a new Blog for news
-            $NewsBlogId = $this->createBlog("News");
-            $this->blogSettings($NewsBlogId, $this->getBlogConfigTemplate());
-            $this->blogSetting($NewsBlogId, "BlogName", "News");
-
-            # Migrate Announcements into Blog
-            $BlogNameToSet = [];
-            $BlogNameToSet[$NewsBlogId] = 1;
-
-            $DB = new Database();
-
-            # Find an admin user to be the author/editor of these announcements
-            $UserId = $DB->queryValue(
-                "SELECT MIN(UserId) AS UserId FROM APUserPrivileges "
-                ."WHERE Privilege=".PRIV_SYSADMIN,
-                "UserId"
-            );
-
-            $DB->query("SELECT * FROM Announcements");
-            while (false !== ($Record = $DB->fetchRow())) {
-                $ToSet = [
-                    self::TITLE_FIELD_NAME => $Record["AnnouncementHeading"],
-                    self::BODY_FIELD_NAME => $Record["AnnouncementText"],
-                    self::PUBLICATION_DATE_FIELD_NAME => $Record["DatePosted"],
-                    self::MODIFICATION_DATE_FIELD_NAME => $Record["DatePosted"],
-                    self::CREATION_DATE_FIELD_NAME => $Record["DatePosted"],
-                    self::BLOG_NAME_FIELD_NAME => $BlogNameToSet,
-                    self::AUTHOR_FIELD_NAME => $UserId
-                ];
-
-                $BlogNews = Record::create($this->getSchemaId());
-                foreach ($ToSet as $FieldName => $Value) {
-                    $BlogNews->set($FieldName, $Value);
-                }
-                $BlogNews->isTempRecord(false);
-
-                # needs to be updated after resource addition so that
-                #  event hooks won't modify it
-                $BlogNews->set(self::EDITOR_FIELD_NAME, $UserId);
-            }
-
-            # drop the Announcements table
-            if (false === $DB->query("DROP TABLE IF EXISTS Announcements")) {
-                return "Could not drop the old news table.";
-            }
-        }
-
-        # upgrade to 1.0.15
-        if (version_compare($PreviousVersion, "1.0.15", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-            $Schema->viewPage("index.php?P=P_Blog_Entry&ID=\$ID");
-        }
-
-        # upgrade to 1.0.17
-        if (version_compare($PreviousVersion, "1.0.17", "<")) {
-            # make sure all metadata fields in our schema are permanent
-            $Schema = new MetadataSchema($this->getSchemaId());
-            $Fields = $Schema->getFields();
-            foreach ($Fields as $Field) {
-                $Field->IsTempItem(false);
-            }
-        }
-
-        # upgrade to version 1.0.18
-        if (version_compare($PreviousVersion, "1.0.18", "<")) {
-            # add Summary metadata field
-            $Schema = new MetadataSchema($this->getSchemaId());
-            if ($Schema->addFieldsFromXmlFile(
-                "plugins/".$this->getBaseName()."/install/MetadataSchema--"
-                .$this->getBaseName().".xml",
-                $this->Name
-            ) == false) {
-                return "Error Loading Metadata Fields from XML: ".implode(
-                    " ",
-                    $Schema->errorMessages("AddFieldsFromXmlFile")
-                );
-            }
-
-            # populate Summary field for all blog entries
-            $BlogEntries = $this->getBlogEntries();
-            foreach ($BlogEntries as $BlogEntry) {
-                $BlogEntry->set("Summary", $BlogEntry->Teaser(400));
-            }
-
-            # queue an update for each entry to reflect changes in search results
-            $SearchEngine = new SearchEngine();
-
-            $RFactory = new RecordFactory($this->getSchemaId());
-            $Ids = $RFactory->getItemIds();
-            foreach ($Ids as $Id) {
-                $SearchEngine->queueUpdateForItem($Id);
-            }
-        }
-
-        # upgrade to version 1.0.19
-        if (version_compare($PreviousVersion, "1.0.19", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-
-            # set UpdateMethod for Author and Editor fields
-            $UpdateModes = [
-                self::AUTHOR_FIELD_NAME =>
-                    MetadataField::UPDATEMETHOD_ONRECORDCREATE,
-                self::EDITOR_FIELD_NAME =>
-                    MetadataField::UPDATEMETHOD_ONRECORDEDIT,
-            ];
-
-            foreach ($UpdateModes as $FieldName => $UpdateMode) {
-                $Field = $Schema->getField($FieldName);
-                $Field->updateMethod($UpdateMode);
-            }
-
-            # clear CopyOnResourceDuplcation for NotificationsSent
-            $Field = $Schema->getField(self::NOTIFICATIONS_FIELD_NAME);
-            $Field->copyOnResourceDuplication(false);
-        }
-
-        # upgrade from versions < 1.0.20 to 1.0.20
-        if (version_compare($PreviousVersion, "1.0.20", "<")) {
-            $AllSettings = $this->configSetting("BlogSettings");
-
-            foreach ($AllSettings as $Id => $BlogSettings) {
-                if ((is_null($BlogSettings["CleanUrlPrefix"]) ||
-                    trim($BlogSettings["CleanUrlPrefix"]) == "") &&
-                    !is_null($BlogSettings["BlogName"])) {
-                    $AllSettings[$Id]["CleanUrlPrefix"] =
-                    $this->generateCleanUrlPrefix($BlogSettings["BlogName"]);
-                }
-            }
-        }
-
-        # upgrade to version 1.0.21
-        if (version_compare($PreviousVersion, "1.0.21", "<")) {
-            # migrate ViewMetricsPrivs setting to BlogManagerPrivs
-            $ViewMetricsPrivs = $this->configSetting("ViewMetricsPrivs");
-            if (!is_null($ViewMetricsPrivs)) {
-                $this->configSetting("BlogManagerPrivs", $ViewMetricsPrivs);
-            }
-        }
-
-        if (version_compare($PreviousVersion, "1.0.22", "<")) {
-            # set our item class name
-            $Schema = new MetadataSchema($this->configSetting("MetadataSchemaId"));
-            $Schema->setItemClassName("Metavus\\Plugins\\Blog\\Entry");
-        }
-
-        # upgrade to version 1.0.23
-        if (version_compare($PreviousVersion, "1.0.23", "<")) {
-            $Schema = new MetadataSchema($this->getSchemaId());
-            $Schema->editPage("index.php?P=EditResource&ID=\$ID");
-        }
-
-        # upgrade to version 1.0.24
-        if (version_compare($PreviousVersion, "1.0.24", "<")) {
-            # modify existing entries to insert images into body
-            foreach ($this->getBlogEntries() as $Entry) {
-                $this->insertImagesIntoBody($Entry);
-            }
-
-            # update image field to allow multiple images
-            $Schema = new MetadataSchema($this->getSchemaId());
-            $Schema->getField(Blog::IMAGE_FIELD_NAME)->allowMultiple(true);
-        }
-
-        # upgrade to version 1.0.25
-        if (version_compare($PreviousVersion, "1.0.25", "<")) {
-            foreach ($this->getBlogEntries() as $Entry) {
-                # replace blank line markers with '--' in existing entries
-                $Body = $Entry->get(self::BODY_FIELD_NAME);
-                $BlankRegex = '(<p>(\s|\xC2\xA0|&nbsp;)*</p>)+';
-                preg_match(
-                    '%'.$BlankRegex.'%',
-                    $Body,
-                    $Matches
-                );
-                if (count($Matches) > 0) {
-                    $Body = preg_replace(
-                        '%'.$BlankRegex.'%',
-                        Entry::EXPLICIT_MARKER,
-                        $Body
-                    );
-                }
-                $Entry->set(self::BODY_FIELD_NAME, $Body);
-            }
-        }
-
-        # upgrade to version 1.0.26
-        if (version_compare($PreviousVersion, "1.0.26", "<")) {
-            $this->updateImageHtmlForCaptions();
-        }
-
-        return null;
-    }
-
-    /**
      * Uninstall this plugin.
      * @return string|null Returns NULL if everything went OK or an error message otherwise.
      */
-    public function uninstall()
+    public function uninstall(): ?string
     {
         $Schema = new MetadataSchema($this->getSchemaId());
         $ResourceFactory = new RecordFactory($this->getSchemaId());
@@ -909,20 +505,18 @@ class Blog extends Plugin
      * Hook event callbacks into the application framework.
      * @return array Returns an array of events to be hooked into the application framework.
      */
-    public function hookEvents()
+    public function hookEvents(): array
     {
         $Hooks = [
             "EVENT_IN_HTML_HEADER" => "InHtmlHeader",
             "EVENT_MODIFY_SECONDARY_NAV" => "AddSecondaryNavLinks",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "PluginConfigChange",
-            "EVENT_RESOURCE_ADD" => "ResourceEdited",
-            "EVENT_RESOURCE_MODIFY" => "ResourceEdited",
             "EVENT_PLUGIN_EXTEND_EDIT_RESOURCE_COMPLETE_ACCESS_LIST"
                 => "ExtendEditResourceCompleteAccessList",
             "EVENT_HTML_INSERTION_POINT" => "InsertBlogSummary",
             "EVENT_DAILY" => "RunDaily",
         ];
-        if ($this->configSetting("AddNavItem")) {
+        if ($this->getConfigSetting("AddNavItem")) {
             $Hooks["EVENT_MODIFY_PRIMARY_NAV"] = "AddPrimaryNavLinks";
         }
         return $Hooks;
@@ -966,12 +560,12 @@ class Blog extends Plugin
     /**
      * Print stylesheet and Javascript elements in the page header.
      */
-    public function inHtmlHeader()
+    public function inHtmlHeader(): void
     {
         # only require our stylesheet for Blog pages
         $AF = ApplicationFramework::getInstance();
-        if (preg_match('/^P_Blog_/', $AF->GetPageName())) {
-            $AF->RequireUIFile("P_Blog.css");
+        if (preg_match('/^P_Blog_/', $AF->getPageName())) {
+            $AF->requireUIFile("P_Blog.css");
         }
     }
 
@@ -1024,10 +618,9 @@ class Blog extends Plugin
         static $TemplateOptions = null;
 
         if (is_null($TemplateOptions)) {
-            $PluginMgr = PluginManager::getInstance();
-            $Mailer = $PluginMgr->GetPlugin("Mailer");
-            $MailerTemplates = $Mailer->getTemplateList();
-            $TemplateOptions = [-1 => "(do not send email)"] + $Mailer->getTemplateList();
+            $MailerPlugin = Mailer::getInstance();
+            $MailerTemplates = $MailerPlugin->getTemplateList();
+            $TemplateOptions = [-1 => "(do not send email)"] + $MailerPlugin->getTemplateList();
         }
 
         return $TemplateOptions;
@@ -1056,7 +649,7 @@ class Blog extends Plugin
         string $ConfigSetting,
         $OldValue,
         $NewValue
-    ) {
+    ): void {
         # only worried about changes to the blog plugin
         if ($PluginName != "Blog") {
             return;
@@ -1095,9 +688,10 @@ class Blog extends Plugin
 
     /**
      * Callback executed whenever a resource is edited (or added).
+     * @param int $Events Record::EVENT_* values OR'd together.
      * @param Record $Resource Just-modified resource.
      */
-    public function resourceEdited(Record $Resource)
+    public function resourceEdited(int $Events, Record $Resource): void
     {
         # only concerned with blog entry resources
         if (!$this->isBlogEntry($Resource)) {
@@ -1107,7 +701,7 @@ class Blog extends Plugin
         # update the entry summary
         $BlogEntryForResource = new Entry($Resource->id());
         $BlogEntryForResource->set("Summary", $BlogEntryForResource->teaser(
-            ($this->configSetting("SummaryLength"))
+            ($this->getConfigSetting("SummaryLength"))
         ));
     }
 
@@ -1115,7 +709,7 @@ class Blog extends Plugin
      * Select a blog on which to operate.
      * @param int $BlogId BlogId to operate on.
      */
-    public function setCurrentBlog(int $BlogId)
+    public function setCurrentBlog(int $BlogId): void
     {
         if (!array_key_exists($BlogId, $this->getAvailableBlogs())) {
             throw new Exception(
@@ -1196,17 +790,17 @@ class Blog extends Plugin
      */
     public function getSchemaId(): int
     {
-        return $this->configSetting("MetadataSchemaId");
+        return $this->getConfigSetting("MetadataSchemaId");
     }
 
     /**
      * Record a blog entry view with the Metrics Recorder plugin.
      * @param Record $Entry Blog entry.
      */
-    public function recordBlogEntryView(Record $Entry)
+    public function recordBlogEntryView(Record $Entry): void
     {
         # record the event
-        PluginManager::getInstance()->GetPlugin("MetricsRecorder")->RecordEvent(
+        MetricsRecorder::getInstance()->recordEvent(
             "Blog",
             "ViewEntry",
             $Entry->id()
@@ -1293,7 +887,7 @@ class Blog extends Plugin
      * @param string $Fragment Optional fragment ID to add.
      * @return string Returns the URL to the blog relative to the site root.
      */
-    public function blogUrl(array $Get = [], string $Fragment = null): string
+    public function blogUrl(array $Get = [], ?string $Fragment = null): string
     {
         # if clean URLs are available
         if (ApplicationFramework::getInstance()->cleanUrlSupportAvailable() &&
@@ -1332,15 +926,14 @@ class Blog extends Plugin
     public function getBlogEntryMetrics(Entry $Entry): array
     {
         # get the metrics plugins
-        $PluginMgr = PluginManager::getInstance();
-        $Recorder = $PluginMgr->GetPlugin("MetricsRecorder");
-        $Reporter = $PluginMgr->GetPlugin("MetricsReporter");
+        $Recorder = MetricsRecorder::getInstance();
+        $Reporter = MetricsReporter::getInstance();
 
         # get the privileges to exclude
-        $Exclude = $Reporter->configSetting("PrivsToExcludeFromCounts");
+        $Exclude = $Reporter->getConfigSetting("PrivsToExcludeFromCounts");
 
         # get the view metrics
-        $Metrics["Views"] = $Recorder->GetEventData(
+        $Metrics["Views"] = $Recorder->getEventData(
             "Blog",
             "ViewEntry",
             null,
@@ -1352,7 +945,7 @@ class Blog extends Plugin
         );
 
         # get metrics for shares via e-mail
-        $Metrics["Shares/Email"] = $Recorder->GetEventData(
+        $Metrics["Shares/Email"] = $Recorder->getEventData(
             "SocialMedia",
             "ShareResource",
             null,
@@ -1364,7 +957,7 @@ class Blog extends Plugin
         );
 
         # get metrics for shares via Facebook
-        $Metrics["Shares/Facebook"] = $Recorder->GetEventData(
+        $Metrics["Shares/Facebook"] = $Recorder->getEventData(
             "SocialMedia",
             "ShareResource",
             null,
@@ -1376,7 +969,7 @@ class Blog extends Plugin
         );
 
         # get metrics for shares via Twitter
-        $Metrics["Shares/Twitter"] = $Recorder->GetEventData(
+        $Metrics["Shares/Twitter"] = $Recorder->getEventData(
             "SocialMedia",
             "ShareResource",
             null,
@@ -1388,7 +981,7 @@ class Blog extends Plugin
         );
 
         # get metrics for shares via LinkedIn
-        $Metrics["Shares/LinkedIn"] = $Recorder->GetEventData(
+        $Metrics["Shares/LinkedIn"] = $Recorder->getEventData(
             "SocialMedia",
             "ShareResource",
             null,
@@ -1508,7 +1101,7 @@ class Blog extends Plugin
      */
     public function userCanViewMetrics(User $User): bool
     {
-        $ViewPrivs = $this->configSetting("BlogManagerPrivs");
+        $ViewPrivs = $this->getConfigSetting("BlogManagerPrivs");
         return is_array($ViewPrivs) ? $User->hasPriv($ViewPrivs) :
             $ViewPrivs->meetsRequirements($User);
     }
@@ -1535,7 +1128,7 @@ class Blog extends Plugin
      * @param User $User The user for which to change the subscription.
      * @param bool $Status TRUE to subscribe and FALSE to unsubscribe.
      */
-    public function changeNotificationSubscription(User $User, bool $Status)
+    public function changeNotificationSubscription(User $User, bool $Status): void
     {
         # only set the status if notifications could be sent
         if ($User->isLoggedIn() && $this->notificationsCouldBeSent()) {
@@ -1543,7 +1136,7 @@ class Blog extends Plugin
             $Resource->set(self::SUBSCRIPTION_FIELD_NAME, $Status);
 
             # pull out the configured Mailer template for notifications
-            $MailerTemplate = $this->configSetting(
+            $MailerTemplate = $this->getConfigSetting(
                 $Status ? "SubscriptionConfirmationTemplate" :
                 "UnsubscriptionConfirmationTemplate"
             );
@@ -1551,8 +1144,8 @@ class Blog extends Plugin
             # if a template was selected
             if ($MailerTemplate != -1) {
                 # send notifications
-                $Mailer = PluginManager::getInstance()->GetPlugin("Mailer");
-                $Mailer->SendEmail($MailerTemplate, $User);
+                $MailerPlugin = Mailer::getInstance();
+                $MailerPlugin->sendEmail($MailerTemplate, $User);
             }
         }
     }
@@ -1564,11 +1157,13 @@ class Blog extends Plugin
      * @return bool Returns TRUE if notifications could be sent out and FALSE
      *      otherwise.
      */
-    public function notificationsCouldBeSent(Entry $Entry = null, User $User = null): bool
-    {
+    public function notificationsCouldBeSent(
+        ?Entry $Entry = null,
+        ?User $User = null
+    ): bool {
         # the template has to be set
-        if (!is_numeric($this->configSetting("NotificationTemplate"))
-            || $this->configSetting("NotificationTemplate") == -1) {
+        if (!is_numeric($this->getConfigSetting("NotificationTemplate"))
+            || $this->getConfigSetting("NotificationTemplate") == -1) {
             return false;
         }
 
@@ -1614,84 +1209,62 @@ class Blog extends Plugin
     }
 
     /**
+     * Send test notification e-mails to current user about the given blog
+     * entry.  This will only send out e-mails if it's appropriate to do so,
+     * i.e., the user's allowed to, an e-mail template is set, etc.
+     * @param Entry $Entry The entry to use.
+     */
+    public function sendTestNotification(Entry $Entry): void
+    {
+        $this->sendNotificationEmail(
+            $Entry,
+            [User::getCurrentUser()->id()]
+        );
+    }
+
+    /**
      * Send out notification e-mails to subscribers about the given blog entry.
      * This will only send out e-mails if it's appropriate to do so, i.e., the
      * user's allowed to, an e-mail template is set, etc.
      * @param Entry $Entry The entry about which to notify subscribers.
      */
-    public function notifySubscribers(Entry $Entry)
+    public function notifySubscribers(Entry $Entry): void
     {
-        # don't send notifications if not allowed
-        if (!$this->notificationsCouldBeSent($Entry, User::getCurrentUser())) {
-            return;
-        }
+        # get the list of filtered user (subscriber) ids where disabled users are not included
+        $UserFactory = new UserFactory();
+        $SubscribedUserIds = $this->getSubscribers();
+        $AllDisabledUserIds = array_keys($UserFactory->getUsersWithPrivileges(PRIV_USERDISABLED));
+        $UserIds = array_diff($SubscribedUserIds, $AllDisabledUserIds);
 
-        $NotificationBlog = $this->configSetting("EmailNotificationBlog");
-        if ($Entry->getBlogId() != $NotificationBlog) {
-            return;
-        }
-
-        $this->setCurrentBlog($NotificationBlog);
-        $Mailer = PluginManager::getInstance()->GetPlugin("Mailer");
-        $UserIds = $this->getSubscribers();
-        $Schema = new MetadataSchema($this->getSchemaId());
-        $BodyField = $Schema->getField(self::BODY_FIELD_NAME);
-
-        # remove HTML from the teaser text if HTML is allowed in the body field
-        if ($BodyField->allowHTML()) {
-            $TeaserText = Email::convertHtmlToPlainText($Entry->teaser());
-            $TeaserText = wordwrap($TeaserText, 78);
-        # HTML isn't allowed so just use the teaser verbatim
-        } else {
-            $TeaserText = $Entry->teaser();
-        }
-
-        # the extra replacement tokens
-        $ExtraTokens = [
-            "BLOG:UNSUBSCRIBE" => ApplicationFramework::baseUrl()
-                    ."index.php?P=Preferences",
-            "BLOG:BLOGNAME" => $this->blogSetting($Entry->getBlogId(), "BlogName"),
-            "BLOG:BLOGDESCRIPTION" => $this->blogSetting(
-                $Entry->getBlogId(),
-                "BlogDescription"
-            ),
-            "BLOG:BLOGURL" => ApplicationFramework::baseUrl().$this->blogUrl(),
-            "BLOG:ENTRYURL" => ApplicationFramework::baseUrl().$Entry->entryUrl(),
-            "BLOG:ENTRYAUTHOR" => $Entry->authorForDisplay(),
-            "BLOG:TEASER" => $Entry->teaser(),
-            "BLOG:TEASERTEXT" => $TeaserText
-        ];
-
-        # send the notification e-mails using tasks
-        $Sent = $Mailer->SendEmailUsingTasks(
-            $this->configSetting("NotificationTemplate"),
-            $UserIds,
+        $EmailSent = $this->sendNotificationEmail(
             $Entry,
-            $ExtraTokens
+            $UserIds
         );
 
-        # flag that notifications have been sent
-        $Entry->set(self::NOTIFICATIONS_FIELD_NAME, true);
+        if ($EmailSent) {
+            # flag that notifications have been sent
+            $Entry->set(self::NOTIFICATIONS_FIELD_NAME, true);
+        }
     }
 
     /**
      * Record daily subscriber statistics.
      * @param int $LastRunAt Timestamp of last time this event ran.
      */
-    public function runDaily($LastRunAt)
+    public function runDaily($LastRunAt): void
     {
         $PluginMgr = PluginManager::getInstance();
-        if (!$PluginMgr->PluginEnabled("MetricsRecorder")) {
+        if (!$PluginMgr->pluginReady("MetricsRecorder")) {
             return;
         }
 
         $UserIds = $this->getSubscribers();
         $SubscriberCount = count($UserIds);
 
-        $PluginMgr->GetPlugin("MetricsRecorder")->RecordEvent(
+        MetricsRecorder::getInstance()->recordEvent(
             $this->Name,
             "NumberOfSubscribers",
-            $this->configSetting("EmailNotificationBlog"),
+            $this->getConfigSetting("EmailNotificationBlog"),
             $SubscriberCount,
             null,
             0,
@@ -1847,12 +1420,12 @@ class Blog extends Plugin
      * Delete a blog and all its entries.
      * @param int $BlogId BlogId to delete.
      */
-    public function deleteBlog(int $BlogId)
+    public function deleteBlog(int $BlogId): void
     {
-        # do not attept to delete blogs that do not exist
+        # do not attempt to delete blogs that do not exist
         if (!array_key_exists($BlogId, $this->getAvailableBlogs())) {
             throw new Exception(
-                "Attept to get/set setting for a blog that does not exist"
+                "Attempt to get/set setting for a blog that does not exist"
             );
         }
 
@@ -1870,9 +1443,9 @@ class Blog extends Plugin
         $BlogCName->destroy();
 
         # delete our copy of the blog settings
-        $AllSettings = $this->configSetting("BlogSettings");
+        $AllSettings = $this->getConfigSetting("BlogSettings");
         unset($AllSettings[$BlogId]);
-        $this->configSetting("BlogSettings", $AllSettings);
+        $this->setConfigSetting("BlogSettings", $AllSettings);
     }
 
     /**
@@ -1881,17 +1454,17 @@ class Blog extends Plugin
      * @param array $NewSettings Updated settings for the specified blog (OPTIONAL).
      * @return array All settings for the specified blog
      */
-    public function blogSettings(int $BlogId, array $NewSettings = null): array
+    public function blogSettings(int $BlogId, ?array $NewSettings = null): array
     {
-        # do not attept to manipulate settings for blogs that do not exist
+        # do not attempt to manipulate settings for blogs that do not exist
         if (!array_key_exists($BlogId, $this->getAvailableBlogs())) {
             throw new Exception(
-                "Attept to get/set setting for a blog that does not exist"
+                "Attempt to get/set setting for a blog that does not exist"
             );
         }
 
         # pull out current settings
-        $AllSettings = $this->configSetting("BlogSettings");
+        $AllSettings = $this->getConfigSetting("BlogSettings");
 
         # use the defaults if we have no settings for this blog
         if (!array_key_exists($BlogId, $AllSettings)) {
@@ -1917,7 +1490,7 @@ class Blog extends Plugin
 
             # store the new setting
             $AllSettings[$BlogId] = $NewSettings;
-            $this->configSetting("BlogSettings", $AllSettings);
+            $this->setConfigSetting("BlogSettings", $AllSettings);
         }
 
         # return settings for this blog
@@ -1948,7 +1521,7 @@ class Blog extends Plugin
     /**
      * Fetch the description (in FormUI-compatible format) of settings each blog can have.
      */
-    public function getBlogConfigOptions()
+    public function getBlogConfigOptions(): array
     {
         return $this->BlogConfigurationOptions;
     }
@@ -1982,8 +1555,8 @@ class Blog extends Plugin
     public function insertBlogSummary(
         string $PageName,
         string $Location,
-        array $Context = null
-    ) {
+        ?array $Context = null
+    ): void {
         # if no context provided or no blog name provided, bail
         if (!is_array($Context) || !isset($Context["Blog Name"])) {
             return;
@@ -2020,7 +1593,7 @@ class Blog extends Plugin
      * @param string $BlogName name of blog to get clean URL prefix for
      * @return string clean URL prefix
      */
-    private function generateCleanUrlPrefix(string $BlogName): string
+    public function generateCleanUrlPrefix(string $BlogName): string
     {
         $CleanUrlPrefix = preg_replace(
             '/[^0-9a-z-]+/',
@@ -2039,142 +1612,84 @@ class Blog extends Plugin
     }
 
     /**
-     * Inserts Image HTML into a given Blog Entry's body. Only for use with
-     * upgrade().
-     * @param Entry $Entry The Blog Entry to insert images into.
-     * @note This method should only be used for upgrade().
+     * Send email notifications about a blog entry to a specified list of
+     * users.
+     * @param Entry $Entry Entry to send notifications about.
+     * @param array $UserIds Users to notify.
+     * @return bool TRUE if notifications were sent, FALSE otherwise.
      */
-    private function insertImagesIntoBody(Entry $Entry): void
-    {
-        # get the unadultered body of the entry and its images
-        $Body = $Entry->get("Body");
-        $Images = $Entry->images();
-
-        # return the body as-is if there are no images associated with the blog
-        # entry
-        if (count($Images) < 1) {
-            return;
+    private function sendNotificationEmail(
+        Entry $Entry,
+        array $UserIds
+    ): bool {
+        if (!$this->notificationsCouldBeSent($Entry, User::getCurrentUser())) {
+            return false;
         }
 
-        # get all of the image insertion points
-        $ImageInsertionPoints = $this->getImageInsertionPoints($Body);
-
-        # display all of the images at the top if there are no insertion points
-        if (count($ImageInsertionPoints) < 1) {
-            $ImageInsertionPoints = [0];
-        }
-
-        # variables used to determine when and where to insert images
-        $ImagesPerPoint = ceil(count($Images) / count($ImageInsertionPoints));
-        $ImagesInserted = 0;
-        $InsertionOffset = 0;
-
-        foreach ($Images as $Image) {
-            $ImageInsert = "<img src=\"".$Image->url("mv-image-preview")."\" alt=\""
-                    .htmlspecialchars($Image->altText())
-                    ."\" class=\"mv-form-image-right\" />";
-            # determine at which insertion point to insert this images
-            $InsertionPointIndex = floor($ImagesInserted / $ImagesPerPoint);
-            $ImageInsertionPoint = $ImageInsertionPoints[$InsertionPointIndex];
-
-            # insert the image into the body, offsetting by earlier insertions
-            $Body = substr_replace(
-                $Body,
-                $ImageInsert,
-                $ImageInsertionPoint + $InsertionOffset,
-                0
+        $NotificationBlog = $this->getConfigSetting("EmailNotificationBlog");
+        if ($Entry->getBlogId() != $NotificationBlog) {
+            throw new Exception(
+                "Attempt to send email notification for a blog entry "
+                    ."that is not part of the Email Notification Blog."
             );
-
-            # increment the variables used to determine where to insert the next
-            # image
-            $InsertionOffset += strlen($ImageInsert);
-            $ImagesInserted += 1;
         }
 
-        $Entry->set("Body", $Body);
+        $this->setCurrentBlog($NotificationBlog);
+
+        $MailerPlugin = Mailer::getInstance();
+
+        # get additional data for emails
+        $ExtraKeywords = $this->getExtraMailerKeywords($Entry);
+
+        # send the notification e-mails using tasks
+        $MailerPlugin->sendEmailUsingTasks(
+            $this->getConfigSetting("NotificationTemplate"),
+            $UserIds,
+            $Entry,
+            $ExtraKeywords
+        );
+
+        return true;
     }
 
     /**
-     * Update blog entry HTML to restore captions below images. Only for use
-     * from upgrade().
+     * Get additional tokens used by Mailer when sending notifications about
+     * blog entries.
+     * @param Entry $Entry Entry in use.
+     * @return array Email keyword replacements, with keywords (without X-/-X) for
+     *     the index, and replacement strings for the values.
      */
-    private function updateImageHtmlForCaptions() : void
+    private function getExtraMailerKeywords(Entry $Entry): array
     {
-        foreach ($this->getBlogEntries() as $Entry) {
-            $NewBody = $Entry->get("Body");
+        $Schema = new MetadataSchema($this->getSchemaId());
+        $BodyField = $Schema->getField(self::BODY_FIELD_NAME);
 
-            # move images out of their containing paragraphs
-            # (limit to 10 iterations; if anyone has 11 images in a paragraph
-            # they will just be sad)
-            $Iterations = 0;
-            do {
-                $NewBody = preg_replace(
-                    '%<p>(.*?)(<img [^>]*class=["\']mv-form-image-'
-                            .'(?:left|right)["\'][^>]*>)(.*?)</p>%',
-                    '\2<p>\1\3</p>',
-                    $NewBody,
-                    -1,
-                    $ReplacementCount
-                );
-                $Iterations++;
-            } while ($ReplacementCount > 0 && $Iterations < 10);
-
-            # replace naked <img> tags with new markup, including captions
-            # (attribute order from the Insert buttons)
-            $NewBody = preg_replace(
-                '%<img src="([^"]*)" alt="([^"]*)" class="mv-form-image-(right|left)" />%',
-                '<div class="mv-form-image-\3">'
-                .'<img src="\1" alt="\2"/>'
-                .'<div class="mv-form-image-caption" aria-hidden="true">\2</div>'
-                .'</div>',
-                $NewBody
-            );
-            # (CKEditor also sorts attributes alphabetically (thanks, CKEditor))
-            $NewBody = preg_replace(
-                '%<img alt="([^"]*)" class="mv-form-image-(right|left)" src="([^"]*)" />%',
-                '<div class="mv-form-image-\2">'
-                .'<img src="\3" alt="\1"/>'
-                .'<div class="mv-form-image-caption" aria-hidden="true">\1</div>'
-                .'</div>',
-                $NewBody
-            );
-            $Entry->set("Body", $NewBody);
-        }
-    }
-
-    /**
-     * Get the best image insertion points for the Blog Entry.
-     * @param string $Body The Blog Entry body to insert into.
-     * @return array Returns the best image insertion points of the Blog Entry.
-     * @note This method should only be used for upgrade().
-     */
-    private function getImageInsertionPoints(string $Body): array
-    {
-        $Offset = 0;
-        $Positions = [];
-
-        # put a hard limit on the number of loops
-        for ($i = 0; $i < 20; $i++) {
-            # search for an image marker
-            $MarkerData = $this->getEndOfFirstParagraphPositionWithLines($Body, $Offset);
-
-            if ($MarkerData === false) {
-                break;
-            }
-
-            list($Position, $Length) = $MarkerData;
-
-            # didn't find a marker so stop
-            if ($Position === false) {
-                break;
-            }
-
-            # save the position and update the offset
-            $Positions[] = $Position;
-            $Offset = $Position + $Length;
+        # remove HTML from the teaser text if HTML is allowed in the body field
+        if ($BodyField->allowHtml()) {
+            $TeaserText = Email::convertHtmlToPlainText($Entry->teaser());
+            $TeaserText = wordwrap($TeaserText, 78);
+        # HTML isn't allowed so just use the teaser verbatim
+        } else {
+            $TeaserText = $Entry->teaser();
         }
 
-        return $Positions;
+        # the extra replacement tokens
+        $ExtraKeywords = [
+            "BLOG:UNSUBSCRIBE" => ApplicationFramework::baseUrl()
+                    ."index.php?P=Preferences",
+            "BLOG:BLOGNAME" => $this->blogSetting($Entry->getBlogId(), "BlogName"),
+            "BLOG:BLOGDESCRIPTION" => $this->blogSetting(
+                $Entry->getBlogId(),
+                "BlogDescription"
+            ),
+            "BLOG:BLOGURL" => ApplicationFramework::baseUrl().$this->blogUrl(),
+            "BLOG:ENTRYURL" => ApplicationFramework::baseUrl().$Entry->entryUrl(),
+            "BLOG:ENTRYAUTHOR" => $Entry->authorForDisplay(),
+            "BLOG:TEASER" => $Entry->teaser(),
+            "BLOG:TEASERTEXT" => $TeaserText
+        ];
+
+        return $ExtraKeywords;
     }
 
     /**
@@ -2264,8 +1779,7 @@ class Blog extends Plugin
             return null;
         }
 
-        $PluginMgr = PluginManager::getInstance();
-        if ($PluginMgr->getPlugin("Blog")->blogSetting($BlogId, "CleanUrlPrefix") == $CleanPrefix) {
+        if (Blog::getInstance()->blogSetting((int) $BlogId, "CleanUrlPrefix") == $CleanPrefix) {
             return null;
         }
 

@@ -3,14 +3,15 @@
 #   FILE:  Chart_Base.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
+use ScoutLib\ApplicationFramework;
 
 /**
 * Base class for generating and displaying a chart.
@@ -24,7 +25,7 @@ abstract class Chart_Base
     * @param array $NewValue Data in format specified by chart type.(OPTIONAL)
     * @return array Current data.
     */
-    public function data($NewValue = null)
+    public function data($NewValue = null): array
     {
         if ($NewValue !== null) {
             $this->Data = $NewValue;
@@ -41,7 +42,7 @@ abstract class Chart_Base
      *     legend entirely.
      * @throws Exception If an invalid legend position is supplied.
      */
-    public function legendPosition($Position)
+    public function legendPosition($Position): void
     {
         if (!in_array($Position, [
             self::LEGEND_BOTTOM,
@@ -60,7 +61,7 @@ abstract class Chart_Base
      *     matching the keys of the data passed to the constructor.Any labels
      *     that do not need shortening may be omitted.
      */
-    public function legendLabels($LegendLabels)
+    public function legendLabels($LegendLabels): void
     {
         $this->LegendLabels = $LegendLabels;
     }
@@ -106,7 +107,7 @@ abstract class Chart_Base
     * @param int $NewValue New height in pixels (OPTIONAL).
     * @return int Current height in pixels.
     */
-    public function height(int $NewValue = null)
+    public function height(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->Height = $NewValue;
@@ -119,7 +120,7 @@ abstract class Chart_Base
     * @param int $NewValue New width in pixels (OPTIONAL).
     * @return int Current width in pixels.
     */
-    public function width(int $NewValue = null)
+    public function width(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->Width = $NewValue;
@@ -159,7 +160,7 @@ abstract class Chart_Base
     *
     * @param string $ContainerId Id to use when generating the div to contain this chart.
     */
-    public function display(string $ContainerId)
+    public function display(string $ContainerId): void
     {
         self::requireNeededFiles();
 
@@ -260,7 +261,7 @@ abstract class Chart_Base
     * Set up the chart environment so that cached HTML from a previous
     * Display() call will function properly.
     */
-    public static function prepForDisplayingCachedVersion()
+    public static function prepForDisplayingCachedVersion(): void
     {
         self::requireNeededFiles();
     }
@@ -276,12 +277,13 @@ abstract class Chart_Base
     /**
     * Include necessary JS/CSS for chart generation.
     */
-    protected static function requireNeededFiles()
+    protected static function requireNeededFiles(): void
     {
-        $GLOBALS["AF"]->requireUIFile("d3.js");
-        $GLOBALS["AF"]->requireUIFile("c3.js");
-        $GLOBALS["AF"]->requireUIFile("c3.css");
-        $GLOBALS["AF"]->requireUIFile("Chart_Base.css");
+        $AF = ApplicationFramework::getInstance();
+        $AF->requireUIFile("d3.js");
+        $AF->requireUIFile("c3.js");
+        $AF->requireUIFile("c3.css");
+        $AF->requireUIFile("Chart_Base.css");
     }
 
     /**
@@ -289,14 +291,14 @@ abstract class Chart_Base
     * plotting and do any necessary tweaks to $this->Chart.Child
     * classes MUST implement this method.
     */
-    abstract protected function prepareData();
+    abstract protected function prepareData(): void;
 
     /**
     * Get RGB hex color when no color supplied.
     * @param string $DataIndex Index for data for which color will be used.
     * @return string RGB hex color string.
     */
-    protected function generateRgbColorString($DataIndex)
+    protected function generateRgbColorString($DataIndex): string
     {
         return "#".substr(md5($DataIndex), 0, 6);
     }
@@ -305,7 +307,7 @@ abstract class Chart_Base
      * Merge an array of settings into $this->Chart.
      * @param array $Data Settings to merge.
      */
-    protected function addToChart($Data)
+    protected function addToChart($Data): void
     {
         $this->addToArray($this->Chart, $Data);
     }
@@ -315,7 +317,7 @@ abstract class Chart_Base
      * @param array $Tgt Target array.
      * @param array $Data Data to be added.
      */
-    protected function addToArray(&$Tgt, $Data)
+    protected function addToArray(&$Tgt, $Data): void
     {
         foreach ($Data as $Key => $Val) {
             if (isset($Tgt[$Key]) && is_array($Tgt[$Key]) && is_array($Val)) {

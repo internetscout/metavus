@@ -3,13 +3,12 @@
 #   FILE:  Image.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
@@ -21,7 +20,7 @@ use ScoutLib\RasterImageFile;
 use ScoutLib\VectorImageFile;
 
 /**
- * Encapsulates a full-size, preview, and thumbnail image.
+ * Stored image, with support for retrieving scaled versions.
  */
 class Image extends Item
 {
@@ -35,11 +34,14 @@ class Image extends Item
     const SIZE_THUMBNAIL = 1;
 
     /**
-     * Get the path to an image of the specified size.
+     * Get the path for an image of the specified size. If the scaled image is
+     * absent and the original image file is both present and valid, then the
+     * scaled image will be generated.
      * @param string $CSSSizeName Name of the image size to retrieve.
      * @return string Returns the path to the requested image size.
      * @throws InvalidArgumentException if provided size is not defined by
      *   any interface.ini files that apply for the active user interface.
+     * @see getScaledImage()
      */
     public function url(string $CSSSizeName): string
     {
@@ -47,14 +49,15 @@ class Image extends Item
             throw new InvalidArgumentException("Invalid image size: ".$CSSSizeName);
         }
 
-        if ($this->format() != ImageFile::IMGTYPE_SVG) {
+        if ($this->format() == ImageFile::IMGTYPE_SVG) {
+            $Path = $this->getFullPathForOriginalImage();
+        } else {
             $ImageSize = self::$ImageSizes[$CSSSizeName];
             $Path = $this->getScaledImage(
                 $ImageSize["Width"],
-                $ImageSize["Height"]
+                $ImageSize["Height"],
+                $ImageSize["Options"]
             );
-        } else {
-            $Path = $this->getFullPathForOriginalImage();
         }
 
         return $Path;
@@ -71,6 +74,11 @@ class Image extends Item
 
             $this->FileName = ImageFactory::IMAGE_STORAGE_LOCATION."/"
                 ."Img--".sprintf("%08d.", $this->Id).$Extension;
+
+            if (!file_exists($this->FileName)
+                    && isset(self::$FilePathFallbackPrefix)) {
+                $this->FileName = self::$FilePathFallbackPrefix.$this->FileName;
+            }
         }
 
         return $this->FileName;
@@ -152,7 +160,7 @@ class Image extends Item
      * @param string $NewValue New alternate text value. (OPTIONAL)
      * @return string Returns the current alternate text value.
      */
-    public function altText(string $NewValue = null): string
+    public function altText(?string $NewValue = null): string
     {
         $Val = $this->DB->updateValue("AltText", $NewValue);
         return ($Val !== false) ? $Val : "";
@@ -236,16 +244,24 @@ class Image extends Item
             );
         }
 
-        $Width = self::$ImageSizes[$CssSizeName]["Width"];
-        $Height = self::$ImageSizes[$CssSizeName]["Height"];
         $SafeAltText = htmlspecialchars(
             $this->altText(),
             ENT_QUOTES | ENT_HTML5
         );
 
+        $InlineStyle = "";
+        if ($this->format() == ImageFile::IMGTYPE_SVG) {
+            $Width = self::$ImageSizes[$CssSizeName]["Width"];
+            $Height = self::$ImageSizes[$CssSizeName]["Height"];
+
+            $InlineStyle .= "width: ".$Width."px;";
+            $InlineStyle .= "height: ".$Height."px;";
+        }
+
         # and construct the HTML for this image tag
         return "<div class='".$CssSizeName."-container'>"
             ."<img class='".$CssSizeName."'"
+            .(strlen($InlineStyle) > 0 ? " style='".$InlineStyle."'" : "")
             ." src='".$this->url($CssSizeName)."'"
             ." alt='".$SafeAltText."'></div>";
     }
@@ -253,8 +269,9 @@ class Image extends Item
     /**
      * Destroy the image, that is, remove its record from the database and delete
      * the associated image files from the file system.
+     * @return void
      */
-    public function destroy()
+    public function destroy(): void
     {
         $FileName = $this->getFullPathForOriginalImage();
         if (file_exists($FileName)) {
@@ -292,8 +309,9 @@ class Image extends Item
     /**
      * Associate this image with an item.
      * @param int $NewValue Id of the item.
+     * @return void
      */
-    public function setItemId(int $NewValue)
+    public function setItemId(int $NewValue): void
     {
         $this->DB->updateIntValue("ItemId", $NewValue);
     }
@@ -310,8 +328,9 @@ class Image extends Item
     /**
      * Associate this image with a field.
      * @param int $NewValue Id of the field.
+     * @return void
      */
-    public function setFieldId(int $NewValue)
+    public function setFieldId(int $NewValue): void
     {
         $this->DB->updateIntValue("FieldId", $NewValue);
     }
@@ -330,8 +349,9 @@ class Image extends Item
      * image that are no longer used in favor of the images generated by
      * getScaledImage() based on ImageSize settings from interface.ini. Method
      * can be removed after we no longer support upgrading from CWIS.
+     * @return void
      */
-    public function deleteLegacyScaledImages()
+    public function deleteLegacyScaledImages(): void
     {
         # clean up old scaled images (we have a new storage location for them now)
         $FileNamePrefixes = [
@@ -383,6 +403,10 @@ class Image extends Item
             $SrcImage = new RasterImageFile($FileName);
         }
 
+        # disable path fallbacks during image creation
+        $PreviousFallbackSetting = self::$FilePathFallbackPrefix;
+        self::$FilePathFallbackPrefix = null;
+
         # generate a new ImageId
         $DB = new Database();
         $DB->query("INSERT INTO Images (Format) VALUES ('".$SrcImage->format()."')");
@@ -406,22 +430,32 @@ class Image extends Item
         # store checksums and file length
         $Image->storeFileLengthAndChecksum();
 
+        # restore previous fallback setting
+        self::$FilePathFallbackPrefix = $PreviousFallbackSetting;
+
         # and return the image object
         return $Image;
     }
 
     /**
-     * Register an image size for use in user interfaces.
+     * Register an image size for use in user interfaces.  Options should be
+     * fully-qualified names of constants from ScoutLib\RasterImageFile class.
      * @param string $CSSSizeName Name of the image size as a CSS class
      *   (e.g., mv-image-large)
      * @param int $Width Pixel width of this image size.
      * @param int $Width Pixel height of this image size.
+     * @param array $Options Names of scaling/cropping options.
      */
-    public static function addImageSize(string $CSSSizeName, int $Width, int $Height)
-    {
+    public static function addImageSize(
+        string $CSSSizeName,
+        int $Width,
+        int $Height,
+        array $Options
+    ): void {
         self::$ImageSizes[$CSSSizeName] = [
             "Width" => $Width,
             "Height" => $Height,
+            "Options" => $Options,
         ];
     }
 
@@ -457,6 +491,46 @@ class Image extends Item
     }
 
     /**
+     * Get the image width for a given CSS Size name.
+     * @param string $CssSizeName Name of the image size as a CSS class
+     *   (e.g., mv-image-large)
+     * @return int Width in pixels for requested image size.
+     * @throws InvalidArgumentException if provided size is not defined by
+     *   the current interface.
+     */
+    public static function getWidthForSize(
+        string $CssSizeName
+    ) : int {
+        if (!isset(self::$ImageSizes[$CssSizeName])) {
+            throw new InvalidArgumentException(
+                "Invalid image size: ".$CssSizeName
+            );
+        }
+
+        return self::$ImageSizes[$CssSizeName]["Width"];
+    }
+
+    /**
+     * Get the image height for a given CSS Size name.
+     * @param string $CssSizeName Name of the image size as a CSS class
+     *   (e.g., mv-image-large)
+     * @return int Height in pixels for requested image size.
+     * @throws InvalidArgumentException if provided size is not defined by
+     *   the current interface.
+     */
+    public static function getHeightForSize(
+        string $CssSizeName
+    ) : int {
+        if (!isset(self::$ImageSizes[$CssSizeName])) {
+            throw new InvalidArgumentException(
+                "Invalid image size: ".$CssSizeName
+            );
+        }
+
+        return self::$ImageSizes[$CssSizeName]["Height"];
+    }
+
+    /**
      * Get the CSS name for a given scaled image size.
      * @param int $Width Image width.
      * @param int $Height Image height.
@@ -486,6 +560,15 @@ class Image extends Item
     }
 
     /**
+     * Get the list of CSS names that have been defined.
+     * @return array List of size names
+     */
+    public static function getAllSizeNames() : array
+    {
+        return array_keys(self::$ImageSizes);
+    }
+
+    /**
      * Get the CSS name of a scaled image size defined by the
      *   current interface that is closest (in terms of squared error in image
      *   area) to a given size.
@@ -512,8 +595,8 @@ class Image extends Item
     }
 
     /**
-     * Get the next largest size with dimensions larger than both the provided
-     * width and height.
+     * Get the next largest size with dimensions larger than or equal to both
+     * the provided width and height.
      * @param int $Width The width of the image.
      * @param int $Height The height of the image.
      * @return string CSS size name.
@@ -536,68 +619,169 @@ class Image extends Item
 
         # get next largest size
         foreach (array_keys($ImageSizeAreas) as $ImageSize) {
-            if (self::$ImageSizes[$ImageSize]["Width"] > $Width &&
-                self::$ImageSizes[$ImageSize]["Height"] > $Height) {
+            if (self::$ImageSizes[$ImageSize]["Width"] >= $Width &&
+                self::$ImageSizes[$ImageSize]["Height"] >= $Height) {
                 return (string)$ImageSize;
             }
         }
 
         # if no size is larger, get largest size
-        return (string)array_key_last($ImageSizeAreas);
+        end($ImageSizeAreas);
+        return (string)key($ImageSizeAreas);
+    }
+
+    /**
+     * Get the next smallest size with dimensions smaller than or equal to
+     * than both the provided width and height.
+     * @param int $Width The width of the image.
+     * @param int $Height The height of the image.
+     * @return string CSS size name.
+     */
+    public static function getNextSmallestSize(int $Width, int $Height) : string
+    {
+        # areas are sorted in descending order
+        static $ImageSizeAreas = [];
+        static $ImageSizeCount = 0;
+
+        # sort image sizes by descending total area
+        if ($ImageSizeCount != count(self::$ImageSizes)) {
+            foreach (self::$ImageSizes as $ImageSize => $Dimensions) {
+                $ImageSizeAreas[$ImageSize] = $Dimensions["Width"] *
+                        $Dimensions["Height"];
+            }
+            arsort($ImageSizeAreas);
+            $ImageSizeCount = count(self::$ImageSizes);
+        }
+
+        # get next smallest size
+        foreach (array_keys($ImageSizeAreas) as $ImageSize) {
+            if (self::$ImageSizes[$ImageSize]["Width"] <= $Width &&
+                self::$ImageSizes[$ImageSize]["Height"] <= $Height) {
+                return (string)$ImageSize;
+            }
+        }
+
+        # if no size is larger, get smallest size
+        reset($ImageSizeAreas);
+        return (string)key($ImageSizeAreas);
+    }
+
+    /**
+     * Set prefix to prepend to file paths when images are not found locally.
+     * @param string $Prefix Prefix to prepend.
+     */
+    public static function setFilePathFallbackPrefix(string $Prefix): void
+    {
+        self::$FilePathFallbackPrefix = $Prefix;
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
-    private static $ImageSizes = [];
     private $FileName = null;
     private $MimeType = null;
 
+    private static $ImageSizes = [];
+    private static $FilePathFallbackPrefix;
+
     /**
-     * Get a scaled version of the image that will fill a box of specified dimensions.
+     * Get path to scaled version of the image that will fill a box of
+     * specified dimensions. If the scaled version does not exist and if the
+     * original image file is both present and valid then the scaled version
+     * will be generated. If the original image is either absent or invalid the
+     * the correct path will be returned but no scaled image will be generated.
      * @param int $Width Pixel width of constraining box.
      * @param int $Height Pixel height of constraining box.
+     * @param array $Options Image scaling/cropping options.  (These must be
+     *      fully-qualified names of constants from the ScoutLib\RasterImageFile
+     *      class.)
      * @return string Path to scaled image.
      */
-    private function getScaledImage(int $Width, int $Height) : string
+    private function getScaledImage(int $Width, int $Height, array $Options) : string
     {
         ImageFactory::checkImageStorageDirectories();
 
-        # determine where the appropriately sized version of this image should live
-        $Path = sprintf(
-            ImageFactory::SCALED_STORAGE_LOCATION."/img_%08d_%dx%d.%s",
+        # convert scaling/cropping options to RasterImageFile constants
+        $CroppingMethod = 0;
+        $ScalingGoal = 0;
+        foreach ($Options as $Opt) {
+            if (strpos($Opt, "CROP_") !== false) {
+                $CroppingMethod |= constant($Opt);
+            } elseif (strpos($Opt, "SCALE_") !== false) {
+                $ScalingGoal = constant($Opt);
+            }
+        }
+
+        # generate scaling/cropping options suffix for file name (if needed)
+        $OptionsSuffix = "";
+        if ($CroppingMethod > 0) {
+            $OptionsSuffix .= "c".$CroppingMethod;
+        }
+        if ($ScalingGoal > 0) {
+            $OptionsSuffix .= "s".$ScalingGoal;
+        }
+        if (strlen($OptionsSuffix)) {
+            $OptionsSuffix = "_".$OptionsSuffix;
+        }
+
+        # assemble full file path for appropriately-sized version of image
+        $FileExtension = ImageFile::extensionForFormat($this->format());
+        $FileName = sprintf(
+            "img_%08d_%dx%d%s.%s",
             $this->Id,
             $Width,
             $Height,
-            ImageFile::extensionForFormat($this->format())
+            $OptionsSuffix,
+            $FileExtension
         );
+        $Path = ImageFactory::SCALED_STORAGE_LOCATION."/".$FileName;
 
-        # if source file does not exist (e.g., because we're running in a
-        # sandbox), just return the path
-        if (!file_exists($this->getFullPathForOriginalImage())) {
+        # if appropriately-sized version already exists, return it
+        if (file_exists($Path)) {
             return $Path;
         }
 
-        # create the scaled version if needed
-        if (!file_exists($Path)) {
-            $Image = new RasterImageFile(
+        # attempt to load the original image (suppressing warnings from GD)
+        try {
+            $Image = @new RasterImageFile(
                 $this->getFullPathForOriginalImage(),
                 $this->format()
             );
-
-            # scale so that the large edge of the image fills the bounding box
-            # without growing the image
-            $Scale = min(
-                min(1, $Width / $Image->getXSize()),
-                min(1, $Height / $Image->getYSize())
-            );
-
-            $Image->scaleTo(
-                (int)round($Scale * $Image->getXSize()),
-                (int)round($Scale * $Image->getYSize())
-            );
-
-            $Image->saveAs($Path);
+        } catch (Exception $Ex) {
+            # log warning if the image was invalid and could not be loaded
+            ApplicationFramework::getInstance()
+                ->logMessage(
+                    ApplicationFramework::LOGLVL_WARNING,
+                    "Image file '".$this->getFullPathForOriginalImage()."'"
+                    ." appears to be corrupt and could not be loaded."
+                    ." (Exception: \"".$Ex->getMessage()."\")"
+                );
+            return $Path;
         }
+
+        # if options for scaling/cropping to fit were supplied
+        if (count($Options)) {
+            if ($CroppingMethod > 0) {
+                $Image->setCroppingMethod($CroppingMethod);
+            }
+            if ($ScalingGoal > 0) {
+                $Image->setScalingGoal($ScalingGoal);
+            }
+            $Image->cropAndScaleToFit($Width, $Height);
+        } else {
+            # otherwise, create scaled image such that the larger edge of the image
+            # fills the bounding box without growing the image
+            $CurWidth = $Image->getXSize();
+            $CurHeight = $Image->getYSize();
+            $Scale = min(
+                min(1, $Width / $CurWidth),
+                min(1, $Height / $CurHeight)
+            );
+            $Image->scaleTo(
+                (int)round($Scale * $CurWidth),
+                (int)round($Scale * $CurHeight)
+            );
+        }
+        $Image->saveAs($Path);
 
         return $Path;
     }
@@ -628,8 +812,9 @@ class Image extends Item
      * name) for specified class.  This may be overridden in a child class, if
      * different values are needed.
      * @param string $ClassName Class to set values for.
+     * @return void
      */
-    protected static function setDatabaseAccessValues(string $ClassName)
+    protected static function setDatabaseAccessValues(string $ClassName): void
     {
         if (!isset(self::$ItemIdColumnNames[$ClassName])) {
             self::$ItemIdColumnNames[$ClassName] = "ImageId";

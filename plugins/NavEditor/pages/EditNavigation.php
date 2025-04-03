@@ -3,12 +3,14 @@
 #   FILE:  EditNavigation.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 use ScoutLib\StdLib;
 use Metavus\FormUI;
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -17,9 +19,10 @@ use Metavus\FormUI;
  * @param string $Key configuration key
  * @param mixed $Value configuration value
  */
-function setConfigValue(string $Key, $Value)
+function setConfigValue(string $Key, $Value): void
 {
-    $GLOBALS["AF"]->signalEvent("NAVEDITOR_SET_CONFIGURATION", [$Key, $Value]);
+    $AF = ApplicationFramework::getInstance();
+    $AF->signalEvent("NAVEDITOR_SET_CONFIGURATION", [$Key, $Value]);
 }
 
 # ----- MAIN -----------------------------------------------------------------
@@ -27,7 +30,9 @@ function setConfigValue(string $Key, $Value)
 PageTitle("Edit Navigation");
 CheckAuthorization(PRIV_SYSADMIN);
 
-$Configuration = $GLOBALS["AF"]->signalEvent("NAVEDITOR_GET_CONFIGURATION");
+$AF = ApplicationFramework::getInstance();
+
+$Configuration = $AF->signalEvent("NAVEDITOR_GET_CONFIGURATION");
 
 # form fields definition
 $FormFields = [
@@ -63,6 +68,6 @@ switch ($ButtonPushed) {
         setConfigValue("PrimaryNav", $NewValues["PrimaryNav"]);
         # jump to SysAdmin after saving
     case "Cancel":
-        $GLOBALS["AF"]->SetJumpToPage("SysAdmin");
+        $AF->SetJumpToPage("SysAdmin");
         break;
 }

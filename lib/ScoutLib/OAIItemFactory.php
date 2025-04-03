@@ -3,9 +3,10 @@
 #   FILE:  OAIItemFactory.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
+# @scout:phpstan
 
 namespace ScoutLib;
 
@@ -25,8 +26,8 @@ interface OAIItemFactory
      * @return array Requested Items.
      */
     public function getItems(
-        string $StartingDate = null,
-        string $EndingDate = null
+        ?string $StartingDate = null,
+        ?string $EndingDate = null
     ): array;
 
     /**
@@ -38,8 +39,8 @@ interface OAIItemFactory
      */
     public function getItemsInSet(
         string $Set,
-        string $StartingDate = null,
-        string $EndingDate = null
+        ?string $StartingDate = null,
+        ?string $EndingDate = null
     ): array;
 
     /**
@@ -58,5 +59,5 @@ interface OAIItemFactory
         $SearchParams,
         $StartingDate = null,
         $EndingDate = null
-    );
+    ): array;
 }

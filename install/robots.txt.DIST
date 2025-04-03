@@ -9,3 +9,5 @@ Disallow: /index.php?P=Login
 Disallow: /index.php?P=RequestAccount
 Disallow: /index.php?P=ForgottenPassword
 Disallow: /index.php?P=LeaveFeedback
+Disallow: /index.php?P=GoTo&ID=
+Disallow: /g*/f*

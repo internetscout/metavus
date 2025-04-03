@@ -3,13 +3,12 @@
 #   FILE:  Mailer.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use InvalidArgumentException;
 use Metavus\FormUI;
 use Metavus\InterfaceConfiguration;
@@ -18,8 +17,8 @@ use Metavus\Plugin;
 use Metavus\Plugins\Mailer\StoredEmail;
 use Metavus\Plugins\Rules\Rule;
 use Metavus\Plugins\Rules\RuleFactory;
+use Metavus\Plugins\SocialMedia;
 use Metavus\Record;
-use Metavus\SystemConfiguration;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -38,15 +37,17 @@ class Mailer extends Plugin
      * Set the plugin attributes.  At minimum this method MUST set $this->Name
      * and $this->Version.  This is called when the plugin is initially loaded.
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Mailer";
         $this->Version = "1.4.0";
-        $this->Description = "Generates and emails messages to users based on templates.";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
-        $this->Requires = ["MetavusCore" => "1.0.0"];
+        $this->Description = "Provides support for generating and emaiing"
+                ." messages containing record metadata to users based on"
+                ." editable templates.";
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
+        $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
 
         $this->CfgSetup["BaseUrl"] = [
@@ -88,10 +89,10 @@ class Mailer extends Plugin
      * @return string|null NULL if installation succeeded, otherwise a string containing
      *       an error message indicating why installation failed.
      */
-    public function install()
+    public function install(): ?string
     {
-        $this->configSetting("Templates", []);
-        $Result = $this->createTables($this->SqlTables);
+        $this->setConfigSetting("Templates", []);
+        $Result = $this->createTables(self::SQL_TABLES);
         if ($Result !== null) {
             return $Result;
         }
@@ -101,8 +102,8 @@ class Mailer extends Plugin
 
     /**
      * Load default templates for standard site emails
-    */
-    public function addDefaultTemplates()
+     */
+    public function addDefaultTemplates(): void
     {
         $MailerTemplates = $this->getTemplateList();
 
@@ -187,118 +188,6 @@ class Mailer extends Plugin
         }
     }
 
-
-    /**
-     * Upgrade from a previous version.
-     * @param string $PreviousVersion Previous version number.
-     */
-    public function upgrade(string $PreviousVersion)
-    {
-        # upgrade to 1.0.1
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            # get the current list of templates
-            $Templates = $this->configSetting("Templates");
-
-            # add the "CollapseBodyMargins" setting
-            foreach ($Templates as $Id => $Template) {
-                $Templates[$Id]["CollapseBodyMargins"] = false;
-            }
-
-            # set the updated templates
-            $this->configSetting("Templates", $Templates);
-        }
-
-        # upgrade to 1.0.2
-        if (version_compare($PreviousVersion, "1.0.2", "<")) {
-            # get the current list of templates
-            $Templates = $this->configSetting("Templates");
-
-            # add the plain text fields
-            foreach ($Templates as $Id => $Template) {
-                $Templates[$Id]["PlainTextBody"] = "";
-                $Templates[$Id]["PlainTextItemBody"] = "";
-            }
-
-            # set the updated templates
-            $this->configSetting("Templates", $Templates);
-        }
-
-        # upgrade to 1.0.6
-        if (version_compare($PreviousVersion, "1.0.6", "<")) {
-            $this->configSetting(
-                "EmailTaskPriority",
-                ApplicationFramework::PRIORITY_BACKGROUND
-            );
-        }
-
-        # upgrade to 1.3.0
-        if (version_compare($PreviousVersion, "1.3.0", "<")) {
-            $Templates = $this->configSetting("Templates");
-            foreach ($Templates as &$Template) {
-                $Template["ConfirmMode"] = false;
-                $Template["EmailPerResource"] = false;
-            }
-            $this->configSetting("Templates", $Templates);
-
-            $Result = $this->createTables($this->SqlTables);
-            if ($Result !== null) {
-                return $Result;
-            }
-        }
-
-        # upgrade to 1.3.1
-        if (version_compare($PreviousVersion, "1.3.1", "<")) {
-            $Templates = $this->configSetting("Templates");
-            $DB = new Database();
-
-            # if Rules was enabled and is new enough that it had the
-            # Rules_Rules table
-            if (PluginManager::getInstance()->pluginEnabled("Rules") &&
-                $DB->tableExists("Rules_Rules")) {
-                # pull in objects we need from Rules
-                # (these won't be autoloaded because Rules isn't initialized yet)
-                require_once("plugins/Rules/objects/Rule.php");
-                require_once("plugins/Rules/objects/RuleFactory.php");
-
-                # build a mapping of templates to the rules that use them
-                $TemplateRuleMap = [];
-                $RFactory = new RuleFactory();
-                foreach ($RFactory->getItems() as $RuleId => $Rule) {
-                    if ($Rule->action() == Rule::ACTION_SENDEMAIL) {
-                        $ActionParams = $Rule->actionParameters();
-                        $TemplateRuleMap[$ActionParams["Template"]][] = $RuleId;
-                    }
-                }
-
-                # iterate over all the templates, moving the
-                # ConfirmMode from the template into the corresponding
-                # rule if necessary
-                foreach ($Templates as $TId => $Template) {
-                    if (array_key_exists($TId, $TemplateRuleMap) &&
-                        array_key_exists("ConfirmMode", $Template) &&
-                        $Template["ConfirmMode"]) {
-                        foreach ($TemplateRuleMap[$TId] as $RuleId) {
-                            $Rule = new Rule($RuleId);
-                            $ActionParams = $Rule->actionParameters();
-                            $ActionParams["ConfirmBeforeSending"] = true;
-                            $Rule->actionParameters($ActionParams);
-                        }
-                    }
-                }
-            }
-
-            # remove ConfirmMode setting from templates
-            foreach ($Templates as &$Template) {
-                if (array_key_exists("ConfirmMode", $Template)) {
-                    unset($Template["ConfirmMode"]);
-                }
-            }
-            $this->configSetting("Templates", $Templates);
-        }
-
-        return null;
-    }
-
     /**
      * Declare events.
      *
@@ -323,7 +212,7 @@ class Mailer extends Plugin
      *
      * @return array an array of the events this plugin provides.
      */
-    public function declareEvents()
+    public function declareEvents(): array
     {
         return [
             "Mailer_EVENT_IS_TEMPLATE_IN_USE" =>
@@ -343,9 +232,9 @@ class Mailer extends Plugin
      * the indexes and template names for the values.
      * @return array Template names with template IDs for the index.
      */
-    public function getTemplateList()
+    public function getTemplateList(): array
     {
-        $Templates = $this->configSetting("Templates");
+        $Templates = $this->getConfigSetting("Templates");
         $TemplateList = [];
         if (count($Templates) > 0) {
             foreach ($Templates as $Id => $Template) {
@@ -371,7 +260,7 @@ class Mailer extends Plugin
      * @param bool $EmailPerResource TRUE to send one message per resource,
      *      rather than a single message that contains a list of
      *      resources.  (OPTIONAL, defaults to FALSE)
-     * @return Integer of template id.
+     * @return int of template id.
      */
     public function addTemplate(
         $Name,
@@ -384,8 +273,8 @@ class Mailer extends Plugin
         $Headers = "",
         $CollapseBodyMargins = false,
         $EmailPerResource = false
-    ) {
-        $G_Templates = $this->configSetting("Templates");
+    ): int {
+        $G_Templates = $this->getConfigSetting("Templates");
 
         # get next template ID
         if (($G_Templates === null) || (count($G_Templates) == 0)) {
@@ -405,7 +294,7 @@ class Mailer extends Plugin
         $G_Templates[$TemplateId]["CollapseBodyMargins"] = $CollapseBodyMargins;
         $G_Templates[$TemplateId]["EmailPerResource"] = $EmailPerResource;
 
-        $this->configSetting("Templates", $G_Templates);
+        $this->setConfigSetting("Templates", $G_Templates);
         return $TemplateId;
     }
 
@@ -417,9 +306,9 @@ class Mailer extends Plugin
      *   "CollapseBodyMargins", and "EmailPerResource"
      * @throws InvalidArgumentException if invalid template ID is provided.
      */
-    public function getTemplate(int $Id)
+    public function getTemplate(int $Id): array
     {
-        $Templates = $this->configSetting("Templates");
+        $Templates = $this->getConfigSetting("Templates");
         if (!isset($Templates[$Id])) {
             throw new InvalidArgumentException(
                 "Invalid Template ID :".$Id
@@ -437,9 +326,9 @@ class Mailer extends Plugin
      * @throws InvalidArgumentException if invalid template ID is provided.
      * @throws InvalidArgumentException if an invalid key is provided in TemplateData.
      */
-    public function updateTemplate(int $Id, array $TemplateData)
+    public function updateTemplate(int $Id, array $TemplateData): void
     {
-        $Templates = $this->configSetting("Templates");
+        $Templates = $this->getConfigSetting("Templates");
 
         # throw exception if invalid ID provided
         if (!isset($Templates[$Id])) {
@@ -465,13 +354,13 @@ class Mailer extends Plugin
         foreach ($TemplateData as $Key => $Val) {
             $Templates[$Id][$Key] = $Val;
         }
-        $this->configSetting("Templates", $Templates);
+        $this->setConfigSetting("Templates", $Templates);
     }
 
     /**
      * Send email to specified recipients using specified template.
      * @param int $TemplateId ID of template to use in generating emails.
-     * @param array $Recipients User object or ID or email address, or an array
+     * @param User|int|string|array $Recipients User object or ID or email address, or an array
      *      of any of these to use as email recipients.
      * @param Record|array|int $Resources Resource or Resource ID or array of
      *      Resources or array of Resource IDs to be referred to within email
@@ -482,15 +371,18 @@ class Mailer extends Plugin
      *      override the builtin keywords.  (OPTIONAL)
      * @param bool $ConfirmBeforeSending TRUE if messages should be queued for
      *      confirmation by an admin prior to sending. (OPTIONAL, default FALSE)
-     * @return Number of email messages sent.
+     * @param string $InterfaceName Name of UI to use when sending the message
+     *      (OPTIONAL, defaults to the current UI when not provided)
+     * @return int Number of email messages sent.
      */
     public function sendEmail(
         $TemplateId,
         $Recipients,
         $Resources = [],
         $ExtraValues = null,
-        $ConfirmBeforeSending = false
-    ) {
+        $ConfirmBeforeSending = false,
+        $InterfaceName = null
+    ): int {
         $AF = ApplicationFramework::getInstance();
 
         # initialize count of emails sent
@@ -516,7 +408,7 @@ class Mailer extends Plugin
         }
 
         # retrieve appropriate template
-        $Templates = $this->configSetting("Templates");
+        $Templates = $this->getConfigSetting("Templates");
         $Template = $Templates[$TemplateId];
         $TemplateName = $Template["Name"];
 
@@ -530,7 +422,8 @@ class Mailer extends Plugin
                     $Recipients,
                     $Resource,
                     $ExtraValues,
-                    $ConfirmBeforeSending
+                    $ConfirmBeforeSending,
+                    $InterfaceName
                 );
             }
 
@@ -540,6 +433,7 @@ class Mailer extends Plugin
         # set up parameters for keyword replacement callback
         $this->KRItemBody = $Template["ItemBody"];
         $this->KRResources = $Resources;
+        $this->KRInterfaceName = $InterfaceName;
         unset($this->KRCurrentResource);
 
         # for each recipient
@@ -680,9 +574,9 @@ class Mailer extends Plugin
         $Resources = [],
         $ExtraValues = null,
         $ConfirmBeforeSending = false
-    ) {
+    ): int {
         # retrieve appropriate template and its name
-        $Templates = $this->configSetting("Templates");
+        $Templates = $this->getConfigSetting("Templates");
 
         # don't send e-mail if the template is invalid
         if (!isset($Templates[$TemplateId])) {
@@ -746,9 +640,10 @@ class Mailer extends Plugin
                     $Recipient,
                     $Resources,
                     $ExtraValues,
-                    $ConfirmBeforeSending
+                    $ConfirmBeforeSending,
+                    ApplicationFramework::getInstance()->activeUserInterface()
                 ],
-                $this->configSetting("EmailTaskPriority"),
+                $this->getConfigSetting("EmailTaskPriority"),
                 $TaskDescription
             );
 
@@ -766,7 +661,7 @@ class Mailer extends Plugin
      * @param int $TemplateId Template to check.
      * @return array of strings identifying template users.
      */
-    public function findTemplateUsers($TemplateId)
+    public function findTemplateUsers($TemplateId): array
     {
         $Result = ApplicationFramework::getInstance()->signalEvent(
             "Mailer_EVENT_IS_TEMPLATE_IN_USE",
@@ -788,6 +683,7 @@ class Mailer extends Plugin
     private $KRCurrentResource;
     private $KRExtraValues;
     private $KRIsHtml;
+    private $KRInterfaceName;
 
     /**
      * Replace keywords in the given body text.
@@ -795,7 +691,7 @@ class Mailer extends Plugin
      * @param bool $IsHtml Set to TRUE to escape necessary characters in keywords.
      * @return string Returns the body text with keywords replaced.
      */
-    protected function replaceKeywordsInBody($Body, $IsHtml = true)
+    protected function replaceKeywordsInBody($Body, $IsHtml = true): string
     {
         $NewBody = "";
 
@@ -818,7 +714,7 @@ class Mailer extends Plugin
      * @param string $Value String to split.
      * @return array Returns the string split by its line endings.
      */
-    protected function splitByLineEnding($Value)
+    protected function splitByLineEnding($Value): array
     {
         $RetVal = preg_split('/\r\n|\r|\n/', $Value);
         return ($RetVal === false) ? [] : $RetVal;
@@ -829,7 +725,7 @@ class Mailer extends Plugin
      * @param string $Line Text to process.
      * @return string modified text.
      */
-    private function replaceKeywords($Line)
+    private function replaceKeywords($Line): string
     {
         return preg_replace_callback(
             "/X-([A-Z0-9:]+)-X/",
@@ -843,7 +739,7 @@ class Mailer extends Plugin
      * @param array $Matches Array of matching keywords.
      * @return string modified text.
      */
-    private function keywordReplacementCallback($Matches)
+    private function keywordReplacementCallback($Matches): string
     {
         static $FieldNameMappings;
         static $StdFieldNameMappings;
@@ -862,7 +758,7 @@ class Mailer extends Plugin
             $this->KRCurrentResource = reset($this->KRResources);
         }
 
-        $IntCfg = InterfaceConfiguration::getInstance();
+        $IntCfg = InterfaceConfiguration::getInstance($this->KRInterfaceName);
 
         # start out with assumption that no replacement text will be found
         $Replacement = $Matches[0];
@@ -874,8 +770,8 @@ class Mailer extends Plugin
                 break;
 
             case "BASEURL":
-                $Replacement = strlen(trim($this->configSetting("BaseUrl")))
-                        ? trim($this->configSetting("BaseUrl"))
+                $Replacement = strlen(trim($this->getConfigSetting("BaseUrl")))
+                        ? trim($this->getConfigSetting("BaseUrl"))
                         : ApplicationFramework::baseUrl()."index.php";
                 break;
 
@@ -965,7 +861,7 @@ class Mailer extends Plugin
                 if (!array_key_exists($SchemaId, $Schemas)) {
                     $Schemas[$SchemaId] = new MetadataSchema($SchemaId);
                 }
-                $ViewPage = $Schemas[$SchemaId]->viewPage();
+                $ViewPage = $Schemas[$SchemaId]->getViewPage();
 
                 # make sure view page will work for clean URL substitution
                 if (strpos($ViewPage, "index.php") !== 0) {
@@ -985,8 +881,8 @@ class Mailer extends Plugin
 
                 # add base URL to view page
                 if (!isset($BaseUrl)) {
-                    $BaseUrl = strlen(trim($this->configSetting("BaseUrl") ?? ""))
-                            ? trim($this->configSetting("BaseUrl"))
+                    $BaseUrl = strlen(trim($this->getConfigSetting("BaseUrl") ?? ""))
+                            ? trim($this->getConfigSetting("BaseUrl"))
                             : ApplicationFramework::baseUrl();
                 }
                 $Replacement = $BaseUrl.$ViewPage;
@@ -1098,6 +994,7 @@ class Mailer extends Plugin
                         # replacement is value from current resource
                         $Field = $KeywordIsField ?
                             $FieldNameMappings[$SchemaId][$SubMatches[1]] :
+                            // @phpstan-ignore-next-line
                             $StdFieldNameMappings[$SchemaId][$StdFieldSubMatches[1]] ;
 
                         # if this is a User field and the SMARTNAME was requested
@@ -1170,7 +1067,7 @@ class Mailer extends Plugin
     * @return string|null Returns the share URL for the resource and site or NULL if the
     *      SocialMedia plugin isn't available.
     */
-    private function getShareUrl(Record $Resource, $Site)
+    private function getShareUrl(Record $Resource, $Site): ?string
     {
         $PluginMgr = PluginManager::getInstance();
         # the social media plugin needs to be available
@@ -1179,8 +1076,8 @@ class Mailer extends Plugin
         }
 
         # return the share URL from the social media plugin
-        $Plugin = $PluginMgr->getPlugin("SocialMedia");
-        return $Plugin->GetShareUrl($Resource, $Site);
+        $SocialMediaPlugin = SocialMedia::getInstance();
+        return $SocialMediaPlugin->getShareUrl($Resource, $Site);
     }
 
 
@@ -1194,11 +1091,11 @@ class Mailer extends Plugin
     private function createEmailMessage(
         int $TemplateId,
         string $Address
-    ) : Email {
+    ): Email {
         $AF = ApplicationFramework::getInstance();
 
         # get the requested template
-        $Templates = $this->configSetting("Templates");
+        $Templates = $this->getConfigSetting("Templates");
         $Template = $Templates[$TemplateId];
 
         # get the message subject
@@ -1288,7 +1185,7 @@ class Mailer extends Plugin
         return $Msg;
     }
 
-    private $SqlTables = [
+    public const SQL_TABLES = [
         "StoredEmails" => "CREATE TABLE IF NOT EXISTS Mailer_StoredEmails (
                 Mailer_StoredEmailId       INT NOT NULL AUTO_INCREMENT,
                 Mailer_StoredEmailName     TEXT,

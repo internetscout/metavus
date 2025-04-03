@@ -2,7 +2,7 @@
  * FILE:  RecordImageCollage.js (ResourceCollage plugin)
  *
  * Part of the Metavus digital collections platform
- * Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+ * Copyright 2021-2023 Edward Almasy and Internet Scout Research Group
  * http://metavus.net
  *
  * Javascript to display resource collage dialogs and realign tiles
@@ -50,13 +50,16 @@ $(document).ready(function(){
         });
     }
 
-    // update dialog data for display
+    /**
+     * Update dialog data for display.
+     * @param {jQuery} tileElement The jQuery object for the tile element that will be used to update the dialog data.
+     */
     function loadDialogData(tileElement) {
         var tgtElement = $("#mv-rollover-dialog");
 
         $(tgtElement).dialog("option", "position", { my: "left top", at: "left bottom", of: $(tileElement) });
 
-        $(tgtElement).dialog("option", "title", $(tileElement).data('title'));
+        $(tgtElement).dialog("option", "title", $(tileElement).data('tooltip-content'));
         $(".mv-description", tgtElement).html($(tileElement).data('description'));
         $(".mv-url", tgtElement).html($(tileElement).data('url'));
         $(".mv-url", tgtElement).attr('href', $(tileElement).data('goto'));
@@ -66,7 +69,7 @@ $(document).ready(function(){
     /**
      * Setup functionality for tile-click dialog-popups
      */
-    let tileDialogSetup = function() {
+    let setUpTileDialog = function() {
         // set up jquery-ui dialog
         $("#mv-rollover-dialog").dialog({
             autoOpen: false,
@@ -105,14 +108,25 @@ $(document).ready(function(){
             $(tgtElement).dialog("close");
         });
 
-        // set up tooltip for tiles (title on hover)
+        // initialize the tooltip for the tiles
         $(".mv-p-collage-tile").tooltip({
+            // custom class for the tooltip element
+            tooltipClass: 'mv-p-collage-tile-tooltip',
+            // only elements with data-tooltip-content attribute will have tooltip
+            items: ".mv-p-collage-tile[data-tooltip-content]",
+            content: function() {
+                // function to get the content of the tooltip
+                // it gets the content from the data-tooltip-content attribute of the tile
+                return $(this).data("tooltip-content");
+            },
+            // position of the tooltip with respect to the tile
             position: {my: "center top+10", at: "center" },
-            show: { delay: 1000 }
+            // delay 0.5 seconds before showing the tooltip
+            show: { delay: 500 },
         });
     }
 
     fixTiles();
-    tileDialogSetup();
+    setUpTileDialog();
     $(window).resize(fixTiles);
 });

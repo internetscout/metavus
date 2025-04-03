@@ -6,25 +6,22 @@
 #   Copyright 2004-2021 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
-
 # ----- MAIN -----------------------------------------------------------------
-
 # check if current user is authorized
-
-
 if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
-$DB = new Database();
+$AF = ApplicationFramework::getInstance();
 
 # initialize variables
 $FSeek = StdLib::getArrayValue($_SESSION, "FSeek", 0);
@@ -36,10 +33,13 @@ $H_PrivNotFound = StdLib::getArrayValue($_SESSION, "PrivNotFound", array());
 $UsersProcessed = StdLib::getArrayValue($_SESSION, "UsersProcessed", array());
 $LineCount = StdLib::getArrayValue($_SESSION, "LineCount", 0);
 $LastUserName = StdLib::getArrayValue($_SESSION, "LastUserName", null);
-$ImportComplete = false;
+$H_ImportComplete = false;
 $Encrypt = StdLib::getFormValue("EN", StdLib::getArrayValue($_SESSION, "Encrypt", null));
 
 $fp = fopen($TempFile, 'r');
+if ($fp === false) {
+    return;
+}
 
 # seek to the next line
 if ($FSeek > 0) {
@@ -51,9 +51,13 @@ $Schema = new MetadataSchema();
 $PrivDescriptions = (new PrivilegeFactory())->GetPrivileges(true, false);
 $LocalLineCount = 0;
 
-while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
+
+while (!feof($fp) && $LocalLineCount < 500) {
     # read in line from import file
     $fline = fgets($fp, 4096);
+    if ($fline === false || strlen($fline) === 0) {
+        continue;
+    }
 
     # update variables
     $LocalLineCount++;
@@ -67,8 +71,8 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
     $Vars = explode("\t", $fline);
 
     $NumberOfVars = count($Vars);
-    if ($NumberOfVars < 1 || feof($fp)) {
-        $ImportComplete = true;
+    if (feof($fp)) {
+        $H_ImportComplete = true;
         break;
     }
 
@@ -82,7 +86,7 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
         unlink($TempFile);
 
         # jump back and display error message
-        $GLOBALS["AF"]->SetJumpToPage("ImportUsers");
+        $AF->SetJumpToPage("ImportUsers");
         return;
     }
 
@@ -125,11 +129,6 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
         $UserPassword = password_hash($UserPassword, PASSWORD_BCRYPT);
     }
 
-    # bail out if line was empty or end of file encountered
-    if (is_null($UserName) || feof($fp)) {
-        break;
-    }
-
     # check if this is a privilege line
     if ($LastUserName == $UserName && !empty($PrivDescription)) {
         # if this privilege line belongs to a duplicate entry,
@@ -146,7 +145,7 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
                 $H_PrivNotFound[$LineCount] = $fline;
             } else {
                 $ThisUser = new User($UserName);
-                $ThisUser->grantPriv($Privilege);
+                $ThisUser->grantPriv((int) $Privilege);
             }
         }
         continue;
@@ -185,15 +184,14 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
     }
 
     $User->Set("WebSite", isset($Website) ? $Website : "");
-    $User->Set("AddressLineOne", isset($AddressLineOne) ? $AddressLineOne : "");
-    $User->Set("AddressLineTwo", isset($AddressLineTwo) ? $AddressLineTwo : "");
-    $User->Set("City", isset($City) ? $City : "");
-    $User->Set("State", isset($State) ? $State : "");
-    $User->Set("ZipCode", isset($ZipCode) ? $ZipCode : "");
-    $User->Set("Country", isset($Country) ? $Country : "");
-    $User->Set("RealName", isset($RealName) ? $RealName : "");
-    $User->Set("ActiveUI", isset($ActiveUI) ? $ActiveUI
-            : SystemConfiguration::getInstance()->getString("DefaultActiveUI"));
+    $User->Set("AddressLineOne", $AddressLineOne);
+    $User->Set("AddressLineTwo", $AddressLineTwo);
+    $User->Set("City", $City);
+    $User->Set("State", $State);
+    $User->Set("ZipCode", $ZipCode);
+    $User->Set("Country", $Country);
+    $User->Set("RealName", $RealName);
+    $User->Set("ActiveUI", $ActiveUI);
 
     $User->IsActivated(true);
 
@@ -206,8 +204,14 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
     # add in privilege if set
     if (!empty($PrivDescription)) {
         $Privilege = array_search($PrivDescription, $PrivDescriptions);
+        # if a privilege is not found in the privilege factoroy,
+        #       notify admin about this failure
+        if ($Privilege === false) {
+            $H_PrivNotFound[$LineCount] = $fline;
+        }
+
         $ThisUser = new User($UserName);
-        $ThisUser->grantPriv($Privilege);
+        $ThisUser->grantPriv((int) $Privilege);
     }
 
     # keep track of number of users added
@@ -217,7 +221,7 @@ while (!feof($fp) && $LocalLineCount < 500 && $ImportComplete == false) {
 
 # end of file reached?
 if (feof($fp)) {
-    $ImportComplete = true;
+    $H_ImportComplete = true;
 
     # annihilate uploaded file
     $ToDelete = new File($_SESSION["FileId"]);
@@ -234,18 +238,18 @@ $_SESSION["PrivNotFound"] = $H_PrivNotFound;
 $_SESSION["LastUserName"] = $LastUserName;
 $_SESSION["Encrypt"] = $Encrypt;
 #  Time to auto-refresh?
-if ($ImportComplete == false) {
-    $GLOBALS["AF"]->SetJumpToPage("index.php?P=ImportUsersExecute", 1);
+if ($H_ImportComplete == false) {
+    $AF->SetJumpToPage("index.php?P=ImportUsersExecute", 1);
 }
 
 PageTitle("Import Users");
 
 # register post-processing function with the application framework
-$GLOBALS["AF"]->AddPostProcessingCall(
+$AF->AddPostProcessingCall(
     __NAMESPACE__."\\PostProcessingFn",
     $TempFile,
     $fp,
-    $ImportComplete
+    $H_ImportComplete
 );
 
 # post-processing call
@@ -253,10 +257,10 @@ $GLOBALS["AF"]->AddPostProcessingCall(
 * Handle post-processing after a pageload.
 * Post-processing task: clear import file and session variables.
 * @param string $TempFile Temporary file name.
-* @param int $fp Active file descriptor.
+* @param resource $fp Active file descriptor.
 * @param bool $ImportComplete True when import is complete.
 */
-function PostProcessingFn($TempFile, $fp, $ImportComplete)
+function PostProcessingFn($TempFile, $fp, $ImportComplete): void
 {
     if ($ImportComplete == true) {
         fclose($fp);

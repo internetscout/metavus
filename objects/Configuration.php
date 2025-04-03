@@ -3,13 +3,12 @@
 #   FILE:  Configuration.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\StdLib;
@@ -23,7 +22,7 @@ abstract class Configuration extends \ScoutLib\Datastore
 
     /**
      * Get universal instance of class.
-     * @return self Class instance.
+     * @return static Class instance.
      */
     public static function getInstance()
     {
@@ -91,35 +90,32 @@ abstract class Configuration extends \ScoutLib\Datastore
      * Update setting values.
      * @param array $NewValues Array of values, with setting names for the
      *      index.
+     * @return void
      */
-    public function updateValues(array $NewValues)
+    public function updateValues(array $NewValues): void
     {
         foreach ($NewValues as $SettingName => $SettingValue) {
             if (!isset($this->SettingDefinitions[$SettingName])) {
                 throw new InvalidArgumentException("Unrecognized setting name \""
                         .$SettingName."\".");
             }
-
             $SettingDefinition = $this->SettingDefinitions[$SettingName];
+
+            # skip saving fields that are set to read-only
+            if ((isset($SettingDefinition["ReadOnly"])
+                        && $SettingDefinition["ReadOnly"])
+                    || (isset($SettingDefinition["ReadOnlyFunction"])
+                        && $SettingDefinition["ReadOnlyFunction"]($SettingName))) {
+                continue;
+            }
+
+            # if a "set" function is provided, use that to set the value
             if (isset($SettingDefinition["SetFunction"])) {
                 $SettingDefinition["SetFunction"]($SettingName, $SettingValue);
-            } elseif ($SettingDefinition["AllowMultiple"] ?? false) {
-                $this->setArray($SettingName, $SettingValue);
+            # else if field is not one that we do not store
             } elseif (!in_array($SettingDefinition["Type"], static::$TypesNotStored)) {
-                $StorageType = $SettingDefinition["StorageType"]
-                        ??  self::$TypeTranslations[$SettingDefinition["Type"]];
-                if (($StorageType != self::TYPE_ARRAY) && is_array($SettingValue)) {
-                    if (count($SettingValue) > 1) {
-                        throw new Exception("Unexpected array with multiple values"
-                                ." encountered when trying to update setting \""
-                                .$SettingName."\".");
-                    } elseif (count($SettingValue) == 0) {
-                        throw new Exception("Unexpected empty array "
-                                ." encountered when trying to update setting \""
-                                .$SettingName."\".");
-                    }
-                    $SettingValue = array_pop($SettingValue);
-                }
+                # save value based on storage type
+                $StorageType = $this->getStorageType($SettingName);
                 switch ($StorageType) {
                     case self::TYPE_ARRAY:
                         $this->setArray($SettingName, $SettingValue);
@@ -171,9 +167,9 @@ abstract class Configuration extends \ScoutLib\Datastore
     #       manner other than a simple translation)
     protected static $TypeTranslations = [
         FormUI::FTYPE_DATETIME => self::TYPE_DATETIME,
-        FormUI::FTYPE_FILE => self::TYPE_INT,
+        FormUI::FTYPE_FILE => self::TYPE_ARRAY,
         FormUI::FTYPE_FLAG => self::TYPE_BOOL,
-        FormUI::FTYPE_IMAGE => self::TYPE_INT,
+        FormUI::FTYPE_IMAGE => self::TYPE_ARRAY,
         FormUI::FTYPE_METADATAFIELD => self::TYPE_INT,
         FormUI::FTYPE_NUMBER => self::TYPE_INT,
         FormUI::FTYPE_OPTION => false,
@@ -217,8 +213,9 @@ abstract class Configuration extends \ScoutLib\Datastore
     /**
      * Check integrity of setting definitions.
      * @param array $Settings Setting definitions.
+     * @return void
      */
-    protected static function checkSettingDefinitions(array $Settings)
+    protected static function checkSettingDefinitions(array $Settings): void
     {
         foreach ($Settings as $SettingName => $SettingValues) {
             # check to make sure required fields are supplied
@@ -246,9 +243,10 @@ abstract class Configuration extends \ScoutLib\Datastore
             }
 
             # check to make sure that field type is one we know about
-            if (!isset(static::$TypeTranslations[$SettingValues["Type"]])
-                    && !in_array($SettingValues["Type"], static::$TypesNotStored)) {
-                throw new Exception("Unknown type (\"".$SettingValues["Type"]."\")"
+            $SettingType = $SettingValues["Type"];
+            if (!isset(static::$TypeTranslations[$SettingType])
+                    && !in_array($SettingType, static::$TypesNotStored)) {
+                throw new Exception("Unknown type (\"".$SettingType."\")"
                         ." for configuration field \"".$SettingName."\".");
             }
         }
@@ -265,7 +263,8 @@ abstract class Configuration extends \ScoutLib\Datastore
         $DSFields = [];
         foreach ($Settings as $SettingName => $SettingValues) {
             # skip types that we do not store
-            if (in_array($SettingValues["Type"], static::$TypesNotStored)) {
+            $SettingType = $SettingValues["Type"];
+            if (in_array($SettingType, static::$TypesNotStored)) {
                 continue;
             }
             # skip settings that have their own get/set functions
@@ -281,13 +280,11 @@ abstract class Configuration extends \ScoutLib\Datastore
             # else storage type is array if multiple values are allowed
             } elseif (($SettingValues["AllowMultiple"] ?? false) === true) {
                 $DSSettingValues["Type"] = self::TYPE_ARRAY;
-            # else use translated storage type
+            # else use translated storage type if available
+            } elseif (isset(static::$TypeTranslations[$SettingType])
+                    && (static::$TypeTranslations[$SettingType] !== false)) {
+                $DSSettingValues["Type"] = static::$TypeTranslations[$SettingType];
             } else {
-                $DSSettingValues["Type"] =
-                        static::$TypeTranslations[$SettingValues["Type"]];
-            }
-
-            if ($DSSettingValues["Type"] === null) {
                 throw new Exception("Storage type unavailable for configuration"
                         ." field \"".$SettingName."\".");
             }
@@ -302,13 +299,25 @@ abstract class Configuration extends \ScoutLib\Datastore
             # use form label as storage field description
             $DSSettingValues["Description"] = $SettingValues["Label"];
 
+            # if file or image field, set flag indicating no default value
+            if (($SettingType == FormUI::FTYPE_FILE)
+                    || ($SettingType == FormUI::FTYPE_IMAGE)) {
+                if (!isset($SettingValues["Default"])
+                        && !isset($SettingValues["DefaultFunction"])
+                        && !isset($SettingValues["NoDefault"])) {
+                    $DSSettingValues["NoDefault"] = true;
+                }
+            }
+
+            # add storage definition to list
             $DSFields[$SettingName] = $DSSettingValues;
         }
         return $DSFields;
     }
 
     /**
-     * Get current setting value, in format usable by FormUI.
+     * Get current setting value, in format usable by FormUI, ignoring any
+     * value overrides.
      * @param string $SettingName Name of setting.
      * @return string|bool|int|array|null Value suitable for use by FormUI,
      *      or NULL if no value available.
@@ -316,35 +325,36 @@ abstract class Configuration extends \ScoutLib\Datastore
     protected function getSettingValueForUseByForm(string $SettingName)
     {
         $SettingDefinition = $this->SettingDefinitions[$SettingName];
+        $SettingType = $SettingDefinition["Type"];
+        # if a "get" function is provided, use that to get the value
         if (isset($SettingDefinition["GetFunction"])) {
             $Value = $SettingDefinition["GetFunction"]($SettingName);
-        } elseif ($SettingDefinition["AllowMultiple"] ?? false) {
-            $Value = $this->getArray($SettingName);
-        } elseif (!in_array($SettingDefinition["Type"], static::$TypesNotStored)) {
-            $StorageType = $SettingDefinition["StorageType"]
-                    ??  self::$TypeTranslations[$SettingDefinition["Type"]];
+        # else if field is not one that we do not store and currently has a value
+        } elseif (!in_array($SettingType, static::$TypesNotStored)
+                && $this->isSet($SettingName)) {
+            $StorageType = $this->getStorageType($SettingName);
             switch ($StorageType) {
                 case self::TYPE_ARRAY:
-                    $Value = $this->getArray($SettingName);
+                    $Value = $this->getRawArray($SettingName);
                     break;
 
                 case self::TYPE_BOOL:
-                    $Value = $this->getBool($SettingName);
+                    $Value = $this->getRawBool($SettingName);
                     break;
 
                 case self::TYPE_DATETIME:
-                    $Value = $this->getDatetime($SettingName);
+                    $Value = $this->getRawDatetime($SettingName);
                     break;
 
                 case self::TYPE_INT:
-                    $Value = $this->getInt($SettingName);
+                    $Value = $this->getRawInt($SettingName);
                     break;
 
                 case self::TYPE_STRING:
                 case self::TYPE_EMAIL:
                 case self::TYPE_IPADDRESS:
                 case self::TYPE_URL:
-                    $Value = $this->getString($SettingName);
+                    $Value = $this->getRawString($SettingName);
                     break;
 
                 default:
@@ -363,5 +373,24 @@ abstract class Configuration extends \ScoutLib\Datastore
         }
 
         return $Value;
+    }
+
+    /**
+     * Get storage type for specified setting.
+     * @param string $SettingName Name of setting.
+     * @return string Storage type (TYPE_* constant value).
+     */
+    protected function getStorageType(string $SettingName): string
+    {
+        $SettingDefinition = $this->SettingDefinitions[$SettingName];
+        # if the field allows multiple values, storage type is an array
+        if ($SettingDefinition["AllowMultiple"] ?? false) {
+            return self::TYPE_ARRAY;
+        # else use storage type if one explicitly supplied, but otherwise
+        #       translate form field type to storage type
+        } else {
+            return $SettingDefinition["StorageType"]
+                    ??  self::$TypeTranslations[$SettingDefinition["Type"]];
+        }
     }
 }

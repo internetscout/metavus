@@ -3,7 +3,7 @@
 #   FILE:  HtmlOptionList.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2014-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -38,7 +38,7 @@ class HtmlOptionList
     /**
      * Print HTML for list.
      */
-    public function printHtml()
+    public function printHtml(): void
     {
         print $this->getHtml();
     }
@@ -126,7 +126,7 @@ class HtmlOptionList
      * @param int $NewValue Current size.  (OPTIONAL)
      * @return int Current size.
      */
-    public function size(int $NewValue = null): int
+    public function size(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->Size = intval($NewValue);
@@ -140,7 +140,7 @@ class HtmlOptionList
      *       items. (OPTIONAL)
      * @return bool TRUE if users can select multiple items, otherwise FALSE.
      */
-    public function multipleAllowed(bool $NewValue = null): bool
+    public function multipleAllowed(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->MultipleAllowed = $NewValue ? true : false;
@@ -165,7 +165,7 @@ class HtmlOptionList
      * @return bool TRUE if form will be submitted, otherwise FALSE.
      * @see HtmlOptionList::OnChangeAction()
      */
-    public function submitOnChange(bool $NewValue = null): bool
+    public function submitOnChange(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->SubmitOnChange = $NewValue ? true : false;
@@ -184,7 +184,7 @@ class HtmlOptionList
      * @return string Current action.
      * @see HtmlOptionList::submitOnChange()
      */
-    public function onChangeAction(string $NewValue = null): string
+    public function onChangeAction(?string $NewValue = null): string
     {
         if ($NewValue !== null) {
             $this->OnChangeAction = $NewValue;
@@ -201,7 +201,7 @@ class HtmlOptionList
      *       there are no items in the list.  (OPTIONAL)
      * @return bool TRUE if empty list will be printed, otherwise FALSE.
      */
-    public function printIfEmpty(bool $NewValue = null): bool
+    public function printIfEmpty(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->PrintIfEmpty = $NewValue ? true : false;
@@ -216,7 +216,7 @@ class HtmlOptionList
      * @param bool $NewValue If TRUE, list is not editable.
      * @return bool TRUE if list will not be editabled, otherwise FALSE.
      */
-    public function disabled(bool $NewValue = null): bool
+    public function disabled(?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $this->Disabled = $NewValue ? true : false;
@@ -229,7 +229,7 @@ class HtmlOptionList
      * @param string $NewValue String with class names, separated by spaces.
      * @return string|null Current classes, or NULL if no classes have been set.
      */
-    public function classForList(string $NewValue = null)
+    public function classForList(?string $NewValue = null)
     {
         if ($NewValue !== null) {
             $this->ListClasses = $NewValue;
@@ -280,7 +280,7 @@ class HtmlOptionList
      *       in, limit will be reset to none.
      * @return int Current maximum label length, or zero if there is no limit.
      */
-    public function maxLabelLength(int $NewValue = null): int
+    public function maxLabelLength(?int $NewValue = null): int
     {
         if ($NewValue !== null) {
             $this->MaxLabelLength = $NewValue;
@@ -295,7 +295,7 @@ class HtmlOptionList
      * @param string $Name Attribute name.
      * @param string $Value Attribute value (should not be escaped).
      */
-    public function addAttribute(string $Name, string $Value)
+    public function addAttribute(string $Name, string $Value): void
     {
         $this->AdditionalAttributes[$Name] = $Value;
     }

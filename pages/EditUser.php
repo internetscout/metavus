@@ -6,6 +6,7 @@
 #   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+#   @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\ItemListUI;
@@ -22,7 +23,7 @@ use ScoutLib\StdLib;
 /**
  * Validate a potential new password for a specified user.
  * @param string $NewPassword New password to check.
- * @return NULL on success, error string describing the problem otherwise.
+ * @return null|string NULL on success, error string describing the problem otherwise.
  */
 function validateUserPassword(User $User, string $NewPassword)
 {
@@ -90,7 +91,7 @@ function getSearchViewLink(SavedSearch $Item) : string
  * Print list of saved searches for a user.
  * @param User $User User to list searches for.
  */
-function printSearchesForUser(User $User)
+function printSearchesForUser(User $User): void
 {
     $SSFactory = new SavedSearchFactory();
     $Searches = $SSFactory->getSearchesForUser($User->id());
@@ -377,7 +378,8 @@ if (is_null($Submit)) {
 
 # by default, we'll want to go back to the user list after processing our
 # actions
-$GLOBALS["AF"]->setJumpToPage("UserList");
+$AF = ApplicationFramework::getInstance();
+$AF->setJumpToPage("UserList");
 
 # if so, process the button action
 switch ($Submit) {
@@ -399,7 +401,7 @@ switch ($Submit) {
                 $OldEmail = $H_UserToEdit->get("EMail");
                 if (strlen($NewEmail) != 0 && $OldEmail != $NewEmail) {
                     $H_UserToEdit->set("EMail", $NewEmail);
-                    $GLOBALS["AF"]->signalEvent(
+                    $AF->signalEvent(
                         "EVENT_USER_EMAIL_CHANGED",
                         [
                             "UserId" => $H_UserToEdit->id(),
@@ -436,7 +438,7 @@ switch ($Submit) {
 
     case "Delete":
         $_SESSION["UserRemoveArray"] = [$H_UserToEdit->Id()];
-        $GLOBALS["AF"]->setJumpToPage("ConfirmRemoveUser");
+        $AF->setJumpToPage("ConfirmRemoveUser");
         break;
 
     default:

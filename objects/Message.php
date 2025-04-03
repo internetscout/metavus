@@ -96,7 +96,7 @@ class Message extends Item
      * @param int $NewValue New editor ID.  (OPTIONAL)
      * @return int User ID of the most recent editor.
      */
-    public function editorId(int $NewValue = null): int
+    public function editorId(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("EditorId", $NewValue);
     }
@@ -107,7 +107,7 @@ class Message extends Item
      * @param int $NewValue New value to set (OPTIONAL)
      * @return int Current parent ID.
      */
-    public function parentId(int $NewValue = null): int
+    public function parentId(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("ParentId", $NewValue);
     }
@@ -119,7 +119,7 @@ class Message extends Item
      * @param int $NewValue New parent type.  (OPTIONAL)
      * @return int Current parent type.
      */
-    public function parentType(int $NewValue = null): int
+    public function parentType(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("ParentType", $NewValue);
     }
@@ -129,7 +129,7 @@ class Message extends Item
      * @param string $NewValue New posting date.  (OPTIONAL)
      * @return string Posting date.
      */
-    public function datePosted(string $NewValue = null): string
+    public function datePosted(?string $NewValue = null): string
     {
         return $this->DB->updateValue("DatePosted", $NewValue);
     }
@@ -139,7 +139,7 @@ class Message extends Item
      * @param string $NewValue New edit date.  (OPTIONAL)
      * @return string Date the message was last edited.
      */
-    public function dateEdited(string $NewValue = null): string
+    public function dateEdited(?string $NewValue = null): string
     {
         return $this->DB->updateValue("DateEdited", $NewValue);
     }
@@ -149,7 +149,7 @@ class Message extends Item
      * @param int $NewValue New poster ID.  (OPTIONAL)
      * @return int ID number of this message's author.
      */
-    public function posterId(int $NewValue = null): int
+    public function posterId(?int $NewValue = null): int
     {
         return $this->DB->updateIntValue("PosterId", $NewValue);
     }

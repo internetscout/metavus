@@ -1,0 +1,37 @@
+<?PHP
+#
+#   FILE:  ListRegistrations.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_Plugin)) {
+    throw new Exception("H_Plugin not defined.");
+}
+if (!$H_Plugin instanceof \Metavus\Plugins\EduLink) {
+    throw new Exception("H_Plugin is the wrong plugin (should be impossible).");
+}
+
+if (!isset($H_NumRegistrations)) {
+    throw new Exception("H_NumRegistrations not defined.");
+}
+if (!isset($H_RegistrationListUI)) {
+    throw new Exception("H_RegistrationListUI not defined.");
+}
+if (!isset($H_Registrations)) {
+    throw new Exception("H_Registrations not defined.");
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+
+$H_RegistrationListUI->heading("<h1>Authorized LMSes</h2>");
+$H_RegistrationListUI->display($H_Registrations, $H_NumRegistrations);

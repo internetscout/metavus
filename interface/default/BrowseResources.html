@@ -3,80 +3,257 @@
 #   FILE:  BrowseResources.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
+
+use Exception;
+use ScoutLib\Database;
 use ScoutLib\HtmlOptionList;
-use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
+use ScoutLib\StdLib;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
-function PrintClassificationEntry($ClassName, $LinkAddress, $ResourceCount, $EditLinkAddress)
-{
-    ?>
-    <a href="<?= $LinkAddress ?>"><?= $ClassName ?></a>
-    (<?= number_format($ResourceCount) ?>)
-    <?PHP if (EditingEnabled()) { ?>
-    <a class="btn btn-primary btn-sm" href="<?= $EditLinkAddress; ?>">
-        <img class="mv-button-icon"
-            src="<?= $AF->GUIFile('Pencil.svg') ?>"/>Edit</a>
-    <?PHP } ?>
-    <br />
-    <?PHP
-}
-
-function MoveToNextClassificationColumn()
-{
-    ?>
-    </td><td style="vertical-align: top;">
-    <?PHP
-}
-
+/**
+ * Display a resource entry.
+ * @param Record $Resource The resource to display.
+ * @param string $FullRecordLink The resource full record page link.
+ * @param int|null $CumulativeRating The cumulative rating of the resource.
+ *     Note: NULL can be used to indicate that this resource was never rated before.
+ * @param bool $ShowScreenshot Whether to show the resource screenshot in the entry.
+ * @return void
+ */
 function PrintResourceEntry(
-    $Resource,
-    $FullRecordLink,
-    $EditOkay,
-    $EditLink,
+    Record $Resource,
+    string $FullRecordLink,
     $CumulativeRating,
-    $ShowScreenshot = true
-) {
-    $Summary = ResourceSummary::Create($Resource->id());
-    $Summary->Editable($EditOkay);
+    bool $ShowScreenshot = true
+): void {
+    $Summary = ResourceSummary::create($Resource->id());
+    $Summary->editable($Resource->userCanEdit(User::getCurrentUser()));
     $Summary->showScreenshot($ShowScreenshot);
-    $Summary->Display();
+    $Summary->display();
 }
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
-
 /**
- * Pluralize the given word with the given suffix if the count is not +/- 1.
- * @param $Word word
- * @param $PluralSuffix suffix added to $Word to make it plural
- * @param $Count number of items counted
- * @return the pluralized word if it should be pluralized
+ * Return HTML for the list of the names of classifications under the specified
+ * parent classification, with each name linked to its respective browse pages
+ * and with Edit buttons if applicable, split into the number of specified
+ * groups (columns), and with one HTML string per group.
+ * @param int $NumberOfColumns The number of columns to divide the table into.
+ * @param bool $EditingEnabled If user is in editing mode.
+ * @param int $ParentId The ID of the parent classification.
+ * @return array Array of strings, each containing HTML for a list of
+ *     classifications.
  */
-function Pluralize($Word, $PluralSuffix, $Count)
-{
-    # singular, just use the word
-    if ($Count == 1 || $Count == -1) {
-        return $Word;
+function getClassificationListArray(
+    int $NumberOfColumns,
+    bool $EditingEnabled,
+    int $ParentId
+): array {
+    global $StartingLetter;
+    global $EndingLetter;
+
+    $Entries = [];
+    $MinEntriesPerColumn = 3;
+    $ClassDB = new Database();
+
+    # retrieve entries to be displayed
+    $ClassDB->query(GetClassificationDBQuery( /** @phpstan-ignore function.notFound */
+        $ParentId,
+        $StartingLetter,
+        $EndingLetter
+    ));
+
+    # retrieve count of entries to be displayed
+    $RecordCount = $ClassDB->numRowsSelected();
+
+    # for each entry
+    $ClassCount = 0;
+    $Entry = "";
+    while ($Class = $ClassDB->fetchRow()) {
+        $ClassId = $Class["ClassificationId"];
+
+        # if filter function defined
+        if (function_exists("FilterClassificationBrowseList")) {
+            # call filter function to find out if okay to display entry
+            $DoNotDisplay = FilterClassificationBrowseList($ClassId);
+            # assume okay to display entry
+        } else {
+            $DoNotDisplay = false;
+        }
+
+        # if okay to display entry
+        if ($DoNotDisplay == false) {
+            # if entries per column limit reached
+            $ClassCount++;
+            if (($ClassCount > intval($RecordCount / $NumberOfColumns))
+                && ($ClassCount > $MinEntriesPerColumn)) {
+                # move to next column
+                $Entries[] = $Entry;
+                $Entry = "";
+                $ClassCount = 0;
+            }
+
+            # construct link address
+            $LinkUrl = sprintf("index.php?P=BrowseResources&ID=%d", $Class["ClassificationId"]);
+            if ($EditingEnabled) {
+                $LinkUrl .= "&Editing=1";
+            }
+
+            # construct link address for editing
+            $EditLinkUrl = $EditingEnabled ? sprintf(
+                "index.php?P=EditClassification&ClassificationId=%d",
+                $Class["ClassificationId"]
+            ) : null;
+
+            # get the correct count for the context
+            $Count = (int)$EditingEnabled
+                ? $Class["FullResourceCount"] : $Class["ResourceCount"];
+
+            # add this entry
+            $Entry .= "<a href=\"" . $LinkUrl . "\">". $Class["SegmentName"] . "</a>";
+            $Entry .= " (" . number_format($Count) . ")";
+            if ($EditLinkUrl !== null) {
+                $EditButton = new HtmlButton("Edit");
+                $EditButton->setIcon("Pencil.svg");
+                $EditButton->setSize(HtmlButton::SIZE_SMALL);
+                $EditButton->setLink($EditLinkUrl);
+                $Entry .= $EditButton->getHtml();
+            }
+            $Entry .= "<br />";
+        }
     }
-
-    # pluralize
-    $Plural = $Word . $PluralSuffix;
-
-    return $Plural;
+    $Entries[] = $Entry;
+    return $Entries;
 }
 
 /**
- * Highlight the current browsing letter
- * @param $AlphabeticClassificationString the original string to display letter
- *        classfications
- * @return the highlighted string
+ * Retrieve string link to view classifications in alphabetical order,
+ * based on $ParentId if isset
+ * @param int $ParentId The ID of the parent classification.
+ * @param bool $EditingEnabled If user is in editing mode.
+ * @return string Link string.
  */
-function HighlightCurrentBrowsingLetter($AlphabeticClassificationString)
+function getAlphabeticClassificationLinks(int $ParentId, bool $EditingEnabled): string
+{
+    # if classification ID passed in
+    if ($ParentId > 0) {
+        # retrieve link string for classification
+        $Class = new Classification($ParentId);
+        $LinkString = $Class->linkString();
+
+        # if link string has not yet been set
+        if ($LinkString == "") {
+            # create and save new link string
+            $LinkString = BuildClassificationLinkString( /** @phpstan-ignore function.notFound */
+                $ParentId
+            );
+            $Class->linkString($LinkString);
+        }
+    } else {
+        $LinkString = BuildClassificationLinkString(0); /** @phpstan-ignore function.notFound */
+
+        global $StartingLetter;
+        global $EndingLetter;
+
+        if (preg_match(
+            "%StartingLetter=([0-9A-Za-z\"]+)\&amp;EndingLetter=([0-9A-Za-z\"]+)%",
+            $LinkString,
+            $Matches
+        )
+            && !strlen($StartingLetter ?? "")
+            && !strlen($EndingLetter ?? "")) {
+            # extract and save new default to ?? ""p-level begin and end letters
+            $StartingLetter = $Matches[1];
+            $EndingLetter = $Matches[2];
+        }
+    }
+
+    # if link string is placeholder
+    if ($LinkString == "X") {
+        # clear link string
+        $LinkString = "";
+    } else {
+        # if link string is not empty
+        if ($LinkString != "") {
+            # insert target browse page name into link string
+            $LinkString = preg_replace(
+                "/BROWSEPAGE/",
+                "index.php?P=BrowseResources",
+                $LinkString
+            );
+
+            # insert editing flag value into link string
+            $LinkString = preg_replace(
+                "/EDITFLAG/",
+                ($EditingEnabled ? "1" : "0"),
+                $LinkString
+            );
+        }
+    }
+
+    # return link string to caller
+    return $LinkString;
+}
+
+/**
+ * Starting with the parent id, step upwards through parents, generating a
+ * string containing a series of tree (classification) nodes, each formatted
+ * with a link.
+ * @param int $ParentId The ID of the parent classification
+ * @param string $LinkStyle Any classes to add to the returned link
+ * @param bool $EditingEnabled If user is in editing mode.
+ * @return string $RootClassString The formatted link to the root classification
+ */
+function getRootClassificationHTML(int $ParentId, string $LinkStyle, bool $EditingEnabled): string
+{
+    # start with empty string
+    $RootClassString = "";
+
+    # if top of classification tree specified
+    if ($ParentId > 0) {
+        # do while classification segments left to add
+        do {
+            # if not first segment in string
+            if ($RootClassString != "") {
+                # add segment separator to string
+                $RootClassString = " -- ".$RootClassString;
+            }
+
+            # get current segment name
+            $Class = new Classification($ParentId);
+
+            # add current segment to string
+            $RootClassString =
+                "<a href='index.php?P=BrowseResources&amp;ID="
+                .$ParentId
+                .($EditingEnabled ? "&amp;Editing=1" : "")
+                ."' class='".$LinkStyle."'>"
+                .$Class->segmentName()."</a>"
+                .$RootClassString;
+
+            # move to next segment
+            $ParentId = $Class->parentId();
+        } while ($ParentId > 0);
+    }
+
+    # return root classification HTML string to caller
+    return $RootClassString;
+}
+
+/**
+ * Highlight the current browsing letter.
+ * @param string $AlphabeticClassificationString The original string to display letter
+ *     classifications.
+ * @return string The highlighted string
+ */
+function HighlightCurrentBrowsingLetter(string $AlphabeticClassificationString): string
 {
     # determine current browsing StartingLetter and EndingLetter
     if (isset($_GET["StartingLetter"])) {
@@ -107,120 +284,165 @@ function HighlightCurrentBrowsingLetter($AlphabeticClassificationString)
     return $Result;
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+global $ParentId;
 
-$AF = ApplicationFramework::getInstance();
+if (!isset($H_BrowseLinks)) {
+    throw new Exception("H_BrowseLinks not defined.");
+}
+if (!isset($H_ClassificationCount)) {
+    throw new Exception("H_ClassificationCount not defined.");
+}
+if (!isset($H_EditingEnabled)) {
+    throw new Exception("H_EditingEnabled not defined.");
+}
+if (!isset($H_MaxResourcesPerPage)) {
+    throw new Exception("H_MaxResourcesPerPage not defined.");
+}
+if (!isset($H_NumberOfColumns)) {
+    throw new Exception("H_NumberOfColumns not defined.");
+}
+if (!isset($H_ResourceCount)) {
+    throw new Exception("H_ResourceCount not defined.");
+}
+if (!isset($H_StartingResourceIndex)) {
+    throw new Exception("H_StartingResourceIndex not defined.");
+}
 
-$Header = EditingEnabled() ? "Add/Edit Classifications" : "Browse Resources";
+$Header = $H_EditingEnabled ? "Add/Edit Classifications" : "Browse Resources";
 $Schema = new MetadataSchema();
 
+$HasClassifications = ($H_ClassificationCount > 0);
+$HasResources = ($H_ResourceCount > 0);
+
+if ($HasClassifications) {
+    $HeaderHTML = "<form name=\"browse\" method=\"post\" "
+        . "action=\"index.php?P=BrowseResources&Editing=1\">";
+    $BrowsingFieldId = GetBrowsingFieldId(); /** @phpstan-ignore function.notFound */
+    if ($H_EditingEnabled) {
+        $FieldNames = $Schema->getFieldNames(MetadataSchema::MDFTYPE_TREE);
+        $OptList = new HtmlOptionList("F_BrowsingFieldId", $FieldNames, $BrowsingFieldId);
+        $OptList->submitOnChange(true);
+        $OptList->printIfEmpty(false);
+        $HeaderHTML .= $OptList->getHtml();
+        $HeaderHTML .= " Classifications";
+    } else {
+        $Field = MetadataField::getField($BrowsingFieldId);
+        $TreeName = $Field->getDisplayName();
+        $HeaderHTML .= $TreeName;
+        if ((strpos($TreeName, "Classification") === false)
+            && (strpos($TreeName, "classification") === false)) {
+            $HeaderHTML .= "Classifications";
+        }
+    }
+    $HeaderHTML .= "</form>";
+
+    $ClassificationsTable = new HtmlTable();
+    $ClassificationsTable->setTableClass("table mv-table mv-table-fullsize mv-content-browsetable");
+    $ClassificationsTable->addHeaderRow([$HeaderHTML]);
+    $ClassificationsTable->addRow(getClassificationListArray(
+        $H_NumberOfColumns,
+        $H_EditingEnabled,
+        $ParentId
+    ));
+}
+
+$PreviousResourcesAvailable = $H_StartingResourceIndex > 0;
+$NextResourcesAvailable = ($H_StartingResourceIndex + $H_MaxResourcesPerPage) < $H_ResourceCount;
+
+$NumberOfNextResources = min(
+    $H_MaxResourcesPerPage,
+    ($H_ResourceCount - ($H_StartingResourceIndex + $H_MaxResourcesPerPage))
+);
+$BasePaginationLink = "index.php?P=BrowseResources&ID=" . $ParentId
+    . ($H_EditingEnabled ? "&Editing=1" : "")
+    . "&StartingResourceIndex="
+;
+
+$PreviousButton = new HtmlButton("← Previous");
+$PreviousButton->setTitle("Previous " . $H_MaxResourcesPerPage . " resources");
+$PreviousButton->setLink($BasePaginationLink . ($H_StartingResourceIndex - $H_MaxResourcesPerPage));
+
+$NextButton = new HtmlButton("Next →");
+$NextButton->setTitle("Next " . $NumberOfNextResources . " resources");
+$NextButton->setLink($BasePaginationLink . ($H_StartingResourceIndex + $H_MaxResourcesPerPage));
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1><?= $Header; ?></h1>
 
-<?PHP if (GetClassificationCount() > 0) { ?>
+<?PHP if ($HasClassifications) { ?>
 <p>
-    (<?= GetClassificationCount(); ?>
-            <?= Pluralize("classification", "s", GetClassificationCount()); ?>)
+    (<?= $H_ClassificationCount; ?>
+            <?= StdLib::pluralize("classification", $H_ClassificationCount); ?>)
 
-    <?PHP if (GetResourceCount() > 0) { ?>
-    (<?= GetResourceCount(); ?>
-            <?= Pluralize("resource", "s", GetResourceCount()); ?>)
+    <?PHP if ($HasResources) { ?>
+    (<?= $H_ResourceCount; ?>
+            <?= StdLib::pluralize("resource", $H_ResourceCount); ?>)
     <?PHP } ?>
 </p>
 <?PHP } ?>
 
-<p class="mv-content-boundingbox"><?PHP PrintRootClassification("BrowsePageClassHeading"); ?>
-<?= HighlightCurrentBrowsingLetter(PrintAlphabeticClassificationLinks()); ?></p>
+<?PHP // phpcs:disable Generic.Files.LineLength.MaxExceeded ?>
+<p class="mv-content-boundingbox"><?= getRootClassificationHTML($ParentId, "BrowsePageClassHeading", $H_EditingEnabled); ?>
+<?= HighlightCurrentBrowsingLetter(getAlphabeticClassificationLinks($ParentId, $H_EditingEnabled)); ?></p>
 
-<?PHP if (EditingEnabled()) { ?>
-<p><a href="<?PHP PrintAddClassificationLink(); ?>">Add Classification Here</a></p>
+<?PHP if ($H_EditingEnabled) { ?>
+<p><a href="<?PHP PrintAddClassificationLink(); /** @phpstan-ignore function.notFound */?>">Add Classification Here</a></p>
 <p><i>(browse hierarchy to add or edit classifications at other levels)</i></p>
 <hr />
 <?PHP } ?>
+<?PHP // phpcs:enable ?>
 
-<?PHP if (GetClassificationCount() < 1 && ($ParentId < 1)) { ?>
+<?PHP if ($H_ClassificationCount < 1 && ($ParentId < 1)) { ?>
     <p>There are currently no classifications to browse by in this field.</p>
 <?PHP } ?>
 
-<?PHP if (GetClassificationCount() > 0) { ?>
-<table class="table mv-table mv-table-fullsize mv-content-browsetable">
-    <thead>
-        <tr><th>
-            <form name="browse" method="post" action="index.php?P=BrowseResources&amp;Editing=1">
-            <?PHP
-            if (EditingEnabled()) {
-                    $FieldNames = $Schema->GetFieldNames(MetadataSchema::MDFTYPE_TREE);
-                    $OptList = new HtmlOptionList(
-                        "F_BrowsingFieldId",
-                        $FieldNames,
-                        GetBrowsingFieldId()
-                    );
-                    $OptList->SubmitOnChange(true);
-                    $OptList->PrintIfEmpty(false);
-                    $OptList->PrintHtml();
-                ?> Classifications<?PHP
-            } else {
-                print(GetTreeName());
-                if ((strpos(GetTreeName(), "Classification") === false) &&
-                    (strpos(GetTreeName(), "classification") === false)) {
-                    ?> Classifications<?PHP
-                }
-            }
-            ?>
-            </form>
-        </th></tr>
-    </thead>
-    <tbody>
-        <tr><td><?PHP DisplayClassificationList(); ?></td></tr>
-    </tbody>
-</table>
-<?PHP } ?>
+<?PHP if ($HasClassifications) {
+    print $ClassificationsTable->getHtml();
+} ?>
 
-<?PHP if ((GetClassificationCount() > 0) && (GetResourceCount())) { ?>
+<?PHP if ($HasClassifications && $HasResources) { ?>
 <hr />
 <?PHP } ?>
 
-<?PHP if (GetResourceCount()) { ?>
+<?PHP if ($HasResources) { ?>
+<?PHP // phpcs:disable Generic.Files.LineLength.MaxExceeded ?>
 <table class="mv-table mv-table-fullsize mv-table-pagination mv-content-browsetable">
     <thead>
         <tr><th colspan="2" scope="col"><h2 style="font-size: 1.0rem">Resources</h2></th></tr>
     </thead>
     <tbody>
-        <tr><td colspan="2"><?PHP DisplayResourceList(); ?></td></tr>
+        <tr><td colspan="2"><?PHP DisplayResourceList(); /** @phpstan-ignore function.notFound */?></td></tr>
     </tbody>
     <tfoot>
         <tr>
             <td>
-                <?PHP if (PreviousResourcesAvailable()) { ?>
-                <a class="btn btn-primary"
-                   href="<?PHP PrintPreviousResourcesLink(); ?>"
-                   title="Previous <?PHP
-                       PrintNumberOfPreviousResources(); ?> resources">&larr; Previous</a>
+                <?PHP if ($PreviousResourcesAvailable) { ?>
+                    <?= $PreviousButton->getHtml(); ?>
                 <?PHP } ?>
             </td>
             <td>
-                <?PHP if (NextResourcesAvailable()) { ?>
-                <a class="btn btn-primary"
-                   href="<?PHP PrintNextResourcesLink(); ?>"
-                   title="Next <?PHP PrintNumberOfNextResources(); ?> resources"
-                    >Next &rarr;</a>
+                <?PHP if ($NextResourcesAvailable) { ?>
+                    <?= $NextButton->getHtml(); ?>
                 <?PHP } ?>
             </td>
         </tr>
     </tfoot>
 </table>
+<?PHP // phpcs:enable ?>
 <?PHP } ?>
 
-<?PHP if (!EditingEnabled()) { ?>
+<?PHP if (!$H_EditingEnabled) { ?>
     <ul class="list-group list-group-flush">
-        <?PHP foreach (GetBrowseLinks() as $Name => $Link) { ?>
+        <?PHP foreach ($H_BrowseLinks as $Name => $Link) { ?>
         <li class="list-group-item"><a href="<?= $Link; ?>">Browse by <?= $Name; ?></a></li>
         <?PHP } ?>
     </ul>
 <?PHP } ?>
 
-<?PHP if (User::getCurrentUser()->HasPriv(PRIV_RESOURCEADMIN, PRIV_COLLECTIONADMIN)) { ?>
+<?PHP if (User::getCurrentUser()->hasPriv(PRIV_RESOURCEADMIN, PRIV_COLLECTIONADMIN)) { ?>
     <p class="pt-2">
         <i><b>NOTE:</b> Only publicly visible records are shown in Browse Resources.</i>
     </p>

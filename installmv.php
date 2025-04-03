@@ -3,7 +3,7 @@
 #   FILE:  installmv.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2009-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -155,20 +155,28 @@ class Installer
     /**
      * Install or upgrade software.
      */
-    public function install()
+    public function install(): void
     {
         $this->beginHtmlPage();
 
-        # check environment to make sure we can run
-        $this->checkEnvironment();
+        # if NEWVERSION exists, it indicates that an install/upgrade hasn't yet
+        # been run and that we can proceed
+        if (file_exists("NEWVERSION")) {
+            # check environment to make sure we can run
+            $this->checkEnvironment();
 
-        # check distribution files
-        if (!array_key_exists("NOCHKSUMS", $_GET)
-                && !array_key_exists("NOCHKSUMS", $_POST)) {
-            $this->checkDistributionFiles($this->NewVersion);
+            # check distribution files
+            if (!array_key_exists("NOCHKSUMS", $_GET)
+                    && !array_key_exists("NOCHKSUMS", $_POST)) {
+                $this->checkDistributionFiles($this->NewVersion);
+            }
+        } else {
+            $this->ErrMsgs[] = "It appears that the installation or upgrade "
+                ."has already been completed.";
         }
 
-        # if problems were found with environment
+        # if problems were found with environment or the install/upgrade was
+        # already complete
         if (count($this->ErrMsgs)) {
             # display error messages
             $this->printErrorMessages($this->ErrMsgs);
@@ -247,6 +255,19 @@ class Installer
                     if (!count($this->ErrMsgs)) {
                         $this->ErrMsgs = $this->upgradeSite($OldVersion);
                     }
+
+                    # clear any existing compiled CSS files and minimized
+                    #       JavaScript files so that any updated files will
+                    #       instead be used
+                    if (!count($this->ErrMsgs)) {
+                        $AF = ApplicationFramework::getInstance();
+                        if ($AF->clearCompiledCssFiles() === false) {
+                            $this->ErrMsgs[] = "Clearing compiled CSS files failed.";
+                        }
+                        if ($AF->clearMinimizedJavascriptFiles() === false) {
+                            $this->ErrMsgs[] = "Clearing minimized JS files failed.";
+                        }
+                    }
                 } else {
                     # set up database
                     if (!count($this->ErrMsgs)) {
@@ -259,21 +280,21 @@ class Installer
                         $this->initializeAF($this->NewVersion);
                     }
 
-                    # set up site
-                    if (!count($this->ErrMsgs)) {
-                        $this->ErrMsgs = $this->setUpNewSite($this->ErrMsgs);
-                    }
-
                     # load default system configuration
                     if (!count($this->ErrMsgs)) {
                         $this->ErrMsgs = $this->loadDefaultConfiguration($this->ErrMsgs);
+                    }
+
+                    # set up site
+                    if (!count($this->ErrMsgs)) {
+                        $this->ErrMsgs = $this->setUpNewSite($this->ErrMsgs);
                     }
 
                     # load plugins
                     if (!count($this->ErrMsgs)) {
                         $this->msg(1, "Loading plugins...");
                         $PluginMgr = PluginManager::getInstance();
-                        $PluginMgr->LoadPlugins();
+                        $PluginMgr->loadPlugins();
                     }
                 }
 
@@ -304,12 +325,6 @@ class Installer
                         rename("VERSION", "OLDVERSION");
                     }
                     rename("NEWVERSION", "VERSION");
-
-                    # clean up after ourselves
-                    if (file_exists("installmv.php.SAVE")) {
-                        unlink("installmv.php.SAVE");
-                    }
-                    rename("installmv.php", "installmv.php.SAVE");
                 }
             }
         }
@@ -322,7 +337,7 @@ class Installer
      * @param int $VerbLvl Minimum verbosity level required to display message.
      * @param string $Message Message string.
      */
-    public function msg(int $VerbLvl, string $Message)
+    public function msg(int $VerbLvl, string $Message): void
     {
         if ($VerbLvl <= $this->VerbosityLevel) {
             for ($Index = $VerbLvl; $Index > 1; $Index--) {
@@ -344,7 +359,7 @@ class Installer
     /**
      * Output the beginning HTML for all of our pages.
      */
-    private function beginHtmlPage()
+    private function beginHtmlPage(): void
     {
         ?>
         <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
@@ -418,7 +433,7 @@ class Installer
     /**
      * Output the ending HTML for all pages.
      */
-    private function endHtmlPage()
+    private function endHtmlPage(): void
     {
         ?>
             </td></tr>
@@ -433,7 +448,7 @@ class Installer
     /**
      * Print form to gather installation info.
      */
-    private function printInstallInfoForm()
+    private function printInstallInfoForm(): void
     {
         # set up default values
         $Protocol = isset($_SERVER["HTTPS"]) ? "https://" : "http://";
@@ -587,7 +602,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Print list of error messages.
      * @param array $ErrMsgs Error messages to print.
      */
-    private function printErrorMessages(array $ErrMsgs)
+    private function printErrorMessages(array $ErrMsgs): void
     {
         if (count($ErrMsgs)) {
             ?><b>Errors Encountered:</b>
@@ -604,7 +619,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Print summary of installation info.
      * @param bool $IsUpgrade TRUE if upgrade, or FALSE if new install.
      */
-    private function printInstallInfoSummary(bool $IsUpgrade)
+    private function printInstallInfoSummary(bool $IsUpgrade): void
     {
         ?>
         <table class="InstallInfoSummaryTable" width="100%">
@@ -635,7 +650,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Print info about installation being completed.
      * @param bool $IsUpgrade TRUE if upgrade, or FALSE if new install.
      */
-    private function printInstallCompleteInfo(bool $IsUpgrade)
+    private function printInstallCompleteInfo(bool $IsUpgrade): void
     {
         ?>
         <br />
@@ -672,7 +687,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     /**
      * Print helpful info about what to do about problems encountered.
      */
-    private function printHelpPointers()
+    private function printHelpPointers(): void
     {
         ?>
         <br />
@@ -687,7 +702,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Check to make sure our environment will support the software.  Any issues
      * discovered are recorded via messages added to $this->ErrMsgs.
      */
-    private function checkEnvironment()
+    private function checkEnvironment(): void
     {
         # check PHP version
         if (version_compare(PHP_VERSION, Installer::MINIMUM_PHP_VERSION) == -1) {
@@ -737,7 +752,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Check supplied installation info for validity.  Any issues
      * discovered are recorded via messages added to $this->ErrMsgs.
      */
-    private function checkInstallInfo()
+    private function checkInstallInfo(): void
     {
         $this->checkDBInfo();
 
@@ -750,7 +765,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Check supplied database info for validity.  Any issues
      * discovered are recorded via messages added to $this->ErrMsgs.
      */
-    private function checkDBInfo()
+    private function checkDBInfo(): void
     {
         # check MySQL availability and version and that we can create tables in DB
         if (!strlen(trim($this->FVars["F_DBHost"]))
@@ -817,7 +832,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     * Check supplied administrativer user info for validity.  Any issues
     * discovered are recorded via messages added to $this->ErrMsgs.
     */
-    private function checkAdminInfo()
+    private function checkAdminInfo(): void
     {
         if (!strlen(trim($this->FVars["F_AdminLogin"]))) {
             $this->ErrMsgs["F_AdminLogin"] = "No administrative account login was supplied.";
@@ -851,7 +866,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * encountered are recorded in $this->ErrMsgs.
      * @param string $NewVersion Version we are installing or upgrading to.
      */
-    private function checkDistributionFiles(string $NewVersion)
+    private function checkDistributionFiles(string $NewVersion): void
     {
         # error out if checksum file not found
         if (!file_exists("install/CHECKSUMS")) {
@@ -946,7 +961,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
             }
         }
 
-        # if there is no .htaccess file
+        # if there is no top-level .htaccess file
         if (!file_exists(".htaccess")) {
             # set up .htaccess file
             $this->msg(1, "Creating .htaccess file...");
@@ -985,6 +1000,18 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
                     $ErrMsgs [] = $ErrMsg;
                 }
             }
+        }
+
+        # add .htaccess that blocks php execution in directories apache can write to
+        $Dirs = ["include", "tmp", "local"];
+        foreach ($Dirs as $Dir) {
+            # set htaccess writable to update it
+            if (file_exists($Dir."/.htaccess")) {
+                chmod($Dir."/.htaccess", 0664);
+            }
+            $this->copyFile("install/htaccess.BLOCK-PHP", $Dir."/.htaccess");
+            # set htaccess read only to make it harder to overwrite
+            chmod($Dir."/.htaccess", 0444);
         }
 
         # check if robots.txt exists
@@ -1059,11 +1086,18 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
         $ConfigReplacements = array(
             "X-REWRITEBASE-X" => $BasePath,
         );
+
+        if (file_exists($FileName)) {
+            # set htaccess writable to update it
+            chmod($FileName, 0664);
+        }
         $ErrMsg = $this->copyFile(
             "install/htaccess.DIST",
             $FileName,
             $ConfigReplacements
         );
+        # set htaccess read only to make it harder to overwrite
+        chmod($FileName, 0444);
 
         # return any error messages to caller
         return $ErrMsg;
@@ -1152,7 +1186,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Initialize application framework.
      * @param string $NewVersion Version we are installing or upgrading to.
      */
-    private function initializeAF(string $NewVersion)
+    private function initializeAF(string $NewVersion): void
     {
         # set software version for startup
         define("METAVUS_VERSION", $NewVersion);
@@ -1166,8 +1200,10 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
 
         # initialize application environment
         $this->msg(1, "Initializing application framework...");
+        require_once("lib/ScoutLib/AFUrlManagerTrait.php");
+        require_once("lib/ScoutLib/AFTaskManagerTrait.php");
         require_once("lib/ScoutLib/ApplicationFramework.php");
-        ApplicationFramework::SuppressSessionInitialization(true);
+        ApplicationFramework::suppressSessionInitialization(true);
         $GLOBALS["StartUpOpt_CLEAR_AF_CACHES"] = true;
         require_once("objects/Bootloader.php");
         (\Metavus\Bootloader::getInstance())->boot();
@@ -1187,21 +1223,21 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
         } else {
             $ResourceSchema = MetadataSchema::create("Resources");
         }
-        $ResourceSchema->viewPage("index.php?P=FullRecord&ID=\$ID");
-        $ResourceSchema->editPage("index.php?P=EditResource&ID=\$ID");
+        $ResourceSchema->setViewPage("index.php?P=FullRecord&ID=\$ID");
+        $ResourceSchema->setEditPage("index.php?P=EditResource&ID=\$ID");
 
         if (MetadataSchema::schemaExistsWithId(MetadataSchema::SCHEMAID_USER)) {
             $UserSchema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
         } else {
             $UserSchema = MetadataSchema::create("Users");
         }
-        $UserSchema->viewPage("index.php?P=UserList");
-        $UserSchema->editPage("index.php?P=EditUser&ID=\$ID");
+        $UserSchema->setViewPage("index.php?P=UserList");
+        $UserSchema->setEditPage("index.php?P=EditUser&ID=\$ID");
 
         $CollectionSchema = MetadataSchema::create("Collections");
-        $CollectionSchema->viewPage("index.php?P=DisplayCollection&ID=\$ID");
+        $CollectionSchema->setViewPage("index.php?P=DisplayCollection&ID=\$ID");
         $CollectionSchema->setItemClassName("Metavus\\Collection");
-        $CollectionSchema->editPage("index.php?P=EditResource&ID=\$ID");
+        $CollectionSchema->setEditPage("index.php?P=EditResource&ID=\$ID");
 
         # load qualifiers
         $this->msg(1, "Loading qualifiers...");
@@ -1325,7 +1361,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     /**
      * Load sample records.
      */
-    private function loadSampleRecords()
+    private function loadSampleRecords(): void
     {
         # set up temporary location
         $TmpDir = sys_get_temp_dir()."/MetavusSampleRecords-".date("ymdHis");
@@ -1376,7 +1412,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Load sample collections.
      * @param int $SchemaId ID for collection schema.
      */
-    private function loadSampleCollections(int $SchemaId)
+    private function loadSampleCollections(int $SchemaId): void
     {
         $RFactory = new RecordFactory($SchemaId);
         $RecordIds = $RFactory->importRecordsFromXmlFile("install/SampleCollections.xml");
@@ -1607,7 +1643,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     /**
      * Load existing installation settings.
      */
-    private function loadOldInstallInfo()
+    private function loadOldInstallInfo(): void
     {
         # load values from existing configuration file
         if (file_exists("local/config.php")) {
@@ -1647,7 +1683,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * @param string|null $OldVersion Version being upgraded from, or NULL if
      *      new installation.
      */
-    private function queueFollowUpWork(bool $IsUpgrade, $OldVersion)
+    private function queueFollowUpWork(bool $IsUpgrade, $OldVersion): void
     {
         $Tasks[] = ["Callback" => [ "\\Metavus\\SearchEngine", "queueDBRebuildForAllSchemas" ],
             "Parameters" => null,
@@ -1778,7 +1814,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Write message to installation log file.
      * @param string $Message Message to write out.
      */
-    private function logMsg(string $Message)
+    private function logMsg(string $Message): void
     {
         static $FHandle = false;
         if ($FHandle == false) {
@@ -1867,7 +1903,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     private static function legacyVersionCompare(
         string $VersionOne,
         string $VersionTwo,
-        string $Operator = null
+        ?string $Operator = null
     ) {
         $AdjustFunc = function (string $Version): string {
             if (version_compare($Version, self::OLDEST_UPGRADABLE_VERSION, "<")) {

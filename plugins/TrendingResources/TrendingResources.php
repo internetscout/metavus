@@ -3,20 +3,19 @@
 #   FILE:  TrendingResources.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-
 use Metavus\MetadataSchema;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Record;
 use Metavus\InterfaceConfiguration;
-use ScoutLib\ApplicationFramework;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
-use ScoutLib\PluginManager;
 
 /**
  * Plugin that displays the most viewed records with the most URL clicks or full record views,
@@ -26,18 +25,19 @@ class TrendingResources extends Plugin
 {
     /**
      * Register information about this plugin.
+     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->Name = "Trending Resources";
         $this->Version = "1.0.0";
         $this->Description = "Displays a list of the records with the most URL clicks
         (or most full record views, if no URL field).";
-        $this->Author = "Internet Scout";
-        $this->Url = "http://scout.wisc.edu/cwis/";
-        $this->Email = "scout@scout.wisc.edu";
+        $this->Author = "Internet Scout Research Group";
+        $this->Url = "https://metavus.net";
+        $this->Email = "support@metavus.net";
         $this->Requires = [
-            "MetavusCore" => "1.0.0",
+            "MetavusCore" => "1.2.0",
             "MetricsRecorder" => "1.1.1",
         ];
 
@@ -84,7 +84,7 @@ class TrendingResources extends Plugin
      *      string or array of strings containing error message(s) indicating
      *      why initialization failed.
      */
-    public function initialize()
+    public function initialize(): ?string
     {
         # register our insertion keywords
         $AF = ApplicationFramework::getInstance();
@@ -109,8 +109,7 @@ class TrendingResources extends Plugin
         $User = User::getCurrentUser();
 
         # retrieve list of resources most viewed
-        $PluginMgr = PluginManager::getInstance();
-        $MRecorder = $PluginMgr->getPlugin("MetricsRecorder");
+        $MRecorder = MetricsRecorder::getInstance();
         $Resources = [];
         $TitlesLinkTo = InterfaceConfiguration::getInstance()->getString("TitlesLinkTo");
         $ViewCounts = [];
@@ -193,7 +192,7 @@ class TrendingResources extends Plugin
         ob_start();
         ?><div class="mv-section mv-section-simple mv-html5-section">
             <div class="mv-section-header mv-html5-header">
-                <img src="<?= $GLOBALS["AF"]->gUIFile("ArrowUp.svg") ?>">
+                <img src="<?= ApplicationFramework::getInstance()->gUIFile("ArrowUp.svg") ?>">
                 <span><?= htmlspecialchars($this->getConfigSetting("BoxHeader")) ?></span>
             </div>
             <div class="mv-section-body">
@@ -202,7 +201,7 @@ class TrendingResources extends Plugin
                     foreach ($Resources as $Resource) {
                         $Link = $Resource->getViewPageUrl();
                         $Title = htmlspecialchars(strip_tags($Resource->getMapped("Title")));
-                        $SchemaId = $Resource->schemaId();
+                        $SchemaId = $Resource->getSchemaId();
 
                         # add resource view to list in box
                         ?><li>
