@@ -279,3 +279,4 @@ POSSIBILITY OF SUCH DAMAGES.
 
                      END OF TERMS AND CONDITIONS
 
+SPDX-License-Identifier: GPL-2.0-only
