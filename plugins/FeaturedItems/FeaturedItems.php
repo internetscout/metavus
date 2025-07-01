@@ -9,6 +9,8 @@
 # @scout:phpstan
 
 namespace Metavus\Plugins;
+
+use Exception;
 use Metavus\ClassificationFactory;
 use Metavus\FormUI;
 use Metavus\MetadataField;
@@ -308,9 +310,11 @@ class FeaturedItems extends Plugin
         # if the cache was updated less than the configured expiration time,
         # use the cached result
         $CacheExpirationPeriod = 60 * $this->getConfigSetting("CacheExpirationPeriod");
-        $CacheAge = time() - $this->getConfigSetting("FeaturedItemCacheLastUpdateTime");
-        if ($CacheAge < $CacheExpirationPeriod) {
-            return $this->getConfigSetting("FeaturedItemCache");
+        $Cache = self::getDataCache();
+
+        $CachedItems = $Cache->get("FeaturedItems");
+        if ($CachedItems !== null) {
+            return $CachedItems;
         }
 
         # if NumItems isn't overridden by keyword param, use config setting
@@ -339,8 +343,7 @@ class FeaturedItems extends Plugin
 
         if (count($FeaturedItems) > 0 &&
             !$AF->taskIsInQueue(["\\Metavus\\SearchEngine", "runUpdateForItem"])) {
-            $this->setConfigSetting("FeaturedItemCache", $FeaturedItems);
-            $this->setConfigSetting("FeaturedItemCacheLastUpdateTime", time());
+            $Cache->set("FeaturedItems", $FeaturedItems, $CacheExpirationPeriod);
         }
 
         return $FeaturedItems;
@@ -501,6 +504,9 @@ class FeaturedItems extends Plugin
                 # retrieve the field ID of the topmost parent of our term
                 # for grouping by common ancestor
                 $AncestorMap = ClassificationFactory::getAncestorMap([$VocabId]);
+                if (count(array_keys($AncestorMap)) == 0) {
+                    throw new Exception("No ancestors found for classification ".$VocabId);
+                }
                 $RootId = min(array_keys($AncestorMap));
                 $RecordIdsByGroup[$RootId][] = $RecordId;
             } else {
@@ -517,7 +523,6 @@ class FeaturedItems extends Plugin
      */
     private function clearCaches(): void
     {
-        $this->setConfigSetting("FeaturedItemCache", null);
-        $this->setConfigSetting("FeaturedItemCacheLastUpdateTime", null);
+        self::getDataCache()->delete("FeaturedItems");
     }
 }

@@ -395,15 +395,18 @@ function PrintNumberOfNextResources(): void
 }
 
 /**
-* Print out the list of resources requested by other functions and
-* set via global variables
-*/
-function DisplayResourceList(): void
+ * Return HTML of the list of resources requested by other functions and
+ * set via global variables.
+ * @return string The HTML string for the resources.
+ */
+function getResourceListHtml(): string
 {
     /** @var int $H_StartingResourceIndex */
     global $H_StartingResourceIndex;
     /** @var int $H_MaxResourcesPerPage */
     global $H_MaxResourcesPerPage;
+
+    $Html = "";
 
     $Resources = GetVisibleResources();
 
@@ -422,19 +425,19 @@ function DisplayResourceList(): void
         # if within resource range for this page
         if (($ResourceIndex >= $H_StartingResourceIndex)
             && ($ResourceIndex < ($H_StartingResourceIndex + $H_MaxResourcesPerPage))) {
-            # print entry
+            # append resource entry to return string
             $Resource = new Record($ResourceId);
-            PrintResourceEntry( /* @phpstan-ignore function.notFound */
-                $Resource,
-                "index.php?P=FullRecord&amp;ID=".$ResourceId,
-                $Resource->scaledCumulativeRating(),
-                $ShowScreenshots
-            );
+            $Summary = ResourceSummary::create($Resource->id());
+            $Summary->editable($Resource->userCanEdit(User::getCurrentUser()));
+            $Summary->showScreenshot($ShowScreenshots);
+            $Html .= $Summary->getHtml();
         }
 
         # increment count of resources displayed
         $ResourceIndex++;
     }
+
+    return $Html;
 }
 
 /**
@@ -515,7 +518,7 @@ function AtTreeFieldRoot()
 
 /**
  * Return a list of resources visible to the current user.
- * @return array($SchemaId => array($VisibleResourceIds))
+ * @return array ($SchemaId => array($VisibleResourceIds))
  */
 function GetVisibleResources(): array
 {
@@ -835,7 +838,8 @@ if (isset($_GET["Editing"])) {
 
 $H_EditingEnabled = EditingEnabled();
 
-PageTitle($H_EditingEnabled ? "Add/Edit Classifications" : "Browse Resources");
+$AF->setPageTitle($H_EditingEnabled ? "Add/Edit Classifications"
+    : InterfaceConfiguration::getInstance()->getString("BrowsingPageTitle"));
 
 $Schema = new MetadataSchema();
 $User = User::getCurrentUser();
@@ -849,6 +853,9 @@ if (isset($_POST["F_BrowsingFieldId"])) {
         $User->set("BrowsingFieldId", $BrowsingFieldId);
     }
 }
+
+$ParentId = isset($_GET["ID"]) ? intval($_GET["ID"])
+        : (isset($_GET["ParentId"]) ? intval($_GET["ParentId"]) : -1);
 
 $Field = $Schema->fieldExists(GetBrowsingFieldId())
     ? $Schema->getField(GetBrowsingFieldId()) : null;
@@ -869,11 +876,12 @@ if (!$Editing && ($Field === null || !CanDisplayField($Field))) {
     # change to the displayable field
     if (!is_null($DisplayableField)) {
         $AF->setJumpToPage(
-            "index.php?P=BrowseResources&FieldId=".$DisplayableField->Id()
+            ApplicationFramework::baseUrl()
+            . "index.php?P=BrowseResources&FieldId=".$DisplayableField->Id()
         );
     # go to the home page instead
     } else {
-        $AF->setJumpToPage("index.php?P=Home");
+        $AF->setJumpToPage(ApplicationFramework::baseUrl() . "index.php?P=Home");
     }
 }
 
@@ -885,12 +893,9 @@ if (isset($_GET["StartingResourceIndex"])) {
     $H_StartingResourceIndex = 0;
 }
 
-$ParentId = isset($_GET["ID"]) ? intval($_GET["ID"])
-        : (isset($_GET["ParentId"]) ? intval($_GET["ParentId"]) : -1);
-
 # make sure specified ID is valid if supplied
 if (($ParentId != -1) && !Classification::itemExists($ParentId)) {
-    $AF->setJumpToPage("Home");
+    $AF->setJumpToPage(ApplicationFramework::baseUrl() . "index.php?P=Home");
 }
 
 # set to stored system default browse range

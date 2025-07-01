@@ -3,17 +3,56 @@
 #   FILE:  Status.html (AutoFetch plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\File;
-use Metavus\ItemListUI;
-use Metavus\Record;
-use Metavus\TransportControlsUI;
+namespace Metavus;
+use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
+
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_TransportUIs)) {
+    throw new Exception("Variable \$H_TransportUIs not set.");
+}
+if (!isset($H_ResultsPerPage)) {
+    throw new Exception("Variable \$H_ResultsPerPage not set.");
+}
+if (!isset($H_BaseLink)) {
+    throw new Exception("Variable \$H_BaseLink not set.");
+}
+if (!isset($H_ActiveTab)) {
+    throw new Exception("Variable \$H_ActiveTab not set.");
+}
+if (!isset($H_SortFields)) {
+    throw new Exception("Variable \$H_SortFields not set.");
+}
+if (!isset($H_ErrorList)) {
+    throw new Exception("Variable \$H_ErrorList not set.");
+}
+if (!isset($H_StartIndexes)) {
+    throw new Exception("Variable \$H_StartIndexes not set.");
+}
+if (!isset($H_NumberMonitored)) {
+    throw new Exception("Variable \$H_NumberMonitored not set.");
+}
+if (!isset($H_RevSort)) {
+    throw new Exception("Variable \$H_RevSort not set.");
+}
+if (!isset($H_TotalErrors)) {
+    throw new Exception("Variable \$H_TotalErrors not set.");
+}
+if (!isset($H_FetchList)) {
+    throw new Exception("Variable \$H_FetchList not set.");
+}
+if (!isset($H_TotalFetches)) {
+    throw new Exception("Variable \$H_TotalFetches not set.");
+}
 
 $ErrorListFields =
     [
@@ -31,7 +70,7 @@ $ErrorListFields =
             "Sortable" => false,
             "ValueFunction" => function ($Item, $FieldId) {
                 return '<a href="'.$Item["Url"].'">'
-                    .StdLib::NeatlyTruncateString($Item["Url"], 50).'</a>';
+                    .StdLib::neatlyTruncateString($Item["Url"], 50).'</a>';
             }
         ],
         "Resource" => [
@@ -42,17 +81,18 @@ $ErrorListFields =
                 $RecordId = $Item["RecordId"];
                 $Resource = new Record($RecordId);
                 return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
-                        .htmlspecialchars($Resource->GetMapped("Title")).'</a>';
+                        .htmlspecialchars($Resource->getMapped("Title")).'</a>';
             },
         ],
         "Error" => [
             "Heading" => "Error",
         ],
     ];
-$ErrorList = new ItemListUI($ErrorListFields, $H_TransportUIs[TAB_ERRORS]);
-$ErrorList->Heading("Fetch Errors");
-$ErrorList->ItemsPerPage($H_ResultsPerPage);
-$ErrorList->BaseLink($H_BaseLink."&amp;AT=".TAB_ERRORS);
+$ErrorList = new ItemListUI($ErrorListFields);
+$ErrorList->setTransportControls($H_TransportUIs[TAB_ERRORS]);
+$ErrorList->setHeading("Fetch Errors");
+$ErrorList->setItemsPerPage($H_ResultsPerPage);
+$ErrorList->setBaseLink($H_BaseLink."&amp;AT=".TAB_ERRORS);
 
 $FetchLogFields =
     [
@@ -72,10 +112,10 @@ $FetchLogFields =
                 $FileId = $Item["FileId"];
                 $File = new File($FileId);
 
-                return '<a href="'.$File->GetLink().'" '
-                    .' title="'.htmlspecialchars($File->Comment())
+                return '<a href="'.$File->getLink().'" '
+                    .' title="'.htmlspecialchars($File->comment())
                     .'&#13;Source URL: '.htmlspecialchars($Item["Url"]).'">'
-                    .htmlspecialchars($File->Name()).'</a>';
+                    .htmlspecialchars($File->name()).'</a>';
             }
         ],
         "Resource" => [
@@ -85,18 +125,19 @@ $FetchLogFields =
             "ValueFunction" => function ($Item, $FieldId) {
                 $FileId = $Item["FileId"];
                 $File = new File($FileId);
-                $RecordId = $File->ResourceId();
+                $RecordId = $File->resourceId();
 
                 $Resource = new Record($RecordId);
                 return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
-                        .htmlspecialchars($Resource->GetMapped("Title")).'</a>';
+                        .htmlspecialchars($Resource->getMapped("Title")).'</a>';
             },
         ],
     ];
-$FetchLog = new ItemListUI($FetchLogFields, $H_TransportUIs[TAB_FETCHES]);
-$FetchLog->Heading("Successful Fetch Log");
-$FetchLog->ItemsPerPage($H_ResultsPerPage);
-$FetchLog->BaseLink($H_BaseLink."&amp;AT=".TAB_FETCHES);
+$FetchLog = new ItemListUI($FetchLogFields);
+$FetchLog->setTransportControls($H_TransportUIs[TAB_FETCHES]);
+$FetchLog->setHeading("Successful Fetch Log");
+$FetchLog->setItemsPerPage($H_ResultsPerPage);
+$FetchLog->setBaseLink($H_BaseLink."&amp;AT=".TAB_FETCHES);
 
 $RPOptionList = new HtmlOptionList(
     "RP",
@@ -109,7 +150,7 @@ $RPOptionList = new HtmlOptionList(
     ],
     $H_ResultsPerPage
 );
-$RPOptionList->SubmitOnChange(true);
+$RPOptionList->submitOnChange(true);
 
 # pull out the currently active tab
 $TabParameter = "{active: ".$H_ActiveTab."}";
@@ -117,11 +158,15 @@ $TabParameter = "{active: ".$H_ActiveTab."}";
 $AF = ApplicationFramework::getInstance();
 
 # load the js and css necessary for a tabbed interface
-$AF->RequireUIFile(
+$AF->requireUIFile(
     'jquery-ui.css',
     ApplicationFramework::ORDER_FIRST
 );
-$AF->RequireUIFile('jquery-ui.js');
+$AF->requireUIFile('jquery-ui.js');
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
 ?>
 <style type="text/css">
 .ac-main-container table { table-layout: fixed; }
@@ -139,7 +184,7 @@ $AF->RequireUIFile('jquery-ui.js');
            value="<?= $H_RevSort[$H_ActiveTab] ?>"/>
     <input type="hidden" name="<?= TransportControlsUI::PNAME_STARTINGINDEX ?>"
            value="<?= $H_StartIndexes[$H_ActiveTab] ?>"/>
-    Entries Per Page: <?= $RPOptionList->GetHtml(); ?>
+    Entries Per Page: <?= $RPOptionList->getHtml(); ?>
   </form>
 </div>
 
@@ -151,10 +196,10 @@ $AF->RequireUIFile('jquery-ui.js');
   </ul>
 
 <div id="mv-tabs-<?= TAB_ERRORS ?>">
-<?PHP $ErrorList->Display($H_ErrorList, $H_TotalErrors, $H_StartIndexes[TAB_ERRORS]); ?>
+<?PHP $ErrorList->display($H_ErrorList, $H_TotalErrors, $H_StartIndexes[TAB_ERRORS]); ?>
 </div>
 <div id="mv-tabs-<?= TAB_FETCHES ?>">
-<?PHP $FetchLog->Display($H_FetchList, $H_TotalFetches, $H_StartIndexes[TAB_FETCHES]); ?>
+<?PHP $FetchLog->display($H_FetchList, $H_TotalFetches, $H_StartIndexes[TAB_FETCHES]); ?>
 </div>
 </div>
 </div>

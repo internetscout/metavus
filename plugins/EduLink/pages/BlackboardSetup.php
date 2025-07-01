@@ -3,7 +3,7 @@
 #   FILE:  BlackboardSetup.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -51,7 +51,7 @@ function getBlackboardSettings() : string
 
 # ----- MAIN -----------------------------------------------------------------
 
-CheckAuthorization(PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_SYSADMIN);
 
 $H_Plugin = EduLink::getInstance();
 $User = User::getCurrentUser();

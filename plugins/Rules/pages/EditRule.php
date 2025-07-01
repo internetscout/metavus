@@ -3,7 +3,7 @@
 #   FILE:  EditRule.php (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -15,6 +15,7 @@ use Metavus\Plugins\Mailer;
 use Metavus\Plugins\Rules\Rule;
 use Metavus\PrivilegeSet;
 use Metavus\SearchParameterSet;
+use Metavus\User;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
@@ -29,8 +30,8 @@ use ScoutLib\PluginManager;
  */
 function CheckThatPrivilegesHaveUserComponents(string $FieldName, PrivilegeSet $PrivSet)
 {
-    return (count($PrivSet->GetPossibleNecessaryPrivileges())
-            || count($PrivSet->FieldsWithUserComparisons())) ? null
+    return (count($PrivSet->getPossibleNecessaryPrivileges())
+            || count($PrivSet->fieldsWithUserComparisons())) ? null
             : "The conditions for <i>Email Recipients</i> must include at"
                     ." least one user privilege or user field comparison,"
                     ." to limit the potential recipient list.";
@@ -44,7 +45,7 @@ function CheckThatPrivilegesHaveUserComponents(string $FieldName, PrivilegeSet $
 function GetFieldsForPrivset(): array
 {
     $PrivFields = [];
-    foreach (MetadataSchema::GetAllSchemas() as $SchemaId => $Schema) {
+    foreach (MetadataSchema::getAllSchemas() as $SchemaId => $Schema) {
         # for the User schema
         if ($SchemaId == MetadataSchema::SCHEMAID_USER) {
             # supported types, in the order they should be displayed
@@ -64,9 +65,9 @@ function GetFieldsForPrivset(): array
             # iterate over each type
             foreach ($SupportedFieldTypesInOrder as $Type) {
                 # get fields of that type
-                foreach ($Schema->GetFields($Type) as $FieldId => $Field) {
+                foreach ($Schema->getFields($Type) as $FieldId => $Field) {
                     # if this field should be excluded, skip it
-                    if (in_array($Field->Name(), $UserFieldsToExclude)) {
+                    if (in_array($Field->name(), $UserFieldsToExclude)) {
                         continue;
                     }
                     # otherwise add it to the list
@@ -75,7 +76,7 @@ function GetFieldsForPrivset(): array
             }
         } else {
             # for all other schemas, add all the User fields
-            $UserFields = $Schema->GetFields(MetadataSchema::MDFTYPE_USER);
+            $UserFields = $Schema->getFields(MetadataSchema::MDFTYPE_USER);
             foreach ($UserFields as $FieldId => $Field) {
                 $PrivFields[$FieldId] = $Field;
             }
@@ -99,15 +100,15 @@ function FieldsToEdit()
             MetadataSchema::MDFTYPE_FLAG |
             MetadataSchema::MDFTYPE_OPTION;
 
-        $AllSchemas = MetadataSchema::GetAllSchemas();
+        $AllSchemas = MetadataSchema::getAllSchemas();
         foreach ($AllSchemas as $SchemaId => $Schema) {
             # force the schema id to be of type int for subsequent usage
             $SchemaId = (int)$SchemaId;
             $FieldsToEdit[$SchemaId] = [];
 
-            foreach ($Schema->GetFields($TypesToEdit) as $Field) {
-                if ($Field->Editable()) {
-                    $FieldsToEdit[$SchemaId][] = $Field->Id();
+            foreach ($Schema->getFields($TypesToEdit) as $Field) {
+                if ($Field->editable()) {
+                    $FieldsToEdit[$SchemaId][] = $Field->id();
                 }
             }
         }
@@ -125,8 +126,8 @@ function FieldsToEdit()
 function GetHtmlForFieldEditor($SchemaId, $Editor): string
 {
     ob_start();
-    print "<b>".(new MetadataSchema($SchemaId))->Name()."</b>";
-    $Editor->DisplayAsTable();
+    print "<b>".(new MetadataSchema($SchemaId))->name()."</b>";
+    $Editor->displayAsTable();
     $Result = ob_get_contents();
     ob_end_clean();
 
@@ -140,7 +141,9 @@ function GetHtmlForFieldEditor($SchemaId, $Editor): string
 # ----- MAIN -----------------------------------------------------------------
 
 # check permissions
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
 
 $AF = ApplicationFramework::getInstance();
 $PluginMgr = PluginManager::getInstance();
@@ -223,11 +226,11 @@ if ($H_IsNewRule) {
 } else {
     # load existing values
     $FormValues = [
-        "Name" => $H_Rule->Name(),
-        "Enabled" => $H_Rule->Enabled(),
-        "Frequency" => $H_Rule->CheckFrequency(),
-        "SearchParams" => $H_Rule->SearchParameters(),
-        "Action" => $H_Rule->Action()
+        "Name" => $H_Rule->name(),
+        "Enabled" => $H_Rule->enabled(),
+        "Frequency" => $H_Rule->checkFrequency(),
+        "SearchParams" => $H_Rule->searchParameters(),
+        "Action" => $H_Rule->action()
     ];
 }
 
@@ -248,7 +251,7 @@ foreach (FieldsToEdit() as $SchemaId => $FieldIds) {
 }
 
 # if support for "Send Email" action is available
-if ($PluginMgr->PluginEnabled("Mailer")) {
+if ($PluginMgr->pluginReady("Mailer")) {
     # add additional action option
     $FormFields["Action"]["Options"][Rule::ACTION_SENDEMAIL] = "Send Email";
 
@@ -258,7 +261,7 @@ if ($PluginMgr->PluginEnabled("Mailer")) {
         "Type" => FormUI::FTYPE_OPTION,
         "Label" => "Email Template",
         "Help" => "The template to use when sending emails.",
-        "Options" => $MailerPlugin->GetTemplateList(),
+        "Options" => $MailerPlugin->getTemplateList(),
         "DisplayIf" => ["Action" => Rule::ACTION_SENDEMAIL]
     ];
     $FormFields["SendEmail_Privileges"] = [
@@ -292,7 +295,7 @@ if ($PluginMgr->PluginEnabled("Mailer")) {
 # get action params from form
 if (!$H_IsNewRule && isset($H_Rule)) {
     # retrieve and set existing settings for form
-    $ActionParams = $H_Rule->ActionParameters();
+    $ActionParams = $H_Rule->actionParameters();
 
     if (!isset($FormValues["Action"])) {
         throw new Exception("No rule action specified (should be impossible).");
@@ -302,7 +305,7 @@ if (!$H_IsNewRule && isset($H_Rule)) {
         case Rule::ACTION_UPDATEFIELDVALUES:
             foreach ($ActionParams["EditParams"] as $ScId => $Params) {
                 if (isset($H_FieldEditors[$ScId])) {
-                    $H_FieldEditors[$ScId]->LoadConfiguration(
+                    $H_FieldEditors[$ScId]->loadConfiguration(
                         $Params
                     );
                 }
@@ -326,7 +329,7 @@ if (!$H_IsNewRule && isset($H_Rule)) {
 # and configure field editing buttons for adding more fields
 foreach (FieldsToEdit() as $SchemaId => $FieldIds) {
     if (count($FieldIds)) {
-        $H_FieldEditors[$SchemaId]->AddFieldButton("Add field", $FieldIds);
+        $H_FieldEditors[$SchemaId]->addFieldButton("Add field", $FieldIds);
     }
 }
 
@@ -351,12 +354,12 @@ switch ($ButtonPushed) {
     case "Add":
     case "Save":
         # check values and bail out if any are invalid
-        if ($H_FormUI->ValidateFieldInput()) {
+        if ($H_FormUI->validateFieldInput()) {
             return;
         }
 
         # retrieve values from form
-        $NewSettings = $H_FormUI->GetNewValuesFromForm();
+        $NewSettings = $H_FormUI->getNewValuesFromForm();
         $SearchParams = $NewSettings["SearchParams"];
         $Action = $NewSettings["Action"];
 
@@ -365,7 +368,7 @@ switch ($ButtonPushed) {
             case Rule::ACTION_SENDEMAIL:
                 $ActionParams = [
                     "Template" => $NewSettings["SendEmail_Template"],
-                    "Privileges" => $NewSettings["SendEmail_Privileges"]->Data(),
+                    "Privileges" => $NewSettings["SendEmail_Privileges"]->data(),
                     "ConfirmBeforeSending" => $NewSettings["SendEmail_ConfirmBeforeSending"]
                 ];
                 break;
@@ -373,7 +376,7 @@ switch ($ButtonPushed) {
             case Rule::ACTION_UPDATEFIELDVALUES:
                 $EditParams = [];
                 foreach ($H_FieldEditors as $ScId => $Editor) {
-                    $Data = $Editor->GetValuesFromFormData();
+                    $Data = $Editor->getValuesFromFormData();
                     $EditParams[$ScId] = $Data;
                 }
 
@@ -387,34 +390,34 @@ switch ($ButtonPushed) {
         # if adding new rule
         if ($H_IsNewRule) {
             # create new rule
-            $H_Rule = Rule::Create($SearchParams, $Action, $ActionParams);
+            $H_Rule = Rule::create($SearchParams, $Action, $ActionParams);
         } else {
             # load existing rule
             $H_Rule = new Rule($H_RuleId);
 
             # save updated search parameters
-            $H_Rule->SearchParameters($SearchParams);
+            $H_Rule->searchParameters($SearchParams);
 
             # switch to ACTION_NONE and run rule to update list of matches
             $H_Rule->action(Rule::ACTION_NONE);
             $H_Rule->run();
 
             # save potentially updated action
-            $H_Rule->Action($Action);
-            $H_Rule->ActionParameters($ActionParams);
+            $H_Rule->action($Action);
+            $H_Rule->actionParameters($ActionParams);
         }
 
         # save common new attributes for rule
-        $H_Rule->Enabled($NewSettings["Enabled"]);
-        $H_Rule->Name($NewSettings["Name"]);
-        $H_Rule->CheckFrequency($NewSettings["Frequency"]);
+        $H_Rule->enabled($NewSettings["Enabled"]);
+        $H_Rule->name($NewSettings["Name"]);
+        $H_Rule->checkFrequency($NewSettings["Frequency"]);
 
         # return to rule list
-        $AF->SetJumpToPage("P_Rules_ListRules");
+        $AF->setJumpToPage("P_Rules_ListRules");
         break;
 
     case "Cancel":
         # return to rule list
-        $AF->SetJumpToPage("P_Rules_ListRules");
+        $AF->setJumpToPage("P_Rules_ListRules");
         break;
 }

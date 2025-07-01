@@ -10,6 +10,7 @@
 
 namespace Metavus;
 use Exception;
+use Metavus\Plugins\Mailer;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
@@ -210,11 +211,10 @@ class User extends \ScoutLib\User
                 return true;
             }
 
-            $Callable = parent::class . "::hasPriv";
-            if (is_callable($Callable)) {
+            if (method_exists(get_parent_class($this), "hasPriv")) {
                 $Args = self::filterPrivileges($Args);
                 if (count($Args) > 0) {
-                    return call_user_func_array($Callable, $Args);
+                    return parent::hasPriv($Args);
                 }
             }
 
@@ -303,9 +303,8 @@ class User extends \ScoutLib\User
         $MailTemplate = $IntConfig->getInt("EmailChangeTemplateId");
 
         # get mailer template and send email
-        $Mailer = $GLOBALS["G_PluginManager"]->getPlugin("Mailer");
-
-        $Mailer->sendEmail(
+        $MPlugin = Mailer::getInstance();
+        $MPlugin->sendEmail(
             $MailTemplate,
             $NewEmail,
             [],
@@ -354,14 +353,13 @@ class User extends \ScoutLib\User
             "EMAILADDRESS" => $this->get("EMail"),
         ];
 
-        $MessagesSent = $GLOBALS["G_PluginManager"]
-            ->getPlugin("Mailer")
-            ->sendEmail(
-                $TemplateId,
-                $this,
-                $Resources,
-                $Substitutions
-            );
+        $MPlugin = Mailer::getInstance();
+        $MessagesSent = $MPlugin->sendEmail(
+            $TemplateId,
+            $this,
+            $Resources,
+            $Substitutions
+        );
 
         return ($MessagesSent > 0) ? true : false;
     }
@@ -961,6 +959,77 @@ class User extends \ScoutLib\User
         }
 
         return $Result;
+    }
+
+    /**
+     * Check if user is logged in and has at least one of the specified
+     * privileges. If not, use handleUnauthorizedAccess() to show user
+     * Unauthorized Access page.
+     * This method should be moved to \ScoutLib\User if/when PrivilegeSet gets
+     * pushed down.
+     * @param int ...$Privs Possible privileges required.
+     * @return bool TRUE if user has one of the specified privileges,
+     *         otherwise FALSE.
+     * @see handleUnauthorizedAccess
+     */
+    public static function requirePrivilege(int ...$Privs): bool
+    {
+        $User = User::getCurrentUser();
+        $HasPrivs = ($User->isLoggedIn() && $User->hasPriv($Privs));
+        if (!$HasPrivs) {
+            self::handleUnauthorizedAccess();
+        }
+        return $HasPrivs;
+    }
+
+    /**
+     * Check if logged-in user meets requirements of given PrivilegeSet. If not,
+     * use handleUnauthorizedAccess() to show user Unauthorized Access page.
+     * This method should be moved to \ScoutLib\User if/when PrivilegeSet gets
+     * pushed down.
+     * @param PrivilegeSet $PrivSet The privilege set to check for user.
+     * @return bool TRUE if user meets requirements of privilege set,
+     *         otherwise FALSE.
+     * @see handleUnauthorizedAccess
+     */
+    public static function requireMeetingPrivileges(PrivilegeSet $PrivSet): bool
+    {
+        $User = User::getCurrentUser();
+        $MeetsRequirements = $PrivSet->meetsRequirements($User);
+        if (!$MeetsRequirements) {
+            self::handleUnauthorizedAccess();
+        }
+        return $MeetsRequirements;
+    }
+
+    /**
+     * Check that user is logged-in. If not, use handleUnauthorizedAccess() to
+     * show user Unauthorized Access page.
+     * This method should be moved to \ScoutLib\User if/when PrivilegeSet gets
+     * pushed down.
+     * @return bool TRUE if user is logged-in, otherwise FALSE.
+     * @see handleUnauthorizedAccess
+     */
+    public static function requireBeingLoggedIn(): bool
+    {
+        $User = User::getCurrentUser();
+        $IsLoggedIn = $User->isLoggedIn();
+        if (!$IsLoggedIn) {
+            self::handleUnauthorizedAccess();
+        }
+        return $IsLoggedIn;
+    }
+
+    /**
+     * Override the interface to Unauthorized Access page.
+     * This method should be moved to \ScoutLib\User if/when PrivilegeSet gets
+     * pushed down.
+     * @return void
+     * @see registerUnauthorizedAccessHandler
+     */
+    public static function handleUnauthorizedAccess(): void
+    {
+        ApplicationFramework::getInstance()->overrideInterfaceFile("UnauthorizedAccess");
     }
 
     const MIN_STANDARD_PRIV = 1;

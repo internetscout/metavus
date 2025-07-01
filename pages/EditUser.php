@@ -3,7 +3,7 @@
 #   FILE:  EditUser.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -18,6 +18,7 @@ use Metavus\User;
 use Metavus\UserEditingUI;
 use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -113,7 +114,7 @@ function printSearchesForUser(User $User): void
         ],
     ];
 
-    $MailingsEnabled = $GLOBALS["G_PluginManager"]->pluginEnabled("SavedSearchMailings");
+    $MailingsEnabled = PluginManager::getInstance()->pluginReady("SavedSearchMailings");
     if ($MailingsEnabled) {
         $FrequencyList = SavedSearch::getSearchFrequencyList();
 
@@ -337,7 +338,7 @@ function getEditingFormFields(User $UserToEdit) : array
 # ----- MAIN -----------------------------------------------------------------
 
 # make sure the user has the privs required to access this page
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
@@ -437,7 +438,7 @@ switch ($Submit) {
         break;
 
     case "Delete":
-        $_SESSION["UserRemoveArray"] = [$H_UserToEdit->Id()];
+        $_SESSION["UserRemoveArray"] = [$H_UserToEdit->id()];
         $AF->setJumpToPage("ConfirmRemoveUser");
         break;
 

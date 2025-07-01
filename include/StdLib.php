@@ -9,97 +9,9 @@
 # PLEASE NOTE:  For the most part, the functions in this file are DEPRECATED,
 #   and should not be used in any new code.
 
-use Metavus\User;
-use Metavus\PrivilegeSet;
 use Metavus\InterfaceConfiguration;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
-
-/**
- * Check whether the user is authorized to view the current page. If the current
- * user does not have at least one of the specified privileges, then a hook is
- * set to cause the "Unauthorized Access" HTML file to display instead of the
- * normal HTML file.
- * @param mixed $AuthFlag Privilege required (or array of possible privileges).
- * @return bool TRUE if user has one of the specified privileges, otherwise FALSE.
- * @see CheckAuthorization_SignalHook()
-*/
-function CheckAuthorization($AuthFlag = null)
-{
-    $User = User::getCurrentUser();
-    $Args = func_get_args();
-
-    if ($AuthFlag instanceof PrivilegeSet) {
-        if ($AuthFlag->MeetsRequirements($User)) {
-            return true;
-        }
-    } else {
-        $Privileges = is_array($AuthFlag) ? $AuthFlag : $Args;
-
-        # if the user is logged in and no privileges were given or the user has at
-        # least one of the specified privileges
-        if ($User->IsLoggedIn()
-            && ((is_null($AuthFlag)) || $User->HasPriv($Privileges))) {
-            return true;
-        }
-    }
-
-    # the user is not logged in or doesn't have at least one of the specified
-    # privileges
-    DisplayUnauthorizedAccessPage();
-    return false;
-}
-
-/**
-* Display "Unauthorized Access" HTML file.  This method is intended to be called
-* from within a PHP "page" file when a page has been reached which the current
-* user does not have the required privileges to access.
-*/
-function DisplayUnauthorizedAccessPage(): void
-{
-    ApplicationFramework::getInstance()->HookEvent(
-        "EVENT_HTML_FILE_LOAD",
-        "DisplayUnauthorizedAccessPage_SignalHook"
-    );
-}
-
-/**
- * Hook used to display the "Unauthorized Access" page in conjunction with the
- * DisplayUnauthorizedAccessPage() function.
- * @param string $PageName Page name
- * @return array modified hook parameters
- * @see DisplayUnauthorizedAccessPage()
- */
-function DisplayUnauthorizedAccessPage_SignalHook($PageName)
-{
-    return ["PageName" => "UnauthorizedAccess"];
-}
-
-/**
- * Get or set the title of page as displayed in the title bar of a user's
- * web browser.
- * @param string|null $NewTitle The new page title or NULL to leave it as-is
- * @param bool $IncludePortalName TRUE to automatically prepend the portal name
- * @return string the new page title, including the portal name if applicable
- */
-function PageTitle($NewTitle = null, $IncludePortalName = true)
-{
-    static $Title;
-
-    # save a new page title if given one
-    if (!is_null($NewTitle)) {
-        $Title = $NewTitle;
-    }
-
-    # the portal name should be prepended before returning the title...
-    $PortalName = InterfaceConfiguration::getInstance()->getString("PortalName");
-    if ($IncludePortalName && strlen($PortalName)) {
-        return $PortalName . " - " . $Title;
-    }
-
-    # ... otherwise just return the page title
-    return $Title;
-}
 
 /**
  * Get the path to the interface directory that contains the fast user rating
@@ -111,10 +23,10 @@ function GetFastRatingInterfaceDirectory()
     $AF = ApplicationFramework::getInstance();
     if (preg_match(
         '/(.*)\/images\/StarRating--1_0\.[.A-Z0-9]*gif$/',
-        $AF->GUIFile("StarRating--1_0.gif"),
+        $AF->gUIFile("StarRating--1_0.gif"),
         $Matches
     )) {
-        return $AF->ActiveUserInterface();
+        return $AF->activeUserInterface();
     } else {
         return "default";
     }
@@ -384,85 +296,4 @@ function defaulthtmlspecialchars($String)
         $CharacterSet = "UTF-8";
     }
     return htmlspecialchars($String ?? "", ENT_QUOTES, $CharacterSet, false);
-}
-
-/**
-* Convert a date range into a user-friendly printable format.
-* @param string $StartDate Starting date, in any format parseable by strtotime().
-* @param string $EndDate Ending date, in any format parseable by strtotime().
-* @param bool $Verbose Whether to be verbose about dates.  (OPTIONAL, defaults to
-*       TRUE)
-* @param string $BadDateString String to display if start date appears invalid.
-*       (OPTIONAL, defaults to "-")
-* @return string Returns a string containing a nicely-formatted date value.
-*/
-function GetPrettyDateRange($StartDate, $EndDate, $Verbose = true, $BadDateString = "-")
-{
-    # convert dates to seconds
-    $Start = strtotime($StartDate);
-    $End = strtotime($EndDate);
-
-    # return bad date string if start date was invalid
-    if ($Start === false) {
-        return $BadDateString;
-    }
-
-    # return pretty printed date if end date was invalid or same as start date
-    if (($End === false) || ($End == $Start)) {
-        return StdLib::getPrettyDate($EndDate, $Verbose, $BadDateString);
-    }
-
-    # use short or long month names based on verbosity setting
-    $MChar = $Verbose ? "F" : "M";
-
-
-    $AddYear = true;
-
-    # set the date range format
-    if (date("dmY", $Start) == date("dmY", $End)) {
-        # if the start and end have the same day & month, use "January 1"
-        $Range = date($MChar." j", $Start);
-    } elseif (date("mY", $Start) == date("mY", $End)) {
-        # if start and end month are the same use "January 1-10"
-        $Range = date($MChar." j-", $Start).date("j", $End);
-    } elseif (date("Y", $Start) == date("Y", $End)) {
-        # else if start and end year are the same use "January 21 - February 3"
-        $Range = date($MChar." j - ", $Start).date($MChar." j", $End);
-    } else {
-        # else use "December 21, 2013 - January 3, 2014"
-        $Range = date($MChar." j, Y - ", $Start).date($MChar." j, Y", $End);
-        $AddYear = false;
-    }
-
-    # if end year is not current year and we haven't already added it
-    if ((date("Y", $End) != date("Y")) && $AddYear) {
-        # add end year to date
-        $Range .= date(", Y", $End);
-    }
-
-    # return pretty date range to caller
-    return $Range;
-}
-
-/**
-* Get a specified number of random alphanumeric characters.
-* @param int $NumChars Number of characters to get.
-* @param string $ExcludePattern PCRE pattern to exclude undesired characters
-*    (OPTIONAL, default [^A-Za-z0-9]).
-* @return string Random characters.
-*/
-function GetRandomCharacters($NumChars, $ExcludePattern = "/[^A-Za-z0-9]/")
-{
-    $rc = '';
-
-    while (strlen($rc) < $NumChars) {
-        # append random alphanumerics
-        $rc .= preg_replace(
-            $ExcludePattern,
-            "",
-            base64_encode(openssl_random_pseudo_bytes(3 * $NumChars))
-        );
-    }
-
-    return substr($rc, 0, $NumChars);
 }

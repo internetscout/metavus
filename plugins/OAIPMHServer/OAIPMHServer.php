@@ -347,10 +347,6 @@ class OAIPMHServer extends Plugin
         string $ChildrenKey = "@children"
     ) {
         $Array = [];
-        $XMLClassName = "SimpleXMLElement";
-        if (!($Xml instanceof $XMLClassName)) {
-            return $Array;
-        }
 
         $Value = trim((string)$Xml);
         if (!strlen($Value)) {

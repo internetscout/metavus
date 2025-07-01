@@ -36,7 +36,7 @@ class LTIDatabase implements \IMSGlobal\LTI\Database
      * @return \IMSGlobal\LTI\LTI_Registration Registration info.
      */
     // @codingStandardsIgnoreLine
-    public function find_registration_by_issuer($iss, ?string $client_id)
+    public function find_registration_by_issuer($iss, ?string $client_id): ?\IMSGlobal\LTI\LTI_Registration
     {
         $Query = "SELECT * FROM EduLink_Registrations "
             ."WHERE Issuer = '".addslashes($iss)."'";
@@ -88,7 +88,7 @@ class LTIDatabase implements \IMSGlobal\LTI\Database
      * @return \IMSGlobal\LTI\LTI_Deployment Deployment info.
      */
     // @codingStandardsIgnoreLine
-    public function find_deployment($iss, $deployment_id)
+    public function find_deployment($iss, $deployment_id): ?\IMSGlobal\LTI\LTI_Deployment
     {
         return \IMSGlobal\LTI\LTI_Deployment::new()
             ->set_deployment_id($deployment_id);

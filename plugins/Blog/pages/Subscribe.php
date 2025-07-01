@@ -13,8 +13,8 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Subscribe to Blog Entry Notifications");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Subscribe to Blog Entry Notifications");
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
@@ -22,8 +22,6 @@ $User = User::getCurrentUser();
 # get the blog plugin
 $Blog = Blog::getInstance();
 $Blog->setCurrentBlog($Blog->getConfigSetting("EmailNotificationBlog"));
-
-$AF = ApplicationFramework::getInstance();
 
 # if user is logged in
 if ($User->isLoggedIn()) {

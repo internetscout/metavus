@@ -1,6 +1,6 @@
 <?PHP
 #
-#   FILE:  AddSearchResults.php (Folders plugin)
+#   FILE:  PerformSearchAction.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
 #   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
@@ -8,19 +8,12 @@
 #
 # @scout:phpstan
 
-use Metavus\MetadataField;
-use Metavus\MetadataSchema;
+namespace Metavus;
+
 use Metavus\Plugins\Folders;
-use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\RecordFactory;
-use Metavus\SearchEngine;
-use Metavus\SearchParameterSet;
-use Metavus\SystemConfiguration;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -33,8 +26,8 @@ function getSortInfo(): array
 {
     $Schema = new MetadataSchema();
     $SortField = null;
-    $SortFieldId = StdLib::getArrayValue($_GET, "SF");
-    $SortDescending = StdLib::getArrayValue($_GET, "SD");
+    $SortFieldId = $_GET["SF"] ?? null;
+    $SortDescending = $_GET["SD"] ?? null;
 
     # use specified sort field
     if (!is_null($SortFieldId) && MetadataSchema::fieldExistsInAnySchema($SortFieldId)) {
@@ -61,7 +54,7 @@ function getSortInfo(): array
         $SortDescending = true;
     }
 
-    $SortFieldName = $SortField instanceof Metavus\MetadataField
+    $SortFieldName = $SortField instanceof MetadataField
         ? $SortField->name() : $SortField;
 
     return [$SortFieldName, $SortDescending];
@@ -107,20 +100,19 @@ function performSearch(
     return $SearchResults;
 }
 
-/**
-* Callback function used with search engine objects to filter out temporary
-* resources.
-* @param int $Id Resource ID to check.
-* @return bool Returns TRUE if the resource ID is less than zero.
-*/
-function Folders_FilterOutTempResources($Id): bool
-{
-    return $Id < 0;
-}
-
 # ----- SETUP ----------------------------------------------------------------
-# check authorization
-if (!Common::apiPageCompletion("P_Folders_ManageFolders")) {
+$AF = ApplicationFramework::getInstance();
+$AF->beginAjaxResponse();
+$AF->setBrowserCacheExpirationTime(0);
+
+$User = User::getCurrentUser();
+if (!$User->isLoggedIn()) {
+    $Result = [
+        "Status" => "Error",
+        "Message" => "No user logged in."
+    ];
+
+    print json_encode($Result);
     return;
 }
 
@@ -130,52 +122,69 @@ $FoldersPlugin = Folders::getInstance();
 # set up variables
 $Errors = [];
 $FolderFactory = new FolderFactory(User::getCurrentUser()->id());
-$FolderId = StdLib::getArrayValue($_GET, "FolderId");
 
-# get the currently selected folder if no folder ID is given
-if ($FolderId === null) {
-    $FolderId = $FolderFactory->getSelectedFolder()->id();
-}
-
+$FolderId = $FolderFactory->getSelectedFolder()->id();
 $ResourceFolder = $FolderFactory->getResourceFolder();
 $Folder = new Folder($FolderId);
 
-$FolderId = StdLib::getArrayValue($_GET, "FolderId");
+$ItemType = $_GET["ItemType"] ?? null;
 
-$ItemType = StdLib::getArrayValue($_GET, "ItemType");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Folders - Add Items to Folder");
 
-PageTitle("Folders - Add Items to Folder");
+$Action = $_GET["Action"] ?? null;
 
 # ----- MAIN -----------------------------------------------------------------
 # add items only if the resource folder contains this folder, which implies
 # that the user owns the folder and it's a valid folder of resources
-if ($ResourceFolder->containsItem($Folder->id())) {
-    $SearchParams = new SearchParameterSet();
-    $SearchParams->urlParameters($_GET);
-
-    list($SortFieldName, $SortDescending) = getSortInfo();
-
-    $SearchResults = performSearch(
-        $SearchParams,
-        $SortFieldName,
-        $SortDescending
-    );
-
-    foreach ($SearchResults as $SchemaId => $Results) {
-        # filter out the resources that do not belong to the target $ItemType
-        if (($ItemType !== null) && ($SchemaId != $ItemType)) {
-            continue;
-        }
-        $Folder->appendItems(array_keys($Results));
-    }
-} else {
-    # user doesn't own the folder
-    array_push($Errors, 'E_FOLDERS_NOTFOLDEROWNER');
+if (!$ResourceFolder->containsItem($Folder->id())) {
+    $Result = [
+        "Status" => "Error",
+        "Message" => "Target folder is owned by a different user."
+    ];
+    print json_encode($Result);
+    return;
 }
-# ----- PAGE ROUTING  -----------------------------------------------------------------
-# handle page routing based on the success/failure above.
 
-# This page does not output any HTML
-ApplicationFramework::getInstance()->suppressHTMLOutput();
+# check that the provided action is one we know how to do
+if (!in_array($Action, ["add", "remove"])) {
+    $Result = [
+        "Status" => "Error",
+        "Message" => "Invalid action provided."
+    ];
+    print json_encode($Result);
+    return;
+}
 
-$FoldersPlugin::processPageResponse($Errors);
+# extract search params
+$SearchParams = new SearchParameterSet();
+$SearchParams->urlParameters($_GET);
+
+list($SortFieldName, $SortDescending) = getSortInfo();
+$SearchResults = performSearch(
+    $SearchParams,
+    $SortFieldName,
+    $SortDescending
+);
+
+foreach ($SearchResults as $SchemaId => $Results) {
+    # filter out the resources that do not belong to the target $ItemType
+    if (($ItemType !== null) && ($SchemaId != $ItemType)) {
+        continue;
+    }
+
+    if ($Action == "add") {
+        $Folder->appendItems(array_keys($Results));
+    } else {
+        foreach (array_keys($Results) as $ItemId) {
+            $Folder->removeItem((int)$ItemId);
+        }
+    }
+}
+
+$Result = [
+    "Status" => "Success",
+    "Message" => "Items successfully "
+        .(($Action == "add") ? "added" : "removed")."."
+];
+print json_encode($Result);

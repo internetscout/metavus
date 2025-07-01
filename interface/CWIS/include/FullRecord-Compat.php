@@ -20,6 +20,7 @@
 #   require_once($AF->gUIFile("Home-Compat.php"));
 
 namespace Metavus;
+use ScoutLib\PluginManager;
 
 /**
  * Determine if a provided variable represents a valid metadata field.
@@ -319,9 +320,11 @@ function PrintForumMessage(
         return;
     }
 
+    $PluginMgr = PluginManager::getInstance();
+
     if ( $User->IsLoggedIn() &&
-         (!$GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") ||
-          !$GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForSpamBot()) ) {
+         (!$PluginMgr->PluginReady("BotDetector") ||
+          !$PluginMgr->GetPlugin("BotDetector")->CheckForSpamBot()) ) {
         $PEmail = strlen($PosterEmail) > 0 ? "(".MungeEmailAddress($PosterEmail).")" : "";
     } else {
         $PEmail = "";
@@ -397,9 +400,11 @@ function PrintForumMessageWithMessage(
     $PosterEmail = $Message->PosterEmail();
     $Edited = strtotime($DateEdited) >= strtotime($DatePosted);
 
+    $PluginMgr = PluginManager::getInstance();
+
     if ( $User->IsLoggedIn() &&
-         (!$GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") ||
-          !$GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForSpamBot()) ) {
+         (!$PluginMgr->PluginReady("BotDetector") ||
+          !$PluginMgr->GetPlugin("BotDetector")->CheckForSpamBot()) ) {
         $PEmail = strlen($PosterEmail) > 0 ? "(".MungeEmailAddress($PosterEmail).")" : "";
     } else {
         $PEmail = "";

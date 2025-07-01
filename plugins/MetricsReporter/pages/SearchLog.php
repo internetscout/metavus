@@ -3,19 +3,15 @@
 #   FILE:  SearchLog.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-use Metavus\InterfaceConfiguration;
+namespace Metavus;
+use Exception;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
-use Metavus\PrivilegeSet;
-use Metavus\SearchParameterSet;
-use Metavus\TransportControlsUI;
-use Metavus\User;
-use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
@@ -182,8 +178,8 @@ function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys)
                 $H_ListData[$ThisKey]["NumSearches"] += 1;
 
                 # add our user if they weren't already there
-                if (strlen($Item["UserId"]) &&
-                    !in_array($Item["UserId"], $H_ListData[$ThisKey]["UserId"])) {
+                if ($Item["UserId"] !== null
+                        && !in_array($Item["UserId"], $H_ListData[$ThisKey]["UserId"])) {
                     $H_ListData[$ThisKey]["UserId"][] = $Item["UserId"];
                 }
             } else {
@@ -242,8 +238,9 @@ function addSearchToFrequencyData(
         $H_ListData[$Key]["Results"],
         $SearchDataRow["Results"]
     );
-    if (strlen($SearchDataRow["UserId"]) &&
-        !in_array($SearchDataRow["UserId"], $H_ListData[$Key]["UserId"])) {
+    if (isset($SearchDataRow["UserId"])
+            && strlen($SearchDataRow["UserId"])
+            && !in_array($SearchDataRow["UserId"], $H_ListData[$Key]["UserId"])) {
         $H_ListData[$Key]["UserId"][] = $SearchDataRow["UserId"];
     }
 }
@@ -251,7 +248,7 @@ function addSearchToFrequencyData(
 # ----- MAIN -----------------------------------------------------------------
 
 # make sure user has sufficient permission to view report
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -268,7 +265,7 @@ $H_ResultsPerPage = StdLib::getFormValue("RP", 50);
 $H_View = StdLib::getFormValue("V", "Log");
 
 $H_StartTime = ($H_View == "Log") ? ST_24_MONTH :
-           intval(StdLib::getFormValue("ST", ST_3_MONTH));
+           intval(StdLib::getFormValue("ST", ST_1_MONTH));
 
 $SpamSearch = StdLib::getFormValue("Spam");
 $StartIndex = intval(StdLib::getFormValue(

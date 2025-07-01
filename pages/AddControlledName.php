@@ -3,26 +3,23 @@
 #   FILE:  AddControlledName.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Add Controlled Name");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Add Controlled Name");
 
 # check that the user is authorized to view the page
-if (!CheckAuthorization(PRIV_NAMEADMIN)) {
+if (!User::requirePrivilege(PRIV_NAMEADMIN)) {
     return;
 }
-
-$AF = ApplicationFramework::getInstance();
 
 # get the schema
 $H_Schema = new MetadataSchema(
@@ -30,7 +27,7 @@ $H_Schema = new MetadataSchema(
 );
 
 $FieldId = intval(StdLib::getFormValue("F_FieldId", StdLib::getFormValue("FieldId")));
-if ($H_Schema->FieldExists($FieldId)) {
+if ($H_Schema->fieldExists($FieldId)) {
     $H_Field = $H_Schema->getField($FieldId);
 } else {
     $Fields = $H_Schema->getFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME);
@@ -58,10 +55,10 @@ if (!is_null($H_Field)) {
         ]
     ];
 
-    if ($H_Field->UsesQualifiers()) {
-        if ($H_Field->HasItemLevelQualifiers()) {
+    if ($H_Field->usesQualifiers()) {
+        if ($H_Field->hasItemLevelQualifiers()) {
             #first value is "--"
-            $Items = $H_Field->AssociatedQualifierList();
+            $Items = $H_Field->associatedQualifierList();
             $Items["--"] = "--";
             ksort($Items);
 
@@ -70,12 +67,12 @@ if (!is_null($H_Field)) {
                 "Label" => "Qualifier",
                 "Options" => $Items
             ];
-        } elseif (Qualifier::ItemExists($H_Field->DefaultQualifier())) {
-            $Qualifier = new Qualifier($H_Field->DefaultQualifier());
+        } elseif (Qualifier::itemExists($H_Field->defaultQualifier())) {
+            $Qualifier = new Qualifier($H_Field->defaultQualifier());
             $FormFields["Qualifier"] = [
                 "Type" => FormUI::FTYPE_TEXT,
                 "Label" => "Qualifier",
-                "Value" => $Qualifier->Name(),
+                "Value" => $Qualifier->name(),
                 "ReadOnly" => true
             ];
         }
@@ -91,17 +88,17 @@ if (StdLib::getFormValue("Submit") == "Add") {
     }
 
     # check if provided name already exists, if not, create one
-    if (ControlledName::ControlledNameExists($H_ControlledName, $H_Field->Id())) {
+    if (ControlledName::controlledNameExists($H_ControlledName, $H_Field->id())) {
         $H_ErrorMessage = "The controlled name already exists.";
         return;
     }
 
-    $CN = ControlledName::Create($H_ControlledName, $H_Field->Id());
+    $CN = ControlledName::create($H_ControlledName, $H_Field->id());
     if ($H_Qualifier !== "--") {
-        $CN->QualifierId($H_Qualifier);
+        $CN->qualifierId($H_Qualifier);
     }
     if (!is_null($H_VariantName) && strlen(trim($H_VariantName))) {
-        $CN->VariantName($H_VariantName);
+        $CN->variantName($H_VariantName);
     }
     $H_SuccessfullyAdded = true;
 }

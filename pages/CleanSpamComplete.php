@@ -3,7 +3,7 @@
 #   FILE:  CleanSpamComplete.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -24,16 +24,16 @@ use ScoutLib\StdLib;
 function SlayUser(int $PosterId): void
 {
     # refuse to slay oneself
-    if (User::getCurrentUser()->Id() == $PosterId) {
+    if (User::getCurrentUser()->id() == $PosterId) {
         return;
     }
 
     $Poster = new User($PosterId);
-    $Poster->RevokePriv(PRIV_POSTCOMMENTS);
-    $Poster->GrantPriv(PRIV_USERDISABLED);
+    $Poster->revokePriv(PRIV_POSTCOMMENTS);
+    $Poster->grantPriv(PRIV_USERDISABLED);
 
     $DB = new Database();
-    $DB->Query(
+    $DB->query(
         "DELETE FROM Messages WHERE PosterId = ".$PosterId
     );
 }
@@ -44,19 +44,19 @@ function SlayUser(int $PosterId): void
  */
 function RemovePostPrivilege(int $PosterId): void
 {
-    if (User::getCurrentUser()->Id() == $PosterId) {
+    if (User::getCurrentUser()->id() == $PosterId) {
         return;
     }
 
     $Poster = new User($PosterId);
-    $Poster->RevokePriv(PRIV_POSTCOMMENTS);
+    $Poster->revokePriv(PRIV_POSTCOMMENTS);
 }
 
 # ----- MAIN -----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 
 # check that the user has the required Privs
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
     return;
 }
 
@@ -67,7 +67,7 @@ $F_PosterId = StdLib::getFormValue("F_PosterId");
 
 # bounce them to UnauthorizedAccess if the required POST values weren't present
 if (is_null($F_ResourceId) || is_null($F_PosterId) || is_null($F_Submit)) {
-    $AF->SetJumpToPage("UnauthorizedAccess");
+    $AF->setJumpToPage("UnauthorizedAccess");
     return;
 }
 
@@ -84,6 +84,6 @@ if ($F_Submit == "Clean Spam") {
 }
 
 # and then redirect back to the Resource
-$AF->SetJumpToPage(
+$AF->setJumpToPage(
     "index.php?P=TrackUserComments"
 );

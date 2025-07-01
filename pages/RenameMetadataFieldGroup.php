@@ -10,13 +10,16 @@
 
 use Metavus\MetadataFieldGroup;
 use Metavus\MetadataSchema;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Rename Metadata Field Group");
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Rename Metadata Field Group");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
 
 $H_SchemaId = StdLib::getArrayValue($_GET, "SchemaId", MetadataSchema::SCHEMAID_DEFAULT);
 $GroupId = StdLib::getArrayValue($_GET, "GroupId");
@@ -24,5 +27,5 @@ $GroupId = StdLib::getArrayValue($_GET, "GroupId");
 if (MetadataFieldGroup::itemExists($GroupId)) {
     $H_Group = new MetadataFieldGroup($GroupId);
 } else {
-    ApplicationFramework::getInstance()->setJumpToPage("MetadataFieldOrdering");
+    $AF->setJumpToPage("MetadataFieldOrdering");
 }

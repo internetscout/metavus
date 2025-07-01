@@ -3,13 +3,12 @@
 #   FILE:  ResourceSelectionUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\EduLink;
-
 use Metavus\HtmlButton;
 use Metavus\Record;
 use Metavus\ResourceSummary_DeepLinking;
@@ -82,7 +81,8 @@ class ResourceSelectionUI
                 .$Record->getMapped("Title")."</a></b></p>"
                 .'</div>'
                 .'<div class="col-1 text-end">'
-                .'<label class="mv-p-edulink-record-control mv-p-edulink-record-select btn btn-primary" '
+                .'<label class="mv-p-edulink-record-control'
+                .' mv-p-edulink-record-select btn btn-primary" '
                 .'tabindex="0"'
                 .'>X<input type="checkbox" '
                 .'data-recordid="'.$RecordId.'" '
@@ -132,12 +132,12 @@ class ResourceSelectionUI
             $Result .= '<label class="mv-p-edulink-record-remove '.$ButtonClasses.'" '
                 .(!$IsSelected ? 'style="display: none" ' : '')
                 .'tabindex="0" data-recordid="'.$RecordId.'" />'
-                .'<img src="'.$AF->GUIFile('Minus.svg').'" alt=""/> Remove'
+                .'<img src="'.$AF->gUIFile('Minus.svg').'" alt=""/> Remove'
                 .'</label>';
             $Result .= '<label class="mv-p-edulink-record-select '.$ButtonClasses.'" '
                 .($IsSelected ? 'style="display: none" ' : '')
                 .'tabindex="0" data-recordid="'.$RecordId.'" />'
-                .'<img src="'.$AF->GUIFile('Plus.svg').'" alt=""/> Select'
+                .'<img src="'.$AF->gUIFile('Plus.svg').'" alt=""/> Select'
                 .'</label>';
 
             $Result .= '</div></div></div>';

@@ -10,11 +10,10 @@
 # ----- MAIN -----------------------------------------------------------------
 
 use Metavus\Plugins\Folders\Folder;
-use ScoutLib\StdLib;
 
 $H_ErrorMessage = "";
 $H_SuccessMessage = "";
-$H_FolderID = StdLib::getArrayValue($_GET, "FID");
+$H_FolderID = $_GET["FID"] ?? null;
 $H_Folder = new Folder($H_FolderID);
 $ErrorMessages = [
     1 => "Folder and new user information not received.",

@@ -3,7 +3,7 @@
 #   FILE:  EditFolderSettings.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (OPTIONAL):
@@ -27,18 +27,17 @@ use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
 
-# must be logged in to edit a folder
 $User = User::getCurrentUser();
-if (!$User->isLoggedIn()) {
-    DisplayUnauthorizedAccessPage();
+
+# must be logged in to edit a folder
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
 $FoldersPlugin = Folders::getInstance();
 
-$AllowCoverImages = $User->hasPriv(
-    $FoldersPlugin->getConfigSetting("PrivsToAddCoverImage")
-);
+$AllowCoverImages = $FoldersPlugin->getConfigSetting("PrivsToAddCoverImage")
+    ->meetsRequirements($User);
 
 # ID must be provided and valid
 $H_FolderId = $_GET["ID"] ?? null;

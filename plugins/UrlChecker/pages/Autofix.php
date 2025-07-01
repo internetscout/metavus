@@ -3,22 +3,24 @@
 #   FILE:  Autofix.php (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\MetadataSchema;
 use Metavus\Plugins\UrlChecker\Record;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Automatically fixing URL...");
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
-
 $AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Automatically fixing URL...");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
 $MyPlugin = \Metavus\Plugins\UrlChecker::getInstance();
 
 $H_Id = StdLib::getFormValue("Id");
@@ -32,5 +34,5 @@ if (Record::itemExists($ResourceId) &&
     $MyPlugin->autofixUrl($H_Id);
 }
 
-$AF->suppressHTMLOutput();
+$AF->suppressHtmlOutput();
 $AF->setJumpToPage("index.php?P=P_UrlChecker_Results");

@@ -3,7 +3,7 @@
 #   FILE:  GetKML.php (GoogleMaps plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -15,7 +15,7 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
-$AF->suppressHTMLOutput();
+$AF->suppressHtmlOutput();
 
 $PointProvider = StdLib::getArrayValue($_GET, "PP");
 $DetailProvider = StdLib::getArrayValue($_GET, "DP");
@@ -24,12 +24,12 @@ $DetailProvider = StdLib::getArrayValue($_GET, "DP");
 if ($PointProvider && $DetailProvider) {
     $GMaps = GoogleMaps::getInstance();
 
-    $Path = $GMaps->GetKml($PointProvider, $DetailProvider);
+    $Path = $GMaps->getKml($PointProvider, $DetailProvider);
 
     if (file_exists($Path)) {
         # send the file but unbuffered to avoid memory issues
         header('Content-type: application/vnd.google-earth.kml+xml');
-        $AF->AddUnbufferedCallback("readfile", [$Path]);
+        $AF->addUnbufferedCallback("readfile", [$Path]);
     } else {
         # if kml could not be generated, return an error
         header($_SERVER["SERVER_PROTOCOL"]." 500 Internal Server Error");

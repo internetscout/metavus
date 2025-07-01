@@ -8,8 +8,11 @@
 #
 
 use Metavus\HtmlButton;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 if (count($H_Errors)) {
     print "<ul class='mv-form-error'>";
     foreach ($H_Errors as $Error) {
@@ -41,7 +44,7 @@ $CancelButton->setIcon("Cross.svg");
 $CancelButton->setLink("index.php?P=P_Mailer_ListQueuedEmail$Params");
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("View Queued Message");
+$AF->setPageTitle("View Queued Message");
 ?>
 <div style="float: right">
     <?= $SendButton->getHtml(); ?>

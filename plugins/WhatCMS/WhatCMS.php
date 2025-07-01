@@ -214,39 +214,6 @@ class WhatCMS extends Plugin
     }
 
     /**
-     * Perform any work needed when the plugin is upgraded to a new version.
-     * @param string $PreviousVersion The version number of this plugin that was
-     *       previously installed.
-     * @return null|string NULL if upgrade succeeded, otherwise a string containing
-     *       an error message indicating why upgrade failed.
-     */
-    public function upgrade(string $PreviousVersion): ?string
-    {
-        $DB = new Database();
-
-        if (version_compare($PreviousVersion, "1.0.1", "<")) {
-            $Result = $this->createMissingTables(self::SQL_TABLES);
-            if ($Result !== null) {
-                return $Result;
-            }
-
-            # populate request info row
-            $MostRecentQuery = $this->getConfigSetting("MostRecentQuery");
-            $RequestsRemaining = $this->getConfigSetting("RequestsRemaining");
-
-            $DB->query(
-                "INSERT INTO WhatCMS_RequestInfo"
-                ." (MostRecentQuery, RequestsRemaining)"
-                ." VALUES ('".$MostRecentQuery."', ".$RequestsRemaining.")"
-            );
-
-            $this->setConfigSetting("MostRecentQuery", null);
-            $this->setConfigSetting("RequestsRemaining", null);
-        }
-        return null;
-    }
-
-    /**
      * Initialize the plugin. This is called (if the plugin is enabled) after
      * all plugins have been loaded but before any methods for this plugin
      * (other than register()) have been called.

@@ -12,6 +12,7 @@ namespace Metavus;
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 
@@ -22,6 +23,8 @@ $AF->addMetaTag(["robots" => "noindex"]);
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
+
+$PluginMgr = PluginManager::getInstance();
 
 /**
 *
@@ -68,8 +71,8 @@ $User = User::getCurrentUser();
 $H_HighLoad = false;
 
 # check for access by bots
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") &&
-    $GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForBot()) {
+if ($PluginMgr->pluginReady("BotDetector") &&
+    $PluginMgr->getPlugin("BotDetector")->CheckForBot()) {
     $AF->doNotCacheCurrentPage();
     $H_IsBot = true;
     return;
@@ -146,16 +149,30 @@ function GetPossibleSortFields($SchemaId)
 /**
  * Filter input strings (e.g., from _GET or _POST) to remove embedded
  * <script> tags, including those that are multiply urlencoded().
- * @param string|array $Value Value to filter
- * @return string|array filtered value
+ * @param array $Value Value to filter.
+ * @return array Filtered value.
+ * @see filterInputValuesRecursive()
  */
-function FilterInputValues($Value)
+function filterInputValues(array $Value): array
+{
+    return array_map(function ($ChildValue) {
+        return filterInputValuesRecursive($ChildValue);
+    }, $Value);
+}
+
+/**
+ * Recursive version of filterInputValues(), working on string and arrays.
+ * @param string|array $Value Value to filter.
+ * @return string|array Filtered value.
+ * @see filterInputValues()
+ */
+function filterInputValuesRecursive($Value)
 {
     if (is_array($Value)) {
         # iterate through all array elements, filtering each
         $Result = [];
         foreach ($Value as $Key => $ChildValue) {
-            $Result[$Key] = FilterInputValues($ChildValue);
+            $Result[$Key] = filterInputValuesRecursive($ChildValue);
         }
     } else {
         $Result = $Value;
@@ -242,7 +259,7 @@ function getSearchParametersFromForm($FormVars)
         }
 
         # save search selections if user was logged in
-        if ($User->IsLoggedIn()) {
+        if ($User->isLoggedIn()) {
             $User->set(
                 "SearchSelections",
                 serialize($SearchSelections)
@@ -331,7 +348,7 @@ function getSearchParametersFromForm($FormVars)
             # for each field with limit search parameters
             foreach ($Subgroups as $FieldId => $Subgroup) {
                 # set search logic for field subgroup
-                $Subgroup->Logic($Fields[$FieldId]->searchGroupLogic());
+                $Subgroup->logic($Fields[$FieldId]->searchGroupLogic());
 
                 # add field subgroup to search parameters
                 $Params->addSet($Subgroup);
@@ -433,13 +450,13 @@ function getActiveTab(array $SearchResults): int
 # ----- MAIN: LOAD PARAMETERS ------------------------------------------------
 
 # filter out stuff that looks like XSS attempts
-$_GET = FilterInputValues($_GET);
-$_POST = FilterInputValues($_POST);
+$_GET = filterInputValues($_GET);
+$_POST = filterInputValues($_POST);
 
 # load search parameters from form values
-$H_SearchParams = GetSearchParametersFromForm($_POST);
+$H_SearchParams = getSearchParametersFromForm($_POST);
 
-$SearchParametersGottenFromForm = ($H_SearchParams->ParameterCount() > 0) ? true : false;
+$SearchParametersGottenFromForm = ($H_SearchParams->parameterCount() > 0);
 
 # if the user is coming from UserLogin, ignore RP setting to avoid overwriting
 # the setting from the user's preferences
@@ -515,26 +532,26 @@ if (isset($_POST["Submit"]) && ($_POST["Submit"] == "Save")) {
                 $SavedSearch->searchName(trim($_POST["F_SearchName"]));
                 $SavedSearch->searchParameters($H_SearchParams);
 
-                $AF->SetJumpToPage("ListSavedSearches");
+                $AF->setJumpToPage("ListSavedSearches");
                 return;
             }
         }
     } else {
         # if search parameters exist
-        if (strlen($H_SearchParams->TextDescription())) {
+        if (strlen($H_SearchParams->textDescription())) {
             # jump to new saved search page
-            $AF->SetJumpToPage("NewSavedSearch&"
-                .$H_SearchParams->UrlParameterString());
+            $AF->setJumpToPage("NewSavedSearch&"
+                .$H_SearchParams->urlParameterString());
         } else {
             # else jump to advanced search page with error no parameters
-            $AF->SetJumpToPage("AdvancedSearch&Err=E_NOPARAMS");
+            $AF->setJumpToPage("AdvancedSearch&Err=E_NOPARAMS");
         }
         return;
     }
 }
 
 # if saved search specified and user is logged in
-if (isset($_GET["ID"]) && $User->IsLoggedIn()) {
+if (isset($_GET["ID"]) && $User->isLoggedIn()) {
     # if specified saved search exists
     $SSFactory = new SavedSearchFactory();
     if ($SSFactory->itemExists($_GET["ID"])) {
@@ -570,7 +587,7 @@ if (isset($_GET["ID"]) && $User->IsLoggedIn()) {
         }
 
         # reload with new URL containing all parameters
-        $AF->SetJumpToPage($NewPageParameters);
+        $AF->setJumpToPage($NewPageParameters);
         return;
     } elseif (!is_null($LegacySortFields)) {
         foreach ($H_TransportUIs as $SchemaId => $TransportUI) {
@@ -586,7 +603,7 @@ if (isset($_GET["ID"]) && $User->IsLoggedIn()) {
 }
 
 # if we have search parameters
-if ($H_SearchParams->ParameterCount()) {
+if ($H_SearchParams->parameterCount()) {
     # retrieve sort fields for search (convert Relevance to NULL for search engine)
     $SortFields = [];
     foreach ($H_TransportUIs as $SchemaId => $TransportUI) {
@@ -655,7 +672,7 @@ if ($H_SearchParams->ParameterCount()) {
 
         if (count($TempSearchResults)) {
             $H_SearchResults[$SchemaId] = $TempSearchResults;
-            $AF->AddPageCacheTag(
+            $AF->addPageCacheTag(
                 "ResourceList".$SchemaId
             );
         } else {
@@ -687,7 +704,7 @@ if ($H_SearchParams->ParameterCount()) {
         }
     }
 
-    $SignalResult = $AF->SignalEvent(
+    $SignalResult = $AF->signalEvent(
         "EVENT_SEARCH_COMPLETE",
         [
             "SearchParameters" => $H_SearchParams,

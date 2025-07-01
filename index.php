@@ -3,13 +3,12 @@
 #   FILE:  index.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use Metavus\Bootloader;
 
@@ -19,7 +18,7 @@ if (file_exists(".maintenance")) {
     header("HTTP/1.1 503 Service Unavailable");
     $MaintFile = "interface/default/MaintenanceMode.html";
     if (is_readable("local/".$MaintFile)) {
-        include("local/".$MaintFile);
+        include("local/".$MaintFile);  /* @phpstan-ignore include.fileNotFound */
     } elseif (is_readable($MaintFile)) {
         include($MaintFile);
     } else {

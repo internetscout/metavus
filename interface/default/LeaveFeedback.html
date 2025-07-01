@@ -11,6 +11,7 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 if (!isset($H_FeedbackSent)) {
@@ -32,6 +33,8 @@ if (!isset($H_Subheader)) {
     throw new Exception("H_Subheader not defined.");
 }
 
+$AF = ApplicationFramework::getInstance();
+
 # escaped values that are safe for printing
 $SafePageHeader = defaulthtmlentities($H_PageHeader);
 $SafeReturnTo = defaulthtmlentities($H_ReturnTo);
@@ -52,7 +55,7 @@ $ReturnButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
 # set the page title based on the feedback type
-PageTitle($H_PageHeader);
+$AF->setPageTitle($H_PageHeader);
 ?>
 
 <h1><?= $SafePageHeader; ?></h1>

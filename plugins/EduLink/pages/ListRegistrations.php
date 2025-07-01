@@ -3,7 +3,7 @@
 #   FILE:  ListRegistrations.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -16,15 +16,13 @@
 #       after subsetting for pagination
 
 namespace Metavus;
-
 use Metavus\Plugins\EduLink;
 use Metavus\Plugins\EduLink\LMSRegistration;
 use Metavus\Plugins\EduLink\LMSRegistrationFactory;
-use ScoutLib\Database;
 
 # ----- MAIN -----------------------------------------------------------------
 
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
 
 $ItemsPerPage = 50;
 
@@ -48,8 +46,10 @@ $RegistrationFields = [
 ];
 
 $H_RegistrationListUI = new ItemListUI($RegistrationFields);
+$RLTransport = new TransportControlsUI();
+$H_RegistrationListUI->setTransportControls($RLTransport);
 $H_RegistrationListUI->fieldsSortableByDefault(false);
-$H_RegistrationListUI->noItemsMessage(
+$H_RegistrationListUI->setNoItemsMessage(
     "No LTI registrations"
 );
 
@@ -79,8 +79,8 @@ $RegistrationIds = $Factory->getItemIds();
 $H_NumRegistrations = count($RegistrationIds);
 $RegistrationIds = array_slice(
     $RegistrationIds,
-    $H_RegistrationListUI->transportUI()->startingIndex(),
-    $H_RegistrationListUI->transportUI()->itemsPerPage()
+    $RLTransport->startingIndex(),
+    $RLTransport->itemsPerPage()
 );
 
 $H_Registrations = [];

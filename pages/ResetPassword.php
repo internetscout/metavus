@@ -11,6 +11,7 @@
 use Metavus\FormUI;
 use Metavus\User;
 use Metavus\UserFactory;
+use ScoutLib\ApplicationFramework;
 
 /**
  * Extract a provided parameter, looking in _GET for an abbreviated name and
@@ -33,8 +34,8 @@ function getParameter(string $ShortName, string $LongName) : ?string
 }
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Password Reset");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Password Reset");
 
 $UserName = getParameter("UN", "F_UserName");
 $ResetCode = getParameter("RC", "F_ResetCode");

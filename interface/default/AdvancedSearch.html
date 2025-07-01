@@ -38,8 +38,8 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask) : void
     foreach ($Fields as $FieldId => $DisplayName) {
         $Field = MetadataField::getField($FieldId);
 
-        if ($Field->Type() & $TypeMask) {
-            $CurrentValues = $SearchParameters->GetSearchStringsForField($FieldId);
+        if ($Field->type() & $TypeMask) {
+            $CurrentValues = $SearchParameters->getSearchStringsForField($FieldId);
 
             # (ignore phpstan errors for functions defined in AdvancedSearch.php)
 
@@ -51,8 +51,8 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask) : void
             $DisabledOptions = DetermineDisabledValues($Field, $PossibleValues);
 
             $AllowMultiple =
-                ($Field->SearchGroupLogic() == SearchEngine::LOGIC_OR) ||
-                ($Field->AllowMultiple());
+                ($Field->searchGroupLogic() == SearchEngine::LOGIC_OR) ||
+                ($Field->allowMultiple());
 
             if (count($PossibleValues) > 0) {
                 print "<div class=\"mv-search-limit-field\">"
@@ -64,15 +64,15 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask) : void
                     $PossibleValues,
                     $CurrentValues
                 );
-                $OptionList->MultipleAllowed($AllowMultiple);
-                $OptionList->DisabledOptions($DisabledOptions);
-                $OptionList->Size(
-                    ($Field->Type() == MetadataSchema::MDFTYPE_FLAG) ?
+                $OptionList->multipleAllowed($AllowMultiple);
+                $OptionList->disabledOptions($DisabledOptions);
+                $OptionList->size(
+                    ($Field->type() == MetadataSchema::MDFTYPE_FLAG) ?
                     $NumberOfListItemsForFlags :
                     $NumberOfListItems
                 );
 
-                $OptionList->PrintHtml();
+                $OptionList->printHtml();
                 print "</div>";
             }
         }
@@ -157,10 +157,12 @@ $AddFieldButton->addClass("mv-content-addfield");
 $AddFieldButton->setSize(HtmlButton::SIZE_SMALL);
 $AddFieldButton->setOnclick("addFieldClick()");
 
+$IsResourceAdmin = User::getCurrentUser()->hasPriv(PRIV_RESOURCEADMIN);
+
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Advanced Search");
+$AF->setPageTitle("Advanced Search");
 ?>
-<script type="text/javascript" src="<?PHP $AF->PUIFile("jquery.cookie.js"); ?>"></script>
+<script type="text/javascript" src="<?PHP $AF->pUIFile("jquery.cookie.js"); ?>"></script>
 <div class="container">
   <div class="row">
     <div class="col">
@@ -218,9 +220,9 @@ foreach ($H_SelectedFields as $FieldId) {
             $H_FieldsHavingTextForms,
             $FieldId
         );
-        $OptionList->AddAttribute("title", "Search Field ".$SearchCatIndex);
-        $OptionList->AddAttribute("aria-labelledby", "mv-adv-field-label");
-        $OptionList->PrintHtml();
+        $OptionList->addAttribute("title", "Search Field ".$SearchCatIndex);
+        $OptionList->addAttribute("aria-labelledby", "mv-adv-field-label");
+        $OptionList->printHtml();
 
         print "</div><div class=\"col-8 mv-advanced-terms-column\">"
             ."<input type=\"text\" "
@@ -250,7 +252,7 @@ foreach ($H_SelectedFields as $FieldId) {
           <h2 class="mv-limits-main mv-limits-header">Limits (Optional)</h2>
           <?= $ShowAllButton->getHtml() ?>
           <?= $HideAllButton->getHtml() ?>
-          <?PHP if (CheckAuthorization(PRIV_RESOURCEADMIN)) { ?>
+          <?PHP if ($IsResourceAdmin) { ?>
                 <?= $CheckIfButton->getHtml() ?>
           <?PHP } ?>
         </div>
@@ -282,7 +284,7 @@ foreach ($H_SelectedFields as $FieldId) {
       <div class="row">
         <div class="col-4 text-start">
             <?= $SearchButton->getHtml() ?>
-            <?PHP if (User::getCurrentUser()->IsLoggedIn()) { ?>
+            <?PHP if (User::getCurrentUser()->isLoggedIn()) { ?>
                 <?= $SaveButton->getHtml() ?>
             <?PHP } ?>
             <?= $ClearButton->getHtml(); ?>
@@ -303,7 +305,7 @@ foreach ($H_SelectedFields as $FieldId) {
               "F_SortField",
               $H_SortFields,
               $H_SelectedSortField
-          ))->PrintHtml(); ?>
+          ))->printHtml(); ?>
 
           <label for="F_RecordsPerPage">Records per page:</label>
           <?PHP
@@ -316,7 +318,7 @@ foreach ($H_SelectedFields as $FieldId) {
                 100 => 100
             ];
             $OptList = new HtmlOptionList("F_RecordsPerPage", $DisplayOptions, $H_RecordsPerPage);
-            $OptList->PrintHtml();
+            $OptList->printHtml();
             ?>
         </div>
       </div>
@@ -557,10 +559,10 @@ function hideAllLimits() {
 $("input[type=hidden][name=F_JscptSpmbt]", $(this)).val("8304RPC");
 </script>
 
-<?PHP if (CheckAuthorization(PRIV_RESOURCEADMIN)) { ?>
+<?PHP if ($IsResourceAdmin) { ?>
 <script type="text/javascript">
-  const allowIconSrc = "<?= $AF->GUIFile('Check.svg'); ?>";
-  const disableIconSrc = "<?= $AF->GUIFile('Ban.svg'); ?>";
+  const allowIconSrc = "<?= $AF->gUIFile('Check.svg'); ?>";
+  const disableIconSrc = "<?= $AF->gUIFile('Ban.svg'); ?>";
   $(".toggle-disabled").click(function(){
     //Get elements to toggle
     var toToggle = $('[data-term-unused="1"]');

@@ -10,7 +10,11 @@
 
 namespace Metavus;
 
+use ScoutLib\ApplicationFramework;
+
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 $PurgeButton = new HtmlButton("Purge Sample Data");
 $PurgeButton->setIcon("Delete.svg");
 $PurgeButton->makeSubmitButton();
@@ -20,7 +24,7 @@ $CancelButton->setIcon("Cancel.svg");
 $CancelButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Purge Sample Data");
+$AF->setPageTitle("Purge Sample Data");
 ?>
 
 <h1>Purge Sample Records</h1>

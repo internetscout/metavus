@@ -605,18 +605,20 @@ class MetricsRecorder extends Plugin
                 ." WHERE IPAddress = INET_ATON('"
                 .addslashes($IPAddress)."')";
         if ($StartDate !== null) {
-            if (strtotime($StartDate) === false) {
+            $StartDate = strtotime($StartDate);
+            if ($StartDate === false) {
                 throw new InvalidArgumentException("Unparseable start date.");
             }
             $Query .= " AND EventDate >= '"
-                    .date(StdLib::SQL_DATE_FORMAT, strtotime($StartDate))."'";
+                    .date(StdLib::SQL_DATE_FORMAT, $StartDate)."'";
         }
         if ($EndDate !== null) {
-            if (strtotime($EndDate) === false) {
+            $EndDate = strtotime($EndDate);
+            if ($EndDate === false) {
                 throw new InvalidArgumentException("Unparseable end date.");
             }
             $Query .= " AND EventDate <= '"
-                    .date(StdLib::SQL_DATE_FORMAT, strtotime($EndDate))."'";
+                    .date(StdLib::SQL_DATE_FORMAT, $EndDate)."'";
         }
         $this->DB->query($Query);
     }
@@ -1326,8 +1328,8 @@ class MetricsRecorder extends Plugin
 
         # use ID of currently-logged-in user if none supplied
         if ($UserId === null) {
-            if ($User->Id()) {
-                $UserId = $User->Id();
+            if ($User->id()) {
+                $UserId = $User->id();
             }
         }
 
@@ -1470,17 +1472,19 @@ class MetricsRecorder extends Plugin
         }
         $QueryConditional = " WHERE ED.EventType = ".$ClickType;
         if ($StartDate) {
-            if (strtotime($StartDate) === false) {
+            $StartDate = strtotime($StartDate);
+            if ($StartDate === false) {
                 throw new InvalidArgumentException("Unparsable start date.");
             }
-            $StartDate = date("Y-m-d H:i:s", strtotime($StartDate));
+            $StartDate = date("Y-m-d H:i:s", $StartDate);
             $QueryConditional .= " AND ED.EventDate >= '".addslashes($StartDate)."'";
         }
         if ($EndDate) {
-            if (strtotime($EndDate) === false) {
+            $EndDate = strtotime($EndDate);
+            if ($EndDate === false) {
                 throw new InvalidArgumentException("Unparsable end date.");
             }
-            $EndDate = date("Y-m-d H:i:s", strtotime($EndDate));
+            $EndDate = date("Y-m-d H:i:s", $EndDate);
             $QueryConditional .= " AND ED.EventDate <= '".addslashes($EndDate)."'";
         }
         if (count($PrivsToExclude)) {
@@ -1586,7 +1590,7 @@ class MetricsRecorder extends Plugin
     {
         $PluginManager = PluginManager::getInstance();
 
-        if ($PluginManager->PluginEnabled("MetricsReporter")) {
+        if ($PluginManager->pluginReady("MetricsReporter")) {
             $Reporter = MetricsReporter::getInstance();
             $Privs = $Reporter->getConfigSetting("PrivsToExcludeFromCounts");
             if ($Privs instanceof PrivilegeSet) {

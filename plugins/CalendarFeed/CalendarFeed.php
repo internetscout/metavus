@@ -125,7 +125,7 @@ class CalendarFeed extends Plugin
         );
 
         $PluginMgr = PluginManager::getInstance();
-        if ($PluginMgr->pluginEnabled("SecondaryNavigation")) {
+        if ($PluginMgr->pluginReady("SecondaryNavigation")) {
             $FeedPrivs = new PrivilegeSet();
             $SecondaryNav = SecondaryNavigation::getInstance();
             $SecondaryNav->offerNavItem(

@@ -67,7 +67,7 @@ class Page extends Record
         $Resource = Record::create(PageFactory::$PageSchemaId);
 
         # reload resource as a page
-        $Id = $Resource->Id();
+        $Id = $Resource->id();
         unset($Resource);
         $Page = new Page($Id);
 
@@ -92,11 +92,6 @@ class Page extends Record
     public function set($Field, $NewValue, bool $Reset = false)
     {
         $Field = $this->normalizeFieldArgument($Field);
-
-        # return if we don't have a valid field
-        if (!($Field instanceof MetadataField)) {
-            return;
-        }
 
         # handle image keyword replacement
         if ($Field->type() == MetadataSchema::MDFTYPE_PARAGRAPH) {
@@ -216,13 +211,13 @@ class Page extends Record
             if ($this->DB->NumRowsSelected()) {
                 $this->DB->Query("UPDATE Pages_Privileges"
                         ." SET ViewingPrivileges ="
-                        ." '".addslashes($NewValue->Data())."'"
+                        ." '".addslashes($NewValue->data())."'"
                         ." WHERE PageId = ".intval($this->id()));
             } else {
                 $this->DB->Query("INSERT INTO Pages_Privileges"
                         ." (PageId, ViewingPrivileges) VALUES"
                         ." (".intval($this->id()).","
-                        ." '".addslashes($NewValue->Data())."')");
+                        ." '".addslashes($NewValue->data())."')");
             }
 
             # clear cached permissions

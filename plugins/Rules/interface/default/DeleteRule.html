@@ -8,8 +8,11 @@
 #
 
 use Metavus\HtmlButton;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 $ReturnButton = new HtmlButton("Return to Rule List");
 $ReturnButton->setIcon("BackArrow.svg");
 $ReturnButton->setLink("index.php?P=P_Rules_ListRules");
@@ -28,19 +31,19 @@ if ($H_DisplayMode == "NoRuleSpecified") {
     # display error message indicating no ID
     ?><h1>Error</h1>
     No rule ID was supplied.<?PHP
-    PageTitle("No Rule Specified");
+    $AF->setPageTitle("No Rule Specified");
 } elseif ($H_DisplayMode == "RuleDoesNotExist") { # else if no rule found with specified ID
     # display error message indicating rule not found
     ?><h1>Error</h1>
     No rule found with specified ID.<?PHP
-    PageTitle("Rule Not Found");
+    $AF->setPageTitle("Rule Not Found");
 } else {
     # display appropriate heading
     if ($H_DisplayMode == "RuleDeleted") {
-        PageTitle("Rule Deleted");
+        $AF->setPageTitle("Rule Deleted");
         ?><h2>Rule Deleted</h2><?PHP
     } else {
-        PageTitle("Confirm Rule Deletion");
+        $AF->setPageTitle("Confirm Rule Deletion");
         ?><h2>Confirm Rule Deletion</h2><?PHP
     }
 

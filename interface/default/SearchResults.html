@@ -41,7 +41,7 @@ if (!isset($H_IsBot)) {
 if ($H_IsBot) {
     print "<p>Please do not spider search results in an automated fashion. "
         ."It can generate significant system load. ";
-    if (PluginManager::getInstance()->pluginEnabled("XmlSitemap")) {
+    if (PluginManager::getInstance()->pluginReady("XmlSitemap")) {
         print "Instead, please use the "
             ."<a href='index.php?P=P_XmlSitemap_Sitemap'>XML Sitemap</a> "
             ."that we provide.";
@@ -55,7 +55,7 @@ if (!isset($H_SearchParams)) {
 }
 
 # set page title
-PageTitle("Search Results - ".StdLib::NeatlyTruncateString(
+$AF->setPageTitle("Search Results - ".StdLib::NeatlyTruncateString(
     $H_SearchParams->TextDescription(false),
     120
 ));
@@ -455,7 +455,7 @@ function printSearchResults(
 
     $CalendarFeedNoticeHtml = "";
 
-    if ($PluginMgr->pluginEnabled("CalendarEvents")) {
+    if ($PluginMgr->pluginReady("CalendarEvents")) {
         $EventsPlugin = $PluginMgr->getPlugin("CalendarEvents");
         if ($ItemType == $EventsPlugin->getSchemaId()) {
             $CalendarFeedNoticeHtml = "{{P-CALENDARFEED-FEEDNOTICE}}";

@@ -11,12 +11,15 @@
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
+$AF = ApplicationFramework::getInstance();
+
 if (User::getCurrentUser()->isLoggedIn()) {
-    ApplicationFramework::getInstance()->setJumpToPage("Preferences");
+    $AF->setJumpToPage("Preferences");
 }
 
-PageTitle("Account Not Activated");
+$AF->setPageTitle("Account Not Activated");
 
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Account Not Activated</h1>

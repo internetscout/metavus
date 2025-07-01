@@ -3,32 +3,37 @@
 #   FILE:  AddFolder.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
+
+namespace Metavus;
+
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\Folders\FolderFactory;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
-# check authorization and setup HTML suppression and page redirection
-use Metavus\Plugins\Folders\Common;
-use Metavus\Plugins\Folders\Folder;
-use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\User;
-use ScoutLib\StdLib;
-
-if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
+# make sure a user is logged in
+if (!CheckAuthorization()) {
     return;
 }
 
-$FolderName = StdLib::getArrayValue($_GET, "FolderName");
+# go back to ManageFolders when we're done
+ApplicationFramework::getInstance()
+    ->setJumpToPage("P_Folders_ManageFolders");
 
-# can't do anything if there isn't a folder name to work with
+# nothing to do when no folder name provided
+$FolderName = $_GET["FolderName"] ?? "";
 if (!strlen($FolderName)) {
     return;
 }
 
-$FolderFactory = new FolderFactory(User::getCurrentUser()->Id());
-$ResourceFolder = $FolderFactory->GetResourceFolder();
+$User = User::getCurrentUser();
+$FolderFactory = new FolderFactory($User->id());
+$ResourceFolder = $FolderFactory->getResourceFolder();
 
-$NewFolder = $FolderFactory->CreateFolder("Resource", $FolderName);
-$ResourceFolder->PrependItem($NewFolder);
+$NewFolder = $FolderFactory->createFolder("Resource", $FolderName);
+$ResourceFolder->prependItem($NewFolder);

@@ -1135,11 +1135,6 @@ class Record extends Item
     {
         $Field = $this->normalizeFieldArgument($Field);
 
-        # return no value found if we don't have a valid field
-        if (!($Field instanceof MetadataField)) {
-            return false;
-        }
-
         # get the value
         $Value = $this->get($Field);
 
@@ -1279,11 +1274,6 @@ class Record extends Item
     public function set($Field, $NewValue, bool $Reset = false)
     {
         $Field = $this->normalizeFieldArgument($Field);
-
-        # return if we don't have a valid field
-        if (!($Field instanceof MetadataField)) {
-            return;
-        }
 
         if ($Field->schemaId() != $this->getSchemaId()) {
             throw new Exception("Attempt to set a value for a field "
@@ -2038,7 +2028,7 @@ class Record extends Item
      */
     public function userCanModify($User)
     {
-        $CheckFn = "UserCan".($this->isTempRecord() ? "Author" : "Edit");
+        $CheckFn = "userCan".($this->isTempRecord() ? "Author" : "Edit");
         return $this->$CheckFn($User);
     }
 
@@ -2110,7 +2100,7 @@ class Record extends Item
      */
     public function userCanModifyField($User, $FieldOrFieldName)
     {
-        $CheckFn = "UserCan".(($this->isTempRecord()) ? "Author" : "Edit")."Field";
+        $CheckFn = "userCan".(($this->isTempRecord()) ? "Author" : "Edit")."Field";
 
         return $this->$CheckFn($User, $FieldOrFieldName);
     }
@@ -2125,7 +2115,7 @@ class Record extends Item
         PrivilegeSet::clearCaches();
         RecordFactory::clearStaticCaches();
 
-        unset($this->PermissionCache);
+        $this->PermissionCache = [];
     }
 
     # --- Utility Methods ----------------------------------------------------
@@ -2290,7 +2280,7 @@ class Record extends Item
     private static $Schemas;
     private static $WasPublic = [];
 
-    protected $PermissionCache;
+    protected $PermissionCache = [];
 
     # ---- Field Setting Methods ---------------------------------------------
 

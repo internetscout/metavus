@@ -3,13 +3,12 @@
 #   FILE:  OAIServer.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2009-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\OAIPMHServer;
-
 use Metavus\MetadataSchema;
 use Metavus\Qualifier;
 use Metavus\QualifierFactory;
@@ -41,7 +40,7 @@ class OAIServer extends \ScoutLib\OAIServer
         # for each defined format
         foreach ($Formats as $FormatName => $Format) {
             # add format to supported list
-            $this->AddFormat(
+            $this->addFormat(
                 $FormatName,
                 $Format["TagName"],
                 (isset($Format["SchemaNamespace"])
@@ -59,7 +58,7 @@ class OAIServer extends \ScoutLib\OAIServer
             # set element mappings
             foreach ($Format["Elements"] as $ElementName => $FieldId) {
                 if ($FieldId != -1) {
-                    parent::SetFieldMapping($FormatName, $FieldId, $ElementName);
+                    parent::setFieldMapping($FormatName, $FieldId, $ElementName);
                 }
             }
 
@@ -67,9 +66,9 @@ class OAIServer extends \ScoutLib\OAIServer
             foreach ($Format["Qualifiers"] as $OAIQualifierName => $QualifierId) {
                 if ($QualifierId >= 0) {
                     $Qualifier = new Qualifier($QualifierId);
-                    parent::SetQualifierMapping(
+                    parent::setQualifierMapping(
                         $FormatName,
-                        $Qualifier->Name(),
+                        $Qualifier->name(),
                         $OAIQualifierName
                     );
                 }
@@ -88,10 +87,10 @@ class OAIServer extends \ScoutLib\OAIServer
         # retrieve ID for local field
         $Schema = new MetadataSchema();
         $LocalField = $Schema->getField($LocalFieldName);
-        $LocalFieldId = $LocalField->Id();
+        $LocalFieldId = $LocalField->id();
 
         # return stored value
-        return parent::GetFieldMapping($FormatName, (string)$LocalFieldId);
+        return parent::getFieldMapping($FormatName, (string)$LocalFieldId);
     }
     /**
      * set mapping of local field to OAI field (overloads parent method)
@@ -104,10 +103,10 @@ class OAIServer extends \ScoutLib\OAIServer
         # retrieve ID for local field
         $Schema = new MetadataSchema();
         $LocalField = $Schema->getField($LocalFieldName);
-        $LocalFieldId = $LocalField->Id();
+        $LocalFieldId = $LocalField->id();
 
         # call parent method
-        parent::SetFieldMapping($FormatName, (string)$LocalFieldId, $OAIFieldName);
+        parent::setFieldMapping($FormatName, (string)$LocalFieldId, $OAIFieldName);
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------

@@ -10,7 +10,6 @@
 
 namespace Metavus;
 use Exception;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
@@ -180,7 +179,7 @@ class UserFactory extends \ScoutLib\UserFactory
         # if this email address is very short, we'll pad it with some random
         # characters
         if (strlen($TrialName) < 2) {
-            $TrialName .= GetRandomCharacters(2, "/[^a-hj-np-z0-9]/");
+            $TrialName .= StdLib::getRandomCharacters(2, "abcdefghjklmnpqrstuvwxyz0123456789");
         }
 
         # see if the specified name exists
@@ -191,7 +190,7 @@ class UserFactory extends \ScoutLib\UserFactory
         while ($UFactory->userNameExists($Name)) {
             $Name = self::appendSuffix(
                 $TrialName,
-                GetRandomCharacters(2)
+                StdLib::getRandomCharacters(2)
             );
         }
 
@@ -303,7 +302,7 @@ class UserFactory extends \ScoutLib\UserFactory
 
         # if we didn't ask for a password, use a randomly generated one
         if ($GenerateRandomPassword) {
-            $Values["Password"] = GetRandomCharacters(12);
+            $Values["Password"] = User::generateRandomPassword();
             $Values["PasswordAgain"] = $Values["Password"];
             $ErrorsToIgnore = [
                 User::U_ILLEGALPASSWORD,

@@ -3,7 +3,7 @@
 #   FILE:  EditClassification.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -12,16 +12,8 @@ namespace Metavus;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
-
-
-# ----- MAIN -----------------------------------------------------------------
-
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_CLASSADMIN)) {
+if (!User::requirePrivilege(PRIV_CLASSADMIN)) {
     return;
 }
 
@@ -121,7 +113,7 @@ switch ($ButtonPushed) {
         $H_Class->recalcDepthAndFullName();
 
         # go back to EditClassifications
-        $AF->SetJumpToPage("EditClassifications" . $H_JumpParams);
+        $AF->setJumpToPage("EditClassifications" . $H_JumpParams);
         return;
     case "Delete Classification":
         # display confirm delete page
@@ -141,7 +133,7 @@ switch ($ButtonPushed) {
             $Child->destroy(false, true, true);
         }
         $H_Class->destroy(false, true, true);
-        $AF->SetJumpToPage("EditClassifications" . $H_JumpParams);
+        $AF->setJumpToPage("EditClassifications" . $H_JumpParams);
         return;
     case "Cancel":
         # if we're cancelling deletion, go back to EditClassification
@@ -149,6 +141,6 @@ switch ($ButtonPushed) {
         if (array_key_exists("F_ClassificationId", $_POST)) {
             break;
         }
-        $AF->SetJumpToPage("EditClassifications" . $H_JumpParams);
+        $AF->setJumpToPage("EditClassifications" . $H_JumpParams);
         return;
 }

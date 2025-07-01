@@ -3,7 +3,7 @@
 #   FILE:  RestHelper.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -91,7 +91,12 @@ class RestHelper
         }
 
         # set target endpoint URL for calls
-        curl_setopt($this->Context, CURLOPT_URL, $this->Url.$UrlSuffix);
+        $EndpointUrl = $this->Url.$UrlSuffix;
+        if (empty($EndpointUrl) || !filter_var($EndpointUrl, FILTER_VALIDATE_URL)) {
+            throw new Exception("Target endpoint URL appears invalid (\""
+                    .$EndpointUrl."\").");
+        }
+        curl_setopt($this->Context, CURLOPT_URL, $EndpointUrl);
 
         # make sure any minimum required time between calls has elapsed
         $this->ensureMinimumTimeBetweenCalls();

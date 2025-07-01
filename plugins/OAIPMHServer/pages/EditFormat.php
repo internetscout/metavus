@@ -3,17 +3,18 @@
 #   FILE:  EditFormat.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\File;
 use Metavus\Plugins\OAIPMHServer;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -230,13 +231,13 @@ if (isset($_POST["H_FormatName"])) {
     switch ($_POST["Submit"]) {
         case "Cancel":
             # head back to configuration editing page
-            $AF->SetJumpToPage("P_OAIPMHServer_EditConfig");
+            $AF->setJumpToPage("P_OAIPMHServer_EditConfig");
             break;
 
         case "Save Changes":
             # head back to configuration editing page only if no errors found
             if (!isset($H_ErrorMessages)) {
-                $AF->SetJumpToPage("P_OAIPMHServer_EditConfig");
+                $AF->setJumpToPage("P_OAIPMHServer_EditConfig");
             }
             break;
 
@@ -257,7 +258,7 @@ if (isset($_POST["H_FormatName"])) {
 
         case "Delete Format":
             DeleteFormat($FormatName);
-            $AF->SetJumpToPage("P_OAIPMHServer_EditConfig");
+            $AF->setJumpToPage("P_OAIPMHServer_EditConfig");
             break;
 
         case "Delete Item":
@@ -281,14 +282,14 @@ if (isset($_POST["H_FormatName"])) {
                 if (!(is_dir("tmp") && is_writeable("tmp"))) {
                     $H_ErrorMessages[] = "tmp does not exist or is not writeable, ".
                         "contact the site administrator with this error.";
-                } elseif (!is_dir(File::GetStorageDirectory())
-                        || !is_writeable(File::GetStorageDirectory())) {
-                    $H_ErrorMessages[] = File::GetStorageDirectory()
+                } elseif (!is_dir(File::getStorageDirectory())
+                        || !is_writeable(File::getStorageDirectory())) {
+                    $H_ErrorMessages[] = File::getStorageDirectory()
                             ." does not exist or is not writeable,"
                             ." contact the site administrator with this error.";
                 } else {
                     $TmpFileName = $_FILES["F_XsltFile"]["tmp_name"];
-                    $NewFile = File::Create(
+                    $NewFile = File::create(
                         $TmpFileName,
                         $_FILES["F_XsltFile"]["name"]
                     );
@@ -307,7 +308,7 @@ if (isset($_POST["H_FormatName"])) {
                         }
                     } else {
                         # Save worked
-                        $Format["XsltFileId"] = $NewFile->Id();
+                        $Format["XsltFileId"] = $NewFile->id();
                         SaveChanges($Format, $FormatName);
                     }
 
@@ -352,7 +353,7 @@ if (isset($_POST["H_FormatName"])) {
             }
         } else {
             # return to configuration editing page
-            $AF->SetJumpToPage("P_OAIPMHServer_EditConfig");
+            $AF->setJumpToPage("P_OAIPMHServer_EditConfig");
         }
     }
 }

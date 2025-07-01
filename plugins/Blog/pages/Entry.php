@@ -3,7 +3,7 @@
 #   FILE:  Entry.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -28,7 +28,7 @@ $H_State = "Error";
 $EntryId = StdLib::getArrayValue($_GET, "ID");
 
 # if the entry ID is invalid
-if (!is_numeric($EntryId) || !Record::ItemExists((int)$EntryId)) {
+if (!is_numeric($EntryId) || !Record::itemExists((int)$EntryId)) {
     $AF->doNotCacheCurrentPage();
     $H_State = "Invalid ID";
     return;
@@ -41,11 +41,11 @@ if (Record::getSchemaForRecord((int)$EntryId) != $H_Blog->getSchemaId()) {
 }
 
 $H_Entry = new Entry((int)$EntryId);
-$H_Blog->SetCurrentBlog($H_Entry->GetBlogId());
+$H_Blog->setCurrentBlog($H_Entry->getBlogId());
 
 # if the entry hasn't been published yet and the user can't view unpublished
 # entries
-$CanView = $H_Entry->UserCanView(User::getCurrentUser());
+$CanView = $H_Entry->userCanView(User::getCurrentUser());
 
 # set cache expiration time (if any) for cached version of page
 $ExpDate = $H_Entry->getViewCacheExpirationDate();
@@ -59,10 +59,10 @@ if (!$CanView) {
 }
 
 # get the blog entry's metrics
-$H_Metrics = $H_Blog->GetBlogEntryMetrics($H_Entry);
+$H_Metrics = $H_Blog->getBlogEntryMetrics($H_Entry);
 
 # record an event
-$H_Blog->RecordBlogEntryView($H_Entry);
+$H_Blog->recordBlogEntryView($H_Entry);
 
 # if this entry is not from an "Email Blog" and someone tries to notify, jump
 # back to this page with error
@@ -77,7 +77,7 @@ if (isset($_GET["Error"])) {
 $H_State = "OK";
 
 # signal view of full blog entry info
-$AF->SignalEvent(
+$AF->signalEvent(
     "EVENT_FULL_RECORD_VIEW",
-    ["ResourceId" => $H_Entry->Id()]
+    ["ResourceId" => $H_Entry->id()]
 );

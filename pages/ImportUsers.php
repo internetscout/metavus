@@ -3,13 +3,14 @@
 #   FILE:  ImportUsers.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 use Metavus\File;
 use Metavus\FormUI;
+use Metavus\User;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
@@ -24,7 +25,7 @@ use ScoutLib\ApplicationFramework;
 function validateFileType(string $FieldName, array $FieldValue)
 {
     $File = new File(intval($FieldValue[0]));
-    if (preg_match("/\.(tsv)|(csv)|(txt)$/", $File->Name()) && $File->GetType() == "text/plain") {
+    if (preg_match("/\.(tsv)|(csv)|(txt)$/", $File->name()) && $File->getType() == "text/plain") {
         return null;
     } else {
         return "Incorrect file type.";
@@ -34,7 +35,7 @@ function validateFileType(string $FieldName, array $FieldValue)
 # ----- MAIN -----------------------------------------------------------------
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
@@ -57,17 +58,17 @@ $FormFields = [
 $H_FormUI = new FormUI($FormFields);
 
 if (isset($_SESSION["ErrorMessage"])) {
-    FormUI::LogError($_SESSION["ErrorMessage"]);
+    FormUI::logError($_SESSION["ErrorMessage"]);
     unset($_SESSION["ErrorMessage"]);
 }
 
 switch (StdLib::getFormValue($H_FormUI->getButtonName())) {
     case "Upload":
-        $H_FormUI->HandleUploads();
+        $H_FormUI->handleUploads();
         break;
 
     case "Delete":
-        $H_FormUI->HandleDeletes();
+        $H_FormUI->handleDeletes();
         break;
 
     default:
@@ -79,24 +80,24 @@ $ButtonPushed = StdLib::getFormValue("Submit");
 switch ($ButtonPushed) {
     case "Begin Import":
         # if the input provided was valid
-        if ($H_FormUI->ValidateFieldInput() == 0) {
+        if ($H_FormUI->validateFieldInput() == 0) {
             # get updated field values
-            $FieldValues = $H_FormUI->GetNewValuesFromForm();
+            $FieldValues = $H_FormUI->getNewValuesFromForm();
 
             # set session values for execute page
-            $Path = (new File($FieldValues["File"][0]))->GetNameOfStoredFile();
+            $Path = (new File($FieldValues["File"][0]))->getNameOfStoredFile();
 
             $_SESSION["FileId"] = $FieldValues["File"][0];
 
             # go to ImportUsersExecute
-            $AF->SetJumpToPage(
+            $AF->setJumpToPage(
                 "index.php?P=ImportUsersExecute&EN=".$FieldValues["Encrypt"]."&TF=".$Path
             );
         }
         break;
 
     case "Cancel":
-        $AF->SetJumpToPage("SysAdmin");
+        $AF->setJumpToPage("SysAdmin");
         break;
 
     default:

@@ -6,12 +6,21 @@
 #   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\HtmlButton;
+namespace Metavus;
+
+use Exception;
 
 # ----- SETUP ----------------------------------------------------------------
-$SafeId = defaulthtmlentities($Id);
-$SafeName = defaulthtmlentities($Name);
+if (isset($H_Error)) {
+    print "<p class='alert alert-danger'>".$H_Error."</p>";
+    return;
+}
+
+if (!isset($H_Folder)) {
+    throw new Exception("H_Folder is not set.");
+}
 
 $DeleteButton = new HtmlButton("Delete");
 $DeleteButton->setIcon("Delete.svg");
@@ -21,20 +30,14 @@ $CancelButton->setIcon("Cross.svg");
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
-
 <h1>Delete Folder</h1>
 
 <p>
-  Are you sure you want to delete <i><?= $SafeName; ?></i>?
+    Are you sure you want to delete <i><?= defaulthtmlentities($H_Folder->name()); ?></i>?
 </p>
 
-<form method="get" action="index.php">
-  <input type="hidden" name="P" value="P_Folders_DeleteFolder" />
-  <input type="hidden" name="FolderId" value="<?= $SafeId; ?>" />
-  <?PHP if ($ReturnTo) { ?>
-    <input type="hidden" name="ReturnTo" value="<?= $ReturnTo; ?>" />
-  <?PHP } ?>
-
+<form method="post" action="index.php?P=P_Folders_DeleteFolder">
+  <input type="hidden" name="FolderId" value="<?= $H_Folder->id(); ?>" />
   <?= $DeleteButton->getHtml(); ?>
   <?= $CancelButton->getHtml(); ?>
 </form>

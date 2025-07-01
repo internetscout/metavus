@@ -3,15 +3,16 @@
 #   FILE:  ViewMessage.php (Mailer plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\Plugins\Mailer\StoredEmail;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 # check that user should be on this page
-CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
 $AF = ApplicationFramework::getInstance();
 $H_Errors = [];

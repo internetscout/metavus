@@ -167,6 +167,17 @@ class Image extends Item
     }
 
     /**
+     * Set default alt text to be used if image doesn't have defined alt text.
+     * This is not stored; it is only used on current object instance.
+     * @param string $Text The string to use as alt text.
+     * @return void
+     */
+    public function setDefaultAltText(string $Text): void
+    {
+        $this->DefaultAltText = $Text;
+    }
+
+    /**
      * Get the format of this image.
      * @return int Image format as a \ScoutLib\ImageFile::IMGTYPE_ constant
      */
@@ -244,8 +255,9 @@ class Image extends Item
             );
         }
 
+        $AltText = $this->altText();
         $SafeAltText = htmlspecialchars(
-            $this->altText(),
+            (($AltText !== "") ? $AltText : $this->DefaultAltText),
             ENT_QUOTES | ENT_HTML5
         );
 
@@ -679,6 +691,7 @@ class Image extends Item
 
     private $FileName = null;
     private $MimeType = null;
+    private $DefaultAltText = "";
 
     private static $ImageSizes = [];
     private static $FilePathFallbackPrefix;

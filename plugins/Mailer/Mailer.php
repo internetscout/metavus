@@ -277,7 +277,7 @@ class Mailer extends Plugin
         $G_Templates = $this->getConfigSetting("Templates");
 
         # get next template ID
-        if (($G_Templates === null) || (count($G_Templates) == 0)) {
+        if (($G_Templates === null) || (count(array_keys($G_Templates)) == 0)) {
             $TemplateId = 0;
         } else {
             $TemplateId = (int)max(array_keys($G_Templates)) + 1;
@@ -1071,7 +1071,7 @@ class Mailer extends Plugin
     {
         $PluginMgr = PluginManager::getInstance();
         # the social media plugin needs to be available
-        if (!$PluginMgr->pluginEnabled("SocialMedia")) {
+        if (!$PluginMgr->pluginReady("SocialMedia")) {
             return null;
         }
 

@@ -13,8 +13,8 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Unsubscribe from blog entry notifications");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Unsubscribe from blog entry notifications");
 
 # get the blog plugin
 $Blog = Blog::getInstance();
@@ -24,4 +24,4 @@ $Blog->SetCurrentBlog($Blog->getConfigSetting("EmailNotificationBlog"));
 $Blog->ChangeNotificationSubscription(User::getCurrentUser(), false);
 
 # go back to the blog landing page
-ApplicationFramework::getInstance()->setJumpToPage($Blog->blogUrl());
+$AF->setJumpToPage($Blog->blogUrl());

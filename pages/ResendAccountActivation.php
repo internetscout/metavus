@@ -3,13 +3,12 @@
 #   FILE:  ResendAccountActivation.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2006-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2006-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\StdLib;
 
 # retrieve user name or e-mail address from URL or form
@@ -26,7 +25,7 @@ $H_AccountAlreadyActivated = false;
 $TargetUser = null;
 if (strlen($H_UserName) && (new UserFactory())->userNameExists($H_UserName)) {
     # attempt to find user with specified name
-    $H_UserName = User::NormalizeUserName($H_UserName);
+    $H_UserName = User::normalizeUserName($H_UserName);
     $TargetUser = new User($H_UserName);
     $H_NumUsersFound = 1;
 } elseif (strlen($H_EMailAddress)) {
@@ -34,8 +33,8 @@ if (strlen($H_UserName) && (new UserFactory())->userNameExists($H_UserName)) {
 
     # attempt to find user with specified e-mail address
     $Factory = new UserFactory();
-    $H_EMailAddress = User::NormalizeEMailAddress($H_EMailAddress);
-    $MatchingUsers = $Factory->GetMatchingUsers($H_EMailAddress, "EMail");
+    $H_EMailAddress = User::normalizeEmailAddress($H_EMailAddress);
+    $MatchingUsers = $Factory->getMatchingUsers($H_EMailAddress, "EMail");
     $H_NumUsersFound = count($MatchingUsers);
     if ($H_NumUsersFound == 1) {
         $TargetUser = new User(reset($MatchingUsers)["UserName"]);
@@ -51,7 +50,7 @@ if ($TargetUser instanceof User) {
     $H_UserFound = true;
 
     # if user account was already activated
-    if ($TargetUser->IsActivated()) {
+    if ($TargetUser->isActivated()) {
         # set flag indicating account already activated
         $H_AccountAlreadyActivated = true;
     } else {

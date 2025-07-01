@@ -11,6 +11,7 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -31,7 +32,9 @@ if (!isset($H_Error)) {
     }
 }
 
-PageTitle("Edit User Information");
+$AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle("Edit User Information");
 
 $SaveButton = new HtmlButton("Save");
 $SaveButton->setIcon("Disk.svg");

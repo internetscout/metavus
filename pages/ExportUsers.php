@@ -3,24 +3,26 @@
 #   FILE:  ExportUsers.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\PrivilegeFactory;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Export Users");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Export Users");
 
 # check if current user is authorized
-CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN);
+User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN);
 
 # if user clicked away while doing export, these variales would not get unset
 foreach (array("FileName", "UserCount", "ExportPath") as $Val) {

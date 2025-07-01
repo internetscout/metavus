@@ -10,8 +10,9 @@
 
 namespace Metavus;
 
-use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
 
 /**
  * User interface to print resource comments.
@@ -66,11 +67,13 @@ class MessageUI
             $SafeDateEdited = "";
         }
 
+        $PluginMgr = PluginManager::getInstance();
+
         $CanMarkSpammers = $User->hasPriv(PRIV_SYSADMIN, PRIV_USERADMIN);
         $DisplayEmail = strlen($PosterEmail)
             && $User->isLoggedIn()
-            && (!$GLOBALS["G_PluginManager"]->pluginEnabled("BotDetector")
-                || !$GLOBALS["G_PluginManager"]->getPlugin("BotDetector")->checkForSpamBot());
+            && (!$PluginMgr->pluginReady("BotDetector")
+                || !$PluginMgr->getPlugin("BotDetector")->checkForSpamBot());
 
         $SafeSubject = defaulthtmlentities($Message->subject());
         $SafeBody = SystemConfiguration::getInstance()->getBool("CommentsAllowHTML")

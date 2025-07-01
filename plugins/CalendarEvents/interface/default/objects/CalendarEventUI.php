@@ -83,7 +83,7 @@ class CalendarEventUI
         $HasMap = false;
         if (!(is_null($Coordinates[GoogleMaps::POINT_LATITUDE]) &&
           is_null($Coordinates[GoogleMaps::POINT_LONGITUDE])) &&
-          $PluginMgr->pluginEnabled("GoogleMaps")) {
+          $PluginMgr->pluginReady("GoogleMaps")) {
             $GMaps = GoogleMaps::getInstance();
             $SafeMapUrl = $GMaps->googleMapsUrl($Event->locationString());
             $HasMap = true;
@@ -553,16 +553,18 @@ class CalendarEventUI
             isset($EventCounts[$CurrentMonthKey])
             && $EventCounts[$CurrentMonthKey] > 0;
 
-        $PreviousMonthButton = new HtmlButton("← $SafePreviousMonthName");
+        $PreviousMonthButton = new HtmlButton("&larr; " . $SafePreviousMonthName);
         $PreviousMonthButton->setLink($CalendarEventsPlugin->getUrl($PreviousMonthTimestamp));
+        $PreviousMonthButton->makeHtmlLabel();
 
         $TodayButton = new HtmlButton("Today");
         $TodayButton->setSize(HtmlButton::SIZE_SMALL);
         $TodayButton->addClass("calendar_events-go_to_today");
         $TodayButton->setLink($CalendarEventsPlugin->eventsListUrl([], "today"));
 
-        $NextMonthButton = new HtmlButton("$SafeNextMonthName →");
+        $NextMonthButton = new HtmlButton($SafeNextMonthName . " &rarr;");
         $NextMonthButton->setLink($CalendarEventsPlugin->getUrl($NextMonthTimestamp));
+        $NextMonthButton->makeHtmlLabel();
 
         // @codingStandardsIgnoreStart
     ?>

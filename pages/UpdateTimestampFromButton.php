@@ -3,10 +3,10 @@
 #   FILE:  UpdateTimestampFromButton.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
-#   @scout:phpstan
+# @scout:phpstan
 
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
@@ -19,7 +19,7 @@ $User = User::getCurrentUser();
 
 # check that required params were provided
 if (!isset($_GET["ID"]) || !isset($_GET["FI"])) {
-        CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }
 
@@ -29,7 +29,7 @@ $FieldId = $_GET["FI"];
 
 # bail if the resource is invalid
 if (!Record::itemExists($ResourceId)) {
-    CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }
 
@@ -41,7 +41,7 @@ $Resource = new Record($ResourceId);
 if (!$Resource->userCanModify($User) ||
     !$Resource->getSchema()->fieldExists($FieldId) ||
     !$Resource->userCanModifyField($User, $FieldId)) {
-    CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }
 
@@ -50,17 +50,17 @@ $Field = $Resource->getSchema()->getField($FieldId);
 
 # bail if field doesn't have an update button
 if ($Field->updateMethod() != MetadataField::UPDATEMETHOD_BUTTON) {
-    CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }
 
 # do the update
-switch ($Field->Type()) {
+switch ($Field->type()) {
     case MetadataSchema::MDFTYPE_TIMESTAMP:
-        $Resource->Set($Field, "now");
+        $Resource->set($Field, "now");
         break;
     case MetadataSchema::MDFTYPE_USER:
-        $Resource->Set($Field, $User);
+        $Resource->set($Field, $User);
         break;
     default:
         throw new Exception("Unsupported field type for update button");

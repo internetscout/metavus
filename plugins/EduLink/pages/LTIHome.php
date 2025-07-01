@@ -3,7 +3,7 @@
 #   FILE:  LTIHome.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -21,10 +21,10 @@
 #   $H_BaseLink - Base link for the current page
 
 namespace Metavus;
-
 use Exception;
 use Metavus\Plugins\EduLink;
 use Metavus\Plugins\EduLink\ResourceSelectionUI;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\UrlChecker;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -121,7 +121,9 @@ if ($ButtonPushed == "Select") {
             ->set_url($LinkUrl);
     }
 
-    $AF->suppressHTMLOutput();
+    $Plugin->recordRecordSelection($H_LaunchId, $H_SelectedRecordIds);
+
+    $AF->suppressHtmlOutput();
 
     // at-prefix to hide a warning from w/in the LTI libraries
     @$DeepLink->output_response_form([$Reply], $Plugin->getKeyId());
@@ -191,7 +193,6 @@ if (!$H_SearchParamsProvided) {
 } else {
     $H_Records = $H_AllRecords;
 }
-
 $H_FacetUI = new SearchFacetUI(
     $H_SearchParams,
     array_fill_keys($H_Records, "1") # expects [RecordId => SearchScore, ...] form
@@ -228,3 +229,16 @@ if (strlen($FacetUrlParams) > 0) {
 }
 
 $H_TransportUI->baseLink($H_BaseLink);
+
+if ($H_SearchParamsProvided) {
+    $PageNo = (int)floor(
+        $H_TransportUI->startingIndex() /
+            $H_TransportUI->itemsPerPage()
+    );
+    $Plugin->recordSearch(
+        $H_LaunchId,
+        $H_SearchParams,
+        $PageNo,
+        $H_TransportUI->itemCount()
+    );
+}

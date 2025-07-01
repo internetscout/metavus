@@ -3,7 +3,7 @@
 #   FILE:  Login.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -16,4 +16,4 @@ use ScoutLib\ApplicationFramework;
 $AF = ApplicationFramework::getInstance();
 $AF->addMetaTag(["robots" => "noindex"]);
 
-$AF->DoNotCacheCurrentPage();
+$AF->doNotCacheCurrentPage();

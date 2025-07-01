@@ -36,7 +36,8 @@ foreach ($Msgs as $Msg) {
 # ----- STATE: ADDING/EDITING ------------------------------------------------
 
 $BodyKeywords = [
-    "PORTALNAME" => "portal name (from <a href='index.php?P=EditInterfaceConfig'>Interface Configuration</a>)",
+    "PORTALNAME" => "portal name (from <a
+    href='index.php?P=EditInterfaceConfig'>Interface Configuration</a>)",
     "ADMINEMAIL" => "administrator email address (from <a
     href='index.php?P=EditInterfaceConfig'>Interface Configuration</a>)",
     "BASEURL" => "base URL for the site (useful in constructing links in the message)",
@@ -105,10 +106,10 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
 
     # add appropriate content-area title
     if ($H_DisplayMode == "Adding") {
-        PageTitle("Add Email Message Template");
+        $AF->setPageTitle("Add Email Message Template");
         ?><h1>Adding New Template</h1><?PHP
     } else {
-        PageTitle("Edit Email Message Template");
+        $AF->setPageTitle("Edit Email Message Template");
         ?><h1>Editing Message Template</h1><?PHP
     }
     if (isset($H_Msgs)) {
@@ -285,7 +286,7 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
     $AddTemplateButton->setIcon("Plus.svg");
     $AddTemplateButton->makeSubmitButton();
 
-    PageTitle("Email Message Templates");
+    $AF->setPageTitle("Email Message Templates");
     if (isset($H_Msgs)) {
         DisplayMessages($H_Msgs);
     }
@@ -344,7 +345,7 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
     $CancelButton->setIcon("Cross.svg");
     $CancelButton->makeSubmitButton();
 
-    PageTitle("Confirm Email Message Template Deletion");
+    $AF->setPageTitle("Confirm Email Message Template Deletion");
     ?>
     <h1>Confirm Template Deletion</h1>
     <input type="hidden" name="F_Id" value="<?= $H_Id;  ?>">

@@ -37,7 +37,7 @@ class Folders extends Plugin
     public function register(): void
     {
         $this->Name = "Folders";
-        $this->Version = "1.2.1";
+        $this->Version = "1.3.0";
         $this->Description = "Allows users to organize groups of items"
                 ." using folders.";
         $this->Author = "Internet Scout Research Group";
@@ -317,10 +317,8 @@ class Folders extends Plugin
      * @param string $PageName The name of the page that signaled the event.
      * @param string $Location Describes the location on the page where the
      *      insertion point occurs.
-     * @param array $Context Specific info (e.g."ReturnTo" address) that are needed to
-     *      generate HTML.
+     * @param array $Context Specific info needed to generate HTML.
      *      Context must include:
-     *        $Context["ReturnToString"] the return to string for the button;
      *        $Context["SearchParametersForUrl"] the search groups that the search results
      *          that the button adds to the folder;
      *        $Context["SortParamsForUrl"] the sorting parameters for the search results
@@ -345,7 +343,6 @@ class Folders extends Plugin
         }
 
         $MaxResourcesPerAdd = PHP_INT_MAX;
-        $ReturnToString = $Context["ReturnToString"];
         $SearchParameters = $Context["SearchParameters"];
         $SortParamsForUrl = $Context["SortParamsForUrl"];
         $NumberSearchResults = $Context["NumberSearchResults"];
@@ -357,38 +354,19 @@ class Folders extends Plugin
             }
             $NumberSearchResults = $NewNumberSearchResults;
         }
-
-        $SearchParametersForUrl = $SearchParameters->UrlParameterString();
-
         # we only proceed if there are search results present
         if (!$Context["NumberSearchResults"]) {
             return;
         }
 
-        $TooManySearchResults = false;
-
-        if ($NumberSearchResults > $MaxResourcesPerAdd) {
-            $TooManySearchResults = true;
-        }
-
-        $AddAllURL = "index.php?P=P_Folders_AddSearchResults&RF=1";
-
-        if ($SearchParametersForUrl) {
-            $AddAllURL = $AddAllURL."&".$SearchParametersForUrl;
-        }
-
-        // add item type
-        if (isset($Context["ItemType"])) {
-            $AddAllURL = $AddAllURL."&ItemType=".$Context["ItemType"];
-        }
-
-        $AddAllURL = $AddAllURL."&ReturnTo=".$ReturnToString;
+        $TooManySearchResults = $NumberSearchResults > $MaxResourcesPerAdd ?
+            true : false;
 
         # call out to the external display function to hand off processing
         FolderDisplayUI::insertAllButtonHTML(
             $TooManySearchResults,
             $MaxResourcesPerAdd,
-            $AddAllURL
+            $SearchParameters->UrlParameterString()
         );
     }
 
@@ -396,10 +374,8 @@ class Folders extends Plugin
      * Insert the button "Remove All From Folder" to HTML
      * @param string $PageName Name of page that signaled the event
      * @param string $Location Location on page where insertion point occurs
-     * @param array $Context Specific info (e.g."ReturnTo" address) that are needed to
-     *      generate HTML.
+     * @param array $Context Specific info needed to generate HTML.
      *      Context must include:
-     *        $Context["ReturnToString"] the return to string for the button;
      *        $Context["SearchParametersForUrl"] the search parameters that
      *              yield the search results to remove from the folder;
      *        $Context["NumberSearchResults"] the number of search results
@@ -421,16 +397,6 @@ class Folders extends Plugin
                 return;
         }
 
-        $ReturnToString = $Context["ReturnToString"];
-        $SearchParametersForUrl = $Context["SearchParameters"]->UrlParameterString();
-        $RemoveAllURL = "index.php?P=P_Folders_RemoveSearchResults&RF=1";
-
-        if ($SearchParametersForUrl) {
-            $RemoveAllURL .= "&".$SearchParametersForUrl;
-        }
-
-        $RemoveAllURL .= "&ReturnTo=".$ReturnToString;
-
         # assume none of the search results are in the folder
         $ResultsInFolder = false;
         if (array_key_exists("SearchResults", $Context)) {
@@ -443,7 +409,10 @@ class Folders extends Plugin
         }
 
         # call out to the external display function to hand off processing
-        FolderDisplayUI::insertRemoveAllButtonHTML($RemoveAllURL, $ResultsInFolder);
+        FolderDisplayUI::insertRemoveAllButtonHTML(
+            $Context["SearchParameters"]->UrlParameterString(),
+            $ResultsInFolder
+        );
     }
 
     /**
@@ -538,8 +507,7 @@ class Folders extends Plugin
      * @param string $PageName The name of the page that signaled the event.
      * @param string $Location Describes the location on the page where the
      *      insertion point occurs.
-     * @param array $Context Specific info (e.g."ReturnTo" address) that are needed to
-     *      generate HTML.
+     * @param array $Context Specific info needed to generate HTML.
      *      For the buttons to work, $Context must be set and include:
      *         $Context["Resource"], the resource for which we are
      *         printing the button
@@ -577,22 +545,11 @@ class Folders extends Plugin
         $Folder = $this->getSelectedFolder();
         $FolderId = $Folder->id();
 
-        $ReturnToString = urlencode($AF->getCleanRelativeUrl());
         $InFolder = $Folder->containsItem($ResourceId);
-        $RemoveActionURL = ApplicationFramework::baseUrl()
-            ."index.php?P=P_Folders_RemoveItem&FolderId="
-            .urlencode((string)$FolderId)."&ItemId="
-            .urlencode($ResourceId)."&ReturnTo=".$ReturnToString;
-        $AddActionURL = ApplicationFramework::baseUrl()
-            ."index.php?P=P_Folders_AddItem&ItemId="
-            .urlencode($ResourceId)."&FolderId="
-            .urlencode((string)$FolderId)."&ReturnTo=".$ReturnToString;
 
         # call out to the external display function to hand off processing
         FolderDisplayUI::insertButtonHTML(
             $InFolder,
-            $AddActionURL,
-            $RemoveActionURL,
             $FolderId,
             $ResourceId,
             $Location
@@ -607,8 +564,7 @@ class Folders extends Plugin
      * @param string $PageName The name of the page that signaled the event.
      * @param string $Location Describes the location on the page where the
      *      insertion point occurs.
-     * @param array $Context Specific info (e.g."ReturnTo" address) that are needed to
-     *      generate HTML.
+     * @param array $Context Specific info needed to generate HTML.
      */
     public function insertResourceNote($PageName, $Location, $Context = null): void
     {
@@ -640,10 +596,8 @@ class Folders extends Plugin
 
         # otherwise, get the note for this item
         $ResourceNote = $Folder->noteForItem($ResourceId);
-        $ReturnToString = urlencode((ApplicationFramework::getInstance())->getCleanRelativeUrl());
         $EditResourceNoteURL = "index.php?P=P_Folders_ChangeResourceNote&FolderId="
-            . $Folder->id() . "&ItemId=" . $ResourceId . "&ReturnTo="
-            . $ReturnToString;
+            . $Folder->id() . "&ItemId=" . $ResourceId;
 
         # call out to the external display function
         FolderDisplayUI::insertResourceNote(
@@ -704,178 +658,38 @@ class Folders extends Plugin
         );
 
         $Folder = $this->getSelectedFolder();
-
-        if ($Folder->containsItem($RecordId)) {
-            $Verb = "Remove";
-            $IconName = "FolderMinus";
-            $Title = "Remove this resource from the currently selcted folder.";
-        } else {
-            $Verb = "Add";
-            $IconName = "FolderPlus";
-            $Title = "Add this resource to the currently selected folder.";
-        }
-
-        $AF = ApplicationFramework::getInstance();
-
-        $ReturnToString = urlencode($AF->getCleanRelativeUrl());
+        $InFolder = $Folder->containsItem($RecordId);
 
         $Attributes = [
             "data-itemid" => $RecordId,
             "data-folderid" => $Folder->id(),
-            "data-verb" => $Verb,
+            "onclick" => "Folders.handleResourceActionButtonClick()",
         ];
-
-        $Link = ApplicationFramework::baseUrl()
-            .'index.php?P=P_Folders_'.$Verb."Item"
-            .'&ItemId=$ID'
-            .'&FolderId='.urlencode((string)$Folder->id())
-            .'&ReturnTo='.$ReturnToString;
 
         FullRecordHelper::addButtonForPage(
-            $Verb,
-            htmlspecialchars($Link),
-            $Title,
-            $IconName,
-            "mv-folders-".strtolower($Verb)."resource",
-            $Attributes
+            "Add",
+            "",
+            "Add this resource to the currently selected folder.",
+            "FolderPlus",
+            "mv-folders-addresource",
+            $Attributes + [
+                "data-action" => "add",
+                "style" => $InFolder ? "display: none" : "",
+            ]
+        );
+
+        FullRecordHelper::addButtonForPage(
+            "Remove",
+            "",
+            "Remove this resource from currently selected folder.",
+            "FolderMinus",
+            "mv-folders-removeresource",
+            $Attributes + [
+                "data-action" => "remove",
+                "style" => $InFolder ? "" : "display: none",
+            ]
         );
     }
-
-    /* HELPER FUNCTIONS FOR ITEM MANIPULATION */
-
-    /**
-     * Takes a ReturnTo array that's set by the calling page and strips old Folders
-     * errors from the URL so they don't pile up.
-     * @param array $ReturnTo The array set based on how the calling page was reached.
-     * @return array the ReturnTo array passed in with the old
-     *     folders errors removed.
-     */
-    public static function clearPreviousFoldersErrors($ReturnTo): array
-    {
-        $ReturnQuery = [];
-        if (array_key_exists('query', $ReturnTo)) {
-            parse_str($ReturnTo['query'], $ReturnQuery);
-
-            foreach ($ReturnQuery as $key => $value) {
-                if (is_string($value) && "E_FOLDERS" == substr($value, 0, 9)) {
-                    unset($ReturnQuery[$key]);
-                }
-            }
-
-            $ReturnTo['query'] = http_build_query($ReturnQuery);
-        }
-
-        return $ReturnTo;
-    }
-
-    /**
-     * Print JSON using given information in JsonHelper format, replaces use of JsonHelper
-     * @param string $State to display, "OK" for success, "ERROR" for error
-     * @param string $Message (optional) to display
-     */
-    private static function printJson(string $State, string $Message = ""): void
-    {
-        $JsonArray = [
-            "data" => [],
-            "status" => [
-                "state" => $State,
-                "message" => $Message,
-                "numWarnings" => 0,
-                "warnings" => []
-            ]
-        ];
-        print(json_encode($JsonArray));
-    }
-
-    /**
-     * Executes the page's result response based on how the page was reached,
-     * delivering success/error via a print(json_encode) (reached with AJAX)
-     * or via the standard jump pages (not reached with AJAX)
-     * @param array $Errors Error codes incurred that are relevant to
-     *      processing, it is empty on success.
-     */
-    public static function processPageResponse($Errors): void
-    {
-        $AF = ApplicationFramework::getInstance();
-        if (ApplicationFramework::reachedViaAjax()) {
-            $AF->beginAjaxResponse();
-
-            # take success as an empty $Errors array
-            if (empty($Errors)) {
-                self::printJson("OK");
-            # else there was a failure and we see it in the error message
-            } else {
-                $ErrorMessages = [];
-
-                # get the messages for each error we incurred; if we get an array key
-                # not found it's a desired failure -- developers are responsible
-                # for defining error messages for Folders within the plugin
-                foreach ($Errors as $Error) {
-                    array_push($ErrorMessages, self::$ErrorsMaster[$Error]);
-                }
-
-                self::printJson("ERROR", implode(', ', $ErrorMessages));
-            }
-        } else {
-            # Set up the response return address:
-            # if "ReturnTo" is set, then we should return to that address
-            if (StdLib::getArrayValue($_GET, "ReturnTo", false)) {
-                $ReturnTo = parse_url($_GET['ReturnTo']);
-            # else we should return to the page which this page is being directed from
-            } elseif (isset($_SERVER["HTTP_REFERER"])) {
-                $ReturnTo = parse_url($_SERVER["HTTP_REFERER"]);
-            # return to ManageFolders page if nothing is set
-            } else {
-                $ReturnTo = parse_url(
-                    $AF->getCleanRelativeUrlForPath(
-                        "index.php?P=P_Folders_ManageFolders"
-                    )
-                );
-            }
-            if ($ReturnTo === false) {
-                throw new Exception("Parsing return URL failed.");
-            }
-
-            # clear out any previous folder errors in the params
-            $ReturnTo = self::clearPreviousFoldersErrors($ReturnTo);
-
-            # Process success or failure:
-            # take success as an empty $Errors array
-            if (empty($Errors)) {
-                if (array_key_exists('query', $ReturnTo)) {
-                    $JumpToPage = $ReturnTo['path']."?".$ReturnTo['query'];
-                } else {
-                    $JumpToPage = $ReturnTo['path'];
-                }
-                $AF->setJumpToPage($JumpToPage);
-            # else there was a failure and we see it in the error message
-            } else {
-                # we expect the messages to be retrieved on the page if we are
-                # not using Ajax, as the messages are too cumbersome for URL params
-                $ErrorsForUrl = [];
-                $Count = 0;
-
-                foreach ($Errors as $Error) {
-                    $ErrorContainer = [];
-                    $Index = 'ER'.$Count;
-                    $ErrorsForUrl[$Index] = $Error;
-                    $Count++;
-                }
-
-                $JumpToPage = $ReturnTo['path']."?".$ReturnTo['query']."&".
-                      http_build_query($ErrorsForUrl);
-                $AF->setJumpToPage($JumpToPage);
-            }
-        }
-    }
-
-    # define the error messages we use throughout the Folders plugin
-    public static $ErrorsMaster = [
-        "E_FOLDERS_NOSUCHITEM" => "That is not a valid item id.",
-        "E_FOLDERS_RESOURCENOTFOUND" => "Resource not found.",
-        "E_FOLDERS_NOSUCHFOLDER" => "Not a valid folder.",
-        "E_FOLDERS_NOTFOLDEROWNER" => "You do not own the selected folder."
-    ];
 
     /**
      * Convert passed in user to id form, or return null if no user found/user in invalid
@@ -910,6 +724,6 @@ class Folders extends Plugin
                 OwnerId      INT,
                 FolderId     INT,
                 PRIMARY KEY  (OwnerId)
-            )",
+            )"
     ];
 }

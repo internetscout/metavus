@@ -3711,7 +3711,7 @@ class MetadataField
             $Factory->recalculateAllResourceCounts();
         }
 
-        if ($NewType == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+        if ($NewType == "ControlledName") {
             $this->defaultValue(false);
         } elseif (isset($DefaultNames)) {
             # update new default value Ids if any

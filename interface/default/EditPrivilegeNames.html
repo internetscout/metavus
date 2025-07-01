@@ -10,17 +10,20 @@
 
 namespace Metavus;
 
-use ScoutLib\ApplicationFramework;
+use Exception;
+use ScoutLib\HtmlTable;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
-* Print text form entries for privileges.
-* @param int $NumberOfEntries How many entries to print.
-*/
-function PrintTextFormEntries($NumberOfEntries): void
+ * Get array of text form entries for privileges.
+ * @param int $NumberOfEntries How many entries to print.
+ * @param array $Privileges Array of privilege objects for the logged-in user.
+ * @return array Array of HTML strings for editing privileges.
+ */
+function getHtmlForPrivilegeEntries(int $NumberOfEntries, array $Privileges): array
 {
-    global $Privileges;
+    $TextFormEntries = [];
 
     # for each requested entry
     $Index = 0;
@@ -28,11 +31,13 @@ function PrintTextFormEntries($NumberOfEntries): void
         # Determine if the privilege is predefined
         if (!$Privilege->IsPredefined()) {
             # print entry and increment index
-            PrintTextFormEntry(
-                "F_PermissionText".$Index,
-                $Privilege->Name(),
-                $Privilege->Id()
-            );
+            $TextFormEntries[] = [
+                getHtmlForPrivilegeEntry(
+                    "F_PermissionText".$Index,
+                    $Privilege->Name(),
+                    $Privilege->Id()
+                )
+            ];
             $Index++;
         }
     }
@@ -40,60 +45,56 @@ function PrintTextFormEntries($NumberOfEntries): void
     # Print remaining blank entries
     for ($Index; $Index < $NumberOfEntries; $Index++) {
         $IsLast = ($Index + 1 == $NumberOfEntries) ? true : false;
-        PrintTextFormEntry("F_PermissionText".$Index, "", "", $IsLast);
+        $TextFormEntries[] = [getHtmlForPrivilegeEntry("F_PermissionText".$Index, "", "", $IsLast)];
     }
+    return $TextFormEntries;
 }
 
 /**
- * Print privilege edit row, with text entry and delete button
+ * Return privilege edit row, with text entry and delete button.
  * @param string $TextInputName Name to use for input field
  * @param string $TextInputValue Initial value to use for input field
  * @param string $TextInputId Privilege ID
  * @param boolean $IsLast If this is the last privilege field
- * @return void
+ * @return string HTML to edit a single privilege.
  */
-function PrintTextFormEntry(
+function getHtmlForPrivilegeEntry(
     string $TextInputName,
     string $TextInputValue,
     string $TextInputId,
     bool $IsLast = false
-): void {
+): string {
     $DeleteButton = new HtmlButton("Delete");
     $DeleteButton->setIcon("Delete.svg");
     $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
     $DeleteButton->addClass("DeletePrivilege");
     $DeleteButton->setName($TextInputName . "_Delete");
-    ?>
 
-<tr>
-    <td>
-        <input type="text" size="45" id="<?= $TextInputName; ?>"
-            name="<?= $TextInputName; ?>"
-            value="<?= $TextInputValue; ?>" />
-
-        <?PHP if ($IsLast !== true) { ?>
-            <?= $DeleteButton->getHtml(); ?>
-        <?PHP } ?>
-        <input type="hidden" id="<?= $TextInputName; ?>_InputId"
-            name="<?= $TextInputName; ?>_InputId"
-            value="<?= $TextInputId; ?>" />
-    </td>
-</tr>
-
-    <?PHP
+    $Html = "<input type=\"text\" size=\"45\" id=\"" . $TextInputName . "\""
+        . " name=\"" . $TextInputName . "\""
+        . " value=\"" . $TextInputValue . "\"/>"
+    ;
+    if ($IsLast !== true) {
+        $Html .= $DeleteButton->getHtml();
+    }
+    $Html .= "<input type=\"hidden\" id=\"" . $TextInputName . "_InputId\""
+        . " name=\"" . $TextInputName . "_InputId\""
+        . " value=\"" . $TextInputId . "\"/>"
+    ;
+    return $Html;
 }
 
 /**
- * @param int $Default
+ * Calculate how many privilege entries to print.
+ * @param int $Default The default number to print if user is logged-out or has no privileges.
+ * @param array $Privileges Array of privilege objects for the logged-in user.
  * @return int
  */
-function GetCorrectNumFormEntries($Default = 10)
+function getCorrectNumFormEntries(int $Default, array $Privileges)
 {
-    global $Privileges;
-
-    if (User::getCurrentUser()->IsLoggedIn() && count($Privileges)) {
+    if (User::getCurrentUser()->isLoggedIn() && count($Privileges)) {
         $PrivFactory = new PrivilegeFactory();
-        return count($Privileges) - count($PrivFactory->GetPredefinedPrivilegeConstants()) + 1;
+        return count($Privileges) - count($PrivFactory->getPredefinedPrivilegeConstants()) + 1;
     }
 
     return $Default;
@@ -103,7 +104,7 @@ function GetCorrectNumFormEntries($Default = 10)
  * function to print any error messages at top of the page
  * @param array|null $ErrorMessages
  */
-function PrintErrorMessages($ErrorMessages): void
+function printErrorMessages($ErrorMessages): void
 {
     # if error messages were passed from PreferencesComplete
     if (isset($ErrorMessages) && is_array($ErrorMessages) &&
@@ -121,6 +122,9 @@ function PrintErrorMessages($ErrorMessages): void
 if (!isset($H_ErrorMessages)) {
     $H_ErrorMessages = [];
 }
+if (!isset($H_Privileges)) {
+    throw new Exception("Required variable \$H_Privileges was not initialized");
+}
 
 $SaveButton = new HtmlButton("Save");
 $SaveButton->setIcon("Disk.svg");
@@ -135,30 +139,28 @@ $AddPrivilegeButton->setId("AddField");
 $AddPrivilegeButton->hide();
 $AddPrivilegeButton->setOnclick("window.location='#TableBottom';return false;");
 
+$PrivilegeTable = new HtmlTable();
+$PrivilegeTable->setTableClass("table table-striped");
+$PrivilegeTable->addHeaderRow(["Privilege Name"], "table-dark");
+$PrivilegeTable->addRows(
+    getHtmlForPrivilegeEntries(getCorrectNumFormEntries(10, $H_Privileges), $H_Privileges)
+);
+
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Custom Privilege Names</h1>
 
-<?PHP PrintErrorMessages($H_ErrorMessages); ?>
+<?PHP printErrorMessages($H_ErrorMessages); ?>
 
-<p>The <i>Edit Custom Privilege Flags</i></a> page allows system administrators
+<p>The <i>Edit Custom Privilege Flags</i> page allows system administrators
 to add, update, and remove site-specific privilege flags. Custom privilege flags
 can be used anywhere the default privilege flags are used and are intended to
 provide finer-grained control of the collection development workflow or to
 provide new functionality.</p>
 
 <form method="post" action="index.php?P=EditPrivilegeNamesComplete">
-    <table class="table table-striped">
-        <thead>
-            <tr class="table-dark">
-                <th>Privilege Name</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?PHP PrintTextFormEntries(GetCorrectNumFormEntries()); ?>
-        </tbody>
-    </table>
+    <?= $PrivilegeTable->getHtml(); ?>
     <a id="TableBottom"></a>
 
     <?= $SaveButton->getHtml(); ?>
@@ -169,7 +171,7 @@ provide new functionality.</p>
 <script type="text/javascript">
 
 (function(){
-    var TotalFields = <?= GetCorrectNumFormEntries(); ?>,
+    var TotalFields = <?= getCorrectNumFormEntries(10, $H_Privileges); ?>,
         Prefix = "F_PermissionText";
         InputSuffix = "InputId";
 

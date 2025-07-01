@@ -17,18 +17,18 @@ use Metavus\User;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
-PageTitle("Edit Controlled Names");
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization(PRIV_NAMEADMIN)) {
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Controlled Names");
+
+if (!User::requirePrivilege(PRIV_NAMEADMIN)) {
     return;
 }
 
-$AF = ApplicationFramework::getInstance();
-
 if (isset($_POST["Submit"]) && $_POST["Submit"] == "Cancel" && !isset($_POST["F_ReturnToECN"])) {
-    $AF->SetJumpToPage("MDHome");
+    $AF->setJumpToPage("MDHome");
     return;
 }
 
@@ -87,11 +87,11 @@ switch ($Submit) {
 
                 if ($Delete) {
                     # handle CName deletion
-                    $H_DeletedCNames[$CN->Name()] = $CN->VariantName();
+                    $H_DeletedCNames[$CN->name()] = $CN->variantName();
 
                     $AffectedResourceIds = array_merge(
                         $AffectedResourceIds,
-                        $CN->GetAssociatedResources()
+                        $CN->getAssociatedResources()
                     );
 
                     $CN->destroy(true);
@@ -102,43 +102,43 @@ switch ($Submit) {
                         $OtherId = reset($Remap);
 
                         # if the id is valid, perform a remapping
-                        $CNFact = new ControlledNameFactory($CN->FieldId());
-                        if ($CNFact->ItemExists($OtherId)) {
+                        $CNFact = new ControlledNameFactory($CN->fieldId());
+                        if ($CNFact->itemExists($OtherId)) {
                             # save resources as affected before remapping,
                             # because after remapping, resources are moved
                             # and GetAssociatedResources returns empty
                             $AffectedResourceIds = array_merge(
                                 $AffectedResourceIds,
-                                $CN->GetAssociatedResources()
+                                $CN->getAssociatedResources()
                             );
 
                             # perform the remapping
-                            $CN->RemapTo($OtherId);
+                            $CN->remapTo($OtherId);
                         }
                     } else {
                         # assume changeless until proven guilty
                         $Modified = false;
 
                         # handle name changes
-                        if ($CN->Name() != $ControlledName) {
+                        if ($CN->name() != $ControlledName) {
                             $Modified = true;
-                            $CN->Name($ControlledName);
+                            $CN->name($ControlledName);
                         }
 
                         # handle qualifier changes
                         if (!empty($QualifierId)) {
-                            if ($CN->QualifierId() != $QualifierId) {
+                            if ($CN->qualifierId() != $QualifierId) {
                                 $Modified = true;
-                                $CN->QualifierId($QualifierId);
+                                $CN->qualifierId($QualifierId);
                             }
                         }
 
                         # handle variant changes
-                        if ($CN->VariantName() != $VariantName) {
+                        if ($CN->variantName() != $VariantName) {
                             $Modified = true;
                             # if user submitted empty variant name,
                             # clear variant name by passing false
-                            $CN->VariantName(
+                            $CN->variantName(
                                 strlen($VariantName) > 0 ? $VariantName : false
                             );
                         }
@@ -146,10 +146,10 @@ switch ($Submit) {
                         # if this CName was modified, add it to our list of changed names
                         # and gather its list of ResourceIds.
                         if ($Modified) {
-                            $H_ModifiedCNames[$CN->Name()] = $CN->VariantName();
+                            $H_ModifiedCNames[$CN->name()] = $CN->variantName();
                             $AffectedResourceIds = array_merge(
                                 $AffectedResourceIds,
-                                $CN->GetAssociatedResources()
+                                $CN->getAssociatedResources()
                             );
                         }
                     }
@@ -162,30 +162,30 @@ switch ($Submit) {
         $AffectedResourceIds = array_unique($AffectedResourceIds);
         foreach ($AffectedResourceIds as $ResourceId) {
             $Resource = new Record($ResourceId);
-            $Resource->UpdateAutoupdateFields(
+            $Resource->updateAutoupdateFields(
                 MetadataField::UPDATEMETHOD_ONRECORDCHANGE,
                 User::getCurrentUser()
             );
 
             # update search and recommender DBs if configured to do so
-            $Resource->QueueSearchAndRecommenderUpdate();
+            $Resource->queueSearchAndRecommenderUpdate();
 
             # signal the modified event
-            $AF->SignalEvent(
+            $AF->signalEvent(
                 "EVENT_RESOURCE_MODIFY",
                 array("Resource" => $Resource)
             );
 
             $H_ModifiedResources[] =
                 "<a href=\"index.php?P=FullRecord&amp;ID=".
-                $Resource->Id()."\" target=\"_blank\">".
-                $Resource->GetMapped("Title")."</a><br>";
+                $Resource->id()."\" target=\"_blank\">".
+                $Resource->getMapped("Title")."</a><br>";
         }
         $H_SavedChanges = true;
         break;
 
     case "Cancel":
-        $AF->SetJumpToPage("index.php?P=EditControlledName&SC=".$SchemaId);
+        $AF->setJumpToPage("index.php?P=EditControlledName&SC=".$SchemaId);
         return;
 
     default:
@@ -194,13 +194,13 @@ switch ($Submit) {
 }
 
 if (preg_match("/^Search (.*)/", $Submit, $Matches)) {
-    $H_Field = $H_Schema->GetField($Matches[1]);
-    $CNFact = new ControlledNameFactory($H_Field->Id());
+    $H_Field = $H_Schema->getField($Matches[1]);
+    $CNFact = new ControlledNameFactory($H_Field->id());
 
     # if the F_ControlledName is empty (because the user just pushed
     # "search"), then return all CNames in the given field
     $SearchString = strlen($H_ControlledName) ? $H_ControlledName : "*";
-    $H_MatchingControlledNames = $CNFact->ControlledNameSearch($SearchString);
+    $H_MatchingControlledNames = $CNFact->controlledNameSearch($SearchString);
     $H_NumResults = count($H_MatchingControlledNames);
     $H_SearchEntered = true;
 } else {

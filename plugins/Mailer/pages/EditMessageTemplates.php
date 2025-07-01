@@ -2,7 +2,7 @@
 #
 #   FILE:  EditMessageTemplate.php (Mailer plugin)
 #
-#   Copyright 2012-2024 Edward Almasy and Internet Scout
+#   Copyright 2012-2025 Edward Almasy and Internet Scout
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -13,7 +13,7 @@ use Metavus\RecordFactory;
 use Metavus\User;
 
 # check that user should be on this page
-CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
 # load up current templates
 $H_Plugin = Mailer::getInstance();
@@ -59,7 +59,7 @@ switch ($Action) {
 
     case "Confirm":
         # delete template if it is not owned
-        if (count($H_Plugin->FindTemplateUsers($TemplateId)) == 0) {
+        if (count($H_Plugin->findTemplateUsers($TemplateId)) == 0) {
             unset($H_Templates[$TemplateId]);
             $H_Plugin->setConfigSetting("Templates", $H_Templates);
         }
@@ -73,7 +73,7 @@ switch ($Action) {
         # if new template
         if ($TemplateId == "NEW") {
             # get next template ID
-            $TemplateId = (($H_Templates === null) || !count($H_Templates)) ? 0
+            $TemplateId = (($H_Templates === null) || !count(array_keys($H_Templates))) ? 0
                     : (intval(max(array_keys($H_Templates))) + 1);
         }
 
@@ -108,7 +108,7 @@ switch ($Action) {
                 foreach ($Ids as $Id) {
                     # force value type to match argument type for subsequent calls
                     $Id = (int)$Id;
-                    if (Record::ItemExists($Id)) {
+                    if (Record::itemExists($Id)) {
                         $Resources[$Id] = new Record($Id);
                     }
                 }
@@ -118,7 +118,7 @@ switch ($Action) {
             if (!count($Resources)) {
                 # retrieve random resources to use for test email
                 $RFactory = new RecordFactory();
-                $Ids = $RFactory->GetItemIds();
+                $Ids = $RFactory->getItemIds();
                 srand($H_TestSeed);
                 $ResourceCount = rand(1, 20);
                 $Resources = [];
@@ -129,9 +129,9 @@ switch ($Action) {
             }
 
             # send out test email to current user
-            $H_Plugin->SendEmail(
+            $H_Plugin->sendEmail(
                 $TemplateId,
-                User::getCurrentUser()->Id(),
+                User::getCurrentUser()->id(),
                 $Resources
             );
             $H_Msgs[] = "Test email sent for <i>"

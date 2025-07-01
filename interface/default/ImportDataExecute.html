@@ -11,7 +11,7 @@
 namespace Metavus;
 
 use Exception;
-use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 # ----- SETUP ----------------------------------------------------------------
 global $ReferenceMessages;
@@ -35,9 +35,16 @@ if (!isset($H_TotalLineCount)) {
     throw new Exception("H_TotalLineCount not defined.");
 }
 
-$AF = ApplicationFramework::getInstance();
-
 $Header = ($H_ImportComplete) ? "Import Completed Successfully" : "Importing Data";
+
+$InfoTable = new HtmlTable();
+$InfoTable->setTableClass("table table-striped");
+$InfoTable->addRowsWithHeaders([
+    ["Lines Read", $H_TotalLineCount - 1],
+    ["Resources Added", $H_ResourceCount],
+    ["Controlled Names Added", $H_ControlledNameCount],
+    ["Classifications Added", $H_ClassificationCount]
+]);
 
 $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setIcon("Cross.svg");
@@ -50,26 +57,7 @@ $CancelButton->addSemanticClass("btn-danger");
 
 <?= $H_DebugInfo; ?>
 
-<table class="table table-striped">
-    <tbody>
-        <tr>
-            <th>Lines Read</th>
-            <td><?= $H_TotalLineCount - 1; ?></td>
-        </tr>
-        <tr>
-            <th>Resources Added</th>
-            <td><?= $H_ResourceCount; ?></td>
-        </tr>
-        <tr>
-            <th>Controlled Names Added</th>
-            <td><?= $H_ControlledNameCount; ?></td>
-        </tr>
-        <tr>
-            <th>Classifications Added</th>
-            <td><?= $H_ClassificationCount; ?></td>
-        </tr>
-    </tbody>
-</table>
+<?= $InfoTable->getHtml(); ?>
 
 <?PHP if ($H_ImportComplete) { ?>
 <p>Both the search and recommender databases must be rebuilt so that searching

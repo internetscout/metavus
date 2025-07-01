@@ -3,7 +3,7 @@
 #   FILE:  JsonHelper.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -167,12 +167,9 @@ class JsonHelper
                 } elseif (is_string($value)) {
                     # escape, remove smart quotes, and print the value
                     print '"'.str_replace($Replace[0], $Replace[1], $value).'"';
-                # boolean true
-                } elseif ($value === true) {
-                    print "true";
-                # boolean false
-                } elseif ($value === false) {
-                    print "false";
+                # boolean (only remaining scalar type)
+                } else {
+                    print $value ? "true" : "false";
                 }
             # recur if the value is an array
             } elseif (is_array($value)) {

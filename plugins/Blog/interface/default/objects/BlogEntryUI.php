@@ -34,24 +34,24 @@ class BlogEntryUI
 
         $AF = ApplicationFramework::getInstance();
 
-        $AF->RequireUIFile("P_Blog.css");
+        $AF->requireUIFile("P_Blog.css");
 
         $PluginMgr = PluginManager::getInstance();
         if (!isset($Blog)) {
             $Blog = Blog::getInstance();
-            $Blog->SetCurrentBlog($Entry->GetBlogId());
+            $Blog->setCurrentBlog($Entry->getBlogId());
         }
 
-        $SafeId = defaulthtmlentities($Entry->Id());
-        $SafeUrl = defaulthtmlentities($Entry->EntryUrl());
-        $SafeTitle = $Entry->TitleForDisplay();
-        $SafeAuthor = defaulthtmlentities($Entry->AuthorForDisplay());
-        $SafePublicationDate = defaulthtmlentities($Entry->PublicationDateForDisplay());
+        $SafeId = defaulthtmlentities($Entry->id());
+        $SafeUrl = defaulthtmlentities($Entry->entryUrl());
+        $SafeTitle = $Entry->titleForDisplay();
+        $SafeAuthor = defaulthtmlentities($Entry->authorForDisplay());
+        $SafePublicationDate = defaulthtmlentities($Entry->publicationDateForDisplay());
         $SafePublicationDateForParsing = defaulthtmlentities(
-            $Entry->PublicationDateForParsing()
+            $Entry->publicationDateForParsing()
         );
-        $Teaser = self::getEntryTeaser($Entry, $Blog->MaxTeaserLength());
-        $Categories = $Entry->CategoriesForDisplay();
+        $Teaser = self::getEntryTeaser($Entry, $Blog->maxTeaserLength());
+        $Categories = $Entry->categoriesForDisplay();
         $PrintMoreLink = strlen($Entry->get(Blog::BODY_FIELD_NAME)) > strlen($Teaser);
         $ArticleCssClasses = "blog-entry blog-short";
         if (!$Entry->userCanView(User::getAnonymousUser())) {
@@ -68,7 +68,7 @@ class BlogEntryUI
 <article class="<?= $ArticleCssClasses; ?>" itemscope="itemscope" itemtype="http://schema.org/BlogPosting">
   <link itemprop="url" href="<?= $SafeUrl; ?>" />
   <header class="blog-header">
-    <?PHP if ($Entry->UserCanEdit(User::getCurrentUser())) { ?>
+    <?PHP if ($Entry->userCanEdit(User::getCurrentUser())) { ?>
     <div class="container-fluid">
       <div class="row">
         <div class="col">
@@ -106,13 +106,13 @@ class BlogEntryUI
 
   <?PHP if (!count($Categories) || !$PrintMoreLink) { ?>
   <section class="share" aria-label="sharing buttons">
-    <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons($Entry); ?>
+    <?PHP SocialMedia::getInstance()->displaySmallShareButtons($Entry); ?>
   </section>
   <?PHP } ?>
 
   <?PHP if (count($Categories) && $PrintMoreLink) { ?>
   <section class="share" aria-label="sharing buttons">
-    <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons($Entry); ?>
+    <?PHP SocialMedia::getInstance()->displaySmallShareButtons($Entry); ?>
   </section>
   <?PHP } ?>
 
@@ -148,18 +148,18 @@ class BlogEntryUI
     ): void {
         $AF = ApplicationFramework::getInstance();
         $BlogPlugin = Blog::getInstance();
-        $AF->AddPageCacheTag(
-            "ResourceList".$BlogPlugin->GetSchemaId()
+        $AF->addPageCacheTag(
+            "ResourceList".$BlogPlugin->getSchemaId()
         );
         $BlogEntryFactory = new EntryFactory($BlogId);
-        $NumberToPrint = $BlogPlugin->BlogSetting($BlogId, "EntriesPerPage");
-        $BlogName = $BlogPlugin->BlogSetting($BlogId, "BlogName");
+        $NumberToPrint = $BlogPlugin->blogSetting($BlogId, "EntriesPerPage");
+        $BlogName = $BlogPlugin->blogSetting($BlogId, "BlogName");
 
         if ($NumberOrIdsToPrint !== null) {
             if (is_array($NumberOrIdsToPrint)) {
                 $BlogIds = array_intersect(
                     $NumberOrIdsToPrint,
-                    $BlogEntryFactory->GetItemIds()
+                    $BlogEntryFactory->getItemIds()
                 );
             } else {
                 $NumberToPrint = $NumberOrIdsToPrint;
@@ -190,7 +190,7 @@ class BlogEntryUI
                  && $Printed < $NumberToPrint
         ) {
             $Entry = new Entry($Id);
-            if ($Entry->UserCanView($User)) {
+            if ($Entry->userCanView($User)) {
                 ?><tr><td class="BlogEntrySummary"><?PHP
                 self::printBlogEntry($Entry);
                 $Printed++; ?>
@@ -212,9 +212,9 @@ class BlogEntryUI
                           ." entries to display.</td></tr>";
 
             $BlogSchema = new MetadataSchema(
-                $BlogPlugin->GetSchemaId()
+                $BlogPlugin->getSchemaId()
             );
-            if ($BlogSchema->UserCanAuthor(User::getCurrentUser())) {
+            if ($BlogSchema->userCanAuthor(User::getCurrentUser())) {
                 print "<tr><td><a href=\""
                     .str_replace(
                         '$ID',

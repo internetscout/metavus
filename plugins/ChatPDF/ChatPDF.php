@@ -9,6 +9,7 @@
 # @scout:phpstan
 
 namespace Metavus\Plugins;
+
 use CURLFile;
 use Exception;
 use Metavus\File;
@@ -17,6 +18,7 @@ use Metavus\HtmlButton;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugin;
+use Metavus\Plugins\ChatPDF\ChatPDFResponse;
 use Metavus\Record;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -583,9 +585,22 @@ class ChatPDF extends Plugin
         }
 
         # get responses from ChatPDF and save them to the record
-        $Responses = $this->getResponsesFromChatPDF($Record, $FileIds, $UsablePrompts);
-        foreach ($Responses as $FieldId => $Response) {
-            $Record->set($FieldId, $Response);
+        $FieldResponses = $this->getResponsesFromChatPDF($Record, $FileIds, $UsablePrompts);
+        foreach ($FieldResponses as $FieldId => $FileResponses) {
+            $FieldValue = "";
+            foreach ($FileResponses as $FileResponse) {
+                if (!$FileResponse->isError()) {
+                    if (strlen($FieldValue) > 0) {
+                        $FieldValue .= "\n\n";
+                    }
+
+                    $FieldValue .= $FileResponse->getData();
+                }
+            }
+
+            if (strlen($FieldValue) > 0) {
+                $Record->set($FieldId, $FieldValue);
+            }
         }
     }
 
@@ -662,6 +677,29 @@ class ChatPDF extends Plugin
             return "";
         }
 
+        $DialogHtml = "";
+        static $DialogAdded = false;
+        if (!$DialogAdded) {
+            $DialogHtml = "<div id='mv-p-chatpdf-dialog' style='display:none'>"
+                ."<div class='alert alert-danger mv-p-chatpdf-message"
+                ." mv-p-chatpdf-global-error'></div>"
+                ."<div class='mv-p-chatpdf-message mv-p-chatpdf-populated'>"
+                ."<p>The following fields were populated by ChatPDF:</p>"
+                ."<ul></ul>"
+                ."</div>"
+                ."<div class='mv-p-chatpdf-message mv-p-chatpdf-skipped'>"
+                ."<p>The following fields were skipped by ChatPDF because"
+                ." they already contained values:</p>"
+                ."<ul></ul>"
+                ."</div>"
+                ."<div class='mv-p-chatpdf-message mv-p-chatpdf-field-error'>"
+                ."<p>The following errors were encountered:</p>"
+                ."<ul></ul>"
+                ."</div>"
+                ."</div>";
+            $DialogAdded = true;
+        }
+
         $AF->requireUIFile("ChatPDF_Main.js");
 
         $Record = new Record($RecordId);
@@ -694,12 +732,13 @@ class ChatPDF extends Plugin
                 "Process all uploaded files in configured fields for this"
                 ." record with ChatPDF."
             );
-            $Button->setOnclick("handleManualButton(event)");
+            $Button->setOnclick("ChatPDF.handleManualButton(event)");
             $Button->addClass("mv-p-chatpdf-upload-button");
             $LoadingImgFile = $AF->gUIFile("loading.gif");
             return $Button->getHtml()
                 .'<span style="display: none;"><img src="'
-                .$LoadingImgFile.'"></span>';
+                .$LoadingImgFile.'"></span>'
+                .$DialogHtml;
         }
     }
 
@@ -709,10 +748,11 @@ class ChatPDF extends Plugin
      * page that invoked this function.
      * @param int $RecordId The ID of the record that we are processing.
      * @param array $FileIds The IDs of the files to process.
-     * @return array Associative array mapping field names to ChatPDF's responses
-     * for those fields.
+     * @return array|ChatPDFResponse On success, associative array mapping
+     *   field names to ChatPDF's responses for those fields. On failure, a
+     *   ChatPDFResponse representing the error.
      */
-    public function handleManualButtonPress(int $RecordId, array $FileIds): array
+    public function handleManualButtonPress(int $RecordId, array $FileIds)
     {
         # get ChatPDF's responses for this record
         $Record = new Record($RecordId);
@@ -726,24 +766,25 @@ class ChatPDF extends Plugin
      * Processes files from the manual button press.
      * @param Record $Record The record to process files for.
      * @param array $FileIds The files to process.
-     * @return array Returns an error message for the following scenarios:
+     * @return array|ChatPDFResponse Returns an error in a ChatPDFResponse for
+     *   the following scenarios:
      * 1) There are no configured file fields provided.
      * 2) There are no usable prompts for this record.
      * 3) The files provided will exceed quota if processed.
+     * 4) No responses were received from ChatPDF.
      * Otherwise, an associative array is returned. The key is the name
      * of the field for the corresonding prompt, and the value is the
-     * response given for that prompt.
+     * ChatPDFResponse corresponding to that prompt.
      */
     private function processManualUploadsForRecord(
         Record $Record,
         array $FileIds
-    ): array {
+    ) {
         # abort if there's no files to process
         if (count($FileIds) === 0) {
-            return [
-                "status" => "Error",
-                "message" => "No files from configured file fields are provided."
-            ];
+            return ChatPDFResponse::createError(
+                "No files from configured file fields are provided."
+            );
         }
 
         # get usable prompts
@@ -751,20 +792,21 @@ class ChatPDF extends Plugin
 
         # abort if we don't have usable prompts
         if (count($UsablePrompts) === 0) {
-            return [
-                "status" => "Error",
-                "message" => "There are no usable prompts for this record."
-            ];
+            return ChatPDFResponse::createError(
+                "There are no usable prompts for this record."
+            );
         }
 
         # abort if these new files will exceed quota
-        if ($this->willExceedDailyUploadLimit($FileIds) ||
-            $this->willExceedDailyQuestionLimit($FileIds, $UsablePrompts)
-        ) {
-            return [
-                "status" => "Error",
-                "message" => "The provided files will exceed quota."
-            ];
+        if ($this->willExceedDailyUploadLimit($FileIds)) {
+            return ChatPDFResponse::createError(
+                "The attached files will exceed the daily ChatPDF upload limit."
+            );
+        }
+        if ($this->willExceedDailyQuestionLimit($FileIds, $UsablePrompts)) {
+            return ChatPDFResponse::createError(
+                "The daily ChatPDF questions limit has been reached."
+            );
         }
 
         # get responses from ChatPDF for these files
@@ -778,12 +820,11 @@ class ChatPDF extends Plugin
         }
 
         if (count($FormattedResponses) == 0) {
-            return [
-                "status" => "Error",
-                "message" => "No responses from ChatPDF, so nothing was populated."
-                    ." Additional error information may be available on the"
-                    ." System Administration page."
-            ];
+            return ChatPDFResponse::createError(
+                "No responses from ChatPDF, so nothing was populated."
+                ." Additional error information may be available on the"
+                ." System Administration page."
+            );
         }
 
         return $FormattedResponses;
@@ -795,10 +836,11 @@ class ChatPDF extends Plugin
      * @param Record $Record The record to get responses for.
      * @param array $FileIds The files to upload.
      * @param array $UsablePrompts The prompts to ask ChatPDF. This is an
-     * associative array where the keys are field IDs, and the values are the
-     * corresponding prompts to those field IDs.
-     * @return array An associative array where keys are field IDs, and the
-     * values are the responses for their corresponding prompt.
+     *   associative array where the keys are field IDs, and the values are
+     *   the corresponding prompts to those field IDs.
+     * @return array A 2D array where the outer keys give field IDs, inner
+     *   keys are file IDs, and values are ChatPDFResponse objects containing
+     *   the responses for each field / file.
      */
     private function getResponsesFromChatPDF(
         Record $Record,
@@ -841,17 +883,12 @@ class ChatPDF extends Plugin
                 $Prompt .= "  ".$Addendum;
             }
 
+            $FileResponses = [];
+
             # if field type is not numeric (number, date, or timestamp)
             if (($FieldType & $NumericFieldTypes) === 0) {
-                # ask question about all files and concatenate together responses
-                $Response = [];
                 foreach ($UploadedFiles as $FileId => $SrcId) {
-                    $Response[] = $this->askQuestion((int)$FileId, $SrcId, $Prompt);
-                }
-                if (count($Response) > 0) {
-                    $Response = implode("\r\r", $Response);
-                } else {
-                    $Response = null;
+                    $FileResponses[$FileId] = $this->askQuestion((int)$FileId, $SrcId, $Prompt);
                 }
             } else {
                 # ask about only first file and use that response
@@ -859,14 +896,12 @@ class ChatPDF extends Plugin
                     reset($UploadedFiles);
                     $FileId = key($UploadedFiles);
                     $SrcId = $UploadedFiles[$FileId];
-                    $Response = $this->askQuestion((int)$FileId, $SrcId, $Prompt);
-                } else {
-                    $Response = null;
+                    $FileResponses[$FileId] = $this->askQuestion((int)$FileId, $SrcId, $Prompt);
                 }
             }
 
-            if ($Response !== null) {
-                $Responses[$FieldId] = $Response;
+            if (count($FileResponses) > 0) {
+                $Responses[$FieldId] = $FileResponses;
             }
         }
 
@@ -1159,13 +1194,14 @@ class ChatPDF extends Plugin
      * @param int $FileId The ID of the file to ask about.
      * @param string $SrcId The source ID of the file.
      * @param string $Question The question to ask ChatPDF for this file.
-     * @return string ChatPDF's answer to the question.
+     * @return ChatPDFResponse Response from ChatPDF or error information when
+     *   there was no response.
      */
     private function askQuestion(
         int $FileId,
         string $SrcId,
         string $Question
-    ): string {
+    ) {
         # get the question ID for this question
         $QuestionId = $this->getQuestionId($Question);
 
@@ -1174,7 +1210,11 @@ class ChatPDF extends Plugin
         $MaxQuestionRetries = (int) $this->getConfigSetting("MaxQuestionRetries");
         $Retries = $this->getRetryCountForFileAndQuestion($FileId, $QuestionId);
         if ($Retries === $MaxQuestionRetries) {
-            return "";
+            return ChatPDFResponse::createError(
+                "Max retries exceeded for"
+                ." question ID ".$QuestionId
+                ." with file ID ".$FileId
+            );
         }
 
         $Url = self::CHATPDF_API_BASE_URL."chats/message";
@@ -1189,7 +1229,9 @@ class ChatPDF extends Plugin
         ]);
         # abort if encoding failed
         if ($Data === false) {
-            return "";
+            return ChatPDFResponse::createError(
+                "Failed to encode question with json_encode()."
+            );
         }
 
         # record this inquiry in AskedQuestions
@@ -1203,28 +1245,30 @@ class ChatPDF extends Plugin
 
         # return empty string and log a message if there's an error
         if ($Response === null) {
+            $Message = "Failed to ask ChatPDF \""
+                .$Question."\" for file ID ".$FileId.".";
             (ApplicationFramework::getInstance())->logMessage(
                 ApplicationFramework::LOGLVL_WARNING,
-                "ChatPDF: Failed to ask ChatPDF \""
-                .$Question."\" for file ID ".$FileId."."
+                "ChatPDF: ".$Message
             );
-            return "";
+            return ChatPDFResponse::createError($Message);
         }
 
         # return empty string and log a message if no content was returned
         if (!isset($Response["content"])) {
-            (ApplicationFramework::getInstance())->logMessage(
-                ApplicationFramework::LOGLVL_WARNING,
-                "ChatPDF: Repponse to question \""
+            $Message = "Response to question \""
                 .$Question."\" for file ID ".$FileId
                 ." had no 'content' element."
-                ." Response was: ".print_r($Response, true)."."
+                ." Response was: ".print_r($Response, true).".";
+            (ApplicationFramework::getInstance())->logMessage(
+                ApplicationFramework::LOGLVL_WARNING,
+                "ChatPDF: ".$Message
             );
-            return "";
+            return ChatPDFResponse::createError($Message);
         }
 
         # otherwise, return the answer
-        return $Response["content"];
+        return ChatPDFResponse::createAnswer($Response["content"]);
     }
 
     /**

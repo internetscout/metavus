@@ -284,7 +284,7 @@ class ClassificationFactory extends ItemFactory
     }
 
     /**
-     * Get a lookup table listing the ancesters of a given set of
+     * Get a lookup table listing the ancestors of a given set of
      *   classifications. This function will attempt so build a map all the
      *   way to the root, but if more than 20 iterations of queries against
      *   the database fail to do so it will terminate to prevent an infinite

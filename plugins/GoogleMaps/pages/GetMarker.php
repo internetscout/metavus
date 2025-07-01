@@ -3,7 +3,7 @@
 #   FILE:  GetMarker.php (GoogleMaps plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -39,9 +39,9 @@ $Plugin = GoogleMaps::getInstance();
 $CachedFile = $Plugin->getMarkerFilePath($Text, $BgHex, $FgHex);
 
 header('Content-type: image/png');
-$AF->suppressHTMLOutput();
+$AF->suppressHtmlOutput();
 if (file_exists($CachedFile)) {
-    $AF->AddUnbufferedCallback("readfile", [$CachedFile]);
+    $AF->addUnbufferedCallback("readfile", [$CachedFile]);
     return;
 }
 

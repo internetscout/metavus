@@ -3,7 +3,7 @@
 #   FILE:  ManageSubscribers.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -22,7 +22,7 @@ $AF = ApplicationFramework::getInstance();
 
 # don't allow unauthorized access
 if (!$H_Schema->userCanEdit(User::getCurrentUser())) {
-    CheckAuthorization(false);
+    User::handleUnauthorizedAccess();
     return;
 }
 

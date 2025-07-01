@@ -3,13 +3,12 @@
 #   FILE:  AddClassification.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
@@ -37,7 +36,7 @@ function segmentValidateFunc(
         $NewFullName = $FieldValue;
     } else {
         $ParentClass = new Classification($ParentId);
-        $NewFullName = $ParentClass->Name()." -- ".$FieldValue;
+        $NewFullName = $ParentClass->name()." -- ".$FieldValue;
     }
     # if classification already exists return error
     # pass true to nameIsInUse so a case-insensitive string
@@ -62,11 +61,11 @@ function getQualifiers(int $FieldId): array
     $Field = MetadataField::getField($FieldId);
 
     $Items[-1] = "--";
-    if ($Field->HasItemLevelQualifiers()) {
-        $Items += $Field->AssociatedQualifierList();
-    } elseif ($Field->DefaultQualifier() != false) {
-        $Qualifier = new Qualifier($Field->DefaultQualifier());
-        $Items[$Qualifier->Id()] = $Qualifier->Name();
+    if ($Field->hasItemLevelQualifiers()) {
+        $Items += $Field->associatedQualifierList();
+    } elseif ($Field->defaultQualifier() != false) {
+        $Qualifier = new Qualifier($Field->defaultQualifier());
+        $Items[$Qualifier->id()] = $Qualifier->name();
     }
     ksort($Items);
     return $Items;
@@ -87,11 +86,11 @@ function getFormFieldDefinitions(int $FieldId, int $ParentId): array
     } else {
         # otherwise set parent classification name to parent classification's name
         $ParentClass = new Classification($ParentId);
-        $ParentClassName = $ParentClass->FullName();
+        $ParentClassName = $ParentClass->fullName();
     }
 
     # Get field and field name using field id.
-    $FieldName = (MetadataField::getField($FieldId))->GetDisplayName();
+    $FieldName = (MetadataField::getField($FieldId))->getDisplayName();
 
     return [
         "ClassificationType" => [
@@ -124,7 +123,7 @@ function getFormFieldDefinitions(int $FieldId, int $ParentId): array
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization(PRIV_CLASSADMIN)) {
+if (!User::requirePrivilege(PRIV_CLASSADMIN)) {
     return;
 }
 
@@ -144,23 +143,23 @@ $FormFields = getFormFieldDefinitions($FieldId, $ParentId);
 $H_FormUI = new FormUI($FormFields);
 
 # add hidden values to form
-$H_FormUI->AddHiddenField("F_ParentId", $ParentId);
-$H_FormUI->AddHiddenField("F_FieldId", $FieldId);
-$H_FormUI->AddValidationParameters($FieldId, $ParentId);
+$H_FormUI->addHiddenField("F_ParentId", $ParentId);
+$H_FormUI->addHiddenField("F_FieldId", $FieldId);
+$H_FormUI->addValidationParameters($FieldId, $ParentId);
 # act on any button push
 $ButtonPushed = StdLib::getFormValue("Submit");
 switch ($ButtonPushed) {
     case "Add":
         # check values and bail out if any are invalid
-        if ($H_FormUI->ValidateFieldInput()) {
+        if ($H_FormUI->validateFieldInput()) {
             return;
         }
-        $ClassValues = $H_FormUI->GetNewValuesFromForm();
+        $ClassValues = $H_FormUI->getNewValuesFromForm();
         $NewSegmentName = trim($ClassValues["NewSegmentName"]);
         $QualifierId = $ClassValues["QualifierId"];
 
         # add new classification
-        $Class = Classification::Create(
+        $Class = Classification::create(
             $NewSegmentName,
             $FieldId,
             $ParentId
@@ -168,20 +167,20 @@ switch ($ButtonPushed) {
 
         # add qualifier ID (if any)
         if (isset($QualifierId) && strlen($QualifierId)) {
-            $Class->QualifierId($QualifierId);
+            $Class->qualifierId($QualifierId);
         }
 
         # if errors were not found
-        if (!$H_FormUI->ErrorsLogged()) {
+        if (!$H_FormUI->errorsLogged()) {
             # set parent ID to classification if it is top level, otherwise its parent
-            $ParentIdForUrl = ($ParentId == Classification::NOPARENT) ? $Class->Id() : $ParentId;
+            $ParentIdForUrl = ($ParentId == Classification::NOPARENT) ? $Class->id() : $ParentId;
 
             # go to classification selection page for parent of edited classification
-            $AF->SetJumpToPage("EditClassifications&FieldId=".$FieldId
+            $AF->setJumpToPage("EditClassifications&FieldId=".$FieldId
                        ."&ParentId=".$ParentIdForUrl);
         }
         break;
     case "Cancel":
-        $AF->SetJumpToPage("EditClassifications");
+        $AF->setJumpToPage("EditClassifications");
         break;
 }

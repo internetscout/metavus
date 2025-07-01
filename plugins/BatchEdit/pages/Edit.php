@@ -3,7 +3,7 @@
 #   FILE:  Edit.php (BatchEdit plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -21,7 +21,7 @@ $H_User = User::getCurrentUser();
 
 # make sure the user is allowed to do batch editing
 if (!$H_Plugin->getConfigSetting("RequiredPrivs")->MeetsRequirements($H_User)) {
-    CheckAuthorization(false);
+    User::handleUnauthorizedAccess();
     return;
 }
 

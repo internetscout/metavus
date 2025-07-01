@@ -3,7 +3,7 @@
 #   FILE:  Log.php (Captcha plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -15,7 +15,7 @@ use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
     return;
 }
 

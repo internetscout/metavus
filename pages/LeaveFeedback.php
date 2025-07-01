@@ -3,13 +3,12 @@
 #   FILE:  LeaveFeedback.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Email;
 use ScoutLib\StdLib;
@@ -35,7 +34,7 @@ function GetRemoteAddress()
  */
 function GetUserName(User $User)
 {
-    return $User->IsLoggedIn() ? $User->Get("UserName") : "(not logged in)";
+    return $User->isLoggedIn() ? $User->get("UserName") : "(not logged in)";
 }
 
 /**
@@ -45,12 +44,12 @@ function GetUserName(User $User)
  */
 function GetUserRealName(User $User)
 {
-    if ($User->IsLoggedIn()) {
-        $RealName = $User->Get("RealName");
+    if ($User->isLoggedIn()) {
+        $RealName = $User->get("RealName");
         if ($RealName === null || strlen($RealName) == 0) {
             return "(not set)";
         }
-        $TrimmedRealName = trim($User->Get("RealName"));
+        $TrimmedRealName = trim($User->get("RealName"));
         return $TrimmedRealName ? $TrimmedRealName : "(not set)";
     }
 
@@ -68,20 +67,20 @@ function GetSenderEmail(User $User, $Secondary = null)
     $IntConfig = InterfaceConfiguration::getInstance();
 
     # assemble e-mail address for user
-    if ($User->IsLoggedIn()) {
+    if ($User->isLoggedIn()) {
         # try to use the user's real name
-        $RealName = $User->Get("RealName");
+        $RealName = $User->get("RealName");
         if ($RealName !== null && strlen($RealName) > 0 && trim($RealName)) {
             $Name = trim($RealName);
 
         # use the user name if the real name is blank
         } else {
-            $Name = $User->Get("UserName");
+            $Name = $User->get("UserName");
         }
 
-        $Email = $User->Get("EMail");
+        $Email = $User->get("EMail");
         # use the secondary address
-    } elseif ($Secondary && User::IsValidLookingEMailAddress($Secondary)) {
+    } elseif ($Secondary && User::isValidLookingEmailAddress($Secondary)) {
         $Name = $IntConfig->getString("PortalName")." User";
         $Email = $Secondary;
         # just use the admin's e-mail address
@@ -115,7 +114,7 @@ function GetPageHeader($FeedbackType, array $AdditionalHeaders = array())
  * @param string $FeedbackType
  * @return string Subheader to display on page
  */
-function getSubHeader($FeedbackType)
+function getSubheader($FeedbackType)
 {
     $DefaultSubHeader = "<p>To send feedback or comments, enter your ".
         "message below and click on <i>Send Feedback</i>.</p>";
@@ -204,14 +203,26 @@ if ($H_FeedbackType == "ResourceFeedback") {
         $H_InvalidRecord = true;
         return;
     }
-    $TitleField = $Record->getSchema()->GetFieldByMappedName("Title");
-    $UrlField = $Record->getSchema()->GetFieldByMappedName("Url");
 
-    $CanViewTitleField = $Record->UserCanViewField($User, $TitleField);
-    $CanViewUrlField = $Record->UserCanViewField($User, $UrlField);
     $SafeResourceId = defaulthtmlentities($ParameterOne);
-    $SafeResourceTitle = defaulthtmlentities($Record->Get($TitleField));
-    $SafeResourceUrl = defaulthtmlentities($Record->Get($UrlField));
+    $TitleField = $Record->getSchema()->getFieldByMappedName("Title");
+
+    if ($TitleField === null) {
+        $CanViewTitleField = false;
+        $SafeResourceTitle = "";
+    } else {
+        $CanViewTitleField = $Record->userCanViewField($User, $TitleField);
+        $SafeResourceTitle = defaulthtmlentities($Record->get($TitleField));
+    }
+
+    $UrlField = $Record->getSchema()->getFieldByMappedName("Url");
+    if ($UrlField === null) {
+        $CanViewUrlField = false;
+        $SafeResourceUrl = "";
+    } else {
+        $CanViewUrlField = $Record->userCanViewField($User, $UrlField);
+        $SafeResourceUrl = defaulthtmlentities($Record->get($UrlField));
+    }
 
     # construct fields as necessary, according to User privileges
     if ($CanViewTitleField && $SafeResourceTitle) {
@@ -267,7 +278,7 @@ $Fields["Description"] = [
     "Required" => true,
 ];
 
-if (!$User->IsLoggedIn()) {
+if (!$User->isLoggedIn()) {
     $Fields["Email"] = [
         "Label" => "Your E-mail Address",
         "Type" => FormUI::FTYPE_TEXT,
@@ -318,23 +329,23 @@ if ($ButtonPushed) {
                 # if resource is invalid just redirect
                 $RecordId = StdLib::getFormValue("F_RecordId");
 
-                if (!Record::ItemExists($RecordId)) {
+                if (!Record::itemExists($RecordId)) {
                     $H_InvalidRecord = true;
                 }
-                if (($RecordId === null || !Record::ItemExists($RecordId))) {
-                    $AF->SetJumpToPage($H_ReturnTo);
+                if (($RecordId === null || !Record::itemExists($RecordId))) {
+                    $AF->setJumpToPage($H_ReturnTo);
                     return;
                 }
 
                 $Record = new Record($RecordId);
 
                 $Subject .= "Resource Feedback";
-                $Body .= "Title: " . trim($Record->GetMapped("Title")) . "\n";
-                $Body .= "URL: " . trim($Record->GetMapped("Url")) . "\n";
-                $Body .= "View: ".ApplicationFramework::BaseUrl()."?P=FullRecord&ID="
-                    .$Record->Id() . "\n";
-                $Body .= "Edit: ".ApplicationFramework::BaseUrl()
-                    ."?P=EditResource&ID=".$Record->Id()."\n";
+                $Body .= "Title: " . trim($Record->getMapped("Title")) . "\n";
+                $Body .= "URL: " . trim($Record->getMapped("Url")) . "\n";
+                $Body .= "View: ".ApplicationFramework::baseUrl()."?P=FullRecord&ID="
+                    .$Record->id() . "\n";
+                $Body .= "Edit: ".ApplicationFramework::baseUrl()
+                    ."?P=EditResource&ID=".$Record->id()."\n";
                 $Body .= "Problem Description: "
                     .trim($FormValues["Description"])."\n";
             } else {
@@ -357,17 +368,17 @@ if ($ButtonPushed) {
 
             # get final information necessary to send the message
             $Msg = new Email();
-            $Msg->To($IntConfig->getString("AdminEmail"));
+            $Msg->to($IntConfig->getString("AdminEmail"));
             $Sender = GetSenderEmail(
                 $User,
                 $FormValues["Email"] ?? null
             );
-            $Msg->From($Sender);
+            $Msg->from($Sender);
 
             # send the e-mail message
-            $Msg->Subject($Subject);
-            $Msg->Body($Body);
-            $Msg->Send();
+            $Msg->subject($Subject);
+            $Msg->body($Body);
+            $Msg->send();
 
             # signal that the feedback has been lodged
             $H_FeedbackSent = true;

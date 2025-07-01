@@ -3,19 +3,18 @@
 #   FILE:  PurgeSampleDataExecute.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -24,7 +23,7 @@ $SearchEngine = new SearchEngine();
 
 # check for cancel button
 if ($_POST["Submit"] == "Cancel") {
-    $AF->SetJumpToPage("index.php?P=SysAdmin");
+    $AF->setJumpToPage("index.php?P=SysAdmin");
     return;
 }
 
@@ -44,7 +43,7 @@ foreach ($ResourceList as $ResourceId) {
     $Resource = new Record($ResourceId);
 
     # get Classifications associated with this Resource
-    $Names = $Resource->Classifications();
+    $Names = $Resource->classifications();
     foreach ($Names as $ClassificationType => $ClassificationTypes) {
         foreach ($ClassificationTypes as $ClassId => $Classification) {
             $ClassIds[$ClassId] = $Classification;
@@ -53,12 +52,12 @@ foreach ($ResourceList as $ResourceId) {
 
 
      # get ControlledNames associated with this Resource
-    $Creators = $Resource->Get("Creator");
+    $Creators = $Resource->get("Creator");
     foreach ($Creators as $CNId => $Creator) {
         $CNIds[$CNId] = $Creator;
     }
 
-    $Publishers = $Resource->Get("Publisher");
+    $Publishers = $Resource->get("Publisher");
     foreach ($Publishers as $CNId => $Publisher) {
         $CNIds[$CNId] = $Publisher;
     }
@@ -87,7 +86,7 @@ foreach ($CNIds as $CNId => $Dummy) {
     $CN = new ControlledName($CNId);
 
     # controlled name not in use, so delete it
-    if (!$CN->InUse()) {
+    if (!$CN->inUse()) {
         $CN->destroy();
         $H_ControlledNameCount++;
     }

@@ -15,6 +15,7 @@ use Metavus\RecordEditingUI;
 use Metavus\User;
 use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # request that this page not be indexed by search engines
@@ -23,12 +24,14 @@ $AF->addMetaTag(["robots" => "noindex"]);
 
 # ----- MAIN -----------------------------------------------------------------
 
-PageTitle("New User Sign-Up");
+$AF->setPageTitle("New User Sign-Up");
+
+$PluginMgr = PluginManager::getInstance();
 
 # don't allow new user signups from spambots
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("BotDetector") &&
-    $GLOBALS["G_PluginManager"]->GetPlugin("BotDetector")->CheckForSpamBot()) {
-    $AF->SetJumpToPage("UnauthorizedAccess");
+if ($PluginMgr->pluginReady("BotDetector") &&
+    $PluginMgr->getPlugin("BotDetector")->CheckForSpamBot()) {
+    $AF->setJumpToPage("UnauthorizedAccess");
     return;
 }
 

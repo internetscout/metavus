@@ -230,14 +230,14 @@ include($AF->gUIFile("EduLink-StdPageStart.html"));
       <?= $SelectionUI->selectedRecordListHtml() ?>
       <div class="mv-search-results">
         <?PHP if ($H_SearchParamsProvided) { ?>
-        <h2><?= file_get_contents($AF->gUIFile('SearchResults.svg')) ?> Search Results</h2>
+        <h2><?= $AF->inlineUIFile('SearchResults.svg') ?> Search Results</h2>
         <?PHP if (strlen(trim($Keywords)) > 0) { ?>
         <p><b><?= $H_TransportUI->itemCount() ?></b> results for <b><i><?= htmlspecialchars($Keywords) ?></i></b></p>
         <?PHP } ?>
         <?PHP $H_TransportUI->display() ?>
         <?PHP } else { ?>
         <?= getBrowsingHtml($H_LaunchId, $H_BaseLink, $H_AllRecords) ?>
-        <h2 class="mv-new-resources"><?= file_get_contents($AF->gUIFile('Bullhorn2.svg')) ?> New Resources</h2>
+        <h2 class="mv-new-resources"><?= $AF->inlineUIFile('Bullhorn2.svg') ?> New Resources</h2>
         <?PHP } ?>
         <?= $SelectionUI->recordListHtml() ?>
       </div>

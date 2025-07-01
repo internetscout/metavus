@@ -12,6 +12,7 @@ namespace Metavus;
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
@@ -317,7 +318,7 @@ abstract class FormUI_Base
         foreach ($this->FieldParams as $Name => $Params) {
             # verify any captchas
             if ($Params["Type"] == self::FTYPE_CAPTCHA) {
-                if (!$GLOBALS["G_PluginManager"]->pluginEnabled("Captcha")) {
+                if (!PluginManager::getInstance()->pluginReady("Captcha")) {
                     continue;
                 }
 
@@ -1289,14 +1290,27 @@ abstract class FormUI_Base
             // can't submit the form before the upload completes
             Form.on('FilePond:processfilestart', function(Event) {
                 Form.data("clicked", true);
+                Form.data("upload-in-progress", true);
             });
 
             // on upload completion
             Form.on('FilePond:processfile', function(Event) {
                 Form.data("clicked", false);
+                Form.data("upload-in-progress", false);
                 var Row = $(Event.target).parents("tr.mv-content-tallrow");
                 if (Event.detail.error === null) {
                     $("button[type='submit'][value='Upload']", Row).click();
+                }
+            });
+
+            // Add a 'beforeunload' handler to attempt to prevent the user
+            // from navigating away from the page while an upload is in
+            // progress
+            // (cf. https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event )
+            $(window).on('beforeunload', function(Event) {
+                if (Form.data("upload-in-progress")) {
+                    Event.preventDefault();
+                    Event.returnValue = true;
                 }
             });
         });

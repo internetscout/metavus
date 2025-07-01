@@ -502,6 +502,18 @@ abstract class Plugin
     }
 
     /**
+     * Get the current plugin's data cache
+     * @return DataCache Data Cache
+     */
+    public function getDataCache()
+    {
+        if (self::$DataCache === null) {
+            self::$DataCache = new DataCache("Plugin-".self::getBaseName()."-");
+        }
+        return self::$DataCache;
+    }
+
+    /**
      * Set the application framework to be referenced within plugins.
      * (This is set by the plugin manager.)
      * @param ApplicationFramework $AF Application framework instance.
@@ -573,6 +585,7 @@ abstract class Plugin
     private static $CfgOver;            # configuration override values
     private static $Instances;          # instantiated plugins
     private static $PluginInfoCache;    # cache of setting values from DB
+    private static $DataCache = null;          # plugin data cache
 
     /**
      * Class constructor.  Plugins should be retrieved via getInstance(),

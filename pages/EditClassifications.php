@@ -10,6 +10,7 @@
 
 namespace Metavus;
 use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -23,10 +24,10 @@ function GetSchema(?Classification $Parent = null) : MetadataSchema
 {
     # give priority to the parent ID
     if (!is_null($Parent)) {
-        $Field = MetadataField::getField($Parent->FieldId());
+        $Field = MetadataField::getField($Parent->fieldId());
 
-        if ($Field->Status() === MetadataSchema::MDFSTAT_OK) {
-            return new MetadataSchema($Field->SchemaId());
+        if ($Field->status() === MetadataSchema::MDFSTAT_OK) {
+            return new MetadataSchema($Field->schemaId());
         }
     }
 
@@ -47,9 +48,9 @@ function GetField(
 ) : ?MetadataField {
     # give priority to the parent ID
     if (!is_null($Parent)) {
-        $Field = MetadataField::getField($Parent->FieldId());
+        $Field = MetadataField::getField($Parent->fieldId());
 
-        if ($Field->Status() === MetadataSchema::MDFSTAT_OK) {
+        if ($Field->status() === MetadataSchema::MDFSTAT_OK) {
             return $Field;
         }
     }
@@ -61,25 +62,24 @@ function GetField(
     if (isset($FieldId)) {
         $Field = MetadataField::getField($FieldId);
 
-        if ($Field->Status() === MetadataSchema::MDFSTAT_OK) {
+        if ($Field->status() === MetadataSchema::MDFSTAT_OK) {
             return $Field;
         }
     }
 
     # try to use the system configuration if using the default metadata schema
     $IntConfig = InterfaceConfiguration::getInstance();
-    if ($Schema->Id() === MetadataSchema::SCHEMAID_DEFAULT) {
-        $Field = $Schema->GetField($IntConfig->getInt("BrowsingFieldId"));
+    if ($Schema->id() === MetadataSchema::SCHEMAID_DEFAULT) {
+        $Field = $Schema->getField($IntConfig->getInt("BrowsingFieldId"));
 
         # return the field ID if the field exists and is okay
-        if ($Field instanceof MetadataField
-            && $Field->Status() === MetadataSchema::MDFSTAT_OK) {
+        if ($Field->status() === MetadataSchema::MDFSTAT_OK) {
             return $Field;
         }
     }
 
     # get the tree fields in alphabetical order
-    $TreeFields = $Schema->GetFields(
+    $TreeFields = $Schema->getFields(
         MetadataSchema::MDFTYPE_TREE,
         MetadataSchema::MDFORDER_ALPHABETICAL
     );
@@ -106,12 +106,12 @@ function GetClassifications(
     $SearchParams = null
 ) : array {
     $CFactory = new ClassificationFactory(
-        ($Field !== null) ? $Field->Id() : null
+        ($Field !== null) ? $Field->id() : null
     );
 
     # if a search was performed
     if ($SearchParams !== null) {
-        $MatchingClassifications = $CFactory->GetItemNames(
+        $MatchingClassifications = $CFactory->getItemNames(
             "ClassificationName LIKE '%".addslashes($SearchParams) ."%'"
         );
 
@@ -122,14 +122,14 @@ function GetClassifications(
         if ($Parent !== null) {
             $MatchingClassifications = array_intersect_key(
                 $MatchingClassifications,
-                array_flip($CFactory->GetChildIds($Parent->Id()))
+                array_flip($CFactory->getChildIds($Parent->id()))
             );
         }
     } else {
         # if there was no search and we have no parent, get everything at depth zero
         # otherwise, get all the direct descendents of our parent
-        $MatchingClassifications = $CFactory->GetItemNames(
-            ($Parent === null) ? "Depth = 0" : "ParentId = ".$Parent->Id()
+        $MatchingClassifications = $CFactory->getItemNames(
+            ($Parent === null) ? "Depth = 0" : "ParentId = ".$Parent->id()
         );
     }
 
@@ -166,10 +166,11 @@ global $H_StartLetter;
 
 global $H_Errors;
 
-PageTitle("Add/Edit Classifications");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Add/Edit Classifications");
 
 # check if current user is authorized to edit classifications
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_CLASSADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_CLASSADMIN)) {
     return;
 }
 

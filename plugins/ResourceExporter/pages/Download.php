@@ -3,7 +3,7 @@
 #   FILE:  Download.php (ResourceExporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -46,10 +46,10 @@ if (array_key_exists("FS", $_GET)) {
         throw new Exception("Retrieved plugin is not ResourceExporter (should be impossible).");
     }
 
-    $FileInfo = $Plugin->GetExportedFileInfo($_GET["FS"]);
+    $FileInfo = $Plugin->getExportedFileInfo($_GET["FS"]);
     if ($FileInfo !== null) {
         # if current user is the one who created the file and file exists
-        if ((User::getCurrentUser()->Id() == $FileInfo["ExporterId"]) &&
+        if ((User::getCurrentUser()->id() == $FileInfo["ExporterId"]) &&
             (is_readable($FileInfo["LocalFileName"]))) {
             # set headers to download file
             $FileName = $FileInfo["LocalFileName"];
@@ -64,10 +64,10 @@ if (array_key_exists("FS", $_GET)) {
 
             # send file to user, unbuffered to avoid memory issues
             $AF = ApplicationFramework::getInstance();
-            $AF->AddUnbufferedCallback("OutputFile", [$FileName]);
+            $AF->addUnbufferedCallback("OutputFile", [$FileName]);
 
             # turn off display of HTML template
-            $AF->SuppressHTMLOutput();
+            $AF->suppressHtmlOutput();
         }
     }
 }

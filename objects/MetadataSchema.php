@@ -297,9 +297,6 @@ class MetadataSchema extends ItemFactory
      */
     public static function schemaExistsWithId(int $SchemaId): bool
     {
-        if (!is_numeric($SchemaId)) {
-            return false;
-        }
         $DB = new Database();
         $DB->query("SELECT * FROM MetadataSchemas"
                 ." WHERE SchemaId = ".intval($SchemaId));
@@ -888,7 +885,7 @@ class MetadataSchema extends ItemFactory
                         $VocabToLoad = null;
 
                         # for other field attributes
-                        if (is_iterable($FieldXml) === false) { // @phpstan-ignore-line
+                        if (is_iterable($FieldXml) === false) {
                             throw new Exception("Field XML data is not iterable.");
                         }
                         foreach ($FieldXml as $MethodName => $Value) {
@@ -2076,7 +2073,7 @@ class MetadataSchema extends ItemFactory
 
     /**
      * Get IDs for all existing metadata schemas.
-     * @return array(int) Returns an array of schema IDs.
+     * @return array Returns an array of schema IDs.
      */
     public static function getAllSchemaIds(): array
     {
@@ -2175,9 +2172,7 @@ class MetadataSchema extends ItemFactory
      */
     public static function setOwnerListRetrievalFunction(callable $Callback): void
     {
-        if (is_callable($Callback)) {
-            self::$OwnerListRetrievalFunction = $Callback;
-        }
+        self::$OwnerListRetrievalFunction = $Callback;
     }
 
     /**

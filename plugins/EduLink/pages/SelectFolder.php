@@ -45,3 +45,8 @@ $H_FolderIds = FolderFactory::getSharedFoldersOwnedByUsers(
 $H_FolderIds = FolderFactory::filterOutFoldersWithNoPublicItems(
     $H_FolderIds
 );
+
+$Plugin->recordListPublisherFolders(
+    $H_LaunchId,
+    $H_OwnerId
+);

@@ -11,6 +11,7 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 if (!isset($H_ReturnTo)) {
@@ -20,6 +21,8 @@ if (!isset($H_UserEditingUI)) {
     throw new Exception("H_UserEditingUI not defined.");
 }
 
+$AF = ApplicationFramework::getInstance();
+
 $Heading = "User Preferences";
 
 $SaveButton = new HtmlButton("Save");
@@ -28,7 +31,7 @@ $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setLink($H_ReturnTo);
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle($Heading);
+$AF->setPageTitle($Heading);
 ?>
 
 <h1><?= $Heading ?></h1>
@@ -37,8 +40,6 @@ PageTitle($Heading);
 <?PHP UserEditingUI::displayStatusBlock();  ?>
 <form method="post" enctype="multipart/form-data" action="index.php?P=Preferences">
   <?PHP $H_UserEditingUI->displayFormTable();  ?>
-
-  <input type="hidden" name="F_ReturnTo" value="<?= $H_ReturnTo; ?>" />
   <?PHP if ($H_UserEditingUI->isFormVisible()) { ?>
         <?= $SaveButton->getHtml(); ?>
         <?= $CancelButton->getHtml(); ?>

@@ -3,7 +3,7 @@
 #   FILE:  UserLogin.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -63,7 +63,7 @@ if (isset($_POST["F_UserName"]) && isset($_POST["F_Password"])) {
     }
 
     # allow plugins to override authentication by a signal
-    $SignalResult = $AF->SignalEvent(
+    $SignalResult = $AF->signalEvent(
         "EVENT_USER_AUTHENTICATION",
         [
             "UserName" => $UserName,
@@ -73,10 +73,10 @@ if (isset($_POST["F_UserName"]) && isset($_POST["F_Password"])) {
 
     # if the login was not forced to success or failure, proceed as normal
     if ($SignalResult === null) {
-        $LoginResult = $User->Login($UserName, $Password);
+        $LoginResult = $User->login($UserName, $Password);
     } elseif ($SignalResult === true) {
         # if success was forced, log the user in unconditionally
-        $LoginResult = $User->Login($UserName, $Password, true);
+        $LoginResult = $User->login($UserName, $Password, true);
     } else {
         # otherwise, fail the login and stop processing
         RespondToUser("LoginError", "Failed");
@@ -87,18 +87,18 @@ if (isset($_POST["F_UserName"]) && isset($_POST["F_Password"])) {
 # if login was successful
 if ($LoginResult === User::U_OKAY) {
     # is user account disabled?
-    if ($User->HasPriv(PRIV_USERDISABLED)) {
+    if ($User->hasPriv(PRIV_USERDISABLED)) {
         # log user out
-        $User->Logout();
+        $User->logout();
         RespondToUser("LoginError", "Failed");
         return;
     }
 
     # signal successful user login
-    $AF->SignalEvent(
+    $AF->signalEvent(
         "EVENT_USER_LOGIN",
         [
-            "UserId" => $User->Id(),
+            "UserId" => $User->id(),
             // @phpstan-ignore variable.undefined
             "Password" => $Password,
         ]
@@ -143,7 +143,7 @@ if ($LoginResult === User::U_OKAY) {
     }
 
     # give any hooked filters a chance to modify return page
-    $SignalResult = $AF->SignalEvent(
+    $SignalResult = $AF->signalEvent(
         "EVENT_USER_LOGIN_RETURN",
         array("ReturnPage" => $ReturnPage)
     );
@@ -165,20 +165,20 @@ if ($LoginResult === User::U_OKAY) {
 
     # see if the provided username or email exists
     $UFact = new UserFactory();
-    if ($UFact->UserNameExists($UserName) ||
-        $UFact->EMailAddressIsInUse($UserName)) {
+    if ($UFact->userNameExists($UserName) ||
+        $UFact->emailAddressIsInUse($UserName)) {
         $TargetUser = new User($UserName);
 
         # if the account is already activated
-        if ($TargetUser->IsActivated()) {
+        if ($TargetUser->isActivated()) {
             # see if the code provided was a valid password reset code
-            if ($TargetUser->IsResetCodeGood($Password)) {
+            if ($TargetUser->isResetCodeGood($Password)) {
                 # jump to the reset page if so
                 $ReturnPage = "index.php?P=ResetPassword&UN=".$UserName."&RC=".$Password;
                 RespondToUser($ReturnPage, "Redirect");
                 return;
             }
-        } elseif ($TargetUser->IsActivationCodeGood($Password)) {
+        } elseif ($TargetUser->isActivationCodeGood($Password)) {
             # otherwise, see if the code provided was a valid activation code
             # jump to the activation page if so
             $ReturnPage = "index.php?P=ActivateAccount&"."UN=".$UserName."&".

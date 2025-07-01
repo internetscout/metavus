@@ -4,7 +4,7 @@
 #   FILE:  mvus (Metavus command line utility)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -16,6 +16,7 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Plugin;
 use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
 
 $Util = new CommandLineUtility();
 $Util->checkEnvironment();
@@ -28,7 +29,7 @@ class CommandLineUtility
     # ---- CONFIGURATION -----------------------------------------------------
 
     const BOOTSTRAP_FILE = "objects/Bootloader.php";
-    const CLU_VERSION = "2.0.24";
+    const CLU_VERSION = "2.0.25";
     const REQUIRED_SOFTWARE_VERSION = "1.2.0";
 
     private $TablesToExcludeFromSparseDatabaseDump = [
@@ -75,8 +76,8 @@ class CommandLineUtility
             "SubCommands" => [
                 "clear" => [
                     "Description" => "clear page/object/template/image cache",
-                    "Usage" => "(all|template|object|page|scaled)",
-                    "Options" => "ATOPS",
+                    "Usage" => "(all|object|page|scaled|template)",
+                    "Options" => "AOPST",
                     "MinArgs" => 1,
                     "Function" => "clearCaches",
                     ],
@@ -186,6 +187,12 @@ class CommandLineUtility
                 "interfaces" => [
                     "Description" => "list available user interfaces",
                     "Function" => "listUserInterfaces",
+                    ],
+                "loggedin" => [
+                    "Description" => "list users currently logged in ",
+                    "Function" => "listUsersLoggedIn",
+                    "Usage" => "(PrivilegeConstant|PrivilegeId|all)",
+                    "MinArgs" => 1,
                     ],
                 "logins" => [
                     "Description" => "list user logins",
@@ -1152,9 +1159,9 @@ class CommandLineUtility
         }
 
         try {
-            $RFactory = new RecordFactory($Schema->Id());
+            $RFactory = new RecordFactory($Schema->id());
             $NewResourceIds =
-                    $RFactory->ImportRecordsFromXmlFile($FileName);
+                    $RFactory->importRecordsFromXmlFile($FileName);
             $ErrorMessages = $RFactory->getAllErrorMessages();
 
             $SiteOwnerId = $this->getSiteOwner();
@@ -1165,9 +1172,9 @@ class CommandLineUtility
                         ];
                 foreach ($OwnerFields as $FieldName) {
                     foreach ($NewResourceIds as $ResourceId) {
-                        if ($Schema->FieldExists($FieldName)) {
+                        if ($Schema->fieldExists($FieldName)) {
                             $Resource = new Record($ResourceId);
-                            $Resource->Set($FieldName, $SiteOwnerId);
+                            $Resource->set($FieldName, $SiteOwnerId);
                         }
                     }
                 }
@@ -1296,8 +1303,8 @@ class CommandLineUtility
 
             default:
                 $User = $this->normalizeUserArgument($UserArg);
-                print "Current user interface for ".$User->Name()
-                        ." is \"".$User->Get("ActiveUI")."\".\n";
+                print "Current user interface for ".$User->name()
+                        ." is \"".$User->get("ActiveUI")."\".\n";
                 break;
         }
     }
@@ -1315,10 +1322,10 @@ class CommandLineUtility
         switch (strtoupper($UserArg)) {
             case "ALL":
                 $UFactory = new \ScoutLib\UserFactory();
-                $UserIds = $UFactory->GetUserIds();
+                $UserIds = $UFactory->getUserIds();
                 foreach ($UserIds as $UserId) {
                     $User = new User($UserId);
-                    $User->Set("ActiveUI", $NewInterface);
+                    $User->set("ActiveUI", $NewInterface);
                 }
                 print "Active user interface for all ".number_format(count($UserIds))
                         ." users set to \"".$NewInterface."\".\n";
@@ -1332,8 +1339,8 @@ class CommandLineUtility
 
             default:
                 $User = $this->normalizeUserArgument($UserArg);
-                $User->Set("ActiveUI", $NewInterface);
-                print "User interface for ".$User->Name()
+                $User->set("ActiveUI", $NewInterface);
+                print "User interface for ".$User->name()
                         ." set to \"".$NewInterface."\".\n";
                 break;
         }
@@ -1447,7 +1454,7 @@ class CommandLineUtility
      */
     private function listMetadataSchemas(array $Args): void
     {
-        $Schemas = MetadataSchema::GetAllSchemas();
+        $Schemas = MetadataSchema::getAllSchemas();
         usort($Schemas, function ($A, $B) {
                     return $A->Id() <=> $B->Id();
         });
@@ -1558,8 +1565,12 @@ class CommandLineUtility
             return;
         }
 
-        $LongestLabelLen = max(array_map(function ($Params) {
-                return strlen($Params["Label"]);  }, $CfgSetup));
+        $LabelLens = array_map(
+            function ($Params) {  return strlen($Params["Label"]);  },
+            $CfgSetup
+        );
+        $LongestLabelLen = count($LabelLens) ? max($LabelLens) : 35;
+
         $DesiredMaximumWidth = self::outputIsPiped() ? 1000 : 79;
         $LabelColumnWidth = min($LongestLabelLen, 35);
         $ValueColumnWidth = $DesiredMaximumWidth - $LabelColumnWidth - 2;
@@ -1715,6 +1726,39 @@ class CommandLineUtility
     }
 
     /**
+     * List users currently logged in.
+     */
+    private function listUsersLoggedIn(array $Args): void
+    {
+        # parse privilege parameter
+        $PrivilegeIds = array_keys($this->normalizePrivilegeArguments($Args));
+
+        # retrieve users who are currently logged in
+        $UFactory = new UserFactory();
+        $Users = $UFactory->getLoggedInUsers();
+
+        # filter user list to only those with specified privileges (if supplied)
+        if (count($PrivilegeIds)) {
+            $Users = array_filter($Users, function ($User) use ($PrivilegeIds) {
+                return $User->hasPriv($PrivilegeIds);
+            });
+        }
+
+        foreach ($Users as $User) {
+            $Host = $User->lastIPAddress();
+            if (!self::outputIsPiped()) {
+                $Host = StdLib::getHostName($Host);
+            }
+            printf(
+                "%-21s %-18s %s\n",
+                $User->get("LastLoginDate"),
+                $UserName = $User->get("UserName"),
+                $Host,
+            );
+        }
+    }
+
+    /**
      * List all plugins.
      * @param array $Args Additional command line arguments.
      */
@@ -1722,11 +1766,11 @@ class CommandLineUtility
     {
         $LineFormat = "%-23s %-9s\n";
 
-        $Plugins = (PluginManager::getInstance())->GetPlugins();
+        $Plugins = (PluginManager::getInstance())->getPlugins();
         uksort($Plugins, "strnatcasecmp");
 
         foreach ($Plugins as $PluginName => $Plugin) {
-            $Attribs = $Plugin->GetAttributes();
+            $Attribs = $Plugin->getAttributes();
             $Status = !$Plugin->isInstalled() ? "NOT INST"
                     : (!$Plugin->isEnabled() ? "DISABLED"
                     : ($Plugin->isReady() ? "ENABLED" : "UNREADY"));
@@ -1754,7 +1798,7 @@ class CommandLineUtility
             }
             $User->grantPriv($PrivId);
             print "Privilege ".$PrivName
-                    ." granted to user ".$User->Name().".\n";
+                    ." granted to user ".$User->name().".\n";
         }
     }
 
@@ -1766,8 +1810,8 @@ class CommandLineUtility
     {
         $UserArg = $Args[0];
         $User = $this->normalizeUserArgument($UserArg);
-        print "Current privileges for user ".$User->Name().":\n";
-        $UserPrivs = $User->GetPrivList();
+        print "Current privileges for user ".$User->name().":\n";
+        $UserPrivs = $User->getPrivList();
         foreach ($this->getAvailablePrivileges() as $PrivId => $PrivName) {
             if (array_search($PrivId, $UserPrivs)) {
                 print "    ".$PrivName." (".$PrivId.")\n";
@@ -1792,7 +1836,7 @@ class CommandLineUtility
         foreach ($Privileges as $PrivId => $PrivName) {
             $User->revokePriv($PrivId);
             print "Privilege ".$PrivName
-                    ." revoked from user ".$User->Name().".\n";
+                    ." revoked from user ".$User->name().".\n";
         }
     }
 
@@ -2178,7 +2222,7 @@ class CommandLineUtility
         # filter out pseudo-privileges if requested
         if ($OmitPseudoPrivs) {
             foreach ($AllPrivs as $PrivId => $Priv) {
-                if (User::IsPseudoPrivilege($PrivId)
+                if (User::isPseudoPrivilege($PrivId)
                         || ($PrivId == PRIV_USERDISABLED)) {
                     unset($AllPrivs[$PrivId]);
                 }
@@ -2188,10 +2232,7 @@ class CommandLineUtility
         # get all constants that begin with "PRIV_"
         $PrivConstantNames = array_filter(
             get_defined_constants(),
-            function ($Key) {
-                        return is_string($Key)
-                                && (strpos($Key, "PRIV_") === 0);
-            },
+            function ($Key) {  return (strpos($Key, "PRIV_") === 0);  },
             ARRAY_FILTER_USE_KEY
         );
         $PrivConstantNames = array_flip($PrivConstantNames);
@@ -2315,7 +2356,7 @@ class CommandLineUtility
      */
     private function getSchema(string $Name)
     {
-        $SchemaNames = MetadataSchema::GetAllSchemaNames();
+        $SchemaNames = MetadataSchema::getAllSchemaNames();
         if (is_numeric($Name)) {
             $SchemaId = $Name;
             if (!isset($SchemaNames[$SchemaId])) {
@@ -2369,7 +2410,7 @@ class CommandLineUtility
             $SysUserName = $SysUserInfo["name"];
 
             # look for account with same name as system user
-            $UserNames = $UFactory->FindUserNames($SysUserName);
+            $UserNames = $UFactory->findUserNames($SysUserName);
             if (count($UserNames) == 1) {
                 $UserIds = array_keys($UserNames);
                 $OwnerId = array_pop($UserIds);
@@ -2387,12 +2428,12 @@ class CommandLineUtility
      */
     private function loadConfigFile(): void
     {
-        if (file_exists("local/config.php")) {
+        if (is_readable("local/config.php")) {
             require_once("local/config.php");
-        } elseif (file_exists("config.php")) {
+        } elseif (is_readable("config.php")) {
             require_once("config.php");
         } else {
-            throw new Exception("Could not find config.php.");
+            throw new Exception("Could not find (or read) config.php.");
         }
     }
 
@@ -2465,8 +2506,8 @@ class CommandLineUtility
             } elseif (defined("PRIV_".$Arg."ADMIN")) {
                 $PrivilegeId = constant("PRIV_".$Arg."ADMIN");
             } elseif (is_numeric($Arg)
-                    && (User::IsStandardPrivilege((int)$Arg)
-                            || $PFactory->ItemExists((int)$Arg))) {
+                    && (User::isStandardPrivilege((int)$Arg)
+                            || $PFactory->itemExists((int)$Arg))) {
                 $PrivilegeId = $Arg;
             }
 

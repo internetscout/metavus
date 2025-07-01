@@ -12,20 +12,20 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\HtmlOptionList;
+use ScoutLib\HtmlTable;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 /**
-* Display the list of ControlledName fields in this schema as a
-* series of HTML table rows.  Does not output the opening or closing
-* 'table' tags.
-* @param MetadataSchema $Schema Schema to display.
-*/
-function displayFieldList($Schema): void
+ * Get HTML for table of the list of ControlledName fields in the specified schema.
+ * @param MetadataSchema $Schema Schema to display.
+ * @return string The table HTML.
+ */
+function getHtmlForFieldList($Schema): string
 {
-    $RFactory = new RecordFactory($Schema->Id());
-    $ResourceCount = $RFactory->GetItemCount();
+    $RFactory = new RecordFactory($Schema->id());
+    $ResourceCount = $RFactory->getItemCount();
 
-    $Fields = $Schema->GetFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME);
+    $Fields = $Schema->getFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME);
 
     $SearchButton = new HtmlButton("Search");
     $SearchButton->setIcon("MagnifyingGlass.svg");
@@ -43,13 +43,16 @@ function displayFieldList($Schema): void
         $Width = max($Width, strlen($Field->GetDisplayName()) + 10);
     }
 
+    $FieldListTable = new HtmlTable();
+    $FieldListTable->setTableClass("table table-striped table-sm mv-content-optionlist");
+
     foreach ($Fields as $Field) {
         $CNFactory = new ControlledNameFactory($Field->Id());
 
         $DisplayName = $Field->Name()
             .(strlen($Field->Label()) ? ": (".$Field->Label().")" : "");
 
-        $UsageCount = $CNFactory->GetUsageCount();
+        $UsageCount = $CNFactory->getUsageCount();
         $UsagePercentage = ($ResourceCount > 0) ?
             round((100 * $UsageCount) / $ResourceCount) : 0 ;
 
@@ -58,25 +61,16 @@ function displayFieldList($Schema): void
             "index.php?P=DBExportField&Id=".$Field->id()
         );
 
-        // @codingStandardsIgnoreStart
-        ?>
-          <tr valign="top">
-              <td><?= $DisplayName ?></td>
-              <td>(<?= number_format(
-                    $Field->GetCountOfPossibleValues()); ?>&nbsp;values)</td>
-              <td>
-                <?= $SearchButton->getHtml() ?>
-                <?= $ExportButton->getHtml() ?>
-              </td>
-              <td><?= $Field->Description(); ?></td>
-              <td>
-                  Assigned to <?= number_format($UsageCount); ?>&nbsp;resources
-                  (<?= $UsagePercentage; ?>%&nbsp;coverage)
-              </td>
-          </tr>
-        <?PHP
-        // @codingStandardsIgnoreEnd
+        $FieldListTable->addRow([
+            $DisplayName,
+            "(" . number_format($Field->GetCountOfPossibleValues()) . "&nbsp;values)",
+            $SearchButton->getHtml() . " " . $ExportButton->getHtml(),
+            $Field->Description(),
+            "Assigned to " . number_format($UsageCount) . "&nbsp;resources\n"
+                . "(" . $UsagePercentage . "%&nbsp;coverage)"
+        ]);
     }
+    return $FieldListTable->getHtml();
 }
 
 /**
@@ -93,7 +87,7 @@ function displaySearchResults($SearchResults, $Start, $PerPage): void
 
     $Index = 0;
     foreach ($Results as $Result) {
-        DisplaySearchResult($Result, $Index);
+        displaySearchResult($Result, $Index);
         $Index++;
     }
 }
@@ -106,7 +100,7 @@ function displaySearchResults($SearchResults, $Start, $PerPage): void
 function displaySearchResult($CNId, $Index): void
 {
     $CN = new ControlledName($CNId);
-    $Field = MetadataField::getField($CN->FieldId());
+    $Field = MetadataField::getField($CN->fieldId());
 
     $InUseCount = $CN->getAssociatedResourceCount();
 
@@ -134,15 +128,15 @@ function displaySearchResult($CNId, $Index): void
     <tr>
       <td>
         <input type="hidden" id="F_ControlledNameId_<?= $Index ?>"
-               name="F_ControlledNameId_<?= $Index ?>" value="<?= $CN->Id() ?>" />
+               name="F_ControlledNameId_<?= $Index ?>" value="<?= $CN->id() ?>" />
         <input type="text" id="F_ControlledName_<?= $Index ?>"
-               name="F_ControlledName_<?= $Index ?>" value="<?= $CN->Name() ?>" />
+               name="F_ControlledName_<?= $Index ?>" value="<?= $CN->name() ?>" />
       </td>
-      <td><?PHP PrintQualifier($Field, $Index, $CN); ?></td>
+      <td><?PHP printQualifier($Field, $Index, $CN); ?></td>
       <td><?= $InUseMessage; ?></td>
       <?PHP if ($InUseCount > 0){ ?>
         <td>Remap to:</td>
-        <td><?PHP QuickSearchHelper::PrintQuickSearchField($Field->Id(), "", "", FALSE, "D_Remap_".$Index); ?></td>
+        <td><?PHP QuickSearchHelper::printQuickSearchField($Field->id(), "", "", FALSE, "D_Remap_".$Index); ?></td>
       <?PHP } else { ?>
         <td colspan="2">&nbsp;</td>
       <?PHP } ?>
@@ -156,7 +150,7 @@ function displaySearchResult($CNId, $Index): void
       <td>&nbsp;</td>
       <td colspan="7">
         <textarea id="F_VariantName_<?= $Index ?>" name="F_VariantName_<?= $Index ?>"
-                 cols="38" rows="4"><?= $CN->VariantName() ?></textarea>
+                 cols="38" rows="4"><?= $CN->variantName() ?></textarea>
       </td>
     </tr>
 <?PHP
@@ -171,21 +165,21 @@ function displaySearchResult($CNId, $Index): void
 function printQualifier(MetadataField $Field, int $Index, ControlledName $CName): void
 {
     # only display qualifer field if field uses qualifiers
-    if ($Field->UsesQualifiers()) {
-        if ($Field->HasItemLevelQualifiers()) {
+    if ($Field->usesQualifiers()) {
+        if ($Field->hasItemLevelQualifiers()) {
             # first value is "--"
-            $Items = $Field->AssociatedQualifierList();
+            $Items = $Field->associatedQualifierList();
             $Items["--"] = "--";
             ksort($Items);
 
             $OptList = new HtmlOptionList("F_QualifierName_".$Index, $Items, $CName->qualifierId());
-            $OptList->PrintIfEmpty(false);
-            $OptList->PrintHtml();
-        } elseif ($Field->DefaultQualifier()) {
+            $OptList->printIfEmpty(false);
+            $OptList->printHtml();
+        } elseif ($Field->defaultQualifier()) {
             # if field has a default qualifier, but item level qualifiers are not allowed,
             # display the default with no option to change, otherwise don't display anything
-            $Qualifier = new Qualifier($Field->DefaultQualifier());
-            print $Qualifier->Name();
+            $Qualifier = new Qualifier($Field->defaultQualifier());
+            print $Qualifier->name();
         }
     }
 }
@@ -211,7 +205,7 @@ function displayPagination(
 <div class="mv-pagination-container" style="float:right">
 <form method="post" action="index.php?P=EditControlledName&amp;SC=<?= $Field->schemaId() ?>">
 <input type="hidden" name="F_ControlledName" value="<?= htmlspecialchars($ControlledName) ?>"/>
-<input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($Field->Name()) ?>"/>
+<input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($Field->name()) ?>"/>
 <input type="hidden" name="F_StartRec" value="<?= $StartRecord ?>" />
 <input type="hidden" name="F_RecordsPerPage" value="<?= $PerPage ?>" />
         <?PHP
@@ -239,13 +233,13 @@ function printSchemaOptionList(MetadataSchema $SchemaInUse): void
     $Options = [];
 
     # get the metadata schema options
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
         $Options[$Schema->Id()] = $Schema->Name() . " Schema";
     }
 
-    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
-    $OptList->SubmitOnChange(true);
-    $OptList->PrintHtml();
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->id());
+    $OptList->submitOnChange(true);
+    $OptList->printHtml();
 }
 
 
@@ -360,16 +354,16 @@ $CancelButton->makeSubmitButton();
         250 => 250
     ];
     $OptList = new HtmlOptionList("F_RecordsPerPage", $DisplayOptions, $H_RecordsPerPage);
-    $OptList->SubmitOnChange(true);
-    $OptList->OnChangeAction("submit('Submit')");
-    $OptList->PrintHtml(); ?>
+    $OptList->submitOnChange(true);
+    $OptList->onChangeAction("submit('Submit')");
+    $OptList->printHtml(); ?>
   </form>
 </div>
 
 <h1>Edit Controlled Names</h1>
 
 <div>
-  <?PHP DisplayPagination($H_NumResults, $H_Field, $H_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
+  <?PHP displayPagination($H_NumResults, $H_Field, $H_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
 </div>
 
 <form name="addclass" method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
@@ -389,7 +383,7 @@ $CancelButton->makeSubmitButton();
     </div>
   </div>
     <table class="table table-striped mv-content-cnametable">
-        <?PHP DisplaySearchResults($H_MatchingControlledNames, $H_StartRec, $H_RecordsPerPage); ?>
+        <?PHP displaySearchResults($H_MatchingControlledNames, $H_StartRec, $H_RecordsPerPage); ?>
     </table>
    <div class="container">
     <div class="row">
@@ -401,7 +395,7 @@ $CancelButton->makeSubmitButton();
   </div>
 
 </form>
-<?PHP DisplayPagination($H_NumResults, $H_Field, $H_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
+<?PHP displayPagination($H_NumResults, $H_Field, $H_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
     <script type="text/javascript">
          $('.D_Variants_Button').show();
          $('.D_Variants').hide();
@@ -417,7 +411,7 @@ $CancelButton->makeSubmitButton();
     <div class="col-4 text-end">
       <form method="get" action="index.php">
         <input type="hidden" name="P" value="EditControlledName" />
-        <?PHP PrintSchemaOptionList($H_Schema); ?>
+        <?PHP printSchemaOptionList($H_Schema); ?>
       </form>
     </div>
   </div>
@@ -443,10 +437,8 @@ $CancelButton->makeSubmitButton();
             </tr>
             <tr>
                 <td colspan="2" class="mv-no-padding">
-                  <table class="table table-striped table-sm mv-content-optionlist">
-                  <?PHP DisplayFieldList($H_Schema); ?>
-                </table>
-              </td>
+                  <?= getHtmlForFieldList($H_Schema); ?>
+                </td>
             </tr>
 
         </tbody>
@@ -471,14 +463,14 @@ $('#F_ControlledName').keydown(
 
 <h2>Controlled names modified:</h2>
 
-<p><?PHP DisplayControlledNameList($H_ModifiedCNames); ?></p>
+<p><?PHP displayControlledNameList($H_ModifiedCNames); ?></p>
 
 <h2>Controlled names deleted:</h2>
 
-<p><?PHP DisplayControlledNameList($H_DeletedCNames); ?></p>
+<p><?PHP displayControlledNameList($H_DeletedCNames); ?></p>
 
 <h2>Resource records affected by these changes:</h2>
 
-<p><?PHP DisplayModifiedResourceList($H_ModifiedResources); ?></p>
+<p><?PHP displayModifiedResourceList($H_ModifiedResources); ?></p>
 
 <?PHP } ?>

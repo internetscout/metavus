@@ -164,14 +164,14 @@ function printPageHeader($H_LaunchId) : void
             <div class="col text-end">
               <?PHP if (shouldDisplaySelectFolder()) { ?>
               <a id="mv-p-edulink-folder-button" href="<?= $SelectFolderUrl ?>"
-                 ><?= file_get_contents($AF->gUIFile("OpenFolder.svg")) ?> Collections</a>
+                 ><?= $AF->inlineUIFile("OpenFolder.svg") ?> Collections</a>
               <?PHP } ?>
               <?PHP if (!$User->isLoggedIn()) { ?>
               <a id="mv-p-edulink-login-button" href="<?= $AF->baseUrl() ?>index.php?P=UserLogin"
-                 ><?= file_get_contents($AF->gUIFile("Meeple.svg")) ?> Sign In</a>
+                 ><?= $AF->inlineUIFile("Meeple.svg") ?> Sign In</a>
               <?PHP } else { ?>
               <a id="mv-p-edulink-logout-button" href="<?= $AF->baseUrl() ?>index.php?P=UserLogout"
-                 ><?= file_get_contents($AF->gUIFile("Meeple.svg")) ?> Sign Out</a>
+                 ><?= $AF->inlineUIFile("Meeple.svg") ?> Sign Out</a>
               <?PHP } ?>
             </div>
           </div>

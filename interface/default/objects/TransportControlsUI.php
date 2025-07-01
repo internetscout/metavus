@@ -149,7 +149,7 @@ class TransportControlsUI extends TransportControlsUI_Base
 
             ?><a class="btn btn-primary btn-sm"
                 href="<?= $this->goToEndLink() ?>"
-                .'title="<?= $GETitleAttrib ?>">&gt;<span>&#124;</span></a>
+                title="<?= $GETitleAttrib ?>">&gt;<span>&#124;</span></a>
             </div>
         <?PHP  }  ?>
 

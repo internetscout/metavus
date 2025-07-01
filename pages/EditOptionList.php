@@ -9,15 +9,17 @@
 #   @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
+
 
 # ----- MAIN -----------------------------------------------------------------
 
-PageTitle("Edit Option List");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Option List");
 
-if (!CheckAuthorization(PRIV_NAMEADMIN)) {
+if (!User::requirePrivilege(PRIV_NAMEADMIN)) {
     return;
 }
 
@@ -25,12 +27,12 @@ if (isset($_GET["FI"]) || isset($_POST["F_FieldId"])) {
     $FieldId = intval(isset($_GET["FI"]) ? $_GET["FI"] : $_POST["F_FieldId"]);
 
     $Field = MetadataField::getField($FieldId);
-    if ($Field->Type() == MetadataSchema::MDFTYPE_OPTION) {
+    if ($Field->type() == MetadataSchema::MDFTYPE_OPTION) {
         # reload the schema using the field's schema ID
-        $H_Schema = new MetadataSchema($Field->SchemaId());
+        $H_Schema = new MetadataSchema($Field->schemaId());
 
         $G_Field = $Field;
-        $H_OptionNames = $G_Field->GetPossibleValues();
+        $H_OptionNames = $G_Field->getPossibleValues();
         $H_Options = array();
         foreach ($H_OptionNames as $Id => $Name) {
             $H_Options[$Id] = new ControlledName($Id);
@@ -54,7 +56,7 @@ if (isset($_POST["Submit"])) {
 
     # if either of the required variables are not loaded, reload them
     if (!isset($H_OptionNames) || !isset($H_Options)) {
-        $H_OptionNames = $G_Field->GetPossibleValues();
+        $H_OptionNames = $G_Field->getPossibleValues();
         $H_Options = array();
         foreach ($H_OptionNames as $Id => $Name) {
             $H_Options[$Id] = new ControlledName($Id);
@@ -62,7 +64,7 @@ if (isset($_POST["Submit"])) {
     }
 
     # start action message block
-    $G_Msgs[] = "For the <i>".$G_Field->GetDisplayName()."</i> option list:";
+    $G_Msgs[] = "For the <i>".$G_Field->getDisplayName()."</i> option list:";
 
     # if user requested that changes be saved
     if ($_POST["Submit"] == "Save Changes") {
@@ -73,10 +75,10 @@ if (isset($_POST["Submit"])) {
         while (isset($_POST["F_OptionId".$Index])) {
             # save edited value
             $Id = $_POST["F_OptionId".$Index];
-            if ($_POST["F_Option".$Index] != $H_Options[$Id]->Name()) {
-                $OldName = $H_Options[$Id]->Name();
+            if ($_POST["F_Option".$Index] != $H_Options[$Id]->name()) {
+                $OldName = $H_Options[$Id]->name();
                 $NewName = $_POST["F_Option".$Index];
-                $H_Options[$Id]->Name($NewName);
+                $H_Options[$Id]->name($NewName);
                 $G_Msgs[] = "option <i>".$OldName."</i> changed to <i>".$NewName."</i>";
             }
 
@@ -85,16 +87,16 @@ if (isset($_POST["Submit"])) {
                     && ($_POST["F_ConfirmRemap"] == $Id)
                     && ($_POST["F_RemapTo".$Index] != -1)) {
                 # change all usage of this option to specified option
-                $G_Msgs[] = "associations for option <i>".$H_Options[$Id]->Name()
+                $G_Msgs[] = "associations for option <i>".$H_Options[$Id]->name()
                         ."</i> remapped to <i>"
-                        .$H_Options[$_POST["F_RemapTo".$Index]]->Name()."</i>";
-                $H_Options[$Id]->RemapTo($_POST["F_RemapTo".$Index]);
+                        .$H_Options[$_POST["F_RemapTo".$Index]]->name()."</i>";
+                $H_Options[$Id]->remapTo($_POST["F_RemapTo".$Index]);
             # else if deletion requested
             } elseif (isset($_POST["F_ConfirmDelete".$Index])) {
                 $FieldDefault = $G_Field->defaultValue();
                 if ((is_array($FieldDefault) && in_array($Id, $FieldDefault)) ||
                        $FieldDefault == $Id) {
-                    $G_Msgs[] = "cannot delete default value <i>".$H_Options[$Id]->Name()."</i>";
+                    $G_Msgs[] = "cannot delete default value <i>".$H_Options[$Id]->name()."</i>";
                 } else {
                     $ToDelete[] = $Id;
                 }
@@ -125,12 +127,12 @@ if (isset($_POST["Submit"])) {
             }
             $DefaultValue = array_values($DefaultValue);
         }
-        if ($DefaultValue != $G_Field->DefaultValue()) {
-            if ($G_Field->Type() == MetadataSchema::MDFTYPE_OPTION
+        if ($DefaultValue != $G_Field->defaultValue()) {
+            if ($G_Field->type() == MetadataSchema::MDFTYPE_OPTION
                 && is_array($DefaultValue) && count($DefaultValue)) {
-                $G_Field->DefaultValue($DefaultValue);
+                $G_Field->defaultValue($DefaultValue);
                 $NameEscFunc = function ($Value) use ($H_Options) {
-                    $Name = $H_Options[$Value]->Name();
+                    $Name = $H_Options[$Value]->name();
                     return  "<i>".defaulthtmlentities($Name)."</i>";
                 };
                 $Names = array_map($NameEscFunc, $DefaultValue);
@@ -143,23 +145,23 @@ if (isset($_POST["Submit"])) {
                             ." and set as the default value at the same time.";
                         unset($ToDelete[array_search($DefaultValue, $ToDelete)]);
             } else {
-                $G_Field->DefaultValue($DefaultValue);
+                $G_Field->defaultValue($DefaultValue);
                 $G_Msgs[] = "default value "
                         .(($DefaultValue == null) ? "cleared"
                         : "changed to <i>"
-                                .$H_Options[$DefaultValue]->Name()."</i>");
+                                .$H_Options[$DefaultValue]->name()."</i>");
             }
         }
 
         foreach ($ToDelete as $Id) {
-            $G_Msgs[] = "option <i>".$H_Options[$Id]->Name()."</i> deleted";
+            $G_Msgs[] = "option <i>".$H_Options[$Id]->name()."</i> deleted";
             $H_Options[$Id]->destroy(true);
         }
 
         # if new value supplied
         if (isset($_POST["F_ConfirmAdd"]) && strlen(trim($_POST["F_AddName"]))) {
             # add new value
-            $NewName = ControlledName::create(trim($_POST["F_AddName"]), $G_Field->Id());
+            $NewName = ControlledName::create(trim($_POST["F_AddName"]), $G_Field->id());
             $NewQualifierId = StdLib::getFormValue("F_AddQualifier");
             if (is_numeric($NewQualifierId)) {
                 $NewName->qualifierId((int) $NewQualifierId);
@@ -168,7 +170,7 @@ if (isset($_POST["Submit"])) {
         }
 
         # reload options
-        $H_OptionNames = $G_Field->GetPossibleValues();
+        $H_OptionNames = $G_Field->getPossibleValues();
         $H_Options = array();
         foreach ($H_OptionNames as $Id => $Name) {
             $H_Options[$Id] = new ControlledName($Id);
@@ -178,16 +180,16 @@ if (isset($_POST["Submit"])) {
     }
 
     # update unset values if desired
-    if (isset($_POST["F_UpdateValues"]) && $G_Field->DefaultValue() !== false) {
+    if (isset($_POST["F_UpdateValues"]) && $G_Field->defaultValue() !== false) {
         # create resource factory and get resources with unset option fields if default field is set
-        $ResourceFactory = new RecordFactory($G_Field->SchemaId());
+        $ResourceFactory = new RecordFactory($G_Field->schemaId());
         $ResourceIds = $ResourceFactory->getItemIds("RecordId NOT IN (SELECT RecordId ".
                 "FROM RecordNameInts WHERE ControlledNameId IN ".
                 "(SELECT ControlledNameId FROM ControlledNames ".
-                "WHERE FieldId = ".$G_Field->Id()."))");
+                "WHERE FieldId = ".$G_Field->id()."))");
 
         # convert default value to set-able array
-        $Values = $G_Field->DefaultValue();
+        $Values = $G_Field->defaultValue();
         if (is_array($Values)) {
             # check if required variable DefaultValue is set
             if (!isset($DefaultValue)) {
@@ -199,7 +201,7 @@ if (isset($_POST["Submit"])) {
         # iterate through and set unset option values
         foreach ($ResourceIds as $ResourceId) {
             $Resource = new Record($ResourceId);
-            $Resource->set($G_Field->Id(), $Values);
+            $Resource->set($G_Field->id(), $Values);
         }
         $G_Msgs[] = "default value set on records that had no value";
     }
@@ -220,7 +222,7 @@ if (!isset($G_Field)) {
     }
 
     # load list of possible fields
-    $H_OptionFields = $H_Schema->GetFields(
+    $H_OptionFields = $H_Schema->getFields(
         MetadataSchema::MDFTYPE_OPTION,
         MetadataSchema::MDFORDER_EDITING
     );

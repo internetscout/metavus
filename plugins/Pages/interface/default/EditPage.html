@@ -49,7 +49,7 @@ require_once($AF->gUIFile("CKEditorSetup.php"));
 
 # HTML page setup
 $Heading = ($H_DisplayMode == "Adding") ? "Add New Page" : "Edit Page";
-PageTitle($Heading);
+$AF->setPageTitle($Heading);
 
 $AllowedKeywords = Pages::getInstance()->getAllowedInsertionKeywords();
 
@@ -225,7 +225,9 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
                 foreach ($Files as $File) {
                     $Id = $File->id();
                     $LinkCmd = defaulthtmlentities(
-                        "CKEDITOR.instances['F_Content'].insertHtml("
+                        "CKEDITOR.instances['F_Content'].mode != 'wysiwyg'"
+                        ."? alert('Link button only works in rich text mode')"
+                        .": CKEDITOR.instances['F_Content'].insertHtml("
                             ."'<a href=\"".$File->getLink()."\">'"
                             ."+CKEDITOR.instances['F_Content'].getSelection()"
                         .".getSelectedText()+'</a>');"

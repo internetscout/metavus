@@ -10,21 +10,22 @@
 
 namespace Metavus;
 
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
-    return;
-}
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
 # non-standard global variables
 global $ErrorMessages;
-global $Privileges;
 
-if (User::getCurrentUser()->IsLoggedIn()) {
-    $PrivilegeFactory = new PrivilegeFactory();
-    $Privileges = $PrivilegeFactory->GetPrivileges();
+# verify that user is logged in and authorized
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
 }
+
+$PrivilegeFactory = new PrivilegeFactory();
+$H_Privileges = $PrivilegeFactory->getPrivileges();
 
 $H_ErrorMessages = $ErrorMessages;
 
-PageTitle("Edit Per-Field User Permission Names");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Per-Field User Permission Names");

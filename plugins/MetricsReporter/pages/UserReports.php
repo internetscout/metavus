@@ -3,7 +3,7 @@
 #   FILE:  CollectionReports.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -11,18 +11,19 @@
 use Metavus\InterfaceConfiguration;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
-PageTitle("User Statistics");
+$AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle("User Statistics");
 
 # make sure user has sufficient permission to view report
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
     return;
 }
-
-$AF = ApplicationFramework::getInstance();
 
 # grab ahold of the relevant metrics objects
 $Recorder = MetricsRecorder::getInstance();
@@ -30,7 +31,7 @@ $Reporter = MetricsReporter::getInstance();
 
 # regular users vs time
 $H_RegUserCount = [];
-foreach ($Recorder->GetSampleData(
+foreach ($Recorder->getSampleData(
     MetricsRecorder::ST_REGUSERCOUNT
 ) as $SampleDate => $SampleValue) {
     $SampleDateAsTime = strtotime($SampleDate);
@@ -44,7 +45,7 @@ ksort($H_RegUserCount);
 
 # privileged users vs time
 $H_PrivUserCount = [];
-foreach ($Recorder->GetSampleData(
+foreach ($Recorder->getSampleData(
     MetricsRecorder::ST_PRIVUSERCOUNT
 ) as $SampleDate => $SampleValue) {
     $SampleDateAsTime = strtotime($SampleDate);
@@ -58,7 +59,7 @@ ksort($H_PrivUserCount);
 
 # new users per day
 $H_NewUsersPerDay   = [];
-foreach ($Recorder->GetSampleData(
+foreach ($Recorder->getSampleData(
     MetricsRecorder::ST_DAILYNEWACCTS
 ) as $SampleDate => $SampleValue) {
     # discard the 'time' part of the timestamp
@@ -83,7 +84,7 @@ foreach ($Recorder->GetSampleData(
 
 # number of logins per (day/week/mo) bar charts
 $H_LoginsPerDay = [];
-foreach ($Recorder->GetSampleData(
+foreach ($Recorder->getSampleData(
     MetricsRecorder::ST_DAILYLOGINCOUNT
 ) as $SampleDate => $SampleValue) {
     # discard the 'time' part of the timestamp
@@ -107,16 +108,16 @@ foreach ($Recorder->GetSampleData(
 }
 
 if (isset($_GET["JSON"])) {
-    $AF->SuppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     header("Content-Type: application/json; charset="
            .InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet"), true);
 
     print json_encode(
         [
-            "RegisteredUsers" => MetricsReporter::FormatDateKeys($H_RegUserCount),
-            "PrivilegedUsers" => MetricsReporter::FormatDateKeys($H_PrivUserCount),
-            "NewUsers" => MetricsReporter::FormatDateKeys($H_NewUsersPerDay),
-            "Logins" => MetricsReporter::FormatDateKeys($H_LoginsPerDay)
+            "RegisteredUsers" => MetricsReporter::formatDateKeys($H_RegUserCount),
+            "PrivilegedUsers" => MetricsReporter::formatDateKeys($H_PrivUserCount),
+            "NewUsers" => MetricsReporter::formatDateKeys($H_NewUsersPerDay),
+            "Logins" => MetricsReporter::formatDateKeys($H_LoginsPerDay)
         ]
     );
     return;

@@ -9,38 +9,41 @@
 
 # ----- MAIN -----------------------------------------------------------------
 
+namespace Metavus;
+
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 $FolderId = StdLib::getFormValue("FID");
 
 # check argument validity
-if ($FolderId == null) {
+if ($FolderId === null) {
     $H_ErrorMsg = "Folder ID is not received.";
     return;
-} elseif (!Folder::ItemExists($FolderId)) {
+}
+
+if (!Folder::itemExists($FolderId)) {
     $H_ErrorMsg = "Folder ID is not valid.";
     return;
 }
 
 # only allow current user to edit their own folders
 $Folder = new Folder($FolderId);
-$OwnerId = $Folder->OwnerId();
-if ($OwnerId != User::getCurrentUser()->Id()) {
+$OwnerId = $Folder->ownerId();
+if ($OwnerId != User::getCurrentUser()->id()) {
     $H_ErrorMsg = "You are not the owner of this folder.";
     return;
 }
 
 # create a duplicate
 $NewFolder = $Folder->duplicate();
-$NewFolder->Name($NewFolder->Name()." (DUPLICATE)");
+$NewFolder->name($NewFolder->name()." (DUPLICATE)");
 
 $FolderFactory = new FolderFactory($OwnerId);
-$ResourceFolder = $FolderFactory->GetResourceFolder($OwnerId);
-$ResourceFolder->AppendItem($NewFolder->Id());
+$ResourceFolder = $FolderFactory->getResourceFolder($OwnerId);
+$ResourceFolder->appendItem($NewFolder->id());
 
 # jump to ManageFolders page
 ApplicationFramework::getInstance()->setJumpToPage("index.php?P=P_Folders_ManageFolders");

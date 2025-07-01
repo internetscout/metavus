@@ -10,13 +10,14 @@
 
 namespace Metavus;
 
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Metadata Field Editor");
 
-PageTitle("Metadata Field Editor");
-
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 

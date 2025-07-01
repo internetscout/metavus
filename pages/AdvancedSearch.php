@@ -3,13 +3,12 @@
 #   FILE:  AdvancedSearch.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\DataCache;
@@ -62,9 +61,9 @@ function determinePossibleValues(MetadataField $Field): array
 
     if ($Field->type() == MetadataSchema::MDFTYPE_USER) {
         $PossibleValues = $Field->getValuesInUse();
-    } elseif ($Field->Type() == MetadataSchema::MDFTYPE_TREE) {
-        $MaxDepth = $Field->MaxDepthForAdvancedSearch();
-        $AllValues = $Field->GetPossibleValues();
+    } elseif ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
+        $MaxDepth = $Field->maxDepthForAdvancedSearch();
+        $AllValues = $Field->getPossibleValues();
 
         $PossibleValues = array();
         foreach ($AllValues as $ClassId => $ClassName) {
@@ -74,7 +73,7 @@ function determinePossibleValues(MetadataField $Field): array
         }
     } else {
         # otherwise GetPossibleValues is our friend
-        $PossibleValues = $Field->GetPossibleValues();
+        $PossibleValues = $Field->getPossibleValues();
     }
 
     $CacheData[$CacheKey] = $PossibleValues;
@@ -94,8 +93,8 @@ function determineDisabledValues(MetadataField $Field, array $PossibleValues): a
     static $Factories;
 
     # user fields and trees don't support disabled values
-    if ($Field->Type() == MetadataSchema::MDFTYPE_USER ||
-        $Field->Type() == MetadataSchema::MDFTYPE_TREE) {
+    if ($Field->type() == MetadataSchema::MDFTYPE_USER ||
+        $Field->type() == MetadataSchema::MDFTYPE_TREE) {
         return [];
     }
 
@@ -111,7 +110,7 @@ function determineDisabledValues(MetadataField $Field, array $PossibleValues): a
     # retrieve user currently logged in
     $User = User::getCurrentUser();
 
-    $SchemaId = $Field->SchemaId();
+    $SchemaId = $Field->schemaId();
     $Schema = new MetadataSchema($SchemaId);
 
     if (!isset($Factories[$SchemaId])) {
@@ -120,10 +119,10 @@ function determineDisabledValues(MetadataField $Field, array $PossibleValues): a
 
     $DisabledValues = array();
 
-    if ($Field->Type() == MetadataSchema::MDFTYPE_FLAG) {
+    if ($Field->type() == MetadataSchema::MDFTYPE_FLAG) {
         foreach ($PossibleValues as $ValueId => $Value) {
             $ResourceIds = $Factories[$SchemaId]->getIdsOfMatchingRecords(
-                [$Field->Id() => $ValueId]
+                [$Field->id() => $ValueId]
             );
             $ResourceIds = $Factories[$SchemaId]->filterOutUnviewableRecords(
                 $ResourceIds,
@@ -158,7 +157,7 @@ function determineDisabledValues(MetadataField $Field, array $PossibleValues): a
 */
 function convertValueNamesToIds(MetadataField $Field, array $Values): array
 {
-    switch ($Field->Type()) {
+    switch ($Field->type()) {
         case MetadataSchema::MDFTYPE_USER:
             $RetVal = array();
             $UserFactory = new UserFactory();
@@ -170,7 +169,7 @@ function convertValueNamesToIds(MetadataField $Field, array $Values): array
                     $UserName = substr($UserName, 1);
                     if ($UserFactory->userNameExists($UserName)) {
                         $User = new User($UserName);
-                        $RetVal[] = $User->Id();
+                        $RetVal[] = $User->id();
                     }
                 }
             }
@@ -180,7 +179,7 @@ function convertValueNamesToIds(MetadataField $Field, array $Values): array
         case MetadataSchema::MDFTYPE_OPTION:
             $RetVal = array();
 
-            $Factory = $Field->GetFactory();
+            $Factory = $Field->getFactory();
             foreach ($Values as $Value) {
                 # if we have a leading equals sign
                 if (strlen($Value) && $Value[0] == "=") {
@@ -197,7 +196,7 @@ function convertValueNamesToIds(MetadataField $Field, array $Values): array
         case MetadataSchema::MDFTYPE_TREE:
             $RetVal = array();
 
-            $Factory = $Field->GetFactory();
+            $Factory = $Field->getFactory();
             foreach ($Values as $Value) {
                 # if this is an 'is' or an 'is under' query
                 if (strlen($Value) && ($Value[0] == "=" || $Value[0] == "^")) {
@@ -329,7 +328,7 @@ function getSelectedTextFieldList(
     # if a user is logged in, and we're not loading a saved search,
     #  and we're not refining an existing search, then we want to
     #  load the user's saved search selections
-    if ($User->IsLoggedIn() &&
+    if ($User->isLoggedIn() &&
         !isset($_GET["ID"]) && !isset($_GET["RF"])) {
         $FieldData = $User->get("SearchSelections");
         if (strlen($FieldData)) {
@@ -491,15 +490,15 @@ function getSortOptions(int $SortFieldTypes, User $User): array
     $Result = array("R" => "Relevance");
 
     # iterate over candidate fields, including those that belong
-    $Fields = $Schema->GetFields(
+    $Fields = $Schema->getFields(
         $SortFieldTypes,
         MetadataSchema::MDFORDER_DISPLAY
     );
     foreach ($Fields as $FieldId => $Field) {
-        if ($Field->Enabled() &&
-            $Field->IncludeInSortOptions() &&
-            $Field->UserCanView($User)) {
-            $Result[$FieldId] = $Field->GetDisplayName();
+        if ($Field->enabled() &&
+            $Field->includeInSortOptions() &&
+            $Field->userCanView($User)) {
+            $Result[$FieldId] = $Field->getDisplayName();
         }
     }
 
@@ -518,21 +517,21 @@ $User = User::getCurrentUser();
 
 # check if we have a legacy search URL, redirect
 #  to SearchResults page if we do
-if (SearchParameterSet::IsLegacyUrl($_SERVER["QUERY_STRING"])) {
+if (SearchParameterSet::isLegacyUrl($_SERVER["QUERY_STRING"])) {
     # attempt to convert legacy URL to current format
     try {
-        $ConvertedUrl = SearchParameterSet::ConvertLegacyUrl(
+        $ConvertedUrl = SearchParameterSet::convertLegacyUrl(
             $_SERVER["QUERY_STRING"]
         );
     } catch (Exception $e) {
         # if conversion fails, bounce to AdvancedSearch
-        $AF->SetJumpToPage(
+        $AF->setJumpToPage(
             "AdvancedSearch"
         );
         return;
     }
     # othrewise, redirect to search results for the converted URL
-    $AF->SetJumpToPage(
+    $AF->setJumpToPage(
         "SearchResults&".$ConvertedUrl
     );
     return;
@@ -584,7 +583,7 @@ $SortFieldTypes =
 # construct a list of fields needing a search limit
 $H_SearchLimits = array();
 
-$AllSchemas = MetadataSchema::GetAllSchemas();
+$AllSchemas = MetadataSchema::getAllSchemas();
 
 # extract the names of all schemas
 $H_SchemaNames = array();
@@ -595,39 +594,54 @@ foreach ($AllSchemas as $SchemaId => $Schema) {
 }
 
 # generate the list of fields that have text searches
-$H_FieldsHavingTextForms = GetTextFieldList(
+$H_FieldsHavingTextForms = getTextFieldList(
     $AllSchemas,
     $TextFieldTypes,
     $User
 );
 
 # now, on to the search limits
-$H_SearchLimits = GetSearchLimitList(
+$H_SearchLimits = getSearchLimitList(
     $AllSchemas,
     $SearchLimitTypes,
     $User
 );
 
-$H_SortFields = GetSortOptions($SortFieldTypes, $User);
+$H_SortFields = getSortOptions($SortFieldTypes, $User);
 
 # use sort field from URL parameters if available and visible,
 #   otherwise default to relevance
 $DefaultSortField = $AllSchemas[MetadataSchema::SCHEMAID_DEFAULT]->defaultSortField();
-$H_SelectedSortField =
-    (isset($_GET["SF"]) && array_key_exists($_GET["SF"], $H_SortFields)) ?
-    $_GET["SF"] : ($DefaultSortField === false ? "R" : $DefaultSortField);
+if (isset($_GET["SF"])) {
+    if (is_array($_GET["SF"])) {
+        if (count($_GET["SF"])) {
+            $PossibleSortField = array_shift($_GET["SF"]);
+        }
+    } else {
+        if (array_key_exists($_GET["SF"], $H_SortFields)) {
+            $PossibleSortField = $_GET["SF"];
+        }
+    }
+    if (isset($PossibleSortField)
+            && array_key_exists($PossibleSortField, $H_SortFields)) {
+        $H_SelectedSortField = $PossibleSortField;
+    }
+}
+if (!isset($H_SelectedSortField)) {
+    $H_SelectedSortField = ($DefaultSortField === false) ? "R" : $DefaultSortField;
+}
 
 # extract records per page setting
 $H_RecordsPerPage = isset($_GET["RP"]) ? intval($_GET["RP"]) : null;
 
 # determine saved searches to list and RecordsPerPage preference (if any)
-if ($User->IsLoggedIn()) {
+if ($User->isLoggedIn()) {
     $SSFactory = new SavedSearchFactory();
-    $H_SavedSearches = $SSFactory->GetSearchesForUser(
-        $User->Id()
+    $H_SavedSearches = $SSFactory->getSearchesForUser(
+        $User->id()
     );
     if (is_null($H_RecordsPerPage)) {
-        $H_RecordsPerPage = $User->Get("RecordsPerPage");
+        $H_RecordsPerPage = $User->get("RecordsPerPage");
     }
 } else {
     $H_SavedSearches = array();
@@ -641,12 +655,12 @@ if (is_null($H_RecordsPerPage)) {
 #  extract search information from it
 if (isset($_GET["ID"])) {
     $H_SavedSearch = new SavedSearch(intval($_GET["ID"]));
-    $H_SearchParameters = $H_SavedSearch->SearchParameters();
+    $H_SearchParameters = $H_SavedSearch->searchParameters();
 } else {
     # otherwise, pull the search information out of the URL
     $H_SearchParameters = new SearchParameterSet();
     try {
-        $H_SearchParameters->UrlParameters($_GET);
+        $H_SearchParameters->urlParameters($_GET);
     } catch (Exception $Ex) {
         # if search params were invalid, dump them and reload page w/o params
         $AF->setJumpToPage("AdvancedSearch");
@@ -661,13 +675,13 @@ if ($H_SearchParameters->parameterCount() > 0) {
 
 # determine which search limits should be open
 $OpenLimitSchemas = array();
-foreach ($H_SearchParameters->GetFields() as $FieldId) {
+foreach ($H_SearchParameters->getFields() as $FieldId) {
     # check if this field even exists
-    if (MetadataSchema::FieldExistsInAnySchema($FieldId)) {
+    if (MetadataSchema::fieldExistsInAnySchema($FieldId)) {
         # and if so mark it as open
         $Field = MetadataField::getField($FieldId);
-        if (isset($H_SearchLimits[$Field->SchemaId()][$FieldId])) {
-            $OpenLimitSchemas[$Field->SchemaId()] = 1;
+        if (isset($H_SearchLimits[$Field->schemaId()][$FieldId])) {
+            $OpenLimitSchemas[$Field->schemaId()] = 1;
         }
     }
 }
@@ -676,7 +690,7 @@ $H_OpenSearchLimits = array_keys($OpenLimitSchemas);
 $H_OpenByDefault = $IntConfig->getBool("DisplayLimitsByDefault");
 
 # determine which text fields should be selected
-$H_SelectedFields = GetSelectedTextFieldList(
+$H_SelectedFields = getSelectedTextFieldList(
     $User,
     $H_SearchParameters,
     $H_FieldsHavingTextForms

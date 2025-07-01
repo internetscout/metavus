@@ -49,14 +49,14 @@ function ListDir($DirPath, $Pattern)
 $AF = ApplicationFramework::getInstance();
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
 $DB = new Database();
 
 if (isset($_POST["Submit"]) && $_POST["Submit"] == "Cancel") {
-    $AF->SetJumpToPage("SysAdmin");
+    $AF->setJumpToPage("SysAdmin");
     return;
 }
 
@@ -66,7 +66,7 @@ $H_UserCount = $_SESSION["UserCount"] ?? 0;
 $UserFactory = new UserFactory();
 
 if (!isset($_POST["F_UserPrivs"])) {
-    $UserInfo = $UserFactory->GetMatchingUsers(
+    $UserInfo = $UserFactory->getMatchingUsers(
         ".*.",
         null,
         "UserName",
@@ -74,8 +74,8 @@ if (!isset($_POST["F_UserPrivs"])) {
         $MaxUserToExport
     );
 } else {
-    $UsersWithPrivs = $UserFactory->GetUsersWithPrivileges($_POST["F_UserPrivs"]);
-    $AllUserInfo = $UserFactory->GetMatchingUsers(".*.", null, "UserName");
+    $UsersWithPrivs = $UserFactory->getUsersWithPrivileges($_POST["F_UserPrivs"]);
+    $AllUserInfo = $UserFactory->getMatchingUsers(".*.", null, "UserName");
     $UserInfo = array_intersect_key($AllUserInfo, $UsersWithPrivs);
 
     $UserInfo = array_slice(
@@ -111,7 +111,7 @@ if ($FP == false) {
     $ErrorMessage = "Cannot open Export Filename: $ExportPath<br>";
     $_SESSION["ErrorMessage"] = $ErrorMessage;
 
-    $AF->SetJumpToPage("DisplayError");
+    $AF->setJumpToPage("DisplayError");
     return;
 }
 
@@ -121,12 +121,12 @@ if ($FP == false) {
 #       browsing field (whose FieldId is the value of "BrowsingFieldId",
 #       which is a property of one user account) for individual user
 $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
-$PrivDescriptions = (new PrivilegeFactory())->GetPrivileges(true, false);
+$PrivDescriptions = (new PrivilegeFactory())->getPrivileges(true, false);
 
 foreach ($UserInfo as $Entry) {
     if ($Entry["BrowsingFieldId"] > 0) {
-        $Field = $Schema->GetField($Entry["BrowsingFieldId"]);
-        $BrowsingField = $Field->Name();
+        $Field = $Schema->getField($Entry["BrowsingFieldId"]);
+        $BrowsingField = $Field->name();
     } else {
         $BrowsingField = null;
     }
@@ -150,7 +150,7 @@ foreach ($UserInfo as $Entry) {
 
     # now export privileges for this user
     $NewUser = new User($Entry["UserId"]);
-    $PrivList = $NewUser->GetPrivList();
+    $PrivList = $NewUser->getPrivList();
 
     foreach ($PrivList as $Privilege) {
         if (is_numeric($Privilege) && in_array($Privilege, $PrivDescriptions)) {
@@ -170,13 +170,13 @@ $H_FileName = "tmp/".$_SESSION["FileName"];
 
 #  Time to auto-refresh?
 if ($H_ExportComplete === false) {
-    $AF->SetJumpToPage("index.php?P=ExportUsersExecute", 1);
+    $AF->setJumpToPage("index.php?P=ExportUsersExecute", 1);
 }
 
-PageTitle("Export Users");
+$AF->setPageTitle("Export Users");
 
 # register post-processing function with the application framework
-$AF->AddPostProcessingCall("PostProcessingFn", $FP, $H_ExportComplete);
+$AF->addPostProcessingCall("PostProcessingFn", $FP, $H_ExportComplete);
 
 /**
 * Post-processing call, to close file pointer and clean export status

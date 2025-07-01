@@ -3,7 +3,7 @@
 #   FILE:  ViewImage.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -49,7 +49,7 @@ function Set404() : void
 
 # close the session to avoid serializing image loads
 session_write_close();
-$AF->SuppressHTMLOutput();
+$AF->suppressHtmlOutput();
 
 # make sure required parameters are specified
 if (!isset($_GET["RI"]) || !isset($_GET["FI"]) ||

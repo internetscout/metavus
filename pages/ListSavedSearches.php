@@ -3,7 +3,7 @@
 #   FILE:  ListSavedSearches.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -17,14 +17,14 @@ use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization()) {
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
 # retrieve list of Saved Searches reversed to be in order from most recent to least recent
 $SSFactory = new SavedSearchFactory();
 $H_SavedSearches = array_reverse(
-    $SSFactory->GetSearchesForUser(User::getCurrentUser()->Id()),
+    $SSFactory->getSearchesForUser(User::getCurrentUser()->id()),
     true
 );
 
@@ -55,7 +55,7 @@ if (isset($_GET["AC"]) && ($_GET["AC"] == "Delete")) {
     $AF = ApplicationFramework::getInstance();
     # delete specified search
     $Search = new SavedSearch($_GET["ID"]);
-    $Search->Delete();
+    $Search->delete();
 
     if (isset($_SERVER["HTTP_REFERER"]) &&
         strpos($_SERVER["HTTP_REFERER"], "EditUser")) {
@@ -63,7 +63,7 @@ if (isset($_GET["AC"]) && ($_GET["AC"] == "Delete")) {
             $_SERVER["HTTP_REFERER"]
         );
     } else {
-        $AF->SetJumpToPage(
+        $AF->setJumpToPage(
             "index.php?P=ListSavedSearches&"
             .TransportControlsUI::PNAME_STARTINGINDEX."=".$H_StartingIndex
         );

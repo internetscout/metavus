@@ -35,7 +35,7 @@
 .mv-content-complexheader li {
   list-style-type: none;
 }
-.mv-content-complexheader li a{
+.mv-content-complexheader li a {
   margin: 5px;
   margin-right: 0;
 }
@@ -61,6 +61,14 @@
 
 .mv-section.mv-folders-folder:last-child {
   margin-bottom: 0;
+}
+
+.mv-section.mv-folders-folder:not(.mv-folders-selected) .mv-folders-selectedfoldericon {
+    display: none;
+}
+
+.mv-section.mv-folders-folder.mv-folders-selected .mv-folders-select-button {
+    display: none;
 }
 
 .mv-section.mv-folders-folder .mv-section-header {
@@ -396,6 +404,10 @@ div.cw-dialog-overlay {
   -transform: rotate(45deg);
 }
 
-/* @end
- *
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*
+.mv-folders-action[data-action="remove"] .mv-folders-button-add {
+  display: none;
+}
+
+.mv-folders-action[data-action="add"] .mv-folders-button-remove {
+  display: none;
+}

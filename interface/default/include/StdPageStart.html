@@ -25,22 +25,12 @@ use ScoutLib\ApplicationFramework;
 $InterfaceFiles = [
     "jQuery.js",
     "bootstrap.js",
-    "jquery-migrate.js",
     "jquery-ui.js",
     "bootstrap.css",
     "jquery-ui.css",
     "Metavus.css",
     "CW-Confirm.js",
     "CW-Base.js",
-];
-
-# image (SVG) files loaded inline (later within HTML)
-$InlineFiles = [
-    "FacebookLogo.svg",
-    "InstagramLogo.svg",
-    "MagnifyingGlass.svg",
-    "Meeple.svg",
-    "TwitterLogo.svg",
 ];
 
 
@@ -52,11 +42,6 @@ $IntCfg = InterfaceConfiguration::getInstance();
 $BaseUrl = ApplicationFramework::baseUrl();
 $IsLoggedIn = User::getCurrentUser()->isLoggedIn();
 $PageNameInLC = strtolower($AF->getPageName());
-
-# mark files loaded inline to not have fingerprints added to their names
-foreach ($InlineFiles as $InlineFile) {
-    $AF->doNotUrlFingerprint($InlineFile);
-}
 
 # load main nav
 $PrimaryNavItems = array_flip($IntCfg->getMenuItems("MainNavItems"));
@@ -95,7 +80,7 @@ if (count($LogoImageIds) > 0) {
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
-    <title><?= PageTitle(); ?></title>
+    <title><?= $AF->getPageTitle(); ?></title>
     <!-- additional supporting JavaScript -->
     <script>
         var CWIS_BASE_URL = "<?= $BaseUrl ?>";
@@ -142,14 +127,14 @@ if (count($LogoImageIds) > 0) {
         <li class="nav-item">
           <a class="nav-link" href="#" id="mv-login-button" role="button">
             <div class="mv-header-icon">
-              <?= file_get_contents($AF->gUIFile("Meeple.svg")) ?>
+              <?= $AF->inlineUIFile("Meeple.svg") ?>
             </div> Sign In </a>
         </li>
         <?PHP } ?>
         <li class="nav-item">
           <a class="nav-link" href="#" id="mv-search-button" role="button">
             <div class="mv-header-icon">
-              <?= file_get_contents($AF->gUIFile("MagnifyingGlass.svg")) ?>
+              <?= $AF->inlineUIFile("MagnifyingGlass.svg") ?>
             </div> Search </a>
         </li>
       </ul>

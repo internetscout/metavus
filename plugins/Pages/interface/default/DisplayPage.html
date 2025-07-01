@@ -24,7 +24,7 @@ if (!isset($_GET["ID"]) || !strlen($_GET["ID"])) {
     # display error message indicating no ID
     ?><h1>Error</h1>
     No page ID was supplied.<?PHP
-    PageTitle("Page Not Found");
+    $AF->setPageTitle("Page Not Found");
     return;
 }
 
@@ -37,7 +37,7 @@ if (!is_numeric($_GET["ID"]) || !$PFactory->itemExists($Id)) {
     ?><h1>Error</h1>
     No page found with specified ID.
     <?PHP
-    PageTitle("Page Not Found");
+    $AF->setPageTitle("Page Not Found");
     return;
 }
 
@@ -51,7 +51,7 @@ $User = User::getCurrentUser();
 # if user cannot view this page
 if (!$Page->userCanView($User)) {
     # display unauthorized access message
-    PageTitle("Unauthorized Access");
+    $AF->setPageTitle("Unauthorized Access");
     ?>
     <h1>Unauthorized Access</h1>
     <p>You do not have the permissions required to view this page.</p>
@@ -60,7 +60,7 @@ if (!$Page->userCanView($User)) {
 }
 
 # set a page title
-PageTitle($Page->get("Title"));
+$AF->setPageTitle($Page->get("Title"));
 
 # display edit and delete buttons if appropriate
 if ($Page->userCanEdit($User)) {

@@ -11,6 +11,8 @@ namespace Metavus;
 
 use Exception;
 use Metavus\Plugins\SavedSearchMailings;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\HtmlOptionList;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
@@ -24,7 +26,7 @@ function GetEmailFrequency($Item)
 {
     $OptList = new HtmlOptionList(
         "F_Frequency_".$Item->id(),
-        SavedSearchMailings::GetFrequencyOptions(User::getCurrentUser()),
+        SavedSearchMailings::getFrequencyOptions(User::getCurrentUser()),
         $Item->frequency()
     );
     $OptList->submitOnChange(true);
@@ -47,7 +49,9 @@ if (!isset($H_SearchCount)) {
     throw new Exception("Required variable \$H_SearchCount is not initialized");
 }
 
-$MailingsEnabled = $GLOBALS["G_PluginManager"]->pluginEnabled(
+$AF = ApplicationFramework::getInstance();
+
+$MailingsEnabled = PluginManager::getInstance()->pluginReady(
     "SavedSearchMailings"
 );
 
@@ -89,7 +93,7 @@ $ListUI->noItemsMessage("There are no searches currently saved.
     <a href='index.php?P=AdvancedSearch'>Advanced Search</a> page.");
 $ListUI->heading("Saved Searches");
 $ListUI->baseLink($BaseLink);
-if (CheckAuthorization(PRIV_USERADMIN)) {
+if (User::getCurrentUser()->hasPriv(PRIV_USERADMIN)) {
     $ListUI->addActionButton("Transfer", $TransferLink, "Exchange.svg");
 }
 $ListUI->addActionButton("Edit", $EditLink, "Pencil.svg");
@@ -98,7 +102,7 @@ $ListUI->itemsPerPage($H_ItemsPerPage);
 $ListUI->fieldsSortableByDefault(false);
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Manage Saved Searches");
+$AF->setPageTitle("Manage Saved Searches");
 ?>
 <form name="savedsearch" method="post" action="index.php?P=ListSavedSearches">
     <input type="hidden" name="AC" value="ChangeFrequency" />

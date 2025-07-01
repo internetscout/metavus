@@ -3,11 +3,12 @@
 #   FILE:  EditNavigation.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
+use Metavus\User;
 use ScoutLib\StdLib;
 use Metavus\FormUI;
 use ScoutLib\ApplicationFramework;
@@ -27,10 +28,9 @@ function setConfigValue(string $Key, $Value): void
 
 # ----- MAIN -----------------------------------------------------------------
 
-PageTitle("Edit Navigation");
-CheckAuthorization(PRIV_SYSADMIN);
-
 $AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Navigation");
+User::requirePrivilege(PRIV_SYSADMIN);
 
 $Configuration = $AF->signalEvent("NAVEDITOR_GET_CONFIGURATION");
 
@@ -58,16 +58,16 @@ $ButtonPushed = StdLib::getFormValue("Submit");
 switch ($ButtonPushed) {
     case "Save":
         # check values and bail out if any are invalid
-        if ($H_FormUI->ValidateFieldInput()) {
+        if ($H_FormUI->validateFieldInput()) {
             return;
         }
 
-        $NewValues = $H_FormUI->GetNewValuesFromForm();
+        $NewValues = $H_FormUI->getNewValuesFromForm();
 
         setConfigValue("ModifyPrimaryNav", $NewValues["Enable"]);
         setConfigValue("PrimaryNav", $NewValues["PrimaryNav"]);
         # jump to SysAdmin after saving
     case "Cancel":
-        $AF->SetJumpToPage("SysAdmin");
+        $AF->setJumpToPage("SysAdmin");
         break;
 }

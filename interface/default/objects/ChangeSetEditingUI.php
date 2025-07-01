@@ -787,7 +787,12 @@ class ChangeSetEditingUI
                 $Field->type() == MetadataSchema::MDFTYPE_OPTION) {
                 foreach ($Field->getPossibleValues() as $Id => $Val) {
                     $Options[$Id] = $Val;
-                    $OptionClasses[$Id] = "field-id-" . $Field->id();
+                    $CssClass = "field-id-" . $Field->id();
+                    if (!isset($OptionClasses[$Id])) {
+                        $OptionClasses[$Id] = $CssClass;
+                    } else {
+                        $OptionClasses[$Id] .= " ".$CssClass;
+                    }
                 }
             }
         }

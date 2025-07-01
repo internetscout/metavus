@@ -3,7 +3,7 @@
 #   FILE:  SelectEditUserListComplete.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2003-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2003-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -69,7 +69,7 @@ function RemoveUsers(): void
 # ----- MAIN -----------------------------------------------------------------
 
 # non-standard global variables
-if (!CheckAuthorization(PRIV_USERADMIN, PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_USERADMIN, PRIV_SYSADMIN)) {
     return;
 }
 

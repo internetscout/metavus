@@ -3,12 +3,13 @@
 #   FILE:  ShareResource.php (SocialMedia plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\Plugins\SocialMedia;
 use Metavus\Record;
+use Metavus\User;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
@@ -26,6 +27,6 @@ if (Record::ItemExists($ResourceId)) {
     # share the resource
     $Plugin->ShareResource($Resource, $Site, $UserId);
 } else {
-    CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }

@@ -275,44 +275,6 @@ class SocialMedia extends Plugin
     }
 
     /**
-     * Upgrade from a previous version.
-     * @param string $PreviousVersion Previous version of the plugin.
-     * @return string|null Returns NULL on success and an error message otherwise.
-     */
-    public function upgrade(string $PreviousVersion): ?string
-    {
-        # upgrade from versions < 1.1.0 to 1.1.0
-        if (version_compare($PreviousVersion, "1.1.0", "<")) {
-            $SchemaId = MetadataSchema::SCHEMAID_DEFAULT;
-
-            # the default schema was always enabled in prior versions
-            $this->setConfigSetting("Enabled/".$SchemaId, true);
-
-            # migrate old field settings
-            $this->setConfigSetting(
-                "TitleField/".$SchemaId,
-                $this->getConfigSetting("TitleField")
-            );
-            $this->setConfigSetting(
-                "DescriptionField/".$SchemaId,
-                $this->getConfigSetting("DescriptionField")
-            );
-            $this->setConfigSetting(
-                "ScreenshotField/".$SchemaId,
-                $this->getConfigSetting("ScreenshotField")
-            );
-        }
-
-        # upgrade from versions < 1.1.1 to 1.1.1
-        if (version_compare($PreviousVersion, "1.1.1", "<")) {
-            # set the maximum description length to 1200 by default
-            $this->setConfigSetting("MaxDescriptionLength", 1200);
-        }
-
-        return null;
-    }
-
-    /**
      * Declare the events this plugin provides to the application framework.
      * @return array An array of the events this plugin provides.
      */
@@ -439,7 +401,7 @@ class SocialMedia extends Plugin
         }
 
         # if BotDetector is available, use it to bounce robots back to the home page
-        if ($PluginMgr->pluginEnabled("BotDetector") &&
+        if ($PluginMgr->pluginReady("BotDetector") &&
             BotDetector::getInstance()->checkForSpamBot()) {
             $AF->setJumpToPage("Home");
             return;
@@ -457,7 +419,7 @@ class SocialMedia extends Plugin
             );
 
             # suppress HTML output because an AJAX request would have been used
-            $AF->suppressHTMLOutput();
+            $AF->suppressHtmlOutput();
 
             return;
         }

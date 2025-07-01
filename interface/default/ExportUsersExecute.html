@@ -23,6 +23,10 @@ if (!isset($H_UserCount)) {
     throw new Exception("H_UserCount not defined.");
 }
 
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->addSemanticClass("btn-danger");
+
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
@@ -39,7 +43,7 @@ if (!isset($H_UserCount)) {
 <p><?= $H_UserCount; ?> users exported so far.</p>
 
 <form name="exportusers" method="post" action="index.php?P=ExportUsersExecute">
-    <button type="submit" name="Submit" value="Cancel">Cancel</button>
+    <?= $CancelButton->getHtml(); ?>
 </form>
 
 <?PHP } ?>

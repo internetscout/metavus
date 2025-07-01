@@ -30,7 +30,7 @@ function AnnouncementsEnabled(): bool
 {
     $PluginMgr = PluginManager::getInstance();
 
-    if (!$PluginMgr->pluginEnabled("Blog")) {
+    if (!$PluginMgr->pluginReady("Blog")) {
         return false;
     }
 

@@ -3,7 +3,7 @@
 #   FILE:  Bootloader.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -158,7 +158,7 @@ class Bootloader
         # turn error reporting up to max if running local or at Scout
         $DevServers = [ "localhost", "test.scout.wisc.edu" ];
         if (in_array(($_SERVER["HTTP_HOST"] ?? ""), $DevServers)) {
-            error_reporting(E_ALL);
+            error_reporting(~0);
             date_default_timezone_set("America/Chicago");
             # (set time zone to prevent PHP local time zone warning from E_STRICT)
         }
@@ -199,6 +199,8 @@ class Bootloader
             chdir($this->StartingDir);
         }
 
+        $this->AF->registerPageTitleFilteringCallback([$this, "filterPageTitle"]);
+
         $this->BootComplete = true;
     }
 
@@ -225,6 +227,22 @@ class Bootloader
         $this->AF->ClearPageCacheForTag("ResourceList");
     }
 
+    /**
+     * Add portal name to the supplied title.
+     * @param ?string $Title The page title.
+     * @return ?string The title with the portal name prepended.
+     */
+    public function filterPageTitle(?string $Title): ?string
+    {
+        $PortalName = InterfaceConfiguration::getInstance()->getString("PortalName");
+        if (strlen($PortalName)) {
+            if (($Title !== null) && strlen($Title)) {
+                return $PortalName . " - " . $Title;
+            }
+            return $PortalName;
+        }
+        return $Title;
+    }
 
     # ---- PRIVATE INTERFACE -----------------------------------------------------
 
@@ -248,12 +266,14 @@ class Bootloader
     private function loadBasicConfigInfo(): void
     {
         # if configuration file available in expected location
-        if (file_exists("local/config.php")) {
+        if (is_readable("local/config.php")) {
             # load configuration file
             require_once("local/config.php");
-        } else {
+        } elseif (is_readable("config.php")) {
             # load configuration file from legacy location
             require_once("config.php");
+        } else {
+            throw new Exception("Could not locate \"config.php\" file.");
         }
     }
 

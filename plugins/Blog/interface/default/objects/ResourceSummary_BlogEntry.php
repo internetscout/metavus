@@ -9,7 +9,6 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\Plugins\SocialMedia;
@@ -34,6 +33,17 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
     }
 
     /**
+     * Return output HTML for resource summary.
+     * @return string|false The HTML string for this ResourceSummary.
+     */
+    public function getHtml()
+    {
+        ob_start();
+        $this->display();
+        return ob_get_clean();
+    }
+
+    /**
      * Display (output HTML) for resource summary.
      */
     public function display(): void
@@ -43,13 +53,14 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
         $PluginMgr = PluginManager::getInstance();
         $AF = ApplicationFramework::getInstance();
 
-        $AF->RequireUIFile("P_Blog.css");
+        $AF->requireUIFile("P_Blog.css");
 
         if (!isset($Blog)) {
             $Blog = Blog::getInstance();
-            $Blog->SetCurrentBlog($Entry->GetBlogId());
+            $Blog->setCurrentBlog($Entry->getBlogId());
         }
 
+        # TODO Many of these variables are unused; they should be used or removed
         $SafeId = defaulthtmlentities($Entry->Id());
         $SafeUrl = defaulthtmlentities($Entry->EntryUrl());
         $SafeTitle = $Entry->TitleForDisplay();
@@ -119,7 +130,7 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
 
         <?PHP if (!count($Categories) || !$PrintMoreLink) { ?>
         <section class="share" aria-label="sharing buttons">
-            <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons(
+            <?PHP SocialMedia::getInstance()->displaySmallShareButtons(
                 $Entry
             ); ?>
         </section>
@@ -127,7 +138,7 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
 
         <?PHP if (count($Categories) && $PrintMoreLink) { ?>
         <section class="share" aria-label="sharing buttons">
-            <?PHP SocialMedia::getInstance()->DisplaySmallShareButtons(
+            <?PHP SocialMedia::getInstance()->displaySmallShareButtons(
                 $Entry
             ); ?>
         </section>
@@ -164,8 +175,8 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
      */
     private static function getEntryTeaser(Entry $Entry, int $MaxLength): string
     {
-        $Teaser = $Entry->Teaser($MaxLength);
-        $Image = $Entry->Image();
+        $Teaser = $Entry->teaser($MaxLength);
+        $Image = $Entry->image();
 
         # if there is no image associated with the blog entry
         if (is_null($Image)) {
@@ -173,8 +184,8 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
         }
 
         # create the image tag
-        $SafeImage = defaulthtmlentities($Entry->ThumbnailForDisplay());
-        $SafeImageAlt = defaulthtmlentities($Entry->ImageAltForDisplay());
+        $SafeImage = defaulthtmlentities($Entry->thumbnailForDisplay());
+        $SafeImageAlt = defaulthtmlentities($Entry->imageAltForDisplay());
         $ImageInsert = '<div class="blog-image-wrapper">';
         $ImageInsert .= $Image->getHtml("mv-image-thumbnail");
         $ImageInsert .= '</div>';

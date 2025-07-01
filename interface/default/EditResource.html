@@ -60,31 +60,38 @@ function printButtons(string $Mode): void
 }
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_Mode)) {
-    throw new Exception("H_Mode not defined.");
+if (!isset($H_ErrorNoResource) || !is_bool($H_ErrorNoResource)) {
+    throw new Exception("Variable \$H_ErrorNoResource not set or is the wrong type.");
 }
-if (!isset($H_Resource)) {
-    $H_Resource = null;
+if (!isset($H_Mode) || !is_string($H_Mode)) {
+    throw new Exception("Variable \$H_Mode not set or is the wrong type.");
 }
-if (!isset($H_ResourceId)) {
-    $H_ResourceId = null;
+if (!$H_ErrorNoResource) {
+    if (!isset($H_Resource) || !($H_Resource instanceof Record)) {
+        throw new Exception("Variable \$H_Resource not set or is the wrong type.");
+    }
+    if (!isset($H_ResourceId) || !is_string($H_ResourceId)) {
+        throw new Exception("Variable \$H_ResourceId not set or is the wrong type.");
+    }
+    if (!isset($H_RecordEditingUI) || !($H_RecordEditingUI instanceof RecordEditingUI)) {
+        throw new Exception("Variable \$H_RecordEditingUI not set or is the wrong type.");
+    }
 }
-if (!isset($H_RecordEditingUI)) {
-    throw new Exception("H_RecordEditingUI not defined.");
-}
+
+$AF = ApplicationFramework::getInstance();
 
 $SafeResourceName = isset($H_Resource) ?
     $H_Resource->getSchema()->resourceName() : "Record";
 
 # set page title
-PageTitle($H_Mode." ".$SafeResourceName);
+$AF->setPageTitle($H_Mode." ".$SafeResourceName);
 
 # handle error reporting
-if (is_null($H_ResourceId) || !isset($H_Resource)) {
+if ($H_ErrorNoResource) {
     print "<h1>".$H_Mode." ".$SafeResourceName."</h1>"
         ."<p class='alert alert-danger'>";
 
-    if (is_null($H_ResourceId)) {
+    if (!isset($H_ResourceId)) {
         print "No ". $SafeResourceName." ID was specified.</p>";
         return;
     } elseif ($H_ResourceId == "NEW") {
@@ -95,8 +102,6 @@ if (is_null($H_ResourceId) || !isset($H_Resource)) {
     print "No ".$SafeResourceName." found with the specified ID.</p>";
     return;
 }
-
-$AF = ApplicationFramework::getInstance();
 
 # get HTML for any extra buttons
 # (need to use $H_Resource->id() instead of $H_ResourceId
@@ -113,7 +118,7 @@ $BottomButtonInsertionHtml = $AF->formatInsertionKeyword(
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 <form name="EditForm" method="post" enctype="multipart/form-data"
-      action="index.php?P=EditResource&amp;ID=<?= $H_Resource->Id();?>">
+      action="index.php?P=EditResource&amp;ID=<?= $H_Resource->id();?>">
   <div class="clearfix">
     <div class="float-start">
       <h1><?= $H_Mode ?> <?= $SafeResourceName ?></h1>
@@ -140,7 +145,7 @@ $BottomButtonInsertionHtml = $AF->formatInsertionKeyword(
            $AF->signalEvent(
                "EVENT_HTML_INSERTION_POINT",
                [
-                   $AF->GetPageName(),
+                   $AF->getPageName(),
                    "Above Edit Form",
                    [
                        "Resource" => $H_Resource,

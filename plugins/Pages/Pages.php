@@ -153,7 +153,7 @@ class Pages extends Plugin
         }
 
         $PluginMgr = PluginManager::getInstance();
-        if ($PluginMgr->pluginEnabled("SecondaryNavigation") &&
+        if ($PluginMgr->pluginReady("SecondaryNavigation") &&
             User::getCurrentUser()->isLoggedIn()) {
             $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
 
@@ -260,7 +260,6 @@ class Pages extends Plugin
     public function hookEvents(): array
     {
         $Events = [
-            "EVENT_MODIFY_SECONDARY_NAV" => "AddMenuOptions",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "PluginConfigChange",
         ];
         return $Events;
@@ -279,47 +278,6 @@ class Pages extends Plugin
             "index.php?P=P_Pages_EditPage&amp;ID=NEW" => "Add New Page",
             "index.php?P=P_Pages_ListPages" => "List Pages",
         ];
-    }
-
-    /**
-     * Add options to secondary navigation menu.
-     * @param array $NavItems Existing array of menu items.
-     * @return array Modified array of menu items.
-     */
-    public function addMenuOptions(array $NavItems): array
-    {
-        # retrieve user currently logged in
-        $User = User::getCurrentUser();
-
-        # build up list of nav items to add
-        $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
-        if ($Schema->userCanAuthor($User) || $Schema->userCanEdit($User)) {
-            $MyNavItems["Page List"] = "index.php?P=P_Pages_ListPages";
-        }
-
-        # if there are nav items to add
-        if (isset($MyNavItems)) {
-            # step through options to add new entries at most desirable spot
-            $NewNavItems = [];
-            $NeedToAddMyOptions = true;
-            foreach ($NavItems as $Label => $Link) {
-                if ($NeedToAddMyOptions && (($Label == "Administration") ||
-                    ($Label == "Log Out"))) {
-                    $NewNavItems = $NewNavItems + $MyNavItems;
-                    $NeedToAddMyOptions = false;
-                }
-                $NewNavItems[$Label] = $Link;
-            }
-            if ($NeedToAddMyOptions) {
-                $NewNavItems = $NewNavItems + $MyNavItems;
-            }
-        } else {
-            # return nav item list unchanged
-            $NewNavItems = $NavItems;
-        }
-
-        # return new list of nav options to caller
-        return ["NavItems" => $NewNavItems];
     }
 
     /**

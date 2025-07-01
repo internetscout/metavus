@@ -312,7 +312,7 @@ class BotDetector extends Plugin
     public static function cleanBotFromMetrics($TargetIP, $StartTime): void
     {
         $PluginMgr = PluginManager::getInstance();
-        if ($PluginMgr->pluginEnabled("MetricsRecorder")) {
+        if ($PluginMgr->pluginReady("MetricsRecorder")) {
             $MetricsRecorderPlugin = MetricsRecorder::getInstance();
             $MetricsRecorderPlugin->removeEventsForIPAddress(
                 $TargetIP,
@@ -710,7 +710,7 @@ class BotDetector extends Plugin
 
         $PluginMgr = PluginManager::getInstance();
         if ($IsBot === true && $this->getConfigSetting("BotPruning") &&
-            $PluginMgr->pluginEnabled("MetricsRecorder")) {
+            $PluginMgr->pluginReady("MetricsRecorder")) {
             MetricsRecorder::getInstance()->removeEventsForIPAddress($_SERVER["REMOTE_ADDR"]);
         }
     }

@@ -415,7 +415,7 @@ class HumanMetadataField
      */
     public function allowHTML(): string
     {
-        return $this->getYesNo($this->Field->allowHTML());
+        return $this->getYesNo($this->Field->allowHtml());
     }
 
     /**

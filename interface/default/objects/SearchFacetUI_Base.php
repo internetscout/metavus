@@ -57,7 +57,7 @@ class SearchFacetUI_Base
         }
 
         $this->SchemaId = reset($SchemaIds);
-        $this->DataCache = new DataCache("Metavus-SearchFacetUI-");
+        $this->DataCache = new DataCache(self::CACHE_KEY_PREFIX);
     }
 
     /**
@@ -116,6 +116,15 @@ class SearchFacetUI_Base
         $this->FacetFieldIds = $FieldIds;
     }
 
+    /**
+     * Clear search facet caches.
+     * @return void
+     */
+    public static function clearCaches(): void
+    {
+        $DataCache = new DataCache(self::CACHE_KEY_PREFIX);
+        $DataCache->clear();
+    }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
@@ -363,14 +372,19 @@ class SearchFacetUI_Base
             $CurrentValues
         );
 
-        # remove facets for terms that are not associated with any resources
-        # the user can see; these are useless as search suggestions because
-        # adding them to an OR search will do nothing at all and adding them
-        # to an AND search will produce no results
-        $Facets = $this->pruneUselessCNamesFromFacet(
-            $Facets,
-            $Field
-        );
+        # for CNames, prune terms that will not help the user refine their search
+        # (retaining them for Option fields so that the facets can indicate to
+        # the user when there are no resources for a given option value)
+        if ($Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+            # remove facets for terms that are not associated with any resources
+            # the user can see; these are useless as search suggestions because
+            # adding them to an OR search will do nothing at all and adding them
+            # to an AND search will produce no results
+            $Facets = $this->pruneUselessCNamesFromFacet(
+                $Facets,
+                $Field
+            );
+        }
 
         # determine how many facets we're about to suggest
         $FacetCount = $this->countFacets($Facets);
@@ -1250,4 +1264,6 @@ class SearchFacetUI_Base
     private $SearchParams;
     private $SearchResults;
     private $AncestorCache = [];
+
+    private const CACHE_KEY_PREFIX = "Metavus-SearchFacetUI-";
 }

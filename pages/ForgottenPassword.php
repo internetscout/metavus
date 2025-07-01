@@ -3,13 +3,12 @@
 #   FILE:  ForgottenPassword.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
@@ -26,21 +25,21 @@ function SendRecoveryEmail(string $Username)
     # instantiate user factory for searching users
     $UserFactory = new UserFactory();
 
-    if (User::IsValidLookingEMailAddress($Username)) {
+    if (User::isValidLookingEmailAddress($Username)) {
         # if input looks like an email address, search for users by email
         $SearchField = "EMail";
-        $SearchString = User::NormalizeEMailAddress($Username);
-    } elseif (User::IsValidUserName($Username)) {
+        $SearchString = User::normalizeEmailAddress($Username);
+    } elseif (User::isValidUserName($Username)) {
         # if input looks like a username, search by name
         $SearchField = "UserName";
-        $SearchString = User::NormalizeUserName($Username);
+        $SearchString = User::normalizeUserName($Username);
     } else {
         # if input does not look like anything, then nothing to search for
         return "Invalid name supplied.";
     }
 
     # search for matching user
-    $Users = $UserFactory->FindUsers(
+    $Users = $UserFactory->findUsers(
         $SearchString,
         $SearchField,
         "CreationDate",
@@ -143,7 +142,7 @@ switch ($ButtonPushed) {
         $FormValues = $H_FormUI->getNewValuesFromForm();
         $Result = SendRecoveryEmail($FormValues["Username"]);
         if (is_string($Result)) {
-            FormUI::LogError($Result);
+            FormUI::logError($Result);
         } else {
             $H_UserValues = $Result;
         }

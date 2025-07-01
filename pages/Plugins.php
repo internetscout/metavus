@@ -65,7 +65,7 @@ function togglePlugin(
 
 # ----- MAIN -----------------------------------------------------------------
 # check that the user has sufficient privileges
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
     return;
 }
 
@@ -77,10 +77,10 @@ if (isset($_POST["SUBMITTED"])) {
     $AF = ApplicationFramework::getInstance();
     # load current enabled state of all plugins
     # (needed in case one is auto-enabled because of a dependency)
-    $Plugins = $GLOBALS["G_PluginManager"]->GetPlugins();
+    $Plugins = $GLOBALS["G_PluginManager"]->getPlugins();
     $PEnabledCurrent = [];
     foreach ($Plugins as $PluginName => $Plugin) {
-        $PEnabledCurrent[$PluginName] = $Plugin->IsEnabled();
+        $PEnabledCurrent[$PluginName] = $Plugin->isEnabled();
     }
 
     # for each plugin
@@ -107,18 +107,18 @@ if (isset($_POST["SUBMITTED"])) {
     # if plugin enabled/disabled status has changed
     if (isset($PEnabledChange)) {
         # clear page cache
-        $AF->ClearPageCache();
-        $AF->ClearObjectLocationCache();
+        $AF->clearPageCache();
+        $AF->clearObjectLocationCache();
     }
 
     # save any resulting status messages before page is reloaded
     $_SESSION["PluginManagerStatusMessages"] = $StatusMsgs;
 
     # reload page so that correct set of plugins are loaded
-    $AF->SetJumpToPage("Plugins");
+    $AF->setJumpToPage("Plugins");
 } else {
     # load any status or error messages
-    $H_ErrMsgs = $GLOBALS["G_PluginManager"]->GetErrorMessages();
+    $H_ErrMsgs = $GLOBALS["G_PluginManager"]->getErrorMessages();
     if (array_key_exists("PluginManagerStatusMessages", $_SESSION)) {
         $H_StatusMsgs = $_SESSION["PluginManagerStatusMessages"];
         unset($_SESSION["PluginManagerStatusMessages"]);

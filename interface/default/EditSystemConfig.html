@@ -11,15 +11,17 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 if (!isset($H_Form)) {
     throw new Exception("H_Form not defined.");
 }
 
-# ----- DISPLAY --------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
-PageTitle("System Configuration");
+# ----- DISPLAY --------------------------------------------------------------
+$AF->setPageTitle("System Configuration");
 
 ?>
 <h1>System Configuration</h1>

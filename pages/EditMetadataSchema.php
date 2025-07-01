@@ -3,18 +3,17 @@
 #   FILE: EditMetadataSchema.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
+use Metavus\FormUI;
 use Metavus\MetadataSchema;
-use Metavus\PrivilegeEditingUI;
 use Metavus\RecordFactory;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -30,8 +29,8 @@ function GetReturnToPage($Value): string
 
     # get the suffix from a metadata schema if not using the default schema
     if ($Value instanceof MetadataSchema) {
-        if ($Value->Id() != MetadataSchema::SCHEMAID_DEFAULT) {
-            $Suffix = "&SC=" . (string)$Value->Id();
+        if ($Value->id() != MetadataSchema::SCHEMAID_DEFAULT) {
+            $Suffix = "&SC=" . (string)$Value->id();
         }
     # use the value directly if not using the default schema
     } elseif (!is_null($Value) && $Value != MetadataSchema::SCHEMAID_DEFAULT) {
@@ -41,28 +40,12 @@ function GetReturnToPage($Value): string
     return "DBEditor" . $Suffix;
 }
 
-/**
- * Save field mappings from editing form data into a Metadata Schema.
- * @param array $FormFields Array holding the parameters for the fields mapping.
- * @param MetadataSchema $Schema The schema whose field mappings will be updated.
- */
-function saveFieldMapping(array $FormFields, MetadataSchema $Schema): void
-{
-    foreach ($FormFields as $FieldId => $Params) {
-        $NewFieldValue = StdLib::getFormValue($FieldId);
-        if (is_null($NewFieldValue) || !strlen($NewFieldValue)) {
-            $NewFieldValue = false;
-        }
-        $Schema->stdNameToFieldMapping($Params["MFieldName"], $NewFieldValue);
-    }
-}
-
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Edit Metadata Schema");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Metadata Schema");
 
 # check authorization
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -72,83 +55,157 @@ $H_Schema = new MetadataSchema($SchemaId);
 
 $ResourceName = $H_Schema->resourceName();
 
-$H_MappingFormFields = [
-    "F_TitleField".$SchemaId => [
-        "MFieldName" => "Title",
-        "Label" => $ResourceName." Title Field",
-        "FieldTypes" => MetadataSchema::MDFTYPE_TEXT,
-        "Value" => $H_Schema->stdNameToFieldMapping("Title"),
-        "Required" => true
-    ],
-    "F_DescriptionField".$SchemaId => [
-        "MFieldName" => "Description",
-        "Label" => $ResourceName." Description Field",
-        "FieldTypes" => MetadataSchema::MDFTYPE_PARAGRAPH,
-        "Value" => $H_Schema->stdNameToFieldMapping("Description"),
-        "Required" => false
-    ],
-    "F_UrlField".$SchemaId => [
-        "MFieldName" => "Url",
-        "Label" => $ResourceName." Url Field",
-        "FieldTypes" => MetadataSchema::MDFTYPE_URL,
-        "Value" => $H_Schema->stdNameToFieldMapping("Url"),
-        "Required" => false
-    ],
-    "F_FileField".$SchemaId => [
-        "MFieldName" => "File",
-        "Label" => $ResourceName." File Field",
-        "FieldTypes" => MetadataSchema::MDFTYPE_FILE,
-        "Value" => $H_Schema->stdNameToFieldMapping("File"),
-        "Required" => false
-    ],
-    "F_ScreenshotField".$SchemaId => [
-        "MFieldName" => "Screenshot",
-        "Label" => $ResourceName." Screenshot Field",
-        "FieldTypes" => MetadataSchema::MDFTYPE_IMAGE,
-        "Value" => $H_Schema->stdNameToFieldMapping("Screenshot"),
-        "Required" => false
-    ],
-];
-
 # the action to be performed, if any
 $Action = StdLib::getFormValue("F_Submit");
 
-# variables for holding privilege errors
+# variable for holding privilege errors
 $H_PrivilegesError = null;
-$H_PrivsetUI = new PrivilegeEditingUI($SchemaId);
+
 $AF = ApplicationFramework::getInstance();
+
+$DefaultSortField = $H_Schema->defaultSortField();
+
+# build the form
+$FormFields = [
+    "Name" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Name",
+        "Content" => defaulthtmlentities($H_Schema->name())
+    ],
+    "Resource Name" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Resource Name",
+        "Content" => defaulthtmlentities($H_Schema->resourceName())
+    ],
+    "View Page" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "View Page",
+        "Content" => defaulthtmlentities($H_Schema->getViewPage())
+    ],
+    "Title" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Title Field",
+        "Options" => $H_Schema->getFieldNames(MetadataSchema::MDFTYPE_TEXT),
+        "Value" => $H_Schema->stdNameToFieldMapping("Title")
+    ],
+    "Description" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Description Field",
+        "Options" => $H_Schema->getFieldNames(MetadataSchema::MDFTYPE_PARAGRAPH),
+        "Value" => $H_Schema->stdNameToFieldMapping("Description")
+    ],
+    "Url" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Url Field",
+        "Options" => $H_Schema->getFieldNames(MetadataSchema::MDFTYPE_URL),
+        "Value" => $H_Schema->stdNameToFieldMapping("Url")
+    ],
+    "File" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." File Field",
+        "Options" => $H_Schema->getFieldNames(MetadataSchema::MDFTYPE_FILE),
+        "Value" => $H_Schema->stdNameToFieldMapping("File")
+    ],
+    "Screenshot" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Screenshot Field",
+        "Options" => $H_Schema->getFieldNames(MetadataSchema::MDFTYPE_IMAGE),
+        "Value" => $H_Schema->stdNameToFieldMapping("Screenshot")
+    ],
+    "DefaultSortField" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => "Default Sort Field",
+        "Options" => ["R" => "(Relevance)"] + $H_Schema->getSortFields(),
+        "Value" => ($DefaultSortField == false ? "R" : $DefaultSortField)
+    ],
+    "viewingPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $H_Schema->id(),
+        "Label" => "Viewing Permissions",
+        "Value" => $H_Schema->viewingPrivileges()
+    ],
+    "authoringPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $H_Schema->id(),
+        "Label" => "Authoring Permissions",
+        "Value" => $H_Schema->authoringPrivileges()
+    ],
+    "editingPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $H_Schema->id(),
+        "Label" => "Editing Permissions",
+        "Value" => $H_Schema->editingPrivileges()
+    ],
+    "AllowComments" => [
+        "Type" => FormUI::FTYPE_FLAG,
+        "Label" => "Allow Comments",
+        "Value" => $H_Schema->commentsEnabled()
+    ]
+];
+$MappingFormFields = ["Title", "Description", "Url", "File", "Screenshot"];
+foreach ($MappingFormFields as $FieldId) {
+    $Options = $FormFields[$FieldId]["Options"] ?? [];
+    if (count($Options) == 0) {
+        $FormFields[$FieldId] = [
+            "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+            "Label" => $FormFields[$FieldId]["Label"],
+            "Content" => "<p>(No metadata fields of an appropriate type are available.)</p>"
+        ];
+    } elseif ($FieldId !== "Title") {
+        $FormFields[$FieldId]["Options"] = ["" => "--"] + $Options;
+    }
+}
+$H_Form = new FormUI($FormFields);
 
 # if user canceled editing
 if ($Action == "Cancel") {
     # go back to the list of fields for the schema
-    $AF->SetJumpToPage(GetReturnToPage($H_Schema));
+    $AF->setJumpToPage(GetReturnToPage($H_Schema));
     return;
 # else if user requested changes be saved
 } elseif ($Action == "Save Changes") {
     try {
+        $FormValues = $H_Form->getNewValuesFromForm();
+
         # update schema default sort field
-        $F_DefaultSortField = StdLib::getFormValue("F_DefaultSortField", "R");
+        $DefaultSortField = $FormValues["DefaultSortField"];
         $H_Schema->defaultSortField(
-            ($F_DefaultSortField == "R") ? false : intval($F_DefaultSortField)
+            ($DefaultSortField == "R") ? false : intval($DefaultSortField)
         );
 
         # update the schema mapping fields
-        saveFieldMapping($H_MappingFormFields, $H_Schema);
-
-        # attempt to extract modified privsets from form
-        $NewPrivsets = $H_PrivsetUI->GetPrivilegeSetsFromForm();
-
-        # update each type of privilege
-        foreach (["View", "Author", "Edit"] as $PrivPrefix) {
-            $PrivilegeType = $PrivPrefix."ingPrivileges";
-            $H_Schema->{$PrivilegeType}($NewPrivsets[$PrivilegeType]);
+        foreach ($MappingFormFields as $FieldId) {
+            $NewFieldValue = array_key_exists($FieldId, $FormValues) ? $FormValues[$FieldId] : null;
+            if (is_null($NewFieldValue) || !strlen($NewFieldValue)) {
+                $NewFieldValue = false;
+            }
+            $H_Schema->stdNameToFieldMapping($FieldId, $NewFieldValue);
         }
 
-        $H_Schema->commentsEnabled(StdLib::getFormValue("F_AllowComments", false));
+        # update each type of privilege
+        foreach (["view", "author", "edit"] as $PrivPrefix) {
+            $PrivilegeType = $PrivPrefix."ingPrivileges";
+            $H_Schema->{$PrivilegeType}($FormValues[$PrivilegeType]);
+        }
+
+        # update the comments enabled field
+        $H_Schema->commentsEnabled($FormValues["AllowComments"]);
 
         # nuke the page cache in case permission changes affect what is displayed
-        $AF->ClearPageCache();
-        RecordFactory::ClearViewingPermsCache();
+        $AF->clearPageCache();
+        RecordFactory::clearViewingPermsCache();
     } catch (Exception $Exception) {
         # couldn't update the privileges
         $H_PrivilegesError = $Exception->getMessage();
@@ -157,7 +214,7 @@ if ($Action == "Cancel") {
     # if there were no errors
     if (is_null($H_PrivilegesError)) {
         # go back to the list of fields for the schema
-        $AF->SetJumpToPage(GetReturnToPage($H_Schema));
+        $AF->setJumpToPage(GetReturnToPage($H_Schema));
         return;
     }
 }

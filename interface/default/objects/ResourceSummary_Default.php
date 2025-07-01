@@ -27,6 +27,17 @@ class ResourceSummary_Default extends ResourceSummary
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /**
+     * Return output HTML for resource summary.
+     * @return string|false The HTML string for this ResourceSummary.
+     */
+    public function getHtml()
+    {
+        ob_start();
+        $this->display();
+        return ob_get_clean();
+    }
+
+    /**
      * Display (output HTML) for resource summary.
      * @return void
      */
@@ -112,13 +123,17 @@ class ResourceSummary_Default extends ResourceSummary
         }
 
         # get link to full record page
+        $Target = "";
+        if ($IntConfig->getBool("ResourceLaunchesNewWindowEnabled")) {
+            $Target = ' target="_blank"';
+        }
         $FullRecordLink = htmlspecialchars(
             preg_replace('%\$ID%', $Resource->Id(), $Schema->getViewPage())
         );
         $FullRecordAltText = "View More Info for "
             .(isset($Title) ? htmlspecialchars(strip_tags($Title)) : "Resource");
         $FullRecordLinkTag = '<a href="'.$FullRecordLink.'"'
-            .' title="'.$FullRecordAltText.'">';
+            .' title="'.$FullRecordAltText.'"'.$Target.">";
 
         # retrieve and format description
         $Description = $this->getFormattedFieldValue(
@@ -169,6 +184,7 @@ class ResourceSummary_Default extends ResourceSummary
             }
         }
 
+        # TODO $UserRating is not currently used, but it should be; restore it
         if ($User->isLoggedIn()) {
             $UserRating = $Resource->rating();
             if ($UserRating == null) {
@@ -193,10 +209,6 @@ class ResourceSummary_Default extends ResourceSummary
                                     ? "</a>"
                                     : "");
 
-        $Target = "";
-        if ($IntConfig->getBool("ResourceLaunchesNewWindowEnabled")) {
-            $Target = ' target="_blank"';
-        }
         // @codingStandardsIgnoreStart
         $HasRating = isset($RatingImg) && isset($RatingAltText);
         $CanRate = isset($RatingString) && $RatingsEnabled;
@@ -341,6 +353,7 @@ class ResourceSummary_Default extends ResourceSummary
                     .($IntConfig->getBool("ResourceLaunchesNewWindowEnabled")
                             ? " target=\"_blank\"" : "").">";
         }
+        # TODO $DisplayableResourceLink is not currently used
         if (isset($UrlLink) && isset($ResourceLink) && ($ResourceLink == $UrlLink)) {
             if ((strlen($RealUrlLink) > static::MAX_RESOURCE_LINK_LENGTH) &&
                 (strlen(strip_tags($RealUrlLink)) == strlen($RealUrlLink))) {
@@ -433,6 +446,7 @@ class ResourceSummary_Default extends ResourceSummary
         string $GoButtonOpenTag,
         string $GoButtonCloseTag
     ): void {
+        # TODO $GoButtonOpenTag and $GoButtonCloseTag are unused
         $GoButtonOpenTagNoFocus = str_replace(
             "href=",
             "tabindex=\"-1\" href=",

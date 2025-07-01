@@ -14,7 +14,7 @@ use Metavus\Plugins\OAIPMHServer\OAIServer;
 use ScoutLib\ApplicationFramework;
 
 $AF = ApplicationFramework::getInstance();
-$AF->SuppressHTMLOutput();
+$AF->suppressHtmlOutput();
 
 $SelectedFormat = isset($_POST["FN"]) ? $_POST["FN"] :
     (isset($_GET["FN"]) ? $_GET["FN"] : "");
@@ -38,7 +38,7 @@ $ThisFormat = $Formats[$SelectedFormat];
 $Schema = new MetadataSchema();
 $Fields = $Schema->getFields();
 
-require_once("NamespaceToXSDMap.php");
+require_once(__DIR__."/../include/NamespaceToXSDMap.php");
 
 header("Content-type: text/xml");
 
@@ -82,7 +82,7 @@ print("<xs:simpleType name=\"cwis-point\"><xs:restriction base=\"xs:string\">\n"
 
 $TypeMapping = [];
 foreach ($Fields as $Field) {
-     $Names = $Server->GetFieldMapping($SelectedFormat, $Field->Name());
+     $Names = $Server->getFieldMapping($SelectedFormat, $Field->Name());
 
     if ($Names === null) {
         continue;
@@ -107,7 +107,7 @@ foreach ($Fields as $Field) {
 
         $MappedQualifiers = [];
         foreach ($Field->AssociatedQualifierList() as $Id => $QualifierName) {
-            $RemoteQualifier = $Server->GetQualifierMapping($SelectedFormat, $QualifierName);
+            $RemoteQualifier = $Server->getQualifierMapping($SelectedFormat, $QualifierName);
             $MappedQualifiers [] = ($RemoteQualifier === null) ? $DefaultXSType : $RemoteQualifier;
         }
         $MappedQualifiers = array_unique($MappedQualifiers);
@@ -132,7 +132,7 @@ print("<xs:element name=\"".$ThisFormat["TagName"]."\"><xs:complexType>"
       ."<xs:choice minOccurs=\"0\" maxOccurs=\"unbounded\">\n");
 
 foreach ($Fields as $Field) {
-    $Names = $Server->GetFieldMapping($SelectedFormat, $Field->Name());
+    $Names = $Server->getFieldMapping($SelectedFormat, $Field->Name());
     if ($Names === null) {
         continue;
     }

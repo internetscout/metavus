@@ -3,7 +3,7 @@
 #   FILE:  EventReports.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -14,6 +14,7 @@ use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
 use Metavus\Plugins\SocialMedia;
 use Metavus\RecordFactory;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\PluginManager;
@@ -38,20 +39,21 @@ function CreateOrIncrement(&$Array, $Key)
 
 # ----- MAIN -----------------------------------------------------------------
 
-PageTitle("Event Usage Metrics");
+$AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle("Event Usage Metrics");
 
 # make sure user has sufficient permission to view report
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
-$AF = ApplicationFramework::getInstance();
 $PluginMgr = PluginManager::getInstance();
 
 # check to be sure that the CalendarEvents plugin is actually enabled
 #  before doing other things
 if (!$PluginMgr->pluginReady("CalendarEvents")) {
-    CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }
 

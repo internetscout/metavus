@@ -3,13 +3,12 @@
 #   FILE:  StoredEmail.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Mailer;
-
 use Metavus\Plugins\Mailer;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Email;
@@ -46,7 +45,7 @@ class StoredEmail extends Item
             "DateCreated" => date('Y-m-d H:i:s'),
         ]);
 
-        $Item->SetEmail($Email);
+        $Item->setEmail($Email);
 
         return $Item;
     }
@@ -76,7 +75,7 @@ class StoredEmail extends Item
             $MailerPlugin = Mailer::getInstance();
 
             $TemplateId = $this->DB->UpdateValue("TemplateId");
-            $Templates = $MailerPlugin->GetTemplateList();
+            $Templates = $MailerPlugin->getTemplateList();
             $TemplateName = $Templates[$TemplateId];
 
             ApplicationFramework::getInstance()->logMessage(

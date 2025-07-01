@@ -3,7 +3,7 @@
 #   FILE:  NewSavedSearch.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -14,24 +14,27 @@ use Metavus\SavedSearch;
 use Metavus\SearchParameterSet;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
+
+$PluginMgr = PluginManager::getInstance();
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
 # check if user is logged in to avoid errors if user gets here by link
-if (!CheckAuthorization()) {
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
 # retrieve search parameters
 $SearchParams = new SearchParameterSet();
-$SearchParams->UrlParameters($_GET);
+$SearchParams->urlParameters($_GET);
 
 # if search parameters aren't found get from form value
-if ($SearchParams->ParameterCount() == 0) {
+if ($SearchParams->parameterCount() == 0) {
     $SearchParams = new SearchParameterSet(StdLib::getFormValue("SearchParams"));
 }
 
@@ -47,15 +50,15 @@ $FormFields = [
         "Type" => FormUI::FTYPE_CUSTOMCONTENT,
         "Label" => "Search Criteria",
         "ReadOnly" => true,
-        "Content" => $SearchParams->TextDescription(),
+        "Content" => $SearchParams->textDescription(),
     ],
 ];
 
-if ($GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailings")) {
+if ($PluginMgr->pluginReady("SavedSearchMailings")) {
     $FormFields["Email"] = [
         "Type" => FormUI::FTYPE_OPTION,
         "Label" => "Email",
-        "Options" => SavedSearchMailings::GetFrequencyOptions($User),
+        "Options" => SavedSearchMailings::getFrequencyOptions($User),
         "Value" => SavedSearch::SEARCHFREQ_NEVER,
     ];
 }
@@ -64,7 +67,7 @@ if ($GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailings")) {
 $H_FormUI = new FormUI($FormFields);
 
 # add search parameter data as a hidden field
-$H_FormUI->AddHiddenField("SearchParams", $SearchParams->Data());
+$H_FormUI->addHiddenField("SearchParams", $SearchParams->data());
 
 # act on any button press
 $ButtonPushed = StdLib::getFormValue("Submit");
@@ -72,7 +75,7 @@ $AF = ApplicationFramework::getInstance();
 switch ($ButtonPushed) {
     case "Save":
         #check values and bail out if any are invalid
-        if ($H_FormUI->ValidateFieldInput()) {
+        if ($H_FormUI->validateFieldInput()) {
             return;
         }
 
@@ -80,26 +83,26 @@ switch ($ButtonPushed) {
         $SearchParams = new SearchParameterSet(StdLib::getFormValue("SearchParams"));
 
         # get updated values from form
-        $SearchValues = $H_FormUI->GetNewValuesFromForm();
+        $SearchValues = $H_FormUI->getNewValuesFromForm();
 
         # set email frequency
-        $Frequency = $GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailings") ?
+        $Frequency = $PluginMgr->pluginReady("SavedSearchMailings") ?
             $SearchValues["Email"] : SavedSearch::SEARCHFREQ_NEVER;
 
         # save search
         $NewSavedSearch = new SavedSearch(
             null,
             $SearchValues["SearchName"],
-            $User->Id(),
+            $User->id(),
             $Frequency,
             $SearchParams
         );
 
         # jump to list saved searches
-        $AF->SetJumpToPage("index.php?P=ListSavedSearches");
+        $AF->setJumpToPage("index.php?P=ListSavedSearches");
         break;
     case "Cancel":
         # jump to list saved searches
-        $AF->SetJumpToPage("index.php?P=ListSavedSearches");
+        $AF->setJumpToPage("index.php?P=ListSavedSearches");
         break;
 }

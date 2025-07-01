@@ -3,7 +3,7 @@
 #   FILE:  AddResourceComment.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -24,7 +24,7 @@ $AF = ApplicationFramework::getInstance();
 # FullRecord) to eat a bunch of space
 $AF->doNotCacheCurrentPage();
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_POSTCOMMENTS)) {
     return;
 }
 
@@ -39,25 +39,25 @@ $User = User::getCurrentUser();
 
 # get message ID if editing, or resource ID and session info if adding new comment
 if (!is_null($H_MessageId)) {
-    if (!Message::ItemExists($H_MessageId)) {
+    if (!Message::itemExists($H_MessageId)) {
         FormUI::logError("Invalid message requested.");
         return;
     } else {
         $Message = new Message($H_MessageId);
-        if ($User->Id() == $Message->PosterId() ||
-            $User->HasPriv(PRIV_SYSADMIN)) {
+        if ($User->id() == $Message->posterId() ||
+            $User->hasPriv(PRIV_SYSADMIN)) {
             # set body text and resource using information from message
-            $H_Body = $Message->Body();
-            if (!Record::ItemExists($Message->ParentId())) {
-                FormUI::LogError("Invalid resource specified");
+            $H_Body = $Message->body();
+            if (!Record::itemExists($Message->parentId())) {
+                FormUI::logError("Invalid resource specified");
                 $AF->logMessage(
                     ApplicationFramework::LOGLVL_WARNING,
-                    "Invalid ResourceId (".$Message->ParentId().") on AddResourceComment "
+                    "Invalid ResourceId (".$Message->parentId().") on AddResourceComment "
                     ."for MessageId ".$H_MessageId
                 );
                 return;
             } else {
-                $H_Resource = new Record($Message->ParentId());
+                $H_Resource = new Record($Message->parentId());
             }
         } else {
             FormUI::logError("You don't have permissions to edit that message.");
@@ -71,7 +71,7 @@ if (!is_null($H_MessageId)) {
     if (is_null($ResourceId)) {
         FormUI::logError("No resource ID specified.");
         return;
-    } elseif (!Record::ItemExists($ResourceId)) {
+    } elseif (!Record::itemExists($ResourceId)) {
         FormUI::logError("Invalid resource ID specified.");
         return;
     } else {
@@ -110,10 +110,10 @@ if (!is_null($MaxCommentLengthConfig)) {
 # if we came from preview, get the previewed form body
 $H_Body = StdLib::getFormValue("F_Body", $H_Body);
 
-$TitleField = $H_Resource->getSchema()->GetFieldByMappedName("Title");
+$TitleField = $H_Resource->getSchema()->getFieldByMappedName("Title");
 
-$H_Title = $H_Resource->UserCanViewField($User, $TitleField)
-        ? $H_Resource->Get($TitleField)
+$H_Title = $H_Resource->userCanViewField($User, $TitleField)
+        ? $H_Resource->get($TitleField)
         : "";
 
 # get form fields with values retrieved above
@@ -165,13 +165,13 @@ switch ($ButtonPushed) {
         }
 
         # create a new message
-        $Message = Message::Create();
-        $Message->ParentId($H_Resource->id());
-        $Message->ParentType(Message::PARENTTYPE_RESOURCE);
-        $Message->DatePosted(date("YmdHis"));
-        $Message->PosterId($User->Id());
-        $Message->Subject("Comment On: " . $H_Title);
-        $Message->Body($CommentBody);
+        $Message = Message::create();
+        $Message->parentId($H_Resource->id());
+        $Message->parentType(Message::PARENTTYPE_RESOURCE);
+        $Message->datePosted(date("YmdHis"));
+        $Message->posterId($User->id());
+        $Message->subject("Comment On: " . $H_Title);
+        $Message->body($CommentBody);
         $AF->setJumpToPage("FullRecord&ID=" . $H_Resource->id());
         return;
     case "Preview":
@@ -196,17 +196,17 @@ switch ($ButtonPushed) {
         }
 
         $Message = new Message($H_MessageId);
-        if (!($User->Id() == $Message->PosterId()) && !($User->HasPriv(PRIV_SYSADMIN))) {
+        if (!($User->id() == $Message->posterId()) && !($User->hasPriv(PRIV_SYSADMIN))) {
             FormUI::logError("You don't have permission to edit this comment.");
             return;
         }
-        $Message->Body($CommentBody);
-        $Message->DateEdited(date("YmdHis"));
-        $Message->EditorId($User->Id());
+        $Message->body($CommentBody);
+        $Message->dateEdited(date("YmdHis"));
+        $Message->editorId($User->id());
         $AF->setJumpToPage("FullRecord&ID=" . $H_Resource->id());
         return;
     case "Delete Comment":
-        if (Message::ItemExists($H_MessageId)) {
+        if (Message::itemExists($H_MessageId)) {
             $Message = new Message($H_MessageId);
             $Message->destroy();
         }

@@ -2,25 +2,26 @@
  * FILE:  SearchParameterSetEditingUI.js
  *
  * Part of the Metavus digital collections platform
- * Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+ * Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
  * http://metavus.net
  *
  * Javascript routines for the SearchParameterSetEditingUI.
  * @scout:eslint
  */
 
-(function(){
+class SPSEditor {
     /**
      * Toggle UI elements to show only appropriate editing elements
-     *   for a selected field.
-     * @param mv-speui-field-row <tr> containing the elements to consider.
+     *         for a selected field.
+     * @param jQueryElement FieldRow tr.mv-speui-field-row
+     *         containing the elements to consider.
      */
-    function showAppropriateEditElements(FieldRow) {
-        var SubjectField = $('.mv-speui-field-subject', FieldRow),
-            ValueSelectField = $('.mv-speui-field-value-select', FieldRow),
-            ValueEditField = $('.mv-speui-field-value-edit', FieldRow),
-            ValueQSField = $('.mv-quicksearch', FieldRow),
-            FieldId = $(":selected", SubjectField).attr("value");
+    static showAppropriateEditElements(FieldRow) {
+        var SubjectField = $('.mv-speui-field-subject', FieldRow);
+        var ValueSelectField = $('.mv-speui-field-value-select', FieldRow);
+        var ValueEditField = $('.mv-speui-field-value-edit', FieldRow);
+        var ValueQSField = $('.mv-quicksearch', FieldRow);
+        var FieldId = $(":selected", SubjectField).attr("value");
 
         // get the field type from the currently selected field
         // (looks for a css class with a `field-type-` prefix, then
@@ -35,6 +36,8 @@
         $('.mv-speui-operator', FieldRow).hide();
 
         // then reveal the ones appropriate for our field type
+        $('.mv-speui-operator-' + FieldType, FieldRow).show();
+
         if (FieldType == "flag" || FieldType == "option") {
             ValueSelectField.show();
 
@@ -67,18 +70,15 @@
         } else {
             ValueEditField.show();
         }
-
-        // show operator indicator
-        $('.mv-speui-operator-' + FieldType, FieldRow).show();
     }
 
     /**
      * Handle clicks on the 'Add Field' button.
      */
-    function handleAddFieldClick() {
+    static handleAddFieldClick() {
         // find and clone our template row
-        var TemplateRow = $(this).parent().parent().prev(),
-            NewRow = TemplateRow.clone(true);
+        var TemplateRow = $(this).parent().parent().prev();
+        var NewRow = TemplateRow.clone(true);
 
         // insert cloned row before the template
         TemplateRow.before(NewRow);
@@ -91,24 +91,24 @@
     /**
      * Handle clicks on the 'Add Subgroup' button.
      */
-    function handleAddSubgroupClick() {
-        var TemplateRow = $(this).parent().parent().prev(),
-            FormName = $(".mv-speui-field-subject", NewRow).attr("name");
+    static handleAddSubgroupClick() {
+        var TemplateRow = $(this).parent().parent().prev();
+        var FormName = $(".mv-speui-field-subject", NewRow).attr("name");
 
         // construct the HTML for a new subgroup table
         var NewTable = $(
-            '<tr><td colspan=2 style="padding-left: 2em;">' +
+            '<tr class="mv-speui-subgroup-row"><td >' +
             '<input type="hidden" name="'+FormName+'" value="X-BEGIN-SUBGROUP-X"/>' +
             '<table class="mv-speui-subgroup">' +
             '<tr class="mv-speui-logic-row ">' +
-            '<td colspan="3">Subgroup with ' +
+            '<td>Subgroup with ' +
             '<select name="'+FormName+'" class="logic">' +
             '<option value="AND">AND</option>' +
             '<option value="OR" selected>OR</option>' +
             '</select> Logic</td></tr>' +
             '<tr class="mv-jq-placeholder-1"></tr>' +
             '<tr class="mv-jq-placeholder-2"></tr>' +
-            '<tr><td colspan="2">' +
+            '<tr><td>' +
             '<span class="btn btn-primary btn-sm ' +
             'mv-speui-add-field">Add Field</span>' +
             '<span class="btn btn-primary btn-sm ' +
@@ -127,8 +127,8 @@
         $(".mv-jq-placeholder-2", NewTable).replaceWith(TemplateRow.clone(true));
 
         // hook up the add button handlers
-        $(".mv-speui-add-field", NewTable).click(handleAddFieldClick);
-        $(".mv-speui-add-subgroup", NewTable).click(handleAddSubgroupClick);
+        $(".mv-speui-add-field", NewTable).click(SPSEditor.handleAddFieldClick);
+        $(".mv-speui-add-subgroup", NewTable).click(SPSEditor.handleAddSubgroupClick);
 
         // insert the new table before our template row
         TemplateRow.before(NewTable);
@@ -137,9 +137,10 @@
     /**
      * Handle clicks on the 'delete' buttons.
      */
-    function handleDeleteClick() {
-        var TargetRow = $(this).parent().parent(),
-            ParentTable = $(TargetRow).parentsUntil("table").last().parent();
+    static handleDeleteClick() {
+        var TargetRow = $(this).parent().parent();
+        var ParentTable = $(TargetRow).parents("table").first();
+        var Container = $(TargetRow).parents("table.mv-speui-container").first();
 
         // remove our target row
         $(TargetRow).remove();
@@ -151,33 +152,71 @@
             var Cur = ParentTable;
 
             // look up the table that contains this target
-            ParentTable = $(ParentTable).parentsUntil("table").last().parent();
+            ParentTable = $(ParentTable).parents("table").first();
 
             // nuke the targeted subgroup
             $(Cur).parent().parent().remove();
         }
+
+        SPSEditor.setSortControlVisibility(Container);
     }
 
     /**
-     * Handle selecteion of new subject fields within a field row.
+     * Handle selection of new subject fields within a field row.
      */
-    function handleSubjectFieldChange() {
-        // grab our table row
+    static handleSubjectFieldChange() {
         var Row = $(this).parent().parent();
-
+        var Container = $(Row).parents("table.mv-speui-container").first();
         // clear edit values
         $('.mv-speui-field-value-edit', Row).attr('value','');
         $('.mv-quicksearch-display', Row).val('');
         $('.mv-quicksearch-value', Row).attr('value','');
 
         // rearrange visiable fields as needed
-        showAppropriateEditElements( Row );
+        SPSEditor.showAppropriateEditElements(Row);
+        SPSEditor.setSortControlVisibility(Container);
+    }
+
+    /**
+     * Toggle visibility of sort field UI elements to only show the
+     *         ones corresponding to schemas we are searching.
+     * @param jQueryElement Container SPSEUI container to modify.
+     */
+    static setSortControlVisibility(Container) {
+        var SelectedSchemas = [];
+        $(".mv-speui-field-subject:visible", Container).each(function(Index, Element) {
+            var SchemaId = $("option:selected", Element).data('schema-id');
+            if (!SelectedSchemas.includes(SchemaId)) {
+                SelectedSchemas.push(SchemaId);
+            }
+        });
+        $(".mv-speui-sort-by", Container).hide();
+
+        SelectedSchemas.forEach(function(SchemaId){
+            $(".mv-speui-sort-by-schema-"+SchemaId, Container).show();
+        });
+
+        if (SelectedSchemas.length >= 2) {
+            $(".mv-speui-schema-name", Container).show();
+        } else {
+            $(".mv-speui-schema-name", Container).hide();
+        }
+    }
+
+    /**
+     * Set value of sort direction dropdown based on newly selected
+     *         sort field.
+     */
+    static handleSortFieldChange() {
+        var Row = $(this).parent().parent();
+        var Direction = $("option:selected", $(this)).data("sort-dir");
+        $(".mv-speui-sort-dir", Row).val(Direction);
     }
 
     /**
      * Handle form submissions.
      */
-    function handleFormSubmission(Event) {
+    static handleFormSubmission(Event) {
         // remove the template rows before submission
         $(".mv-speui-template-row").remove();
 
@@ -186,40 +225,57 @@
             '<option value="0">--</option>');
 
         // prepend operators for tree fields to the term ids
-        $(".mv-speui-operator-tree:visible").each(function(index, element) {
-            var Operator = $("option:selected", element).val(),
-                ValueElement = $("input.mv-quicksearch-value", $(element).next());
+        $(".mv-speui-operator-tree:visible").each(function(Index, Element) {
+            var Operator = $("option:selected", Element).val();
+            var ValueElement = $("input.mv-quicksearch-value", $(Element).next());
             ValueElement.val(Operator + ValueElement.val());
         });
 
         // prevent submission if an invalid value is selected
-        var hasInvalid = false;
-        $(".mv-speui-field-value-select :selected").each(function() {
-            if ($(this).val().includes("INVALID")) {
-                hasInvalid = true;
+        var HasInvalid = false;
+        $(".mv-speui-field-value-select :selected").each(function(Index, Element) {
+            if ($(Element).val().includes("INVALID")) {
+                HasInvalid = true;
             }
         });
 
-        if (hasInvalid) {
+        if (HasInvalid) {
             alert("An invalid value is selected for the Search Parameters. Please select a different value.");
             Event.preventDefault();
         }
     }
 
-    // do UI setup
-    $(document).ready(function(){
+    /**
+     * Set up SPS Editing UI.
+     */
+    static setUp() {
         // adjust initial field visiblity
         var SubjectFields = $(".mv-speui-field-subject");
-        SubjectFields.each(function(){
-            showAppropriateEditElements($(this).parent().parent());
+        SubjectFields.each(function(Index, Element){
+            SPSEditor.showAppropriateEditElements($(Element).parent().parent());
         });
-        $(".mv-speui-template-row").hide();
+        $(".mv-speui-container").each(function(Index, Element) {
+            SPSEditor.setSortControlVisibility(Element);
+        });
+
+        // turn sort direction dropdowns into buttons that toggle
+        $("select.mv-speui-sort-dir option[value='0']").text("\u2191");
+        $("select.mv-speui-sort-dir option[value='1']").text("\u2193");
+        $("select.mv-speui-sort-dir").on("mousedown", function() {
+            $(this).val( 1 - $(this).val());
+            return false;
+        });
 
         // set up event handlers
-        SubjectFields.change(handleSubjectFieldChange);
-        $(".mv-speui-add-field").click(handleAddFieldClick);
-        $(".mv-speui-add-subgroup").click(handleAddSubgroupClick);
-        $(".mv-speui-delete").click(handleDeleteClick);
-        $("form").submit(handleFormSubmission);
-    });
-}());
+        SubjectFields.change(SPSEditor.handleSubjectFieldChange);
+        $(".mv-speui-add-field").click(SPSEditor.handleAddFieldClick);
+        $(".mv-speui-add-subgroup").click(SPSEditor.handleAddSubgroupClick);
+        $(".mv-speui-delete").click(SPSEditor.handleDeleteClick);
+        $(".mv-speui-sort-field").change(SPSEditor.handleSortFieldChange);
+        $("form").submit(SPSEditor.handleFormSubmission);
+    }
+}
+
+$(document).ready(function(){
+    SPSEditor.setUp();
+});

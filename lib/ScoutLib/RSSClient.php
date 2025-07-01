@@ -64,9 +64,9 @@ class RSSClient
         # create XML parser and parse text
         $this->Parser = new XMLParser($this->Encoding);
         if ($this->DebugLevel > 3) {
-            $this->Parser->SetDebugLevel($this->DebugLevel - 3);
+            $this->Parser->setDebugLevel($this->DebugLevel - 3);
         }
-        $this->Parser->ParseText($this->XmlText);
+        $this->Parser->parseText($this->XmlText);
 
         if ($this->DebugLevel) {
             print("RSSClient->RSSClient() returned ".strlen($this->XmlText)
@@ -96,9 +96,9 @@ class RSSClient
             # create new XML parser and parse text
             $this->Parser = new XMLParser();
             if ($this->DebugLevel > 3) {
-                $this->Parser->SetDebugLevel($this->DebugLevel - 3);
+                $this->Parser->setDebugLevel($this->DebugLevel - 3);
             }
-            $this->Parser->ParseText($this->XmlText);
+            $this->Parser->parseText($this->XmlText);
         }
 
         # return RSS server URL to caller
@@ -128,9 +128,9 @@ class RSSClient
             # create new XML parser and parse text
             $this->Parser = new XMLParser($this->Encoding);
             if ($this->DebugLevel > 3) {
-                $this->Parser->SetDebugLevel($this->DebugLevel - 3);
+                $this->Parser->setDebugLevel($this->DebugLevel - 3);
             }
-            $this->Parser->ParseText($this->XmlText);
+            $this->Parser->parseText($this->XmlText);
         }
 
         # return encoding to caller

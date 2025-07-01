@@ -3,7 +3,7 @@
 #   FILE:  InterfaceSettings_Default.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -216,6 +216,14 @@ class InterfaceSettings_Default extends InterfaceSettings
             "HEADING-Browsing" => [
                 "Type" => FormUI::FTYPE_HEADING,
                 "Label" => "Browsing",
+            ],
+            "BrowsingPageTitle" => [
+                "Type" => FormUI::FTYPE_TEXT,
+                "Label" => "Browsing Page Title",
+                "Default" => "Browse Resources",
+                "Required" => true,
+                "Help" => "Title and heading for resource browsing page"
+                    ." (BrowseResources), when not in classification editing mode.",
             ],
             "NumClassesPerBrowsePage" => [
                 "Type" => FormUI::FTYPE_NUMBER,

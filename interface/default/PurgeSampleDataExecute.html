@@ -11,6 +11,8 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 # ----- SETUP ----------------------------------------------------------------
 if (!isset($H_ClassificationCount)) {
@@ -23,25 +25,20 @@ if (!isset($H_ResourceCount)) {
     throw new Exception("H_ResourceCount not defined.");
 }
 
+$AF = ApplicationFramework::getInstance();
+
+$DataTable = new HtmlTable();
+$DataTable->setTableClass("table table-striped");
+$DataTable->addRowsWithHeaders([
+    ["Resources Deleted", $H_ResourceCount],
+    ["Classifications Deleted", $H_ClassificationCount],
+    ["Controlled Names Deleted", $H_ControlledNameCount]
+]);
+
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Purge Sample Data");
+$AF->setPageTitle("Purge Sample Data");
 ?>
 
 <h1>Sample Data Purge Completed Successfully</h1>
 
-<table class="table table-striped">
-    <tbody>
-        <tr>
-            <th>Resources Deleted</th>
-            <td><?= $H_ResourceCount; ?></td>
-        </tr>
-        <tr>
-            <th>Classifications Deleted</th>
-            <td><?= $H_ClassificationCount; ?></td>
-        </tr>
-        <tr>
-            <th>Controlled Names Deleted</th>
-            <td><?= $H_ControlledNameCount; ?></td>
-        </tr>
-    </tbody>
-</table>
+<?= $DataTable->getHtml(); ?>

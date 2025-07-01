@@ -18,7 +18,7 @@ use ScoutLib\PluginManager;
 $AF = ApplicationFramework::getInstance();
 
 if (isset($H_Error)) {
-    PageTitle("Full Image: Error");
+    $AF->setPageTitle("Full Image: Error");
     print "<h1>Error</h1>";
     print "<p class='alert alert-danger'>".$H_Error."</p>";
     return;
@@ -64,7 +64,7 @@ $ImageHtml = $UseIIIF ?
 
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle($H_Field->Name()." Display");
+$AF->setPageTitle($H_Field->Name()." Display");
 
 ?>
 <h1><?PHP if (!strlen($ResourceTitle)) {

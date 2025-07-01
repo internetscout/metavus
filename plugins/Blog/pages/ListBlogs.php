@@ -3,16 +3,17 @@
 #   FILE:  ListBlogs.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\Plugins\Blog;
 use Metavus\TransportControlsUI;
+use Metavus\User;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
     return;
 }
 

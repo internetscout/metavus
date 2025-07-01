@@ -6,11 +6,15 @@
 #   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
+namespace Metavus;
+use Exception;
 use Metavus\Plugins\Blog;
-use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Check if notifications for the passed in entry can be sent out or not.
@@ -26,7 +30,7 @@ function ShouldDisplayEmailNotify($Entry)
 {
     $BlogPlugin = Blog::getInstance();
     return $Entry->GetBlogId() == $BlogPlugin->getConfigSetting("EmailNotificationBlog")
-        && $BlogPlugin->NotificationsCouldBeSent($Entry, User::getCurrentUser());
+        && $BlogPlugin->notificationsCouldBeSent($Entry, User::getCurrentUser());
 }
 
 /**
@@ -57,12 +61,46 @@ function GetFieldValueForDisplay($Entry, $FieldId)
         ? $Entry->{$Methods[$FieldName]}() : "";
 }
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
+# verify that required incoming variables are set
+if (!isset($H_Schema)) {
+    throw new Exception("Variable \$H_Schema not set.");
+}
+if (!isset($H_BlogSelectVarName)) {
+    throw new Exception("Variable \$H_BlogSelectVarName not set.");
+}
+if (!isset($H_Checksum)) {
+    throw new Exception("Variable \$H_Checksum not set.");
+}
+if (!isset($H_CurrentBlogId)) {
+    throw new Exception("Variable \$H_CurrentBlogId not set.");
+}
+if (!isset($H_SortField)) {
+    throw new Exception("Variable \$H_SortField not set.");
+}
+if (!isset($H_ReverseSort)) {
+    throw new Exception("Variable \$H_ReverseSort not set.");
+}
+if (!isset($H_PageSize)) {
+    throw new Exception("Variable \$H_PageSize not set.");
+}
+if (!isset($H_BlogEntries)) {
+    throw new Exception("Variable \$H_BlogEntries not set.");
+}
+if (!isset($H_EntryCount)) {
+    throw new Exception("Variable \$H_EntryCount not set.");
+}
+if (!isset($H_PageOffset)) {
+    throw new Exception("Variable \$H_PageOffset not set.");
+}
+
 
 $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 $PageTitle = "Blog Entries";
 
-PageTitle($PageTitle);
+$AF->setPageTitle($PageTitle);
 
 # item list ui fields definitions
 $BlogFieldDefinitions = [
@@ -70,28 +108,28 @@ $BlogFieldDefinitions = [
         "Heading" => "Title",
         "MaxLength" => 32,
         "Link" => "index.php?P=P_Blog_Entry&amp;ID=\$ID",
-        "ValueFunction" => "GetFieldValueForDisplay"
+        "ValueFunction" => "Metavus\\GetFieldValueForDisplay"
     ],
     Blog::AUTHOR_FIELD_NAME => [
         "Heading" => "Author",
-        "ValueFunction" => "GetFieldValueForDisplay"
+        "ValueFunction" => "Metavus\\GetFieldValueForDisplay"
     ],
     Blog::EDITOR_FIELD_NAME => [
         "Heading" => "Editor",
-        "ValueFunction" => "GetFieldValueForDisplay"
+        "ValueFunction" => "Metavus\\GetFieldValueForDisplay"
     ],
     Blog::CREATION_DATE_FIELD_NAME => [
         "Heading" => "Created",
-        "ValueFunction" => "GetFieldValueForDisplay"
+        "ValueFunction" => "Metavus\\GetFieldValueForDisplay"
     ],
     Blog::MODIFICATION_DATE_FIELD_NAME => [
         "Heading" => "Modified",
         "DefaultSortField" => true,
-        "ValueFunction" => "GetFieldValueForDisplay",
+        "ValueFunction" => "Metavus\\GetFieldValueForDisplay",
     ],
     Blog::PUBLICATION_DATE_FIELD_NAME => [
         "Heading" => "Publication Date",
-        "ValueFunction" => "GetFieldValueForDisplay"
+        "ValueFunction" => "Metavus\\GetFieldValueForDisplay"
     ],
     "Public" => [
         "Heading" => "Pub",
@@ -117,29 +155,29 @@ $BlogOptionListLink = "index.php?P=P_Blog_ListEntries";
 
 # initiate and add action buttons to the blog entry list
 $ListUI = new ItemListUI($BlogFieldDefinitions);
-$ListUI->BaseLink($BaseLink);
-$ListUI->AddActionButton(
+$ListUI->setBaseLink($BaseLink);
+$ListUI->addActionButton(
     "View",
     $ViewLink,
     'EyeOpen.svg',
     null,
     ["title" => "View this blog entry"]
 );
-$ListUI->AddActionButton(
+$ListUI->addActionButton(
     "Edit",
     $EditLink,
     "Pencil.svg",
     null,
     ["title" => "Edit this blog entry"]
 );
-$ListUI->AddActionButton(
+$ListUI->addActionButton(
     "Notify",
     $NotifyLink,
     "NotifyEmail.svg",
-    "ShouldDisplayEmailNotify",
+    "Metavus\\ShouldDisplayEmailNotify",
     ["title" => "Send e-mail notifications to subscribers about this blog entry"]
 );
-$ListUI->AddActionButton(
+$ListUI->addActionButton(
     "Delete",
     $DeleteLink,
     "Delete.svg",
@@ -147,14 +185,15 @@ $ListUI->AddActionButton(
     ["title" => "Permanently delete this blog entry"]
 );
 
-$TransportUI = $ListUI->transportUI();
+$TransportUI = new TransportControlsUI();
 $TransportUI->sortField($H_SortField);
 $TransportUI->reverseSortFlag($H_ReverseSort);
+$ListUI->setTransportControls($TransportUI);
 
 # add a "pick-blog" option list
 $BlogPlugin = Blog::getInstance();
-$ListUI->AddTopOptionList(
-    $BlogPlugin->GetAvailableBlogs(),
+$ListUI->addTopOptionList(
+    $BlogPlugin->getAvailableBlogs(),
     $H_BlogSelectVarName,
     $BlogOptionListLink,
     $H_CurrentBlogId
@@ -162,16 +201,20 @@ $ListUI->AddTopOptionList(
 
 # add a button linking to Manage Subscribers page
 if ($H_CurrentBlogId == $BlogPlugin->getConfigSetting("EmailNotificationBlog")) {
-    $ListUI->AddTopButton("Manage Subscribers", $ManageSubscribersLink, 'cog.png');
+    $ListUI->addTopButton("Manage Subscribers", $ManageSubscribersLink, 'cog.png');
 }
 
 # add an add-entry button for user with the privilege
 if ($H_Schema->UserCanAuthor(User::getCurrentUser())) {
-    $ListUI->AddTopButton("New Entry", $AddNewEntryLink, 'Plus.svg');
+    $ListUI->addTopButton("New Entry", $AddNewEntryLink, 'Plus.svg');
 }
 
-# set other setting and display the list
-$ListUI->Heading($PageTitle);
-$ListUI->NoItemsMessage("There are no blog entries.");
-$ListUI->ItemsPerPage($H_PageSize);
-$ListUI->Display($H_BlogEntries, $H_EntryCount, $H_PageOffset);
+# set other setting
+$ListUI->setHeading($PageTitle);
+$ListUI->setNoItemsMessage("There are no blog entries.");
+$ListUI->setItemsPerPage($H_PageSize);
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+$ListUI->display($H_BlogEntries, $H_EntryCount, $H_PageOffset);

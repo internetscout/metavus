@@ -11,7 +11,26 @@
 namespace Metavus;
 
 # ----- SETUP ----------------------------------------------------------------
-$LogInButton = new HtmlButton("Log In");
+$FormFields = [
+    "UserName" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "User Name",
+        "Size" => 12,
+        "Placeholder" => ""
+    ],
+    "Password" => [
+        "Type" => FormUI::FTYPE_PASSWORD,
+        "Label" => "Password",
+        "Size" => 12,
+        "Placeholder" => ""
+    ],
+    "Login" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Content" => (new HtmlButton("Log In"))->getHtml(),
+        "Label" => ""
+    ]
+];
+$LogInForm = new FormUI($FormFields);
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
@@ -25,22 +44,7 @@ $LogInButton = new HtmlButton("Log In");
     </p>
 
     <form method="post" action="index.php?P=UserLogin">
-        <table class="table table-striped">
-            <tbody>
-                <tr>
-                    <th><label for="F_UserName">User name</label>:</th>
-                    <td><input type="text" size="12" id="F_UserName" name="F_UserName" /></td>
-                </tr>
-                <tr>
-                    <th><label for="F_Password">Password</label>:</th>
-                    <td><input type="password" size="12" id="F_Password" name="F_Password" /></td>
-                </tr>
-                <tr>
-                    <th></th>
-                    <td><?= $LogInButton->getHtml(); ?></td>
-                </tr>
-            </tbody>
-        </table>
+        <?PHP $LogInForm->displayFormTable(); ?>
     </form>
 
     <ul class="list-group list-group-flush">

@@ -3,17 +3,20 @@
 #   FILE:  EditBlog.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\FormUI;
 use Metavus\Plugins\Blog;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
-CheckAuthorization(PRIV_SYSADMIN);
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
+}
 
 # instantiate blog plugin
 $BlogPlugin = Blog::getInstance();

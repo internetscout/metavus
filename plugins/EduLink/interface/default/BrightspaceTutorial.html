@@ -12,40 +12,52 @@ namespace Metavus;
 
 use Metavus\Plugins\EduLink;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 $AF = ApplicationFramework::getInstance();
 $Plugin = EduLink::getInstance();
+
+$N = 1;
+
+$Instructions = new HtmlTable();
+$Instructions->setTableClass("table table-striped");
+$Instructions->addRows([
+    [
+        ($N++).". Select a course to edit and navigate to the front"
+            ." page for that course.",
+        ""
+    ],
+    [
+        ($N++).". Select <code>Content</code> from the course menu.",
+        $AF->gUIFileTag("Brightspace_Tutorial_1.jpg")
+    ],
+    [
+        ($N++).". Select <code>".$Plugin->getConfigSetting("ServiceName")
+            ."</code> from the <code>Existing Activities</code> drop down menu.",
+        $AF->gUIFileTag("Brightspace_Tutorial_2.jpg")
+    ],
+    [
+        ($N++).". Use the search box and/or the facets shown at right to"
+            ." locate the resource(s) you want.",
+        ""
+    ],
+    [
+        ($N++).". Use the <code>Select</code> buttons to make your resource selections.",
+        $AF->gUIFileTag("Brightspace_Tutorial_3.jpg")
+    ],
+    [
+        ($N++).". When you've selected all the resources you want, press the"
+            ." <code>Send to LMS</code> button to forward your selections back to"
+            ." Brightspace.",
+        $AF->gUIFileTag("Brightspace_Tutorial_4.jpg")
+    ],
+    [
+        ($N++).". Your selected resource(s) will now appear in the course content list.",
+        ""
+    ],
+]);
+
 ?>
 <h1>Embedding a resource in Brightspace</h1>
 
-<ol>
-  <li>Select a course to edit and navigate to the front page for that
-    course.</li>
-
-  <li>Select <i>Content</i> from the course menu.<br/>
-    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_1.jpg") ?>"/>
-  </li>
-
-  <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
-    from the <i>Existing Activities</i> drop down menu.<br/>
-    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_2.jpg") ?>"/>
-  </li>
-
-  <li>Use the search box and/or the facets shown at right to locate
-    the resource(s) you want.</li>
-
-  <li>Use the <i>Select</i> buttons to make your resource selections.<br/>
-    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_3.jpg") ?>"/></li>
-
-  <li>When you've selected all the resources you want, press the <i>Send
-      to LMS</i> button to forward your selections back to Brightspace.<br/>
-    <img src="<?= $AF->gUIFile("Brightspace_Tutorial_4.jpg") ?>"/></li>
-
-  <li>Your selected resource(s) will now appear in the course content list.</li>
-</ol>
-
-<style type="text/css">
-li + li {
-  margin-top: 0.75em;
-}
-</style>
+<?= $Instructions->getHtml() ?>

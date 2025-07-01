@@ -198,7 +198,7 @@ class SecondaryNavigation extends Plugin
                         You are logged in.
                     </div>
                     <div class="row">
-                        Welcome, <?= $User->Get("UserName") ?>
+                        Welcome, <?= $User->get("UserName") ?>
                     </div>
                     <div class="row">
                         <div class="col-12">
@@ -279,7 +279,7 @@ class SecondaryNavigation extends Plugin
         $NavMenu = new NavMenu(User::getCurrentUser()->id());
         $NormalizedUrl = $this->normalizeUrl($AF->getUncleanRelativeUrlWithParams());
         $AddLink = "index.php?P=P_SecondaryNavigation_EditItem&AL=".urlencode($NormalizedUrl).
-            "&PT=".urlencode(PageTitle(null, false) ?? "");
+            "&PT=".urlencode($AF->getUnfilteredPageTitle() ?? "");
 
         $AddButton = new HtmlButton("Add");
         $AddButton->setIcon("Plus.svg");

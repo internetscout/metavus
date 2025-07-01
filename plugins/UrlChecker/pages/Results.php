@@ -17,10 +17,14 @@ use ScoutLib\ApplicationFramework;
 # ----- MAIN -----------------------------------------------------------------
 
 # setup
-PageTitle("URL Checker Results");
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
-
 $AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle("URL Checker Results");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
 $MyPlugin = UrlChecker::getInstance();
 $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
 

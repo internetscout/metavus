@@ -3,13 +3,12 @@
 #   FILE:  ConfirmDeleteMetadataField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
@@ -23,12 +22,12 @@ use ScoutLib\StdLib;
 function IsFinalTreeField(MetadataField $Field)
 {
     # re-assign browsing field ID if that is what is being deleted
-    if (InterfaceConfiguration::getInstance()->getInt("BrowsingFieldId") == $Field->Id()) {
+    if (InterfaceConfiguration::getInstance()->getInt("BrowsingFieldId") == $Field->id()) {
         $Schema = new MetadataSchema();
-        $TreeFields = $Schema->GetFields(MetadataSchema::MDFTYPE_TREE);
+        $TreeFields = $Schema->getFields(MetadataSchema::MDFTYPE_TREE);
 
         # remove the field to be deleted from the list
-        unset($TreeFields[$Field->Id()]);
+        unset($TreeFields[$Field->id()]);
 
         return count($TreeFields) < 1;
     }
@@ -37,13 +36,11 @@ function IsFinalTreeField(MetadataField $Field)
 }
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Confirm Metadata Field Deletion");
-
 $AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Metadata Field Deletion");
 
 # make sure the user can access this page
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -52,7 +49,7 @@ $H_Field = MetadataField::getField(StdLib::getArrayValue($_GET, "Id"));
 $H_IsFinalTreeField = IsFinalTreeField($H_Field);
 
 # invalid field, go to the main page
-if ($H_Field->Status() != MetadataSchema::MDFSTAT_OK) {
-    $AF->SetJumpToPage("DBEditor");
+if ($H_Field->status() != MetadataSchema::MDFSTAT_OK) {
+    $AF->setJumpToPage("DBEditor");
     return;
 }

@@ -3,19 +3,21 @@
 #   FILE:  RebuildRecommenderDB.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\RecordFactory;
 use Metavus\Recommender;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
-PageTitle("Rebuilding Recommender Database");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Rebuilding Recommender Database");
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -33,7 +35,7 @@ function ProcessResourceChunk($StartingResourceId)
     $Recommender = new Recommender();
     if (isset($StartingResourceId)) {
         # process (update recommender data for) current chunk of resources
-        $EndResourceId = $Recommender->UpdateForItems(
+        $EndResourceId = $Recommender->updateForItems(
             $StartingResourceId,
             $RebuildChunkSize
         );
@@ -45,13 +47,13 @@ function ProcessResourceChunk($StartingResourceId)
 
     # if we have processed all resources
     $RFactory = new RecordFactory();
-    $LastResourceId = $RFactory->GetHighestItemId();
+    $LastResourceId = $RFactory->getHighestItemId();
     if ($EndResourceId >= $LastResourceId) {
         # set flag to indicate we're done
         $NewStartingResourceId = -1;
 
         # do end maintenance to recommender DB
-        $Recommender->PruneCorrelations();
+        $Recommender->pruneCorrelations();
     } else {
         # set new starting resource ID
         $NewStartingResourceId = $EndResourceId + 1;
@@ -118,11 +120,10 @@ if ($H_PercentRebuildComplete < 2) {
 
 # set up page auto-refresh
 if ($StartingResourceId != -1) {
-    $AF = ApplicationFramework::getInstance();
     $ElapsedTime = intval($Elapsed
-            + $AF->GetElapsedExecutionTime());
-    $AF->SlowPageLoadThreshold(60);
-    $AF->SetJumpToPage(
+            + $AF->getElapsedExecutionTime());
+    $AF->slowPageLoadThreshold(60);
+    $AF->setJumpToPage(
         "index.php?P=RebuildRecommenderDB"
             ."&RSDStartingResourceId=".$StartingResourceId
         ."&RSDElapsed=".$ElapsedTime,

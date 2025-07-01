@@ -14,7 +14,9 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
 # ----- SETUP ----------------------------------------------------------------
-ApplicationFramework::getInstance()->requireUIFile(
+$AF = ApplicationFramework::getInstance();
+
+$AF->requireUIFile(
     ["jquery-ui.js", "jquery-ui.css"],
     ApplicationFramework::ORDER_FIRST
 );
@@ -61,7 +63,7 @@ $SearchButton->setIcon("MagnifyingGlass.svg");
 $SearchButton->setSize(HtmlButton::SIZE_SMALL);
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Queued Email");
+$AF->setPageTitle("Queued Email");
 ?>
 <div id="SearchQueuedMessages" style="float: right; margin-top: 15px;">
   <form action="index.php" method="get">

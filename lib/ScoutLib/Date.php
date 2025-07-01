@@ -6,7 +6,6 @@
 #   Copyright 1999-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
-# @scout:phpstan
 
 namespace ScoutLib;
 use Exception;

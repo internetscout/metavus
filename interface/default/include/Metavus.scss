@@ -470,18 +470,6 @@ label.mv-form-error {
 }
 
 .mv-form-fieldtype-search_parameters {
-    table {
-        margin-left: 0.4rem;
-    }
-
-    td {
-        padding: 0.2rem;
-
-        select {
-            vertical-align: top;
-        }
-    }
-
     .mv-quicksearch {
         display: inline-block;
         margin-bottom: 4px;
@@ -1060,6 +1048,35 @@ div.mv-search-facets {
         top: 0 !important;
         transition: top .1s ease-in;
     }
+}
+
+select.mv-speui-sort-dir {
+    appearance: none;
+    padding: 0 10px;
+}
+
+select.mv-speui-sort-field {
+    width: 100%;
+}
+
+.mv-speui-field-row {
+    td {
+        vertical-align: middle;
+    }
+
+    .mv-quicksearch {
+        textarea.mv-quicksearch-display {
+            min-width: 350px;
+        }
+    }
+}
+
+.mv-speui-subgroup {
+    margin-left: 1em;
+}
+
+.mv-speui-template-row {
+    display: none;
 }
 
 .mv-stat-container {

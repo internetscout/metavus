@@ -7,7 +7,10 @@
 #   http://metavus.net
 #
 
-PageTitle("Process Multiple Messages");
+use ScoutLib\ApplicationFramework;
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Process Multiple Messages");
 ?>
 <ul class='mv-form-error'>
 <?PHP foreach ($H_Errors as $Error) { ?>

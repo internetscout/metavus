@@ -3,7 +3,7 @@
 #   FILE:  ReportError.php (GoogleMaps plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -16,7 +16,7 @@ use Metavus\Plugins\GoogleMaps;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
-ApplicationFramework::getInstance()->suppressHTMLOutput();
+ApplicationFramework::getInstance()->suppressHtmlOutput();
 $Msg = StdLib::getArrayValue($_POST, "msg");
 
 if ($Msg !== null && strlen($Msg) > 0) {

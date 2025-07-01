@@ -9,54 +9,58 @@
 
 # ----- MAIN -----------------------------------------------------------------
 
-# check authorization and setup HTML suppression and page redirection
-use Metavus\Plugins\Folders\Common;
+namespace Metavus;
+
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\User;
-use ScoutLib\StdLib;
+use ScoutLib\ApplicationFramework;
 
-if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
+$AF = ApplicationFramework::getInstance();
+$Submit = $_POST["Submit"] ?? null;
+$FolderId = $_POST["FolderId"] ?? null;
+
+# make sure the user is logged in
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
-# canceled deletion
-if (StdLib::getArrayValue($_GET, "Submit") !== "Delete") {
+# back to ManageFolders when we are done
+$AF->setJumpToPage("P_Folders_ManageFolders");
+
+# nothing to do if FolderId is absent or invalid
+if ($FolderId === null || !Folder::itemExists($FolderId)) {
     return;
 }
 
-$FolderId = StdLib::getArrayValue($_GET, "FolderId");
-
-# can't do anything if there isn't a folder ID to work with
-if (!strlen($FolderId)) {
-    return;
-}
-
-
-$FolderFactory = new FolderFactory(User::getCurrentUser()->Id());
-$ResourceFolder = $FolderFactory->GetResourceFolder();
+$FolderFactory = new FolderFactory(User::getCurrentUser()->id());
+$ResourceFolder = $FolderFactory->getResourceFolder();
 $Folder = new Folder($FolderId);
 
-# delete the folder only if the resource folder contains this folder, which
-# implies that the user owns the folder and it's a valid folder of resources
-if ($ResourceFolder->ContainsItem($Folder->Id())) {
-    $CurrentFolder = $FolderFactory->GetSelectedFolder();
-    $TgtIsCurrent = $CurrentFolder->Id() == $Folder->Id();
-
-    $ResourceFolder->RemoveItem($Folder->Id());
-    $Folder->Delete();
-
-    # if we just deleted the current folder
-    if ($TgtIsCurrent) {
-        $FolderIds = $ResourceFolder->GetItemIds();
-        if (count($FolderIds)) {
-            # select the next folder if available
-            $NewCurrentFolder = new Folder(array_shift($FolderIds));
-        } else {
-            # or create a new default folder if we just deleted the last folder
-            $NewCurrentFolder = $FolderFactory->createDefaultFolder();
-        }
-
-        $FolderFactory->SelectFolder($NewCurrentFolder);
-    }
+# nothing to do if current user does not own the target folder
+if (!$ResourceFolder->containsItem($Folder->id())) {
+    return;
 }
+
+# determine if target folder is currently selected folder
+$CurrentFolder = $FolderFactory->getSelectedFolder();
+$TgtIsCurrent = $CurrentFolder->id() == $Folder->id();
+
+# delete target folder
+$ResourceFolder->removeItem($Folder->id());
+$Folder->delete();
+
+# if target was not the currently selected folder, nothing else to do
+if (!$TgtIsCurrent) {
+    return;
+}
+
+$FolderIds = $ResourceFolder->getItemIds();
+if (count($FolderIds)) {
+    # select the next folder if available
+    $NewCurrentFolder = new Folder(reset($FolderIds));
+} else {
+    # or create a new default folder if we just deleted the last folder
+    $NewCurrentFolder = $FolderFactory->createDefaultFolder();
+}
+
+$FolderFactory->selectFolder($NewCurrentFolder);

@@ -13,8 +13,6 @@ use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
-PageTitle("Rule List");
-
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
@@ -80,6 +78,9 @@ if (!isset($H_Items)) {
 if (!isset($H_StartingIndex)) {
     throw new Exception("Variable \$H_StartingIndex not set.");
 }
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Rule List");
 
 # set up links
 $BaseLink = "index.php?P=P_Rules_ListRules&CK=".$H_ListChecksum;

@@ -11,6 +11,7 @@ namespace Metavus;
 
 use Exception;
 use Metavus\Plugins\SavedSearchMailings;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -34,6 +35,8 @@ if (!isset($H_OriginalSearch)) {
 if (!isset($H_SearchId)) {
     throw new Exception("Required variable \$H_SearchId is not initialized");
 }
+
+$AF = ApplicationFramework::getInstance();
 
 $TransferButton = new HtmlButton("Transfer");
 $TransferButton->setIcon("Exchange.svg");
@@ -70,7 +73,7 @@ $FormUI->addHiddenField("ID", $H_SearchId);
 
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle("Transfer Saved Search");
+$AF->setPageTitle("Transfer Saved Search");
 ?>
 
 <h1>Transfer Saved Search</h1>

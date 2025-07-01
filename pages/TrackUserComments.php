@@ -3,7 +3,7 @@
 #   FILE:  TrackUserComments.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -11,18 +11,21 @@
 use Metavus\Message;
 use Metavus\MessageFactory;
 use Metavus\TransportControlsUI;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # make sure user has needed privileges for user editing
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
-PageTitle("Track User Comments");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Track User Comments");
 # retrieve list of MessageIds, reversed as to show most recent
 $MFactory = new MessageFactory();
-$MessageIds = $MFactory->GetItemIds(
+$MessageIds = $MFactory->getItemIds(
     "ParentId > 0 AND ParentType = ".Message::PARENTTYPE_RESOURCE,
     false,
     "MessageId",

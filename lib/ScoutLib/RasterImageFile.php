@@ -647,6 +647,14 @@ class RasterImageFile extends ImageFile
     ) {
         # create blank destination image with a black background
         # (same size as source because we will scale it to destination size later)
+        if ($SrcWidth < 1) {
+            throw new Exception("Illegal source width (\"".$SrcWidth
+                    ."\") (should be impossible).");
+        }
+        if ($SrcHeight < 1) {
+            throw new Exception("Illegal source width (\"".$SrcHeight
+                    ."\") (should be impossible).");
+        }
         $DstImage = imagecreatetruecolor($SrcWidth, $SrcHeight);
         if ($DstImage === false) {
             throw new Exception("Unable to create blank destination image.");

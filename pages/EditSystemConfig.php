@@ -3,7 +3,7 @@
 #   FILE:  EditSystemConfig.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -23,7 +23,7 @@ use ScoutLib\StdLib;
 $AF = ApplicationFramework::getInstance();
 $SysCfg = SystemConfiguration::getInstance();
 
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
 
 # set up form
 $FormParams = $SysCfg->getFormParameters();

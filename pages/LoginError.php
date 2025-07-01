@@ -8,6 +8,8 @@
 #
 # @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+use ScoutLib\ApplicationFramework;
 
-PageTitle("Login Error");
+# ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Login Error");

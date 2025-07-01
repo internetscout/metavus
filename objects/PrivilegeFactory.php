@@ -179,7 +179,7 @@ class PrivilegeFactory extends ItemFactory
         # alphabetically within each section
         $TmpNames = [];
         foreach (["Standard", "Custom", "Pseudo"] as $PType) {
-            $TestFn = "Is".$PType."Privilege";
+            $TestFn = "is".$PType."Privilege";
             $Section = [];
             foreach ($Names as $Id => $Name) {
                 if (User::$TestFn($Id)) {

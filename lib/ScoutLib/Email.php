@@ -120,9 +120,6 @@ class Email
      */
     public static function registerWhitelistNoticeCallback(callable $NewValue): void
     {
-        if (!is_callable($NewValue)) {
-            throw new Exception("Invalid whitelist notice function provided.");
-        }
         self::$WhitelistNoticeFunc = $NewValue;
     }
 
@@ -1060,7 +1057,7 @@ class Email
         string $LineEnding = "\r\n"
     ): string {
         # normalize the line ending characters in the HTML to "\n"
-        $Html = preg_replace("/\r\n|\r|\n/", "\n", $Html);
+        $Html = preg_replace("/\r\n|\r|\n/", "\n", $Html) ?? $Html;
 
         $HtmlLength = strlen($Html);
 

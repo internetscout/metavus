@@ -30,6 +30,8 @@ $AF = ApplicationFramework::getInstance();
 $SysConfig = SystemConfiguration::getInstance();
 $IntConfig = InterfaceConfiguration::getInstance();
 
+$AF->setPageTitle("Home");
+
 # get the total number of released resources
 if ($IntConfig->getBool("ShowNumResourcesEnabled")) {
     $ResourceFactory = new RecordFactory();

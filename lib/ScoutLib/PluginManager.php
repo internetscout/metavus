@@ -72,18 +72,12 @@ class PluginManager
      * @param callable $Func Loading function, that accepts a configuration
      *      parameter type and a configuration value as arguments, and
      *      returns a normalized value.
-     * @throws InvalidArgumentException If function is not callable.
      */
     public static function setConfigValueLoader(callable $Func): void
     {
         if (isset(self::$Instance)) {
             throw new Exception("Configuration value loader must be set before"
                     ." plugin manager is instantiated.");
-        }
-        if (!is_callable($Func)) {
-            throw new InvalidArgumentException(
-                "Invalid configuration value loading function supplied."
-            );
         }
         self::$CfgValueLoader = $Func;
     }
@@ -641,7 +635,7 @@ class PluginManager
         # if plugin configuration setup failed
         if ($ErrMsgs !== null) {
             # report errors to caller
-            return is_array($ErrMsgs) ? $ErrMsgs : [$ErrMsgs];
+            return [$ErrMsgs];
         }
 
         # set default configuration values if necessary
@@ -655,7 +649,7 @@ class PluginManager
         # if initialization failed
         if ($ErrMsgs !== null) {
             # report errors to caller
-            return is_array($ErrMsgs) ? $ErrMsgs : [$ErrMsgs];
+            return [$ErrMsgs];
         }
 
         # register and hook any events for plugin
@@ -949,37 +943,40 @@ class PluginManager
      * Attempt to map plugin-specific page name to name of page file to load.
      * @param string $Dir Directory that may contain page file.
      * @param string $PageName Original page name.
-     * @return string Mapped page naem or unchanged page name if no mapping found.
+     * @return string Mapped page name or empty string if caller should not
+     *      look for page files in the specified directory.
      */
     public function mapPageNameForPlugin(string $Dir, string $PageName): string
     {
-        # look for plugin name and plugin page name in base page name
+        # attempt to extract plugin name and base page name from supplied page name
         preg_match(
             "/P_([A-Za-z][A-Za-z0-9]*)_([A-Za-z0-9_-]+)(\.[A-Za-z]{3,4})/",
             $PageName,
             $Matches
         );
 
-        # if plugin name and plugin page name were found in base page name
-        if (count($Matches) == 4) {
-            $PluginName = $Matches[1];
-            $NewPageName = $Matches[2].$Matches[3];
-
-            # if interface directory appears to be for this plugin
-            if (strpos($Dir, "/".$PluginName."/") !== false) {
-                # if plugin is ready to run
-                if ($this->pluginReady($PluginName)) {
-                    # save plugin name as home of current page
-                    $this->PageFilePlugin = $PluginName;
-
-                    # return extracted page name to caller
-                    return $NewPageName;
-                }
-            }
+        # if extraction failed, tell caller to ignore directory
+        if (count($Matches) != 4) {
+            return "";
         }
 
-        # return page name unchanged to caller
-        return $PageName;
+        # if plugin name does not match directory, tell caller to ignore directory
+        $PluginName = $Matches[1];
+        $NewPageName = $Matches[2].$Matches[3];
+        if (strpos($Dir, "/".$PluginName."/") === false) {
+            return "";
+        }
+
+        # if plugin is not ready to run, tell caller to ignore directory
+        if (!$this->pluginReady($PluginName)) {
+            return "";
+        }
+
+        # save plugin name as home of current page
+        $this->PageFilePlugin = $PluginName;
+
+        # return extracted page name to caller
+        return $NewPageName;
     }
 
     /**

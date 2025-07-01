@@ -12,48 +12,67 @@ namespace Metavus;
 
 use Metavus\Plugins\EduLink;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 $AF = ApplicationFramework::getInstance();
 $Plugin = EduLink::getInstance();
+
+$N = 1;
+
+$Instructions = new HtmlTable();
+$Instructions->setTableClass("table table-striped");
+$Instructions->addRows([
+    [
+        ($N++).". Select a course to edit and navigate to the front page"
+            ." for that course.",
+        ""
+    ],
+    [
+        ($N++).". Toggle the <code>Edit mode</code> switch at top right.",
+        $AF->gUIFileTag("Moodle_Tutorial_1.jpg")
+    ],
+    [
+        ($N++).". Click <code>Add an activity or resource</code> in the"
+            ." section where you want to attach an assignment.",
+        $AF->gUIFileTag("Moodle_Tutorial_2.jpg")
+    ],
+    [
+        ($N++).". Select <code>".$Plugin->getConfigSetting("ServiceName")
+            ."</code> from the list.",
+        ""
+    ],
+    [
+        ($N++).". Press the <code>Select content</code> button.",
+        $AF->gUIFileTag("Moodle_Tutorial_3.jpg")
+    ],
+    [
+        ($N++).". Use the search box and/or the facets shown at right"
+            ." to locate the resource(s) you want.",
+        "",
+    ],
+    [
+        ($N++).". Use the <code>Select</code> buttons to make your"
+            ." resource selections.",
+        $AF->gUIFileTag("Moodle_Tutorial_4.jpg")
+    ],
+    [
+        ($N++).". When you&apos;ve selected all the resources you want,"
+            ." press the <code>Send to LMS</code> button to forward your"
+            ." selections back to Moodle.",
+        $AF->gUIFileTag("Moodle_Tutorial_5.jpg")
+    ],
+    [
+        ($N++).". Press the <code>Save and display</code> button.",
+        $AF->gUIFileTag("Moodle_Tutorial_6.jpg")
+    ],
+    [
+        ($N++).". Your selected resource(s) will now appear embedded"
+            ." in a Moodle assignment.",
+        $AF->gUIFileTag("Moodle_Tutorial_7.jpg")
+    ]
+]);
+
 ?>
 <h1>Embedding a resource in Moodle</h1>
 
-<ol>
-  <li>Select a course to edit and navigate to the front page for that
-    course.</li>
-
-  <li>Toggle the <i>Edit mode</i> switch at top right.<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_1.jpg") ?>"/></li>
-
-  <li>Click <i>Add an activity or resource</i> in the section where
-    you want to attach an assignment.<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_2.jpg") ?>"/></li>
-
-  <li>Select <i><?= $Plugin->getConfigSetting("ServiceName") ?></i>
-    from the list.
-
-  <li>Press the <i>Select content</i> button<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_3.jpg") ?>"/></li>
-
-  <li>Use the search box and/or the facets shown at right to locate
-    the resource(s) you want.</li>
-
-  <li>Use the <i>Select</i> buttons to make your resource selections.<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_4.jpg") ?>"/></li>
-
-  <li>When you've selected all the resources you want, press the <i>Send
-      to LMS</i> button to forward your selections back to Moodle.<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_5.jpg") ?>"/></li>
-
-  <li>Press the <i>Save and display</i> button.<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_6.jpg") ?>"/></li>
-
-  <li>Your selected resource(s) will now appear embedded in a Moodle
-    assignment.<br/>
-    <img src="<?= $AF->gUIFile("Moodle_Tutorial_7.jpg") ?>"/></li>
-</ol>
-
-<style type="text/css">
-li + li {
-  margin-top: 0.75em;
-}
+<?= $Instructions->getHtml() ?>

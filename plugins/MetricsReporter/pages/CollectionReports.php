@@ -3,7 +3,7 @@
 #   FILE:  CollectionReports.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -177,14 +177,15 @@ function getChunkOfData($Owner, $Type, $StartDate = null, $PrivsToExclude = [])
 
 # ----- MAIN -----------------------------------------------------------------
 
-PageTitle("Collection Usage Metrics");
+$AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle("Collection Usage Metrics");
 
 # make sure user has sufficient permission to view report
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
-$AF = ApplicationFramework::getInstance();
 $PluginMgr = PluginManager::getInstance();
 
 # Grab ahold of the relevant metrics objects:

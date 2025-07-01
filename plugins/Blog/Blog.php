@@ -333,7 +333,7 @@ class Blog extends Plugin
             );
         }
 
-        if ($PluginMgr->pluginEnabled("SecondaryNavigation") &&
+        if ($PluginMgr->pluginReady("SecondaryNavigation") &&
             User::getCurrentUser()->isLoggedIn()) {
             $EditingPrivs = (new MetadataSchema($this->getSchemaId()))
                 ->editingPrivileges();
@@ -509,7 +509,6 @@ class Blog extends Plugin
     {
         $Hooks = [
             "EVENT_IN_HTML_HEADER" => "InHtmlHeader",
-            "EVENT_MODIFY_SECONDARY_NAV" => "AddSecondaryNavLinks",
             "EVENT_PLUGIN_CONFIG_CHANGE" => "PluginConfigChange",
             "EVENT_PLUGIN_EXTEND_EDIT_RESOURCE_COMPLETE_ACCESS_LIST"
                 => "ExtendEditResourceCompleteAccessList",
@@ -583,28 +582,6 @@ class Blog extends Plugin
             "index.php?P=P_Blog_Entries",
             "About"
         );
-
-        return ["NavItems" => $NavItems];
-    }
-
-    /**
-     * Add administration links for the plugin to the sidebar.
-     * @param array $NavItems Existing nav items.
-     * @return array Returns the nav items, possibly edited.
-     */
-    public function addSecondaryNavLinks(array $NavItems): array
-    {
-        $BlogSchema = new MetadataSchema($this->getSchemaId());
-
-        # add a link to the blog entry list if the user can edit blog entries
-        if ($BlogSchema->userCanEdit(User::getCurrentUser())) {
-            $NavItems = $this->insertNavItemBefore(
-                $NavItems,
-                "Blog Entries",
-                "index.php?P=P_Blog_ListEntries",
-                "Administration"
-            );
-        }
 
         return ["NavItems" => $NavItems];
     }
@@ -1169,11 +1146,6 @@ class Blog extends Plugin
 
         $UserSchema = new MetadataSchema(MetadataSchema::SCHEMAID_USER);
         $SubscribeField = $UserSchema->getField(self::SUBSCRIPTION_FIELD_NAME);
-
-        # the subscription user field must exist
-        if (!($SubscribeField instanceof MetadataField)) {
-            return false;
-        }
 
         # the subscription field must be enabled
         if (!$SubscribeField->enabled()) {

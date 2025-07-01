@@ -3,7 +3,7 @@
 #   FILE:  ExportResources.php (ResourceExporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -37,24 +37,24 @@ function GetAvailableSources()
     if ($PluginMgr->pluginReady("Folders")) {
         # retrieve folders
         $Folders = [];
-        $FFactory = new FolderFactory(User::getCurrentUser()->Id());
-        $ResourceFolder = $FFactory->GetResourceFolder();
-        $FolderIds = $ResourceFolder->GetItemIds();
+        $FFactory = new FolderFactory(User::getCurrentUser()->id());
+        $ResourceFolder = $FFactory->getResourceFolder();
+        $FolderIds = $ResourceFolder->getItemIds();
         foreach ($FolderIds as $Id) {
             $Folders[$Id] = new Folder($Id);
         }
 
         # assemble source list from folder names
         foreach ($Folders as $Id => $Folder) {
-            $FolderItemCount = $Folder->GetItemCount();
-            $Sources[$Id] = $Folder->Name()." (".$FolderItemCount." item"
+            $FolderItemCount = $Folder->getItemCount();
+            $Sources[$Id] = $Folder->name()." (".$FolderItemCount." item"
                     .(($FolderItemCount == 1) ? "" : "s").")";
         }
     }
 
     # add option list selection for all resources
-    foreach (MetadataSchema::GetAllSchemas() as $Id => $Schema) {
-        $Sources[-1 - $Id] = "ALL ".strtoupper($Schema->Name());
+    foreach (MetadataSchema::getAllSchemas() as $Id => $Schema) {
+        $Sources[-1 - $Id] = "ALL ".strtoupper($Schema->name());
     }
 
     # return sources to caller
@@ -79,7 +79,7 @@ function GetSourceSchemas(array $AvailableSources)
             $Folder = new Folder($Id);
 
             $FolderSchemas = [];
-            foreach ($Folder->GetItemIds() as $ItemId) {
+            foreach ($Folder->getItemIds() as $ItemId) {
                 $Resource = new Record($ItemId);
                 $FolderSchemas[$Resource->getSchemaId()] = true;
             }
@@ -110,7 +110,7 @@ function GetDisabledSources($AvailableSources)
         if ($Id >= 0) {
             # if folder has no resources
             $Folder = new Folder($Id);
-            if ($Folder->GetItemCount() == 0) {
+            if ($Folder->getItemCount() == 0) {
                 # add source to disabled list
                 $DisabledSources[$Id] = $SourceName;
             }
@@ -132,11 +132,11 @@ function GetSelectedFields()
 
     # iterate over all fields in all schemas, checking each to see if
     # it should be included in the export
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
-        $Fields = $Schema->GetFields();
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
+        $Fields = $Schema->getFields();
         foreach ($Fields as $Field) {
-            if (array_key_exists("F_ExportField_".$Field->Id(), $_POST)) {
-                $FieldIds[] = $Field->Id();
+            if (array_key_exists("F_ExportField_".$Field->id(), $_POST)) {
+                $FieldIds[] = $Field->id();
             }
         }
     }
@@ -158,12 +158,12 @@ function GetFormatParameters()
     }
 
     $FormatParameterValues = [];
-    $FormatParameters = $Plugin->GetExportParameters();
+    $FormatParameters = $Plugin->getExportParameters();
 
     foreach ($FormatParameters as $FormatName => $FormatParams) {
         if (is_array($FormatParams) && count($FormatParams)) {
             $CfgUI = new FormUI($FormatParams, [], $FormatName);
-            $FormatParameterValues[$FormatName] = $CfgUI->GetNewValuesFromForm();
+            $FormatParameterValues[$FormatName] = $CfgUI->getNewValuesFromForm();
         }
     }
 
@@ -172,7 +172,7 @@ function GetFormatParameters()
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -182,7 +182,7 @@ $User = User::getCurrentUser();
 $AF = ApplicationFramework::getInstance();
 $PluginMgr = PluginManager::getInstance();
 
-$AF->RequireUIFile(
+$AF->requireUIFile(
     "jquery.cookie.js",
     ApplicationFramework::ORDER_FIRST
 );
@@ -193,7 +193,7 @@ if (!($Plugin instanceof \Metavus\Plugins\ResourceExporter)) {
     throw new Exception("Retrieved plugin is not ResourceExporter (should be impossible).");
 }
 
-$UserId = $User->Id();
+$UserId = $User->id();
 
 $H_FieldSetName = StdLib::getArrayValue(
     $_COOKIE,
@@ -205,7 +205,7 @@ $H_FieldSetName = StdLib::getArrayValue(
 $H_Action = strtoupper(StdLib::getFormValue("F_Submit", ""));
 
 if ($H_Action == "CANCEL") {
-    $AF->SetJumpToPage("SysAdmin");
+    $AF->setJumpToPage("SysAdmin");
     return;
 } elseif (!in_array($H_Action, ["SETUP", "EXPORT", "SAVE", "DELETE"])) {
     $H_Action = "SETUP";
@@ -220,7 +220,7 @@ if ($H_Action == "SAVE") {
         $H_ErrorMessages[] = "No metadata fields were selected.";
     } elseif (strlen($H_FieldSetName) == 0) {
         $H_ErrorMessages[] = "No name provided for saved settings.";
-    } elseif (!$Plugin->IsRegisteredFormat($Format)) {
+    } elseif (!$Plugin->isRegisteredFormat($Format)) {
         $H_ErrorMessages[] = "Export format was not recognized.";
     } else {
         $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
@@ -235,7 +235,7 @@ if ($H_Action == "SAVE") {
     $H_Action = "SETUP";
 # if we're deleting a fieldset
 } elseif ($H_Action == "DELETE") {
-    $SelectedFieldSet = StdLib::getFormvalue("F_FieldSetName");
+    $SelectedFieldSet = StdLib::getFormValue("F_FieldSetName");
 
     $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
     if (array_key_exists($UserId, $ExportConfigs)) {
@@ -252,8 +252,8 @@ if ($H_Action == "SAVE") {
     }
 
     # clear selected format parameters
-    $Formats = $Plugin->GetFormats();
-    $FormatParameters = $Plugin->GetExportParameters();
+    $Formats = $Plugin->getFormats();
+    $FormatParameters = $Plugin->getExportParameters();
     foreach ($FormatParameters as $FormatName => $FormatParams) {
         if (is_array($FormatParams)) {
             foreach ($FormatParams as $FieldName => $FieldData) {
@@ -277,11 +277,11 @@ if ($H_Action == "SAVE") {
 
     # iterate over all fields in all schemas, checking each to see if
     # it should be included in the export
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
-        $Fields = $Schema->GetFields();
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
+        $Fields = $Schema->getFields();
         foreach ($Fields as $Field) {
-            if (array_key_exists("F_ExportField_".$Field->Id(), $_POST)) {
-                $FieldIds[] = $Field->Id();
+            if (array_key_exists("F_ExportField_".$Field->id(), $_POST)) {
+                $FieldIds[] = $Field->id();
             }
         }
     }
@@ -292,7 +292,7 @@ if ($H_Action == "SAVE") {
 
     # retrieve and check export format
     $Format = $_POST["F_Format"];
-    if (!$Plugin->IsRegisteredFormat($Format)) {
+    if (!$Plugin->isRegisteredFormat($Format)) {
         $H_ErrorMessages[] = "Export format was not recognized.";
     } else {
         $Formats = $Plugin->getConfigSetting("SelectedFormats");
@@ -301,7 +301,7 @@ if ($H_Action == "SAVE") {
     }
 
     # retrieve and save export format parameters
-    $Formats = $Plugin->GetFormats();
+    $Formats = $Plugin->getFormats();
     $FormatParameterValues = GetFormatParameters();
 
     # if errors were found
@@ -310,7 +310,7 @@ if ($H_Action == "SAVE") {
         $H_Action = "SETUP";
     } else {
         # export data
-        $H_ExportedResourceCount = $Plugin->ExportData(
+        $H_ExportedResourceCount = $Plugin->exportData(
             $Format,
             $SourceFolderId,
             $FieldIds,
@@ -322,11 +322,11 @@ if ($H_Action == "SAVE") {
         # if export succeeded
         if ($H_ExportedResourceCount !== null) {
             # set values for display in HTML
-            $H_ExportedFileName = $Plugin->LastExportFileName();
-            $H_ExportedFileSecret = $Plugin->LastExportFileSecret();
+            $H_ExportedFileName = $Plugin->lastExportFileName();
+            $H_ExportedFileSecret = $Plugin->lastExportFileSecret();
         } else {
             # retrieve error messages
-            $Errors = $Plugin->LastExportErrorMessages();
+            $Errors = $Plugin->lastExportErrorMessages();
             foreach ($Errors as $ErrMsg) {
                 $H_ErrorMessages[] = $ErrMsg;
             }
@@ -345,14 +345,14 @@ if ($H_Action == "SETUP") {
 
     $H_SelectedSource = StdLib::getFormValue("F_ResourceSource");
 
-    $H_AvailableFormats = $Plugin->GetFormats();
+    $H_AvailableFormats = $Plugin->getFormats();
 
     if (is_null($H_SelectedSource)) {
         # if folders is enabled, use the current user's selected folder
         # otherwise use the first available source
         if ($PluginMgr->pluginReady("Folders")) {
-            $FFactory = new FolderFactory($User->Id());
-            $H_SelectedSource = $FFactory->GetSelectedFolder()->Id();
+            $FFactory = new FolderFactory($User->id());
+            $H_SelectedSource = $FFactory->getSelectedFolder()->id();
         } else {
             $PossibleValueIds = array_keys($H_AvailableSources);
             $H_SelectedSource = reset($PossibleValueIds);
@@ -361,12 +361,12 @@ if ($H_Action == "SETUP") {
 
     # construct list of all possible fields
     $H_SchemaNames = [];
-    foreach (MetadataSchema::GetAllSchemas() as $SchemaId => $Schema) {
-        $H_AvailableFields[$SchemaId] = $Schema->GetFields(
+    foreach (MetadataSchema::getAllSchemas() as $SchemaId => $Schema) {
+        $H_AvailableFields[$SchemaId] = $Schema->getFields(
             null,
             MetadataSchema::MDFORDER_ALPHABETICAL
         );
-        $H_SchemaNames[$SchemaId] = $Schema->Name();
+        $H_SchemaNames[$SchemaId] = $Schema->name();
     }
 
     $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
@@ -385,11 +385,11 @@ if ($H_Action == "SETUP") {
         $H_SelectedFormat = reset($H_AvailableFormats);
     }
 
-    $H_ExportedDataTypes = $Plugin->GetExportedDataTypes();
+    $H_ExportedDataTypes = $Plugin->getExportedDataTypes();
 
     # construct list of standard field mappings
     $H_StandardFields = [];
-    foreach (MetadataSchema::GetAllSchemas() as $SchemaId => $Schema) {
+    foreach (MetadataSchema::getAllSchemas() as $SchemaId => $Schema) {
         # select standard fields
         $StandardFieldNames = [
             "Title",
@@ -399,7 +399,7 @@ if ($H_Action == "SETUP") {
 
         $H_StandardFields[$SchemaId] = [];
         foreach ($StandardFieldNames as $Name) {
-            $Id = $Schema->GetFieldIdByMappedName($Name);
+            $Id = $Schema->getFieldIdByMappedName($Name);
             if ($Id !== null) {
                 $H_StandardFields[$SchemaId][] = $Id;
             }
@@ -407,6 +407,6 @@ if ($H_Action == "SETUP") {
     }
 
     # retrieve values for format list
-    $H_FormatParameters = $Plugin->GetExportParameters();
+    $H_FormatParameters = $Plugin->getExportParameters();
     $H_FormatParameterValues = $Plugin->getConfigSetting("FormatParameterValues");
 }

@@ -3,7 +3,7 @@
 #   FILE:  ConfirmNotifySubscribers.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -15,9 +15,8 @@ use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Notify Blog Subscribers Confirmation");
 $AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Notify Blog Subscribers Confirmation");
 
 # get the blog plugin and entry
 $H_Blog = Blog::getInstance();
@@ -25,7 +24,7 @@ $H_Entry = new Entry(StdLib::getArrayValue($_GET, "ID"));
 
 # don't allow unauthorized access
 if (!$H_Entry->UserCanEdit(User::getCurrentUser())) {
-    CheckAuthorization(false);
+    User::handleUnauthorizedAccess();
     return;
 }
 

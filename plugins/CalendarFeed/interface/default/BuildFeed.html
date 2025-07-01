@@ -59,8 +59,8 @@ $Plugin = CalendarFeed::getInstance();
 $DescriptiveText = $Plugin->getConfigSetting("BuildFeedDescriptiveText") ?? "";
 
 # ----- DISPLAY --------------------------------------------------------------
-
-PageTitle("Build Calendar Feed");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Build Calendar Feed");
 
 ?>
 <h1>Calendar Feeds</h1>

@@ -3,11 +3,12 @@
 #   FILE:  TaskQueue.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
@@ -15,7 +16,7 @@ use ScoutLib\StdLib;
 $H_PageUrl = ApplicationFramework::baseUrl() . "index.php?P=TaskQueue";
 
 # need sysadmin privileges for this page
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
     return;
 }
 
@@ -43,23 +44,23 @@ if (isset($_GET["AC"]) && isset($_GET["ID"])) {
 
     # re-queue orphaned task if requested
     if ($Action == "REQUEUE") {
-        $AF->ReQueueOrphanedTask($TaskId);
+        $AF->requeueOrphanedTask($TaskId);
     # re-queue all orphaned tasks if requested
     } elseif ($Action == "REQUEUEALL") {
-        $OrphanedTasks = $AF->GetOrphanedTaskList();
+        $OrphanedTasks = $AF->getOrphanedTaskList();
         foreach ($OrphanedTasks as $Id => $Task) {
             $NewPriority = max(1, ($Task["Priority"] - 1));
-            $AF->ReQueueOrphanedTask((int) $Id, (int) $NewPriority);
+            $AF->requeueOrphanedTask((int) $Id, (int) $NewPriority);
         }
     # remove orphaned task if requested
     } elseif ($Action == "DELETE") {
-        $AF->DeleteTask($TaskId);
+        $AF->deleteTask($TaskId);
     # run task in foreground if requested
     } elseif ($Action == "RUN") {
         # if this is a periodic event
         if (!is_numeric($TaskId)) {
             # attempt to retrieve task
-            $PTasks = $AF->GetKnownPeriodicEvents();
+            $PTasks = $AF->getKnownPeriodicEvents();
 
             # if specified task found
             if (isset($PTasks[$TaskId])) {
@@ -79,7 +80,7 @@ if (isset($_GET["AC"]) && isset($_GET["ID"])) {
             }
         } else {
             # attempt to retrieve task
-            $Task = $AF->GetTask((int) $TaskId);
+            $Task = $AF->getTask((int) $TaskId);
 
             # if specified task found
             if ($Task) {
@@ -93,7 +94,7 @@ if (isset($_GET["AC"]) && isset($_GET["ID"])) {
                     }
 
                     # remove task from queue
-                    $AF->DeleteTask((int) $TaskId);
+                    $AF->deleteTask((int) $TaskId);
                 }
             }
         }

@@ -173,8 +173,8 @@ abstract class FullRecordHelper_Base
     public function getUpdateButtonLink(MetadataField $Field): string
     {
         return "index.php?P=UpdateTimestampFromButton"
-                ."&amp;ID=".self::$Record->id()
-                ."&amp;FI=".$Field->id();
+                ."&ID=".self::$Record->id()
+                ."&FI=".$Field->id();
     }
 
     /**

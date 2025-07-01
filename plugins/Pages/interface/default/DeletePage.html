@@ -30,12 +30,12 @@ if ($H_DisplayMode == "NoPageSpecified") {
     # display error message indicating no ID
     ?><h1>Error</h1>
     No page ID was supplied.<?PHP
-    PageTitle("No Page Specified");
+    $AF->setPageTitle("No Page Specified");
 } elseif ($H_DisplayMode == "PageDoesNotExist") { # else if no page found with specified ID
     # display error message indicating page not found
     ?><h1>Error</h1>
     No page found with specified ID.<?PHP
-    PageTitle("Page Not Found");
+    $AF->setPageTitle("Page Not Found");
 } else {
     # if page has been deleted
     if ($H_DisplayMode == "PageDeleted") {
@@ -65,7 +65,7 @@ if ($H_DisplayMode == "NoPageSpecified") {
     }
 
     # display page content
-    PageTitle($H_Page->Get("Title"));
+    $AF->setPageTitle($H_Page->Get("Title"));
     $AF->requireUIFile('Pages_Controls.css');
     print $H_Page->Get("Content");
 }

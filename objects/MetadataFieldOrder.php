@@ -725,7 +725,7 @@ class MetadataFieldOrder extends Folder
         string $Placement
     ): void {
         # determine which action to use based on the placement value
-        $Action = $Placement == "prepend" ? "PrependItem" : "AppendItem";
+        $Action = $Placement == "prepend" ? "prependItem" : "appendItem";
 
         $GroupId = $this->getItemId($Group);
         $FieldId = $this->getItemId($Field);
@@ -755,7 +755,7 @@ class MetadataFieldOrder extends Folder
     ): void {
 
         # determine which action to use based on the placement value
-        $Action = $Placement == "before" ? "InsertItemBefore" : "InsertItemAfter";
+        $Action = $Placement == "before" ? "insertItemBefore" : "insertItemAfter";
 
         $GroupId = $this->getItemId($Group);
         $FieldId = $this->getItemId($Field);

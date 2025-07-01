@@ -2,7 +2,7 @@
  * FILE:  Folders_Main.js (Folders plugin)
  *
  * Part of the Metavus digital collections platform
- * Copyright 2021-2024 Edward Almasy and Internet Scout Research Group
+ * Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
  * http://metavus.net
  *
  * Contains main Javascript functionality for Folders plugin
@@ -10,106 +10,106 @@
  * @scout:eslint
  */
 
-/* global cw */
+/* global cw, Folders */
 
 /*
  * Sources of globals:
  * interface/default/include/CW-Base.js: cw
+ * plugins/Folders/interface/default/include/Folders_Support.js: Folders
  */
 
 (function($){
-    var RouterUrl = cw.getRouterUrl(),
-        MoveItemUrl = RouterUrl+"?P=P_Folders_MoveItem&SuppressHtmlOutput=1",
-        MoveItemToNewFolderUrl = RouterUrl+"?P=P_Folders_MoveItemToNewFolder&SuppressHtmlOutput=1",
-        ShareFolderUrl = RouterUrl+"?P=P_Folders_ShareFolder&SuppressHtmlOutput=1",
-        WithdrawFolderUrl = RouterUrl+"?P=P_Folders_WithdrawFolder&SuppressHtmlOutput=1";
+    let RestUrl = cw.getRouterUrl() + "?P=P_Folders_PerformItemAction";
+
+    function responseHandler(data) {
+        if (data["Status"] == "Error") {
+            alert(data["Message"]);
+            return;
+        }
+
+        $("#page-p_folders_viewfolder select#SF").val([-1]);
+        Folders.updateSidebarContent();
+    }
 
     /**
-   * Take an item that has been moved and update its position in the database.
-   * @param $item jQuery object wrapping the DOM item
-   * @return void
-   */
-    function itemUpdate($item) {
-        if ($item.prev().length) {
+     * Take an item that has been moved and update its position in the database.
+     * @param jQuery Item jQuery object wrapping the DOM item
+     * @return void
+     */
+    function itemUpdate(Item) {
+        if (Item.prev().length) {
             moveItem(
-                $item.attr("data-parentfolderid"),
-                $item.prev().attr("data-itemid"),
-                $item.attr("data-itemid"));
-        } else if ($item.next().length) {
+                Item.attr("data-parentfolderid"),
+                Item.prev().attr("data-itemid"),
+                Item.attr("data-itemid"));
+        } else if (Item.next().length) {
             // first move it after the first item...
             prependItem(
-                $item.attr("data-parentfolderid"),
-                $item.attr("data-itemid"));
+                Item.attr("data-parentfolderid"),
+                Item.attr("data-itemid"));
         }
     }
 
     /**
-   * Do an AJAX callback to move the item.
-   * @param folderId ID of the folder the items are in
-   * @param targetItemId ID of the target item
-   * @param itemId ID of the item
-   * @return void
-   */
-    function moveItem(folderId, targetItemId, itemId) {
-        $.get(MoveItemUrl, {
-            "FolderId": folderId,
-            "ItemId": itemId,
-            "TargetItemId": targetItemId
-        });
+     * Do an AJAX callback to move the item.
+     * @param int FolderId ID of the folder the items are in
+     * @param int TargetItemId ID of the target item
+     * @param int ItemId ID of the item
+     * @return void
+     */
+    function moveItem(FolderId, TargetItemId, ItemId) {
+        $.get(
+            RestUrl,
+            {
+                "Action": "move",
+                "FolderId": FolderId,
+                "ItemId": ItemId,
+                "AfterItemId": TargetItemId
+            },
+            responseHandler
+        );
     }
 
     /**
-   * Do an AJAX callback to move the item to the beginning of the list.
-   * @param folderId ID of the folder the items are in
-   * @param itemId ID of the item
-   * @return void
-   */
-    function prependItem(folderId, itemId) {
-        $.get(MoveItemUrl, {
-            "FolderId": folderId,
-            "ItemId": itemId
-        });
+     * Do an AJAX callback to move the item to the beginning of the list.
+     * @param int FolderId ID of the folder the items are in
+     * @param int ItemId ID of the item
+     * @return void
+     */
+    function prependItem(FolderId, ItemId) {
+        $.get(
+            RestUrl,
+            {
+                "Action": "prepend",
+                "FolderId": FolderId,
+                "ItemId": ItemId
+            },
+            responseHandler
+        );
     }
 
     /**
-   * Do an AJAX callback to move the item to a new folder.
-   * @param oldFolderId ID of the old folder the item was in
-   * @param newFolderId ID of the folder the item is now in
-   * @param itemId ID of the item
-   * @return void
-   */
-    function moveItemToNewFolder(oldFolderId, newFolderId, itemId, onSuccess) {
-        $.get(MoveItemToNewFolderUrl, {
-            "OldFolderId": oldFolderId,
-            "NewFolderId": newFolderId,
-            "ItemId": itemId
-        }, onSuccess);
-    }
-
-    /**
-   * Do an AJAX callback to share the folder.
-   * @param folderId folder ID
-   * @return void
-   */
-    function shareFolder(folderId) {
-        $.get(ShareFolderUrl, {
-            "FolderId": folderId
-        });
-    }
-
-    /**
-   * Do an AJAX callback to withdraw the folder.
-   * @param folderId folder ID
-   * @return void
-   */
-    function withdrawFolder(folderId) {
-        $.get(WithdrawFolderUrl, {
-            "FolderId": folderId
-        });
+     * Do an AJAX callback to move the item to a new folder.
+     * @param int FolderId ID of the old folder the item was in
+     * @param int NewFolderId ID of the folder the item is now in
+     * @param int ItemId ID of the item
+     * @param Callback OnSucces Callback to run on success
+     * @return void
+     */
+    function moveItemToNewFolder(FolderId, NewFolderId, ItemId, OnSuccess) {
+        $.get(
+            RestUrl,
+            {
+                "Action": "move-folder",
+                "FolderId": FolderId,
+                "ItemId": ItemId,
+                "NewFolderId": NewFolderId
+            },
+            OnSuccess
+        );
     }
 
     $(document).ready(function(){
-
         // add move cursor to certain items
         $(".mv-section.mv-folders-folder .mv-section-header,\
        .mv-folders-folder ul.mv-folders-items li,\
@@ -153,7 +153,12 @@
                 $item.siblings("[data-itemid='"+itemId+"']").remove();
 
                 // move the item to the new folder at the beginning
-                moveItemToNewFolder(lastFolderId, currentFolderId, itemId, function(){
+                moveItemToNewFolder(lastFolderId, currentFolderId, itemId, function(data){
+                    if (data["Status"] == "Error") {
+                        alert(data["Message"]);
+                        return;
+                    }
+
                     // only need to consider position if not at the beginning
                     if ($item.prev().length) {
                         moveItem(
@@ -195,32 +200,18 @@
         });
 
         $("input[type='checkbox'][name='Share']").change(function(){
-            var $this = $(this),
-                folderId = $this.attr("data-folderid");
+            var folderId = $(this).attr("data-folderid");
 
-            if ($this.is(":checked")) {
-                shareFolder(folderId);
+            if ($(this).is(":checked")) {
+                Folders.performFolderAction("share", folderId);
             } else {
-                withdrawFolder(folderId);
+                Folders.performFolderAction("withdraw", folderId);
             }
         });
     });
-
 }(jQuery));
 
 // toggle view folder sorting order
 $("#mv-folders-sort-order-button").click(function() {
     $('input[type="radio"]').not(':checked').prop("checked", true);
-});
-
-// when "Share" checkbox is toggled, add/remove CSS class that indicates that
-// folder is not publicly-visible
-$('input[name="Share"]').change(function() {
-    var folderId = $(this).attr('data-folderid');
-    var FolderContainer = $(`.mv-folders-folder[data-folderid=${folderId}]`);
-    if ($(this).is(':checked')) {
-        FolderContainer.removeClass('mv-notpublic');
-    } else {
-        FolderContainer.addClass('mv-notpublic');
-    }
 });

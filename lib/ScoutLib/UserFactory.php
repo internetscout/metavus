@@ -547,9 +547,6 @@ class UserFactory
      */
     public function userExists(int $UserId): bool
     {
-        if (!is_numeric($UserId)) {
-            return false;
-        }
         $UserCount = $this->DB->queryValue("SELECT COUNT(*) AS UserCount"
             . " FROM APUsers WHERE UserId = " . intval($UserId), "UserCount");
         return ($UserCount > 0) ? true : false;

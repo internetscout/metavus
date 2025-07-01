@@ -11,10 +11,10 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\Email;
 
-PageTitle("Resending Account Activation");
-
+# ----- SETUP ----------------------------------------------------------------
 # verify that required incoming variables are set
 if (!isset($H_AccountAlreadyActivated)) {
     throw new Exception("Required variable \$H_AccountAlreadyActivated is not set");
@@ -35,6 +35,11 @@ if (!isset($H_NumUsersFound)) {
     throw new Exception("Required variable \$H_NumUsersFound is not set");
 }
 
+$AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle("Resending Account Activation");
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 <?PHP if ($H_AccountAlreadyActivated) { ?>
 <h1>Account Already Activated</h1>

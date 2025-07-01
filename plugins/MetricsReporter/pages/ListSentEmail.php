@@ -3,7 +3,7 @@
 #   FILE:  ListSentEmail.php (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,11 +11,12 @@
 # check that user should be on this page
 use Metavus\Plugins\Mailer;
 use Metavus\TransportControlsUI;
+use Metavus\User;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 use ScoutLib\PluginManager;
 
-CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
 $DB = new Database();
 $PluginMgr = PluginManager::getInstance();

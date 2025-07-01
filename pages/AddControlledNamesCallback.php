@@ -3,21 +3,21 @@
 #   FILE:  AddControlledNamesCallback.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\ControlledName;
 use Metavus\MetadataSchema;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
 ApplicationFramework::getInstance()->beginAjaxResponse();
 
-# check that the user is authorized to view the page
-if (!CheckAuthorization(PRIV_NAMEADMIN)) {
+if (!User::requirePrivilege(PRIV_NAMEADMIN)) {
     $Result = [
         "status" => "Error",
         "message" => "You are not authorized to create controlled names.",

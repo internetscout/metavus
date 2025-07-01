@@ -3,7 +3,7 @@
 #   FILE:  ListQueuedEmail.php (Mailer plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,10 +11,11 @@
 # check that user should be on this page
 use Metavus\Plugins\Mailer;
 use Metavus\TransportControlsUI;
+use Metavus\User;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
-CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
 
 # extract parameters from Url
 $H_SearchString = StdLib::getFormValue("SS", "");
@@ -56,7 +57,7 @@ $H_ItemsPerPage = 50;
 
 # build the list of template
 $H_Templates = [-1 => "(all)"];
-$H_Templates += $MailerPlugin->GetTemplateList();
+$H_Templates += $MailerPlugin->getTemplateList();
 
 # extract sort field
 $SortField = StdLib::getFormValue(TransportControlsUI::PNAME_SORTFIELD, "DateCreated");
@@ -76,14 +77,14 @@ $SortDir = StdLib::getFormValue(TransportControlsUI::PNAME_REVERSESORT, 0) == 1 
     "DESC" : "ASC";
 
 # extract matching messages
-$DB->Query(
+$DB->query(
     "SELECT Mailer_StoredEmailId as ItemId, Mailer_StoredEmailName as Subject, "
     ."FromAddr, ToAddr, TemplateId, NumResources, DateCreated FROM Mailer_StoredEmails"
     .$WhereClause." ORDER BY ".$SortField." ".$SortDir
 );
 
 $H_EmailList = [];
-while ($Row = $DB->FetchRow()) {
+while ($Row = $DB->fetchRow()) {
     $H_EmailList[$Row["ItemId"]] = $Row;
 }
 

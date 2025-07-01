@@ -1,17 +1,20 @@
 <?PHP
 #
-#   FILE:  ConfirmRebuildRocommenderDB.php
+#   FILE:  ConfirmRebuildRecommenderDB.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-PageTitle("Confirm Recommender Database Rebuild");
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Recommender Database Rebuild");
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }

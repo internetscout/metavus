@@ -12,6 +12,7 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -56,31 +57,31 @@ $TotalSearchTermsFormatted = number_format($H_CollectionStats["TotalSearchTerms"
 
 # build link to search for recently modified resources
 $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
-$DateLastModified = $Schema->GetField("Date Last Modified");
-$DateOfRecordCreation = $Schema->GetField("Date Of Record Creation");
+$DateLastModified = $Schema->getField("Date Last Modified");
+$DateOfRecordCreation = $Schema->getField("Date Of Record Creation");
 
 $ModParams = new SearchParameterSet();
-$ModParams->AddParameter(
+$ModParams->addParameter(
     "< 1 year ago",
     $DateLastModified
 );
 
 $RecentlyModifiedSearchLink = "index.php?P=SearchResults&".
-    $ModParams->UrlParameterString().
+    $ModParams->urlParameterString().
     "&".TransportControlsUI::PNAME_SORTFIELD
-    ."=".$DateLastModified->Id();
+    ."=".$DateLastModified->id();
 
 # build link to search for recently added resources
 $AddedParams = new SearchParameterSet();
-$AddedParams->AddParameter(
+$AddedParams->addParameter(
     "< 1 year ago",
     $DateOfRecordCreation
 );
 
 $RecentlyAddedSearchLink = "index.php?P=SearchResults"
-    ."&".$AddedParams->UrlParameterString()
+    ."&".$AddedParams->urlParameterString()
     ."&".TransportControlsUI::PNAME_SORTFIELD
-    ."=".$DateOfRecordCreation->Id();
+    ."=".$DateOfRecordCreation->id();
 
 # retrieve local collection stats (if any)
 $LocalStats = array_key_exists("LocalStats", $H_CollectionStats)
@@ -104,7 +105,7 @@ $ModResourceList = new ItemListUI([
         "Heading" => "User",
     ],
 ]);
-$ModResourceList->AddActionButton(
+$ModResourceList->addActionButton(
     "Edit",
     $Schema->getEditPage(),
     "pencil.png"
@@ -113,14 +114,14 @@ $ModResourceList->fieldsSortableByDefault(false);
 
 $NewResourceList = clone $ModResourceList;
 
-$ModResourceList->Heading("Resources Recently Modified");
-$ModResourceList->AddTopButton(
+$ModResourceList->heading("Resources Recently Modified");
+$ModResourceList->addTopButton(
     "More Recently Modified",
     $RecentlyModifiedSearchLink
 );
 
-$NewResourceList->Heading("Resources Recently Added");
-$NewResourceList->AddTopButton(
+$NewResourceList->heading("Resources Recently Added");
+$NewResourceList->addTopButton(
     "More Recently Added",
     $RecentlyAddedSearchLink
 );
@@ -131,8 +132,40 @@ $UpdateCollectionStatsButton = new HtmlButton("Update Now");
 $UpdateCollectionStatsButton->setIcon("RefreshArrow.svg");
 $UpdateCollectionStatsButton->setOnclick("window.location=`index.php?P=MDHome&US=1`;");
 
+$CollectionStatisticsTable = new HtmlTable();
+$CollectionStatisticsTable->setTableClass("table mv-content-colstats");
+$CollectionStatisticsTable->addRowsWithHeaders([
+    ["Number of Classifications", $TotalNumberOfClassificationsFormatted],
+    ["Number of Controlled Names", $TotalNumberOfControlledNamesFormatted],
+    ["Publicly-Visible Resources", $NumberOfReleasedResourcesFormatted],
+    ["Resources Rated", $NumberOfRatedResourcesFormatted],
+    ["Total Number of Resources", $TotalNumberOfResourcesFormatted],
+    ["Total Distinct Resource Search Terms", $TotalSearchTermsFormatted]
+]);
+foreach ($LocalStats as $Label => $Value) {
+    $CollectionStatisticsTable->addRowWithHeader([$Label, $Value]);
+}
+$CollectionStatisticsTable->addRowsWithHeaders([
+    ["Stats Last Updated", $G_StatsUpdateTime],
+    ["", $UpdateCollectionStatsButton->getHtml()]
+]);
+
+$CDResources = [
+    "https://dublincore.org/resources/userguide/" => "Dublin Core User Guide",
+    "http://framework.niso.org" => "IMLS Digital Collection Framework",
+    "http://www.openarchives.org" => "Open Archives Initiative"
+];
+$CDRTable = new HtmlTable();
+$CDRTable->setTableClass("table mv-content-cdresources");
+foreach ($CDResources as $Link => $Label) {
+    $CDRTable->addRowWithHeader([
+        $Label,
+        "<a href=\"" . $Link . "\" target=\"_blank\">" . $Link . "</a>"
+    ]);
+}
+
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Metadata Tool");
+$AF->setPageTitle("Metadata Tool");
 ?>
 
 <div class="mv-content-sectioned">
@@ -169,82 +202,17 @@ PageTitle("Metadata Tool");
     );
     ?>
 </ul>
-<?PHP $ModResourceList->Display($H_RecentlyModified); ?>
+<?PHP $ModResourceList->display($H_RecentlyModified); ?>
 
 <br/>
 
-<?PHP $NewResourceList->Display($H_RecentlyAdded); ?>
+<?PHP $NewResourceList->display($H_RecentlyAdded); ?>
 
 <h1>Collection Statistics</h1>
 
-<table class="table mv-content-colstats">
-    <tbody>
-        <tr>
-            <th>Number of Classifications</th>
-            <td><?= $TotalNumberOfClassificationsFormatted; ?></td>
-        </tr>
-        <tr>
-            <th>Number of Controlled Names</th>
-            <td><?= $TotalNumberOfControlledNamesFormatted; ?></td>
-        </tr>
-    </tbody>
-    <tbody>
-        <tr>
-            <th>Publicly-Visible Resources</th>
-            <td><?= $NumberOfReleasedResourcesFormatted; ?></td>
-        </tr>
-        <tr>
-            <th>Resources Rated</th>
-            <td><?= $NumberOfRatedResourcesFormatted; ?></td>
-        </tr>
-        <tr>
-            <th>Total Number of Resources</th>
-            <td><?= $TotalNumberOfResourcesFormatted; ?></td>
-        </tr>
-    </tbody>
-    <tbody>
-        <tr>
-            <th>Total Distinct Resource Search Terms</th>
-            <td><?= $TotalSearchTermsFormatted; ?></td>
-        </tr>
-        <?PHP foreach ($LocalStats as $Label => $Value) { ?>
-        <tr>
-            <th><?= $Label; ?></th>
-            <td><?= $Value; ?></td>
-        </tr>
-        <?PHP } ?>
-    </tbody>
-    <tbody>
-        <tr>
-          <th>Stats last updated</th>
-          <td><?= $G_StatsUpdateTime ?></td>
-        </tr>
-        <tr>
-          <td>&nbsp;</td>
-          <td>
-            <?= $UpdateCollectionStatsButton->getHtml(); ?>
-          </td>
-        </tr>
-    </tbody>
-</table>
+<?= $CollectionStatisticsTable->getHtml(); ?>
 
 <h1>Collection Development Resources</h1>
-<table class="table mv-content-cdresources">
-    <tbody>
-        <?PHP
-        $CDResources = [
-            "https://dublincore.org/resources/userguide/" => "Dublin Core User Guide",
-            "http://framework.niso.org" => "IMLS Digital Collection Framework",
-            "http://www.openarchives.org" => "Open Archives Initiative",
-        ];
-        foreach ($CDResources as $Link => $Label) {
-            ?><tr>
-                <th><?= $Label ?></th>
-                <td><a href="<?= $Link ?>" target="_blank"><?= $Link ?></a></td>
-            </tr><?PHP
-        }
-        ?>
-    </tbody>
-</table>
+<?= $CDRTable->getHtml(); ?>
 
 </div>

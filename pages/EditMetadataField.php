@@ -21,13 +21,13 @@ use ScoutLib\StdLib;
  * @param int $Id Metadata field ID
  * @return MetadataField|null metadata field object if successful, else NULL
  */
-function LoadMetadataField($Id)
+function loadMetadataField($Id)
 {
     # the schema ID is unnecessary here
     $Field = MetadataField::getField($Id);
 
     # make sure the field is valid
-    if ($Field->Status() !== MetadataSchema::MDFSTAT_OK) {
+    if ($Field->status() !== MetadataSchema::MDFSTAT_OK) {
         return null;
     }
 
@@ -46,7 +46,7 @@ function loadQualifier($Id)
         return null;
     }
 
-    if (!Qualifier::ItemExists($Id)) {
+    if (!Qualifier::itemExists($Id)) {
         return null;
     } else {
         return new Qualifier($Id);
@@ -58,7 +58,7 @@ function loadQualifier($Id)
  * @param int $Type Field type to assume, text is used if invalid
  * @return array metadata field defaults
  */
-function GetFieldDefaults($Type)
+function getFieldDefaults($Type)
 {
     # get the type-based defaults to use, defaulting to text ones if necessary
     $TypeBasedDefaults = StdLib::getArrayValue(
@@ -92,7 +92,7 @@ function GetFieldDefaults($Type)
  * @param array $Values Array of values, a subset of which are the field values
  * @return array extracted user-provided field values
  */
-function ExtractFieldInput(array $Values)
+function extractFieldInput(array $Values)
 {
     $Input = array();
 
@@ -134,7 +134,7 @@ function ExtractFieldInput(array $Values)
     # transform values that might not be set to NULL
     foreach ($MayContainDoubleHyphen as $Key) {
         if (array_key_exists($Key, $Input)) {
-            if (IsFieldValueBlank($Input[$Key]) || $Input[$Key] == "--") {
+            if (isFieldValueBlank($Input[$Key]) || $Input[$Key] == "--") {
                 $Input[$Key] = null;
             }
         }
@@ -164,7 +164,7 @@ function ExtractFieldInput(array $Values)
  * @param MetadataField $Field Metadata field
  * @return array form data
  */
-function GetFormDataFromField(MetadataField $Field)
+function getFormDataFromField(MetadataField $Field)
 {
     $Schema = new MetadataSchema($Field->schemaId());
 
@@ -176,7 +176,7 @@ function GetFormDataFromField(MetadataField $Field)
     );
 
     # start with the basic fields
-    foreach (GetFieldDefaults($Field->Type()) as $Key => $Value) {
+    foreach (getFieldDefaults($Field->type()) as $Key => $Value) {
         if (method_exists("Metavus\\MetadataField", $Key) &&
             !in_array($Key, $DeprecatedMethods)) {
             $FormData[$Key] = $Field->$Key();
@@ -184,59 +184,59 @@ function GetFormDataFromField(MetadataField $Field)
     }
 
     # determine if the field can be populated
-    $CanPopulate = $Field->Type() == MetadataSchema::MDFTYPE_TREE;
+    $CanPopulate = $Field->type() == MetadataSchema::MDFTYPE_TREE;
     $CanPopulate = $CanPopulate ||
-        $Field->Type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME;
+        $Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME;
     $CanPopulate = $CanPopulate ||
-        $Field->Type() == MetadataSchema::MDFTYPE_OPTION;
+        $Field->type() == MetadataSchema::MDFTYPE_OPTION;
 
     # various other information
-    $FormData["Id"] = $Field->Id();
-    $FormData["Type"] = $Field->Type();
-    $FormData["Name"] = $Field->Name();
-    $FormData["AllowedTypes"] = $Field->GetAllowedConversionTypes();
-    $FormData["TypeAsName"] = $Field->TypeAsName();
-    $FormData["AssociatedQualifierList"] = array_keys($Field->AssociatedQualifierList());
-    $FormData["MappedName"] = $Schema->FieldToStdNameMapping($Field->Id());
-    $FormData["Owner"] = $Field->Owner();
-    $FormData["HasOwner"] = !!$Field->Owner();
-    $FormData["UsedByPrivsets"] = MetadataSchema::FieldUsedInPrivileges($Field->Id());
+    $FormData["Id"] = $Field->id();
+    $FormData["Type"] = $Field->type();
+    $FormData["Name"] = $Field->name();
+    $FormData["AllowedTypes"] = $Field->getAllowedConversionTypes();
+    $FormData["TypeAsName"] = $Field->typeAsName();
+    $FormData["AssociatedQualifierList"] = array_keys($Field->associatedQualifierList());
+    $FormData["MappedName"] = $Schema->fieldToStdNameMapping($Field->id());
+    $FormData["Owner"] = $Field->owner();
+    $FormData["HasOwner"] = !!$Field->owner();
+    $FormData["UsedByPrivsets"] = MetadataSchema::fieldUsedInPrivileges($Field->id());
     $FormData["FieldExists"] = true;
     $FormData["IsStandard"] =
-        !is_null($Schema->FieldToStdNameMapping($Field->Id()));
+        !is_null($Schema->fieldToStdNameMapping($Field->id()));
     $FormData["CanPopulate"] = $CanPopulate;
     $FormData["CanExport"] = $CanPopulate;
-    $FormData["ObfuscateValueForAnonymousUsers"] = $Field->ObfuscateValueForAnonymousUsers();
+    $FormData["ObfuscateValueForAnonymousUsers"] = $Field->obfuscateValueForAnonymousUsers();
 
-    $FormData["ReferenceableSchemaIds"] = $Field->ReferenceableSchemaIds();
+    $FormData["ReferenceableSchemaIds"] = $Field->referenceableSchemaIds();
 
     # privileges
-    $FormData["ViewingPrivileges"] = $Field->ViewingPrivileges();
-    $FormData["AuthoringPrivileges"] = $Field->AuthoringPrivileges();
-    $FormData["EditingPrivileges"] = $Field->EditingPrivileges();
+    $FormData["ViewingPrivileges"] = $Field->viewingPrivileges();
+    $FormData["AuthoringPrivileges"] = $Field->authoringPrivileges();
+    $FormData["EditingPrivileges"] = $Field->editingPrivileges();
 
     # sane defaults that might get changed below
     $FormData["HasInactiveOwner"] = false;
     $FormData["IsLastTreeField"] = false;
 
     # whether or not the field has an inactive owner
-    if ($Field->Owner()) {
+    if ($Field->owner()) {
         $PluginManager = PluginManager::getInstance();
         $FormData["HasInactiveOwner"] = !in_array(
-            $Field->Owner(),
+            $Field->owner(),
             $PluginManager->getActivePluginList()
         );
     }
 
     # whether or not the field is the last tree field
-    if ($Field->Type() == MetadataSchema::MDFTYPE_TREE) {
-        if (count($Schema->GetFields(MetadataSchema::MDFTYPE_TREE)) == 1) {
+    if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
+        if (count($Schema->getFields(MetadataSchema::MDFTYPE_TREE)) == 1) {
             $FormData["IsLastTreeField"] = true;
         }
     }
 
     if (InterfaceConfiguration::getInstance()->getBool("ResourceRatingsEnabled") &&
-            $Field->Name() == "Cumulative Rating") {
+            $Field->name() == "Cumulative Rating") {
         $FormData["IsTogglable"] = false;
     } else {
         $FormData["IsTogglable"] = !$FormData["IsStandard"] &&
@@ -253,7 +253,7 @@ function GetFormDataFromField(MetadataField $Field)
  * @param array $Override Values to override the defaults and must be valid
  * @return array form data
  */
-function GetFormDataFromDefaults(
+function getFormDataFromDefaults(
     MetadataSchema $Schema,
     $Type = MetadataSchema::MDFTYPE_TEXT,
     array $Override = []
@@ -261,7 +261,7 @@ function GetFormDataFromDefaults(
     $FormData = array();
 
     # get the basic fields first
-    foreach (GetFieldDefaults($Type) as $Key => $Value) {
+    foreach (getFieldDefaults($Type) as $Key => $Value) {
         if (method_exists("Metavus\\MetadataField", $Key)) {
             $FormData[$Key] = StdLib::getArrayValue($Override, $Key, $Value);
         }
@@ -277,7 +277,7 @@ function GetFormDataFromDefaults(
     $FormData["Id"] = null;
     $FormData["Type"] = $Type;
     $FormData["Name"] = StdLib::getArrayValue($Override, "Name");
-    $FormData["AllowedTypes"] = $Schema->GetAllowedFieldTypes();
+    $FormData["AllowedTypes"] = $Schema->getAllowedFieldTypes();
     $FormData["TypeAsName"] = MetadataField::$FieldTypeHumanEnums[$Type];
     $FormData["AssociatedQualifierList"] = $AssociatedQualifierList;
     $FormData["MappedName"] = null;
@@ -305,7 +305,7 @@ function GetFormDataFromDefaults(
  *         edited or created.
  * @return array an array of errors (field name => error message)
  */
-function ValidateInput(array &$Input, $Type, MetadataSchema $Schema)
+function validateInput(array &$Input, $Type, MetadataSchema $Schema)
 {
     $Errors = array();
 
@@ -837,7 +837,7 @@ function ValidateInput(array &$Input, $Type, MetadataSchema $Schema)
     $H_PrivsetUI = new PrivilegeEditingUI($Schema->id());
     try {
         # if there's an error, this will throw an exception
-        $H_PrivsetUI->GetPrivilegeSetsFromForm();
+        $H_PrivsetUI->getPrivilegeSetsFromForm();
     } catch (Exception $Exception) {
         # inform the user about what went wrong
         $Result = "One or more privilege settings is invalid: "
@@ -881,7 +881,7 @@ function ValidateInput(array &$Input, $Type, MetadataSchema $Schema)
  * @param mixed $Value Value to check for blankness
  * @return bool TRUE if the value is blank or FALSE otherwise
  */
-function IsFieldValueBlank($Value)
+function isFieldValueBlank($Value)
 {
     if (is_array($Value)) {
         return !count($Value);
@@ -896,7 +896,7 @@ function IsFieldValueBlank($Value)
  * @param MetadataField $Field Metadata field for validation
  * @return array an array of invalid fields and valid input
  */
-function ValidateInputForField(array $Input, MetadataField $Field)
+function validateInputForField(array $Input, MetadataField $Field)
 {
     $Type = StdLib::getArrayValue($Input, "Type");
 
@@ -905,9 +905,9 @@ function ValidateInputForField(array $Input, MetadataField $Field)
     $Errors = validateInput($Input, $Type, $Schema);
 
     # do custom checking of the type, name, and enabled given the field
-    $Errors["Type"] = ValidateTypeForField($Input, $Field);
-    $Errors["Name"] = ValidateNameForField($Input, $Field);
-    $Errors["Enabled"] = ValidateEnabledForField($Input, $Field);
+    $Errors["Type"] = validateTypeForField($Input, $Field);
+    $Errors["Name"] = validateNameForField($Input, $Field);
+    $Errors["Enabled"] = validateEnabledForField($Input, $Field);
 
     # remove fields that don't have an error message and reset indices
     return array_merge(array_filter($Errors));
@@ -919,19 +919,19 @@ function ValidateInputForField(array $Input, MetadataField $Field)
  * @param MetadataField $Field Metadata field
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateEnabledForField(array $Input, MetadataField $Field)
+function validateEnabledForField(array $Input, MetadataField $Field)
 {
     $Enabled = StdLib::getArrayValue($Input, "Enabled");
-    $Id = $Field->Id();
+    $Id = $Field->id();
     $Schema = new MetadataSchema($Field->schemaId());
 
     # cannot disable fields used for privilege settings
-    if (!$Enabled && MetadataSchema::FieldUsedInPrivileges($Id)) {
+    if (!$Enabled && MetadataSchema::fieldUsedInPrivileges($Id)) {
         return "Cannot disable fields used in privilege settings.";
     }
 
     # check if this field is currently mapped
-    if (!$Enabled && $Schema->FieldToStdNameMapping($Id) !== null) {
+    if (!$Enabled && $Schema->fieldToStdNameMapping($Id) !== null) {
         return "Cannot disable fields that are set "
                 ."as a standard field in System Configuration.";
     }
@@ -943,12 +943,12 @@ function ValidateEnabledForField(array $Input, MetadataField $Field)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateType(array $Input)
+function validateType(array $Input)
 {
     $Type = StdLib::getArrayValue($Input, "Type");
 
     # the field type field is required
-    if (IsFieldValueBlank($Type)) {
+    if (isFieldValueBlank($Type)) {
         return "The <i>Type</i> field is required.";
     }
 
@@ -965,25 +965,25 @@ function ValidateType(array $Input)
  * @param MetadataField $Field Metadata field
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateTypeForField(array $Input, MetadataField $Field)
+function validateTypeForField(array $Input, MetadataField $Field)
 {
     $Type = StdLib::getArrayValue($Input, "Type");
 
     # use the checks from ValidateType()
-    $TypeError = ValidateType($Input);
+    $TypeError = validateType($Input);
 
     # if there's an error already, just return it
     if (!is_null($TypeError) && strlen($TypeError)) {
         return $TypeError;
     }
 
-    $AllowedConversionTypes = $Field->GetAllowedConversionTypes();
+    $AllowedConversionTypes = $Field->getAllowedConversionTypes();
 
     # the (conversion) type must be okay
-    if ($Type != $Field->Type() && !isset($AllowedConversionTypes[$Type])) {
+    if ($Type != $Field->type() && !isset($AllowedConversionTypes[$Type])) {
         # get the allowed conversion types as a human-readable string
         $HumanField = new HumanMetadataField($Field);
-        $TypeString = $HumanField->GetAllowedConversionTypes();
+        $TypeString = $HumanField->getAllowedConversionTypes();
 
         return "The field must be one of the following types: ".$TypeString.".";
     }
@@ -1001,7 +1001,7 @@ function validateName(array $Input, MetadataSchema $Schema)
     $Name = StdLib::getArrayValue($Input, "Name");
 
     # the name field is required
-    if (IsFieldValueBlank($Name)) {
+    if (isFieldValueBlank($Name)) {
         return "The <i>Name</i> field is required.";
     }
 
@@ -1036,12 +1036,12 @@ function validateName(array $Input, MetadataSchema $Schema)
  * @param MetadataField $Field Metadata field
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateNameForField(array $Input, MetadataField $Field)
+function validateNameForField(array $Input, MetadataField $Field)
 {
     $Name = StdLib::getArrayValue($Input, "Name");
 
     # the field name field is required
-    if (IsFieldValueBlank($Name)) {
+    if (isFieldValueBlank($Name)) {
         return "The <i>Name</i> field is required.";
     }
 
@@ -1054,7 +1054,7 @@ function ValidateNameForField(array $Input, MetadataField $Field)
     $Schema = new MetadataSchema($Field->schemaId());
 
     $TrimmedName = trim($Name);
-    if ($Field->Name() == $TrimmedName) {
+    if ($Field->name() == $TrimmedName) {
         return null;
     }
     # names must be unique when trailing space is removed
@@ -1071,7 +1071,7 @@ function ValidateNameForField(array $Input, MetadataField $Field)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateLabel(array $Input)
+function validateLabel(array $Input)
 {
     $Label = StdLib::getArrayValue($Input, "Label");
 
@@ -1088,16 +1088,16 @@ function ValidateLabel(array $Input)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateDefaultQualifier(array $Input)
+function validateDefaultQualifier(array $Input)
 {
     $DefaultQualifier = StdLib::getArrayValue($Input, "DefaultQualifier");
 
     # it's okay if the default qualifier isn't set
-    if (IsFieldValueBlank($DefaultQualifier)) {
+    if (isFieldValueBlank($DefaultQualifier)) {
         return null;
     }
 
-    $Qualifier = LoadQualifier($DefaultQualifier);
+    $Qualifier = loadQualifier($DefaultQualifier);
 
     # make sure the qualifier exists
     if (!($Qualifier instanceof Qualifier)) {
@@ -1119,7 +1119,7 @@ function ValidateDefaultQualifier(array $Input)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateUserPrivilegeRestrictions(array $Input)
+function validateUserPrivilegeRestrictions(array $Input)
 {
     $PrivilegeFactory = new PrivilegeFactory();
     $UserPrivilegeRestrictions =
@@ -1127,7 +1127,7 @@ function ValidateUserPrivilegeRestrictions(array $Input)
 
     # check each restriction
     foreach ($UserPrivilegeRestrictions as $Restriction) {
-        if (!$PrivilegeFactory->PrivilegeValueExists($Restriction)) {
+        if (!$PrivilegeFactory->privilegeValueExists($Restriction)) {
             return "The privileges given for the <i>Restrict to Users With One"
                   ." of the Following</i> field are invalid.";
         }
@@ -1140,7 +1140,7 @@ function ValidateUserPrivilegeRestrictions(array $Input)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateUpdateMethod(array $Input)
+function validateUpdateMethod(array $Input)
 {
     $ValidValues = array_keys(MetadataField::$UpdateTypes);
     $UpdateMethod = StdLib::getArrayValue($Input, "UpdateMethod");
@@ -1157,7 +1157,7 @@ function ValidateUpdateMethod(array $Input)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidatePointDefaultValue(array $Input)
+function validatePointDefaultValue(array $Input)
 {
     $DefaultValue = StdLib::getArrayValue($Input, "DefaultValue");
     $DefaultValue1 = StdLib::getArrayValue($DefaultValue, "X");
@@ -1180,17 +1180,17 @@ function ValidatePointDefaultValue(array $Input)
  * @param array $Input User-provided input
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateAssociatedQualifierList(array $Input)
+function validateAssociatedQualifierList(array $Input)
 {
     $AssociatedQualifierList = StdLib::getArrayValue($Input, "AssociatedQualifierList");
 
     # it's okay if there are none selected
-    if (IsFieldValueBlank($AssociatedQualifierList)) {
+    if (isFieldValueBlank($AssociatedQualifierList)) {
         return null;
     }
 
     $QualifierFactory = new QualifierFactory();
-    $QualifierList = $QualifierFactory->GetItemNames();
+    $QualifierList = $QualifierFactory->getItemNames();
 
     # all the qualifiers must be valid
     if (count(array_diff($AssociatedQualifierList, array_keys($QualifierList)))) {
@@ -1206,7 +1206,7 @@ function ValidateAssociatedQualifierList(array $Input)
  * @param string $Name Field name displayed to the user
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateBoolean(array $Input, $Key, $Name)
+function validateBoolean(array $Input, $Key, $Name)
 {
     $Value = StdLib::getArrayValue($Input, $Key);
 
@@ -1226,7 +1226,7 @@ function ValidateBoolean(array $Input, $Key, $Name)
  * @param bool $Required Whether or not a value is required (optional)
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateNumeric(
+function validateNumeric(
     array $Input,
     $Key,
     $Name,
@@ -1238,7 +1238,7 @@ function ValidateNumeric(
     $Value = StdLib::getArrayValue($Input, $Key);
 
     # the field is not required and is blank
-    if (!$Required && IsFieldValueBlank($Value)) {
+    if (!$Required && isFieldValueBlank($Value)) {
         return null;
     }
 
@@ -1275,7 +1275,7 @@ function ValidateNumeric(
  * @param string $Name Field name displayed to the user
  * @return null|string NULL on success or message on invalid input
  */
-function ValidateNonempty(array $Input, $Key, $Name)
+function validateNonempty(array $Input, $Key, $Name)
 {
     $Value = StdLib::getArrayValue($Input, $Key);
 
@@ -1293,18 +1293,18 @@ function ValidateNonempty(array $Input, $Key, $Name)
  * @param bool $NotSetOk Okay for value to be blank? (OPTIONAL, default FALSE)
  * @return null|string NULL on success or message on invalid input
  */
-function ValidatePrivilege(array $Input, $Key, $Name, $NotSetOk = false)
+function validatePrivilege(array $Input, $Key, $Name, $NotSetOk = false)
 {
     $Value = StdLib::getArrayValue($Input, $Key);
 
     # if it's okay for the field not to be set
-    if ($NotSetOk && IsFieldValueBlank($Value)) {
+    if ($NotSetOk && isFieldValueBlank($Value)) {
         return null;
     }
 
     $PrivilegeFactory = new PrivilegeFactory();
 
-    if (!$PrivilegeFactory->PrivilegeValueExists($Value)) {
+    if (!$PrivilegeFactory->privilegeValueExists($Value)) {
         return "The privilege given for the <i>" . $Name . "</i> field is invalid.";
     }
     return null;
@@ -1315,14 +1315,14 @@ function ValidatePrivilege(array $Input, $Key, $Name, $NotSetOk = false)
 * @param array $Input User-provided input.
 * @return null|string Returns NULL on success or message on invalid input.
 */
-function ValidateOptionListThreshold(array $Input)
+function validateOptionListThreshold(array $Input)
 {
     $MaxAllowedValue = 100000000;
     $OptionListThreshold = StdLib::getArrayValue($Input, "OptionListThreshold");
     $AjaxThreshold = StdLib::getArrayValue($Input, "AjaxThreshold");
 
     # the field is required
-    if (IsFieldValueBlank($OptionListThreshold)) {
+    if (isFieldValueBlank($OptionListThreshold)) {
         return "The <i>Option List Threshold</i> field is required.";
     }
 
@@ -1351,14 +1351,14 @@ function ValidateOptionListThreshold(array $Input)
 * @param array $Input User-provided input.
 * @return null|string Returns NULL on success or message on invalid input.
 */
-function ValidateAjaxThreshold(array $Input)
+function validateAjaxThreshold(array $Input)
 {
     $MaxAllowedValue = 100000000;
     $AjaxThreshold = StdLib::getArrayValue($Input, "AjaxThreshold");
     $OptionListThreshold = StdLib::getArrayValue($Input, "OptionListThreshold");
 
     # the field is required
-    if (IsFieldValueBlank($AjaxThreshold)) {
+    if (isFieldValueBlank($AjaxThreshold)) {
         return "The <i>AJAX Threshold</i> field is required.";
     }
 
@@ -1390,7 +1390,7 @@ function ValidateAjaxThreshold(array $Input)
  *   MetadataField or one of (Viewing|Authoring|Editing)Priviliges(Logic)?.
  * @return array Warning or error messages, if any.
  */
-function SaveInput(MetadataField $Field, array $Input): array
+function saveInput(MetadataField $Field, array $Input): array
 {
     $Warnings = [];
     $AF = ApplicationFramework::getInstance();
@@ -1399,11 +1399,11 @@ function SaveInput(MetadataField $Field, array $Input): array
         $Input["Name"] = trim($Input["Name"]);
     }
 
-    $AssociatedQualifierList = $Field->AssociatedQualifierList();
+    $AssociatedQualifierList = $Field->associatedQualifierList();
 
     # remove association with any current qualifiers
     foreach ($AssociatedQualifierList as $Id => $Name) {
-        $Field->UnassociateWithQualifier($Id);
+        $Field->unassociateWithQualifier($Id);
     }
 
     $AssociateWith = StdLib::getArrayValue($Input, "AssociatedQualifierList", array());
@@ -1414,7 +1414,7 @@ function SaveInput(MetadataField $Field, array $Input): array
     }
 
     # some fields can't be edited for the cumulative rating field
-    if ($Field->Name() == "Cumulative Rating") {
+    if ($Field->name() == "Cumulative Rating") {
         unset($Input["TextFieldSize"]);
         unset($Input["DefaultValue"]);
         unset($Input["MinValue"]);
@@ -1443,19 +1443,19 @@ function SaveInput(MetadataField $Field, array $Input): array
     }
 
     # handle the privileges separately
-    foreach (array("View", "Author", "Edit") as $PrivilegeType) {
+    foreach (array("view", "author", "edit") as $PrivilegeType) {
         $PrivilegeTypeName = $PrivilegeType . "ingPrivileges";
 
         # the privilege type is valid and it has a valid logic value
         if (isset($Input[$PrivilegeTypeName])) {
-            if ($PrivilegeType == "View") {
+            if ($PrivilegeType == "view") {
                 # pull out the new and old privilege sets
                 $NewPrivs = $Input[$PrivilegeTypeName];
                 $OldPrivs = $Field->{$PrivilegeTypeName}();
 
                 # see which flags they look for
-                $NewFlagsChecked = $NewPrivs->PrivilegeFlagsChecked();
-                $OldFlagsChecked = $OldPrivs->PrivilegeFlagsChecked();
+                $NewFlagsChecked = $NewPrivs->privilegeFlagsChecked();
+                $OldFlagsChecked = $OldPrivs->privilegeFlagsChecked();
 
                 # sort both to be sure the order is consistent
                 sort($NewFlagsChecked);
@@ -1463,12 +1463,12 @@ function SaveInput(MetadataField $Field, array $Input): array
 
                 # see which user fields they check
                 $NewUserFieldsChecked = array_unique(array_merge(
-                    $NewPrivs->FieldsWithUserComparisons("=="),
-                    $NewPrivs->FieldsWithUserComparisons("!=")
+                    $NewPrivs->fieldsWithUserComparisons("=="),
+                    $NewPrivs->fieldsWithUserComparisons("!=")
                 ));
                 $OldUserFieldsChecked = array_unique(array_merge(
-                    $OldPrivs->FieldsWithUserComparisons("=="),
-                    $OldPrivs->FieldsWithUserComparisons("!=")
+                    $OldPrivs->fieldsWithUserComparisons("=="),
+                    $OldPrivs->fieldsWithUserComparisons("!=")
                 ));
 
                 # sort for consistency
@@ -1480,8 +1480,7 @@ function SaveInput(MetadataField $Field, array $Input): array
                 # potentially stale values
                 if ($NewFlagsChecked != $OldFlagsChecked ||
                      $NewUserFieldsChecked != $OldUserFieldsChecked) {
-                    $AF->clearPageCache();
-                    RecordFactory::ClearViewingPermsCache();
+                    RecordFactory::clearViewingPermsCache();
                 }
             }
 
@@ -1534,31 +1533,32 @@ function SaveInput(MetadataField $Field, array $Input): array
         $Field->$Key($Value);
     }
 
-    if ($Field->Type() == MetadataSchema::MDFTYPE_TREE) {
-        $DefaultQualifier = $Field->DefaultQualifier();
+    if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
+        $DefaultQualifier = $Field->defaultQualifier();
 
-        if ($Field->UsesQualifiers() && $DefaultQualifier) {
+        if ($Field->usesQualifiers() && $DefaultQualifier) {
             # percolate the default qualifier for tree fields
-            SetQualifierIdForClassifications($Field, $DefaultQualifier);
+            setQualifierIdForClassifications($Field, $DefaultQualifier);
         }
     }
 
-    if ($Field->Type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
-        $DefaultQualifier = $Field->DefaultQualifier();
+    if ($Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+        $DefaultQualifier = $Field->defaultQualifier();
 
-        if ($Field->UsesQualifiers() && $DefaultQualifier) {
+        if ($Field->usesQualifiers() && $DefaultQualifier) {
             # set the default qualifier for controlled name fields
-            SetQualifierIdForControlledNames($Field, $DefaultQualifier);
+            setQualifierIdForControlledNames($Field, $DefaultQualifier);
         }
     }
 
     # save list of referenceable schemas for Reference fields.
-    if ($Field->Type() == MetadataSchema::MDFTYPE_REFERENCE) {
-        $Field->ReferenceableSchemaIds($Input["ReferenceableSchemaIds"]);
+    if ($Field->type() == MetadataSchema::MDFTYPE_REFERENCE) {
+        $Field->referenceableSchemaIds($Input["ReferenceableSchemaIds"]);
     }
 
-    # clear page cache in case any of our changes affect page output
+    # clear caches in case any of our changes affect page output
     $AF->clearPageCache();
+    SearchFacetUI::clearCaches();
 
     return $Warnings;
 }
@@ -1568,7 +1568,7 @@ function SaveInput(MetadataField $Field, array $Input): array
  * @param MetadataField $Field Metadata Field
  */
 
-function UpdateValues(MetadataField $Field): void
+function updateValues(MetadataField $Field): void
 {
     # check if field is of valid type, if not, return
     $TypesToUpdate = [
@@ -1576,21 +1576,21 @@ function UpdateValues(MetadataField $Field): void
         MetadataSchema::MDFTYPE_NUMBER,
         MetadataSchema::MDFTYPE_POINT,
     ];
-    if (!in_array($Field->Type(), $TypesToUpdate)) {
+    if (!in_array($Field->type(), $TypesToUpdate)) {
         return;
     }
     # set ResourceFactory using SchemaId from field to get resources fitting specified schema
-    $ResourceFactory = new RecordFactory($Field->SchemaId());
+    $ResourceFactory = new RecordFactory($Field->schemaId());
 
     # get resources where field to update is not set
-    $Resources = $ResourceFactory->getIdsOfMatchingRecords([$Field->Id() => "NULL"]);
+    $Resources = $ResourceFactory->getIdsOfMatchingRecords([$Field->id() => "NULL"]);
     foreach ($Resources as $Index => $ResourceId) {
         $Resources[$Index] = new Record($ResourceId);
     }
 
     # update field values
     foreach ($Resources as $Resource) {
-        $Resource->Set($Field->Id(), $Field->DefaultValue());
+        $Resource->set($Field->id(), $Field->defaultValue());
     }
 }
 
@@ -1601,19 +1601,19 @@ function UpdateValues(MetadataField $Field): void
  * @param int $DefaultQualifier Default qualifier ID
  * @return void
  */
-function SetQualifierIdForClassifications(MetadataField $Field, $DefaultQualifier)
+function setQualifierIdForClassifications(MetadataField $Field, $DefaultQualifier)
 {
     $Factory = new ClassificationFactory();
-    $Ids = $Factory->GetItemIds("FieldId = ".$Field->Id());
+    $Ids = $Factory->getItemIds("FieldId = ".$Field->id());
 
     foreach ($Ids as $Id) {
         $Classification = new Classification($Id);
-        $OldQualifier = LoadQualifier($Classification->QualifierId());
+        $OldQualifier = loadQualifier($Classification->qualifierId());
 
         # if there is no old qualifier or the qualifier name is blank, set
         # the default qualifier ID to the provided value
-        if (is_null($OldQualifier) || !$OldQualifier->Name()) {
-            $Classification->QualifierId($DefaultQualifier);
+        if (is_null($OldQualifier) || !$OldQualifier->name()) {
+            $Classification->qualifierId($DefaultQualifier);
         }
     }
 }
@@ -1625,19 +1625,19 @@ function SetQualifierIdForClassifications(MetadataField $Field, $DefaultQualifie
  * @param int $DefaultQualifier Default qualifier ID
  * @return void
  */
-function SetQualifierIdForControlledNames(MetadataField $Field, $DefaultQualifier)
+function setQualifierIdForControlledNames(MetadataField $Field, $DefaultQualifier)
 {
     $Factory = new ControlledNameFactory();
-    $Ids = $Factory->GetItemIds("FieldId = ".$Field->Id());
+    $Ids = $Factory->getItemIds("FieldId = ".$Field->id());
 
     foreach ($Ids as $Id) {
         $ControlledName = new ControlledName($Id);
-        $OldQualifier = loadQualifier($ControlledName->QualifierId());
+        $OldQualifier = loadQualifier($ControlledName->qualifierId());
 
         # if there is no old qualifier or the qualifier name is blank, set
         # the default qualifier ID to the provided value
-        if (is_null($OldQualifier) || !$OldQualifier->Name()) {
-            $ControlledName->QualifierId($DefaultQualifier);
+        if (is_null($OldQualifier) || !$OldQualifier->name()) {
+            $ControlledName->qualifierId($DefaultQualifier);
         }
     }
 }
@@ -1650,23 +1650,23 @@ function SetQualifierIdForControlledNames(MetadataField $Field, $DefaultQualifie
  *      in privilege settings.
  * @return void
  */
-function DeleteField(MetadataField $Field)
+function deleteField(MetadataField $Field)
 {
     # caller should check if this field is used in privilege settings
-    if (MetadataSchema::FieldUsedInPrivileges($Field->Id())) {
+    if (MetadataSchema::fieldUsedInPrivileges($Field->id())) {
         throw new Exception("Metadata fields used in privilege "
                 ."settings cannot be deleted.");
     }
 
-    $Schema = new MetadataSchema($Field->SchemaId());
-    $FieldId = $Field->Id();
+    $Schema = new MetadataSchema($Field->schemaId());
+    $FieldId = $Field->id();
     $IntConfig = InterfaceConfiguration::getInstance();
 
     # re-assign browsing field ID if that is what is being deleted and the
     # schema is the default one
     if ($IntConfig->getInt("BrowsingFieldId") == $FieldId
-        && $Schema->Id() == MetadataSchema::SCHEMAID_DEFAULT) {
-        $TreeFields = $Schema->GetFields(MetadataSchema::MDFTYPE_TREE);
+        && $Schema->id() == MetadataSchema::SCHEMAID_DEFAULT) {
+        $TreeFields = $Schema->getFields(MetadataSchema::MDFTYPE_TREE);
 
         # remove the field to be deleted from the list
         unset($TreeFields[$FieldId]);
@@ -1678,11 +1678,11 @@ function DeleteField(MetadataField $Field)
 
         # reassign the browsing field
         $TreeField = array_shift($TreeFields);
-        $IntConfig->setInt("BrowsingFieldId", $TreeField->Id());
+        $IntConfig->setInt("BrowsingFieldId", $TreeField->id());
     }
 
     # drop the field
-    $Schema->DropField($FieldId);
+    $Schema->dropField($FieldId);
 
     # clear page cache in case deleting the field affects page output
     ApplicationFramework::getInstance()->clearPageCache();
@@ -1700,7 +1700,7 @@ function DeleteField(MetadataField $Field)
  *         that contains (or will contain) this field.
  * @param MetadataField $MField Metadata field being modified or null when creating new fields.
  * @return array valid user input fields
- * @see GetFieldDefaults()
+ * @see getFieldDefaults()
  */
 function getValidInput(
     array $Input,
@@ -1709,7 +1709,7 @@ function getValidInput(
     ?MetadataField $MField = null
 ) {
     $ValidInput = array();
-    $Defaults = GetFieldDefaults($Input["Type"] ?? null);
+    $Defaults = getFieldDefaults($Input["Type"] ?? null);
 
     $ValidFields = array_keys(array_diff_key($Defaults, array_flip($InvalidInput)));
     $ValidFields = array_diff(
@@ -1757,18 +1757,18 @@ function getValidInput(
 * @param bool $PromptDBRebuild Whether we want to prompt the user to run a search DB rebuild.
 * @return string Returns the page to return to.
 */
-function GetReturnToPage($Value, bool $PromptDBRebuild = false): string
+function getReturnToPage($Value, bool $PromptDBRebuild = false): string
 {
     $Suffix = "";
 
     # get the suffix from a metadata schema if not using the default schema
     if ($Value instanceof MetadataSchema) {
-        if ($Value->Id() != MetadataSchema::SCHEMAID_DEFAULT) {
+        if ($Value->id() != MetadataSchema::SCHEMAID_DEFAULT) {
             $Suffix = "&SC=".$Value->id();
         }
     # get the suffix from a metadata field if not using the default schema
     } elseif ($Value instanceof MetadataField) {
-        if ($Value->SchemaId() != MetadataSchema::SCHEMAID_DEFAULT) {
+        if ($Value->schemaId() != MetadataSchema::SCHEMAID_DEFAULT) {
             $Suffix = "&SC=".$Value->schemaId();
         }
     # use the value directly if not using the default schema
@@ -1793,25 +1793,25 @@ $H_Warnings = [];
 
 # extract field and
 $FieldIdGiven = StdLib::getArrayValue($_GET, "Id", false);
-$Field = $FieldIdGiven ? LoadMetadataField(StdLib::getArrayValue($_GET, "Id")) : null;
+$Field = $FieldIdGiven ? loadMetadataField(StdLib::getArrayValue($_GET, "Id")) : null;
 $SchemaId = ($Field !== null) ?
-          $Field->SchemaId() :
+          $Field->schemaId() :
           StdLib::getArrayValue($_GET, "SC", StdLib::getArrayValue($_POST, "F_SchemaId"));
 $H_PrivsetUI = new PrivilegeEditingUI($SchemaId);
 $Operation = StdLib::getArrayValue($_POST, "Submit");
-$Input = ExtractFieldInput($_POST);
+$Input = extractFieldInput($_POST);
 $FieldRequiredFor = array(
     "Update Field", "Enable", "Disable", "Delete Field", "Populate Field..."
 );
 
 $QualifierFactory = new QualifierFactory();
-$H_Qualifiers = $QualifierFactory->GetItemNames();
+$H_Qualifiers = $QualifierFactory->getItemNames();
 
 $AF = ApplicationFramework::getInstance();
 
-PageTitle(($FieldIdGiven ? "Edit" : "Add") . " Metadata Field");
+$AF->setPageTitle(($FieldIdGiven ? "Edit" : "Add") . " Metadata Field");
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -1829,7 +1829,7 @@ if (!$FieldIdGiven && in_array($Operation, $FieldRequiredFor)) {
 
 # cancel editing
 if ($Operation == "Cancel") {
-    $AF->setJumpToPage(GetReturnToPage($SchemaId));
+    $AF->setJumpToPage(getReturnToPage($SchemaId));
     return;
 }
 
@@ -1837,7 +1837,7 @@ if ($Operation == "Cancel") {
 if (is_null($SchemaId)) {
     # use the schema ID for the field if posible
     if ($Field instanceof MetadataField) {
-        $SchemaId = $Field->SchemaId();
+        $SchemaId = $Field->schemaId();
     # otherwise use the default schema ID
     } else {
         $SchemaId = MetadataSchema::SCHEMAID_DEFAULT;
@@ -1863,15 +1863,15 @@ if ($Operation == "Add Field") {
     } else {
         # create a new field
         $Schema = $H_Schema;
-        $Field = $Schema->AddField("XTEMPFIELDNAMEX", $Type);
+        $Field = $Schema->addField("XTEMPFIELDNAMEX", $Type);
 
         # save the input and make the field permanent
-        $H_Warnings = SaveInput($Field, $ValidInput);
-        $Field->IsTempItem(false);
+        $H_Warnings = saveInput($Field, $ValidInput);
+        $Field->isTempItem(false);
 
         # update values to default if necesary
         if (isset($Input["UpdateValues"])) {
-            UpdateValues($Field);
+            updateValues($Field);
         }
 
         # go back to the field list
@@ -1881,7 +1881,7 @@ if ($Operation == "Add Field") {
 # update an existing field (field checks are above)
 } elseif ($Operation == "Update Field") {
     # validate the user input
-    $Errors = ValidateInputForField($Input, $Field);
+    $Errors = validateInputForField($Input, $Field);
     $ValidInput = getValidInput(
         $Input,
         array_keys($Errors),
@@ -1889,9 +1889,9 @@ if ($Operation == "Add Field") {
         $Field
     );
     # save the valid fields, update values to default if update values is checked
-    $H_Warnings = SaveInput($Field, $ValidInput);
+    $H_Warnings = saveInput($Field, $ValidInput);
     if (isset($Input["UpdateValues"])) {
-        UpdateValues($Field);
+        updateValues($Field);
     }
 
     $RecordFactory = new RecordFactory($Field->schemaId());
@@ -1899,10 +1899,10 @@ if ($Operation == "Add Field") {
     # we chose 2000 records to be the cutoff point for queue-able search DB rebuilds
     if ($RecordFactory->getItemCount() < 2000) {
         SearchEngine::queueDBRebuildForSchema($Field->schemaId());
-        $JmpToPage = GetReturnToPage($Field);
+        $JmpToPage = getReturnToPage($Field);
     } else {
         # if the collection is large, prompt the user to do a search DB rebuild
-        $JmpToPage = GetReturnToPage($Field, true);
+        $JmpToPage = getReturnToPage($Field, true);
     }
 
     # if there were no issues and no warnings, just go back to the field list
@@ -1914,13 +1914,13 @@ if ($Operation == "Add Field") {
     # otherwise load the data so the form can be displayed and the issues
     # resolved
     $H_Errors = $Errors;
-    $H_FieldData = GetFormDataFromField($Field);
+    $H_FieldData = getFormDataFromField($Field);
 # delete a field (field checks are above)
 } elseif ($Operation == "Delete Field") {
-    if (MetadataSchema::FieldUsedInPrivileges($Field->Id())) {
+    if (MetadataSchema::fieldUsedInPrivileges($Field->id())) {
         $H_Errors["Enabled"] = "Cannot delete a metadata field "
                 ."used in privilege setting.";
-        $H_FieldData = GetFormDataFromField($Field);
+        $H_FieldData = getFormDataFromField($Field);
         return;
     }
 
@@ -1929,17 +1929,17 @@ if ($Operation == "Add Field") {
     # delete if confirmed
     if ($Confirmation) {
         $AF->setJumpToPage(getReturnToPage($Field));
-        DeleteField($Field);
+        deleteField($Field);
         return;
     # otherwise request the user to confirm
     } else {
         # save valid user input in case the delete button was pressed accidentally
-        $Input = ExtractFieldInput($_POST);
-        $Errors = ValidateInputForField($Input, $Field);
-        $ValidInput = GetValidInput($Input, array_keys($Errors), $H_PrivsetUI);
+        $Input = extractFieldInput($_POST);
+        $Errors = validateInputForField($Input, $Field);
+        $ValidInput = getValidInput($Input, array_keys($Errors), $H_PrivsetUI);
         $H_Warnings = saveInput($Field, $ValidInput);
         if (isset($Input["UpdateValues"])) {
-            UpdateValues($Field);
+            updateValues($Field);
         }
 
         $AF->setJumpToPage("ConfirmDeleteMetadataField&Id=".$Field->id());
@@ -1947,28 +1947,28 @@ if ($Operation == "Add Field") {
 # populate a tree field (field checks are above)
 } elseif ($Operation == "Populate Field...") {
     # save valid user input
-    $Input = ExtractFieldInput($_POST);
-    $Errors = ValidateInputForField($Input, $Field);
+    $Input = extractFieldInput($_POST);
+    $Errors = validateInputForField($Input, $Field);
     $ValidInput = getValidInput($Input, array_keys($Errors), $H_PrivsetUI);
-    $H_Warnings = SaveInput($Field, $ValidInput);
+    $H_Warnings = saveInput($Field, $ValidInput);
     if (isset($Input["UpdateValues"])) {
-        UpdateValues($Field);
+        updateValues($Field);
     }
 
     $AF->setJumpToPage("PopulateField&ID=".$Field->id());
 # enable a field through AJAX, so no redirect (field checks are above)
 } elseif ($Operation == "Enable") {
-    $Field->Enabled(true);
+    $Field->enabled(true);
     $AF->clearPageCache();
-    $AF->suppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     return;
 # disable a field through AJAX, so no redirect (field checks are above)
 } elseif ($Operation == "Disable") {
-    if (ValidateEnabledForField($Input, $Field) === null) {
-        $Field->Enabled(false);
+    if (validateEnabledForField($Input, $Field) === null) {
+        $Field->enabled(false);
     }
     $AF->clearPageCache();
-    $AF->suppressHTMLOutput();
+    $AF->suppressHtmlOutput();
     return;
 # the form was not submitted and a field ID was given. setup for editing the field
 } elseif ($FieldIdGiven) {
@@ -1976,7 +1976,7 @@ if ($Operation == "Add Field") {
     if (isset($_GET["ERR"])) {
         $H_Errors[] = $_GET["ERR"];
     }
-    $H_FieldData = GetFormDataFromField($Field);
+    $H_FieldData = getFormDataFromField($Field);
 # the form was not submitted and a field ID was not given. setup for adding a new field
 } else {
     $H_Errors = array();

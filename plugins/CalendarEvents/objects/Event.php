@@ -3,7 +3,7 @@
 #   FILE:  Event.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -62,10 +62,10 @@ class Event extends Record
             $Plugin = CalendarEvents::getInstance();
 
             # base part of the URL
-            $Url = $Plugin->CleanUrlPrefix() . "/" . urlencode((string)$this->Id()) . "/";
+            $Url = $Plugin->cleanUrlPrefix() . "/" . urlencode((string)$this->id()) . "/";
 
             # add the title
-            $Url .= urlencode($this->TitleForUrl());
+            $Url .= urlencode($this->titleForUrl());
         # clean URLs aren't available
         } else {
             # base part of the URL
@@ -73,7 +73,7 @@ class Event extends Record
 
             # add the page to the GET parameters
             $Get["P"] = "P_CalendarEvents_Event";
-            $Get["EntryId"] = $this->Id();
+            $Get["EntryId"] = $this->id();
         }
 
         # tack on the GET parameters, if necessary
@@ -103,10 +103,10 @@ class Event extends Record
             $Plugin = CalendarEvents::getInstance();
 
             # base part of the URL
-            $Url = $Plugin->CleanUrlPrefix() . "/ical/" . urlencode((string)$this->Id()) . "/";
+            $Url = $Plugin->cleanUrlPrefix() . "/ical/" . urlencode((string)$this->id()) . "/";
 
             # add the title
-            $Url .= urlencode($this->TitleForUrl());
+            $Url .= urlencode($this->titleForUrl());
         # clean URLs aren't available
         } else {
             # base part of the URL
@@ -114,7 +114,7 @@ class Event extends Record
 
             # add the page to the GET parameters
             $Get["P"] = "P_CalendarEvents_iCal";
-            $Get["EntryId"] = $this->Id();
+            $Get["EntryId"] = $this->id();
         }
 
         # tack on the GET parameters, if necessary
@@ -137,13 +137,13 @@ class Event extends Record
      */
     public function getBestUrl(): string
     {
-        $Url = $this->Get("Url");
+        $Url = $this->get("Url");
 
         if ($Url) {
             return $Url;
         }
 
-        return ApplicationFramework::BaseUrl() . $this->EventUrl();
+        return ApplicationFramework::baseUrl() . $this->eventUrl();
     }
 
     /**
@@ -153,12 +153,12 @@ class Event extends Record
     public function isInFuture(): bool
     {
         # make the date precise only to the day if the event occurs all day
-        if ($this->Get("All Day")) {
-            $Date = date("Y-m-d", strtotime($this->Get("Start Date")));
+        if ($this->get("All Day")) {
+            $Date = date("Y-m-d", strtotime($this->get("Start Date")));
             return strtotime($Date) > time();
         }
 
-        return $this->StartDateAsObject()->getTimestamp() > time();
+        return $this->startDateAsObject()->getTimestamp() > time();
     }
 
     /**
@@ -167,7 +167,7 @@ class Event extends Record
      */
     public function isOccurring(): bool
     {
-        return !($this->IsInFuture() || $this->IsInPast());
+        return !($this->isInFuture() || $this->isInPast());
     }
 
     /**
@@ -177,12 +177,12 @@ class Event extends Record
     public function isInPast(): bool
     {
         # make the date precise only to the day if the event occurs all day
-        if ($this->Get("All Day")) {
-            $Date = date("Y-m-d", strtotime($this->Get("End Date")));
+        if ($this->get("All Day")) {
+            $Date = date("Y-m-d", strtotime($this->get("End Date")));
             return strtotime($Date) < time();
         }
 
-        return $this->EndDateAsObject()->getTimestamp() < time();
+        return $this->endDateAsObject()->getTimestamp() < time();
     }
 
     /**
@@ -191,7 +191,7 @@ class Event extends Record
      */
     public function startsToday(): bool
     {
-        return date("Y-m-d") == date("Y-m-d", strtotime($this->Get("Start Date")));
+        return date("Y-m-d") == date("Y-m-d", strtotime($this->get("Start Date")));
     }
 
     /**
@@ -200,7 +200,7 @@ class Event extends Record
      */
     public function endsToday(): bool
     {
-        return date("Y-m-d") == date("Y-m-d", strtotime($this->Get("End Date")));
+        return date("Y-m-d") == date("Y-m-d", strtotime($this->get("End Date")));
     }
 
     /**
@@ -209,8 +209,8 @@ class Event extends Record
      */
     public function startDateAsObject(): \DateTime
     {
-        if (!is_null($this->Get("Start Date"))) {
-            return $this->ConvertDateStringToObject($this->Get("Start Date"));
+        if (!is_null($this->get("Start Date"))) {
+            return $this->convertDateStringToObject($this->get("Start Date"));
         }
         return new DateTime();
     }
@@ -221,8 +221,8 @@ class Event extends Record
      */
     public function endDateAsObject(): \DateTime
     {
-        if (!is_null($this->Get("End Date"))) {
-            return $this->ConvertDateStringToObject($this->Get("End Date"));
+        if (!is_null($this->get("End Date"))) {
+            return $this->convertDateStringToObject($this->get("End Date"));
         }
         return new DateTime();
     }
@@ -233,7 +233,7 @@ class Event extends Record
      */
     public function creationDateAsObject(): \DateTime
     {
-        return $this->ConvertDateStringToObject($this->Get("Date Of Record Creation"));
+        return $this->convertDateStringToObject($this->get("Date Of Record Creation"));
     }
 
     /**
@@ -242,7 +242,7 @@ class Event extends Record
      */
     public function modificationDateAsObject(): \DateTime
     {
-        return $this->ConvertDateStringToObject($this->Get("Date Last Modified"));
+        return $this->convertDateStringToObject($this->get("Date Last Modified"));
     }
 
     /**
@@ -251,7 +251,7 @@ class Event extends Record
      */
     public function releaseDateAsObject(): \DateTime
     {
-        return $this->ConvertDateStringToObject($this->Get("Release Date"));
+        return $this->convertDateStringToObject($this->get("Release Date"));
     }
 
     /**
@@ -260,7 +260,7 @@ class Event extends Record
      */
     public function categoriesForDisplay(): array
     {
-        $ControlledNames = $this->Get("Categories", true);
+        $ControlledNames = $this->get("Categories", true);
 
         # there are no categories assigned to the event
         if (is_null($ControlledNames)) {
@@ -270,7 +270,7 @@ class Event extends Record
         $Categories = [];
 
         foreach ($ControlledNames as $Id => $Category) {
-            $Categories[$Id] = $Category->Name();
+            $Categories[$Id] = $Category->name();
         }
 
         return $Categories;
@@ -284,8 +284,8 @@ class Event extends Record
     {
         $Attachments = [];
 
-        foreach ($this->Get("Attachments", true) as $Id => $Attachment) {
-            $Attachments[$Id] = [$Attachment->Name(), $Attachment->GetLink()];
+        foreach ($this->get("Attachments", true) as $Id => $Attachment) {
+            $Attachments[$Id] = [$Attachment->name(), $Attachment->getLink()];
         }
 
         return $Attachments;
@@ -300,11 +300,11 @@ class Event extends Record
         $Schema = new MetadataSchema($this->getSchemaId());
         $Field = $Schema->getField("Release Flag");
 
-        if ($this->Get("Release Flag")) {
-            return $Field->FlagOnLabel();
+        if ($this->get("Release Flag")) {
+            return $Field->flagOnLabel();
         }
 
-        return $Field->FlagOffLabel();
+        return $Field->flagOffLabel();
     }
 
     /**
@@ -330,7 +330,7 @@ class Event extends Record
         # passing true to getPrettyTimestamp sets the verbose option to use the
         # longer form expression of the date
         $FormattedStartDate =
-                StdLib::getPrettyDate($this->Get("Start Date"), true);
+                StdLib::getPrettyDate($this->get("Start Date"), true);
 
         # if date range was invalid display --
         if ($FormattedStartDate == "--") {
@@ -366,7 +366,7 @@ class Event extends Record
     {
         # passing true to getPrettyTimestamp sets the verbose option to use the
         # longer form expression of the date
-        $FormattedEndDate = StdLib::getPrettyDate($this->Get("End Date"), true);
+        $FormattedEndDate = StdLib::getPrettyDate($this->get("End Date"), true);
 
         # if date range was invalid display --
         if ($FormattedEndDate == "--") {
@@ -388,7 +388,7 @@ class Event extends Record
             } else {
                 $DateFormat = Event::DATE_FOR_DISPLAY;
             }
-            return $this->EndDateAsObject()->format($DateFormat);
+            return $this->endDateAsObject()->format($DateFormat);
         }
         return $FormattedEndDate;
     }
@@ -403,7 +403,7 @@ class Event extends Record
         # startDateForDisplay calls getPrettyTimestamp and avoids using
         # named days of the week or yesterday/today/tomorrow
 
-        $StartTime = date("g:ia", strtotime($this->Get("Start Date")));
+        $StartTime = date("g:ia", strtotime($this->get("Start Date")));
         $DateWithTime = $StartDate." at ".$StartTime;
 
         # passing true to getPrettyTimestamp sets that function's
@@ -442,7 +442,7 @@ class Event extends Record
         # if the event spans one day, print only the time and not the end date
         if ($this->spanInDays() == 1) {
             $DatePart =
-                    StdLib::getPrettyDate($this->Get("End Date"), true)." at ";
+                    StdLib::getPrettyDate($this->get("End Date"), true)." at ";
             $PartsOfTimestampToRemove [] = $DatePart;
         }
 
@@ -451,7 +451,7 @@ class Event extends Record
         $EndDate = str_replace(
             $PartsOfTimestampToRemove,
             "",
-            StdLib::getPrettyTimestamp($this->Get("End Date"), true)
+            StdLib::getPrettyTimestamp($this->get("End Date"), true)
         );
 
         return $EndDate;
@@ -463,7 +463,7 @@ class Event extends Record
      */
     public function authorForDisplay(): string
     {
-        return $this->FormatUserNameForDisplay($this->Get("Added By Id", true));
+        return $this->formatUserNameForDisplay($this->get("Added By Id", true));
     }
 
     /**
@@ -472,7 +472,7 @@ class Event extends Record
      */
     public function editorForDisplay(): string
     {
-        return $this->FormatUserNameForDisplay($this->Get("Last Modified By Id", true));
+        return $this->formatUserNameForDisplay($this->get("Last Modified By Id", true));
     }
 
     /**
@@ -481,7 +481,7 @@ class Event extends Record
      */
     public function creationDateForDisplay(): string
     {
-        return StdLib::getPrettyTimestamp($this->Get("Date Of Record Creation"));
+        return StdLib::getPrettyTimestamp($this->get("Date Of Record Creation"));
     }
 
     /**
@@ -490,7 +490,7 @@ class Event extends Record
      */
     public function modificationDateForDisplay(): string
     {
-        return StdLib::getPrettyTimestamp($this->Get("Date Last Modified"));
+        return StdLib::getPrettyTimestamp($this->get("Date Last Modified"));
     }
 
     /**
@@ -499,7 +499,7 @@ class Event extends Record
      */
     public function releaseDateForDisplay(): string
     {
-        return StdLib::getPrettyTimestamp($this->Get("Release Date"));
+        return StdLib::getPrettyTimestamp($this->get("Release Date"));
     }
 
     /**
@@ -508,9 +508,9 @@ class Event extends Record
      */
     public function startDateForParsing(): string
     {
-        $Format = $this->Get("All Day")
+        $Format = $this->get("All Day")
             ? self::DATE_FOR_PARSING : self::DATETIME_FOR_PARSING;
-        return $this->StartDateAsObject()->format($Format);
+        return $this->startDateAsObject()->format($Format);
     }
 
     /**
@@ -519,9 +519,9 @@ class Event extends Record
      */
     public function endDateForParsing(): string
     {
-        $Format = $this->Get("All Day")
+        $Format = $this->get("All Day")
             ? self::DATE_FOR_PARSING : self::DATETIME_FOR_PARSING;
-        return $this->EndDateAsObject()->format($Format);
+        return $this->endDateAsObject()->format($Format);
     }
 
     /**
@@ -536,33 +536,33 @@ class Event extends Record
         $Location = "";
 
         # add the venue name if given
-        if ($this->Get("Venue") && $IncludeVenue) {
-            $Location .= $this->Get("Venue") . " ";
+        if ($this->get("Venue") && $IncludeVenue) {
+            $Location .= $this->get("Venue") . " ";
         }
 
         # add the street address if given
-        if ($this->Get("Street Address")) {
-            $Location .= $this->Get("Street Address") . " ";
+        if ($this->get("Street Address")) {
+            $Location .= $this->get("Street Address") . " ";
         }
 
         # add the locality if given
-        if ($this->Get("Locality")) {
-            $Location .= $this->Get("Locality") . " ";
+        if ($this->get("Locality")) {
+            $Location .= $this->get("Locality") . " ";
         }
 
         # add the region if given
-        if ($this->Get("Region")) {
-            $Location .= $this->Get("Region") . " ";
+        if ($this->get("Region")) {
+            $Location .= $this->get("Region") . " ";
         }
 
         # add the postal code if given
-        if ($this->Get("Postal Code")) {
-            $Location .= $this->Get("Postal Code") . " ";
+        if ($this->get("Postal Code")) {
+            $Location .= $this->get("Postal Code") . " ";
         }
 
         # add the country if given
-        if ($this->Get("Country")) {
-            $Location .= $this->Get("Country");
+        if ($this->get("Country")) {
+            $Location .= $this->get("Country");
         }
 
         # remove trailing whitespace
@@ -580,10 +580,10 @@ class Event extends Record
      */
     public function locationSummaryString(): string
     {
-        if ($this->Get("Region") && $this->Get("Locality")) {
-            return $this->Get("Locality") . ", " . $this->Get("Region");
-        } elseif ($this->Get("Country")) {
-            return $this->Get("Country");
+        if ($this->get("Region") && $this->get("Locality")) {
+            return $this->get("Locality") . ", " . $this->get("Region");
+        } elseif ($this->get("Country")) {
+            return $this->get("Country");
         } else {
             return "";
         }
@@ -600,34 +600,34 @@ class Event extends Record
         $Location = "";
 
         # add the venue name if given
-        if ($this->Get("Venue")) {
-            $Location .= $this->Get("Venue") . ", ";
+        if ($this->get("Venue")) {
+            $Location .= $this->get("Venue") . ", ";
         }
 
         # don't add the street address if given
-        if ($this->Get("Street Address")) {
-            $Location .= $this->Get("Street Address") . ", ";
+        if ($this->get("Street Address")) {
+            $Location .= $this->get("Street Address") . ", ";
         }
 
         # add the locality if given
-        if ($this->Get("Locality")) {
-            $Location .= $this->Get("Locality") . ", ";
+        if ($this->get("Locality")) {
+            $Location .= $this->get("Locality") . ", ";
         }
 
         # add the region if given
-        if ($this->Get("Region")) {
-            $Suffix = $this->Get("Postal Code") ? " " : ", ";
-            $Location .= $this->Get("Region") . $Suffix;
+        if ($this->get("Region")) {
+            $Suffix = $this->get("Postal Code") ? " " : ", ";
+            $Location .= $this->get("Region") . $Suffix;
         }
 
         # add the postal code if given
-        if ($this->Get("Postal Code")) {
-            $Location .= $this->Get("Postal Code") . ", ";
+        if ($this->get("Postal Code")) {
+            $Location .= $this->get("Postal Code") . ", ";
         }
 
         # add the country if given
-        if ($this->Get("Country")) {
-            $Location .= $this->Get("Country");
+        if ($this->get("Country")) {
+            $Location .= $this->get("Country");
         }
 
         # remove trailing whitespace and commas
@@ -647,50 +647,50 @@ class Event extends Record
         $Location = "";
 
         # add the venue name if given
-        if ($this->Get("Venue")) {
+        if ($this->get("Venue")) {
             $Location .=
                 '<span class="calendar_events-venue" itemprop="name">'
-                .defaulthtmlentities($this->Get("Venue"))
+                .defaulthtmlentities($this->get("Venue"))
                 .'</span>';
         }
 
         # add the street address if given
-        if ($this->Get("Street Address")) {
+        if ($this->get("Street Address")) {
             $Location .=
                 '<span class="calendar_events-street_address" itemprop="streetAddress">'
-                .defaulthtmlentities($this->Get("Street Address"))
+                .defaulthtmlentities($this->get("Street Address"))
                 .'</span>';
         }
 
         # add the locality if given
-        if ($this->Get("Locality")) {
+        if ($this->get("Locality")) {
             $Location .=
                 '<span class="calendar_events-locality" itemprop="addressLocality">'
-                .defaulthtmlentities($this->Get("Locality"))
+                .defaulthtmlentities($this->get("Locality"))
                 .'</span>';
         }
 
         # add the region if given
-        if ($this->Get("Region")) {
+        if ($this->get("Region")) {
             $Location .=
                 '<span class="calendar_events-region" itemprop="addressRegion">'
-                .defaulthtmlentities($this->Get("Region"))
+                .defaulthtmlentities($this->get("Region"))
                 .'</span>';
         }
 
         # add the postal code if given, but only if there's a locality or region
-        if ($this->Get("Postal Code") && ($this->Get("Locality") || $this->Get("Region"))) {
+        if ($this->get("Postal Code") && ($this->get("Locality") || $this->get("Region"))) {
             $Location .=
                 '<span class="calendar_events-postal_code" itemprop="postalCode">'
-                .defaulthtmlentities($this->Get("Postal Code"))
+                .defaulthtmlentities($this->get("Postal Code"))
                 .'</span>';
         }
 
         # add the country if given
-        if ($this->Get("Country")) {
+        if ($this->get("Country")) {
             $Location .=
                 '<span class="calendar_events-country" itemprop="addressCountry">'
-                .defaulthtmlentities($this->Get("Country"))
+                .defaulthtmlentities($this->get("Country"))
                 .'</span>';
         }
 
@@ -712,8 +712,8 @@ class Event extends Record
      */
     public function spanInDays(): int
     {
-        $StartDate = $this->StartDateAsObject();
-        $EndDate = $this->EndDateAsObject();
+        $StartDate = $this->startDateAsObject();
+        $EndDate = $this->endDateAsObject();
 
         # get the difference between the dates
         $Difference = intval($EndDate->diff($StartDate, true)->format('%a'));
@@ -751,12 +751,12 @@ class Event extends Record
     public function startDateDisplayPrefix(): string
     {
         # use the date prefix if it's a full-day event
-        if ($this->Get("All Day")) {
-            return $this->GetDatePrefix($this->Get("Start Date"));
+        if ($this->get("All Day")) {
+            return $this->getDatePrefix($this->get("Start Date"));
         }
 
         # otherwise use the timestamp prefix
-        return $this->GetTimestampPrefix($this->Get("Start Date"));
+        return $this->getTimestampPrefix($this->get("Start Date"));
     }
 
     /**
@@ -768,12 +768,12 @@ class Event extends Record
     public function endDateDisplayPrefix(): string
     {
         # use the date prefix if it's a full-day event
-        if ($this->Get("All Day")) {
-            return $this->GetDatePrefix($this->Get("End Date"));
+        if ($this->get("All Day")) {
+            return $this->getDatePrefix($this->get("End Date"));
         }
 
         # otherwise use the timestamp prefix
-        return $this->GetTimestampPrefix($this->Get("End Date"));
+        return $this->getTimestampPrefix($this->get("End Date"));
     }
 
    /**
@@ -783,8 +783,8 @@ class Event extends Record
     */
     public function checkIfStartAndEndTimesAreBothMidnight(): bool
     {
-        $StartTime = date("g:ia", strtotime($this->Get("Start Date")));
-        $EndTime = date("g:ia", strtotime($this->Get("End Date")));
+        $StartTime = date("g:ia", strtotime($this->get("Start Date")));
+        $EndTime = date("g:ia", strtotime($this->get("End Date")));
         if ($StartTime == "12:00am" && $EndTime == "12:00am") {
             return true;
         }
@@ -808,7 +808,7 @@ class Event extends Record
 
         # the user is invalid
         $UserFactory = new UserFactory();
-        if (!$UserFactory->userNameExists($User->Name())) {
+        if (!$UserFactory->userNameExists($User->name())) {
             return "-";
         }
 

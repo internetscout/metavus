@@ -3,7 +3,7 @@
 #   FILE:  SubscriberStatistics.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -11,16 +11,19 @@ use Metavus\Plugins\Blog;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Graph;
 use Metavus\TransportControlsUI;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
-PageTitle("Blog Subscription Information");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Blog Subscription Information");
 
 $PluginMgr = PluginManager::getInstance();
 $MyPlugin = Blog::getInstance();
@@ -39,7 +42,7 @@ $H_SubscriberCount = count($H_Subscribers);
 $H_Subscribers = array_slice($H_Subscribers, $H_StartingIndex, $H_ItemsPerPage);
 
 # if we have subscriber metrics, make a plot of them
-if ($PluginMgr->pluginEnabled("MetricsRecorder")) {
+if ($PluginMgr->pluginReady("MetricsRecorder")) {
     # pull our data out of metrics recorder
     $MetricsRecorder = MetricsRecorder::getInstance();
     $Data = $MetricsRecorder->GetEventData(

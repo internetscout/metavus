@@ -1540,12 +1540,6 @@ class Database
      */
     public static function setSlowQueryLoggingFn(callable $NewValue): void
     {
-        if (!is_callable($NewValue)) {
-            throw new InvalidArgumentException(
-                "Slow query log function not callable."
-            );
-        }
-
         self::$SlowQueryLoggingFn = $NewValue;
     }
 
@@ -1558,12 +1552,6 @@ class Database
      */
     public static function setCachePruneLoggingFn(callable $NewValue): void
     {
-        if (!is_callable($NewValue)) {
-            throw new InvalidArgumentException(
-                "Cache prune log function not callable."
-            );
-        }
-
         self::$CachePruneLoggingFn = $NewValue;
     }
 

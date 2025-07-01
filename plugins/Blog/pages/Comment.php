@@ -101,10 +101,8 @@ function Blog_JumpTo(array $GetParameters, string $Fragment = null): void
 }
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Edit Comment");
-
 $AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Comment");
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();

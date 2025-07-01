@@ -3,7 +3,7 @@
 #   FILE:  OAI.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -33,7 +33,7 @@ if (isset($QueryData["P"])) {
 }
 
 # log the OAI request
-$AF->SignalEvent(
+$AF->signalEvent(
     "EVENT_OAIPMH_REQUEST",
     [
         "RequesterIP" => $_SERVER["REMOTE_ADDR"],
@@ -41,7 +41,7 @@ $AF->SignalEvent(
     ]
 );
 
-$ServerResponse = $Server->GetResponse();
+$ServerResponse = $Server->getResponse();
 
 if (isset($_GET["metadataPrefix"]) || isset($_POST["metadataPrefix"])) {
     $SelectedFormat = isset($_GET["metadataPrefix"]) ?
@@ -68,15 +68,15 @@ if (isset($SelectedFormat)
     $XslFile = new File(intval($Formats[$SelectedFormat]["XsltFileId"]));
 
     $xsl = new DOMDocument();
-    $xsl->load($XslFile->GetNameOfStoredFile());
+    $xsl->load($XslFile->getNameOfStoredFile());
 
     $proc = new XSLTProcessor();
-    $proc->importStyleSheet($xsl);
+    $proc->importStylesheet($xsl);
 
-    print ($proc->transformToXML($xml) );
+    print ($proc->transformToXml($xml) );
 } else {
     print ($ServerResponse);
 }
 
 # suppress any HTML output
-$AF->SuppressHTMLOutput();
+$AF->suppressHtmlOutput();

@@ -9,7 +9,6 @@
 # @scout:phpstan
 
 namespace Metavus\Plugins\MySearches;
-
 use Exception;
 use Metavus\HtmlButton;
 use ScoutLib\ApplicationFramework;
@@ -40,7 +39,7 @@ class MySearchesUI
         <div class="mv-section mv-section-simple mv-html5-section cw-mysearches-sidebar-saved">
             <div class="mv-section-header mv-html5-header">
                 <?= $EditSearchesButton->getHtml(); ?>
-                <img src="<?= $AF->GUIFile("MagnifyingGlass.svg") ?>" alt="">
+                <img src="<?= $AF->gUIFile("MagnifyingGlass.svg") ?>" alt="">
                 My Searches
             </div>
             <div class="mv-section-body">
@@ -73,7 +72,7 @@ class MySearchesUI
         ?><!-- BEGIN RECENT SEARCHES DISPLAY -->
         <div class="mv-section mv-section-simple mv-html5-section cw-mysearches-sidebar-recent">
             <div class="mv-section-header mv-html5-header">
-                <img src="<?= $AF->GUIFile("MagnifyingGlass.svg") ?>" alt="">
+                <img src="<?= $AF->gUIFile("MagnifyingGlass.svg") ?>" alt="">
                 Recent Searches
             </div>
             <div class="mv-section-body">

@@ -442,6 +442,8 @@ CREATE TABLE IF NOT EXISTS Folders (
     NormalizedName          TEXT DEFAULT NULL,
     FolderNote              TEXT DEFAULT NULL,
     CoverImageId            INT DEFAULT NULL,
+    SortFieldId             INT DEFAULT NULL,
+    ReverseSortFlag         TINYINT DEFAULT 0,
     IsShared                INT DEFAULT 0,
     ContentType             INT DEFAULT -1,
     INDEX                   Index_O (OwnerId),

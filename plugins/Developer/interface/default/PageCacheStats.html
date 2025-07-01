@@ -38,7 +38,7 @@ $BasicStatsTable = new HtmlTable();
 $BasicStatsTable->setTableClass("table table-striped");
 $BasicStatsTable->addRows($BasicStats);
 
-# set up item list for page cache counts
+# set up item list for cached page info
 $Fields = [
     "Page" => [
         "DefaultSortField" => true,
@@ -71,31 +71,19 @@ $Fields = [
         },
     ],
 ];
-$CPList = new ItemListUI($Fields);
+$CPList = new ItemListUI($Fields, $CacheInfo["PageInfo"]);
 $CPList->setHeading("Cached Pages");
-
-# sort cached page counts
-$PageInfo = $CacheInfo["PageInfo"];
-$SortIndex = $_GET["SF"] ?? "Page";
-$SortDescending = $_GET["RS"]
-        ?? ($Fields[$SortIndex]["DefaultToDescendingSort"]
-        ?? false);
-$SortFunc = function ($A, $B) use ($SortIndex, $SortDescending) {
-    return $SortDescending
-            ? $B[$SortIndex] <=> $A[$SortIndex]
-            : $A[$SortIndex] <=> $B[$SortIndex];
-};
-usort($PageInfo, $SortFunc);
+$CPList->sort();
 
 
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle("Page Cache Statistics");
+$AF->setPageTitle("Page Cache Statistics");
 
 ?>
 
 <h1>Page Cache Info</h1>
 <?= $BasicStatsTable->getHtml() ?>
 
-<?= $CPList->getHtml($PageInfo) ?>
+<?= $CPList->getHtml() ?>
 <br/>

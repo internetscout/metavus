@@ -9,8 +9,11 @@
 
 use Metavus\FormUI;
 use Metavus\HtmlButton;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 $Heading = $H_IsNewRule ? "Add New Rule" : "Edit Rule";
 
 $SaveButton = new HtmlButton($H_IsNewRule ? "Add" : "Save");
@@ -21,7 +24,7 @@ $CancelButton->setIcon("Cross.svg");
 $CancelButton->addSemanticClass("btn-danger");
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle($Heading);
+$AF->setPageTitle($Heading);
 ?>
 <h1><?= $Heading ?></h1>
 <?PHP  FormUI::DisplayErrorBlock();  ?>

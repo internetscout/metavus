@@ -3,7 +3,7 @@
 #   FILE:  Events.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -15,17 +15,17 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 /**
-* Print all of the events for the page.
-* @param array $Events Events to print.
-* @param string $CurrentMonth Optional current month being displayed.
-*/
-function CalendarEvents_PrintEvents(array $Events, $CurrentMonth = null) : void
+ * Print all of the events for the page.
+ * @param array $Events Events to print.
+ * @param string $CurrentMonth Optional current month being displayed.
+ */
+function CalendarEvents_PrintEvents(array $Events, $CurrentMonth = null): void
 {
     $Plugin = CalendarEvents::getInstance();
 
     # if printing events for the current month
     if (date("F Y") == $CurrentMonth) {
-        $TodayIncludesOngoing = $Plugin->TodayIncludesOngoingEvents();
+        $TodayIncludesOngoing = $Plugin->todayIncludesOngoingEvents();
         $NumEvents = count($Events);
         $CurrentNumber = 0;
         $SawNextUpcoming = false;
@@ -43,49 +43,49 @@ function CalendarEvents_PrintEvents(array $Events, $CurrentMonth = null) : void
                 CalendarEvents_PrintTodayMarker();
             }
 
-            $Plugin->PrintEventSummary($Event);
+            $Plugin->printEventSummary($Event);
         }
     } else {
         # printing events for a past or future month
         foreach ($Events as $Event) {
-            $Plugin->PrintEventSummary($Event);
+            $Plugin->printEventSummary($Event);
         }
     }
 }
 
 /**
-* Get the previous month relative to the given month that has at least one
-* event.
-* @param array $EventCounts An array of months mapped to the count of events for
-*      that month.
-* @param string $Month Month to use as an anchor.
-* @return int The next month relative to the given month.
-*/
+ * Get the previous month relative to the given month that has at least one
+ * event.
+ * @param array $EventCounts An array of months mapped to the count of events for
+ *      that month.
+ * @param string $Month Month to use as an anchor.
+ * @return int The next month relative to the given month.
+ */
 function CalendarEvents_GetPreviousMonth(array $EventCounts, $Month)
 {
     return CalendarEvents_GetSiblingMonth($EventCounts, $Month, "-1");
 }
 
 /**
-* Get the next month relative to the given month that has at least one event.
-* @param array $EventCounts An array of months mapped to the count of events for
-*      that month.
-* @param string $Month Month to use as an anchor.
-* @return int The next month relative to the given month.
-*/
+ * Get the next month relative to the given month that has at least one event.
+ * @param array $EventCounts An array of months mapped to the count of events for
+ *      that month.
+ * @param string $Month Month to use as an anchor.
+ * @return int The next month relative to the given month.
+ */
 function CalendarEvents_GetNextMonth(array $EventCounts, $Month)
 {
     return CalendarEvents_GetSiblingMonth($EventCounts, $Month, "+1");
 }
 
 /**
-* Get a sibling month relative to the given month.
-* @param array $EventCounts An array of months mapped to the count of events for
-*      that month.
-* @param string $Month Month to use as an anchor.
-* @param string $Interval Interval relative to the given month.
-* @return int The month relative to the given month.
-*/
+ * Get a sibling month relative to the given month.
+ * @param array $EventCounts An array of months mapped to the count of events for
+ *      that month.
+ * @param string $Month Month to use as an anchor.
+ * @param string $Interval Interval relative to the given month.
+ * @return int The month relative to the given month.
+ */
 function CalendarEvents_GetSiblingMonth(array $EventCounts, $Month, $Interval)
 {
     $Key = date("MY", strtotime($Month." ".$Interval." month"));
@@ -103,20 +103,21 @@ function CalendarEvents_GetSiblingMonth(array $EventCounts, $Month, $Interval)
 }
 
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
 # get up some basic values
 $H_Plugin = CalendarEvents::getInstance();
 $H_StartingIndex = StdLib::getFormValue("SI", 0);
 $H_Month = StdLib::getFormValue("Month");
-$H_SchemaId = $H_Plugin->GetSchemaId();
+$H_SchemaId = $H_Plugin->getSchemaId();
 
 $EFactory = new EventFactory();
 
-$H_FirstMonth = $EFactory->GetFirstMonth();
-$H_LastMonth = $EFactory->GetLastMonth();
+$H_FirstMonth = $EFactory->getFirstMonth();
+$H_LastMonth = $EFactory->getLastMonth();
 
 $H_Events = [];
-$H_EventCounts = $EFactory->GetEventCounts();
+$H_EventCounts = $EFactory->getEventCounts();
 
 # transform "numeric_month year" to something strtotime() understands
 if (!is_null($H_Month) && preg_match('/(0?[1-9]|1[12]) ([0-9]{4})/', (string)$H_Month, $Matches)) {
@@ -143,11 +144,11 @@ if ($MonthTimestamp === false) {
 $H_Month = date("F Y", $MonthTimestamp);
 
 # set the page title based on the month name
-PageTitle($H_Month);
+$AF->setPageTitle($H_Month);
 
 # get the event IDs and count for the count
-$EventIds = $EFactory->GetEventIdsForMonth($H_Month);
-$EventIds = $EFactory->FilterEventsByOwner($EventIds, null);
+$EventIds = $EFactory->getEventIdsForMonth($H_Month);
+$EventIds = $EFactory->filterEventsByOwner($EventIds, null);
 $H_EventCount = count($EventIds);
 
 # load event objects from IDs
@@ -156,5 +157,4 @@ foreach ($EventIds as $Id) {
 }
 
 # tag page so it will be cleared when events are edited
-$AF = ApplicationFramework::getInstance();
 $AF->addPageCacheTag("ResourceList".$H_SchemaId);

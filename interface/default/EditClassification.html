@@ -11,6 +11,7 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
@@ -34,6 +35,8 @@ if (!isset($H_JumpParams)) {
     throw new Exception("H_JumpParams not defined.");
 }
 
+$AF = ApplicationFramework::getInstance();
+
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
 $SaveButton->setSize(HtmlButton::SIZE_SMALL);
@@ -56,7 +59,7 @@ $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classification");
+$AF->setPageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classification");
 ?>
 
 <?PHP if ($H_ConfirmDelete) { ?>

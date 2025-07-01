@@ -912,11 +912,12 @@ abstract class ItemFactory
             }
         }
 
-        # add sorting if specified
-        if ($SortField !== null) {
-            $ConditionString .= " ORDER BY `" . addslashes($SortField) . "` "
-                . ($SortAscending ? "ASC" : "DESC");
+        # add sorting
+        if ($SortField === null) {
+            $SortField = $this->ItemIdColumnName;
         }
+        $ConditionString .= " ORDER BY `" . addslashes($SortField) . "` "
+            . ($SortAscending ? "ASC" : "DESC");
 
         # get item IDs
         $this->DB->query("SELECT " . $this->ItemIdColumnName

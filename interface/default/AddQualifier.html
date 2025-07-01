@@ -13,6 +13,7 @@ namespace Metavus;
 use Exception;
 use Metavus\FormUI;
 use Metavus\ItemListUI;
+use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -24,8 +25,9 @@ if (!isset($H_Qualifiers)) {
 }
 
 $QualifierFactory = new QualifierFactory();
+$AF = ApplicationFramework::getInstance();
 
-PageTitle("Add/Edit Qualifiers");
+$AF->setPageTitle("Add/Edit Qualifiers");
 $SubmitButton = new HtmlButton("Add");
 $SubmitButton->setIcon("EyeOpen.svg");
 $SubmitButton->makeSubmitButton();

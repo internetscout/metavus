@@ -9,8 +9,10 @@
 # @scout:phpstan
 
 namespace Metavus;
+
 use Exception;
 use ScoutLib\Database;
+use ScoutLib\Date;
 use ScoutLib\Item;
 use ScoutLib\PersistentDoublyLinkedList;
 
@@ -265,6 +267,52 @@ class Folder
         $this->DB->updateIntValue("CoverImageId", $NewValue);
     }
 
+    /**
+     * Get ID of current sort field.
+     *         NOTE: Items will be sorted by this field when `sort()` is
+     *         called, but are *NOT* maintained in sorted order. Folder users
+     *         that want to maintain items in order will need to call `sort()`
+     *         after additional items are inserted.
+     * @return int|false Field ID or FALSE when none is set.
+     */
+    public function getSortFieldId()
+    {
+        return $this->DB->updateIntValue("SortFieldId");
+    }
+
+    /**
+     * Set sort field ID that will be used when `sort()` is called.
+     *         NOTE: Setting a sort field does *NOT* automatically maintain
+     *         items in sorted order.
+     * @param int|false $NewValue New sort field ID or FALSE to clear sort
+     *         field setting.
+     * @see Folder::sort()
+     */
+    public function setSortFieldId($NewValue): void
+    {
+        $this->SortValueCache = [];
+        $this->DB->updateIntValue("SortFieldId", $NewValue);
+    }
+
+    /**
+     * Get reverse sort flag value to use when `sort()` is called.
+     * @return bool Reverse sort value.
+     * @see Folder::sort()
+     */
+    public function getReverseSortFlag(): bool
+    {
+        return $this->DB->updateBoolValue("ReverseSortFlag");
+    }
+
+    /**
+     * Set reverse sort flag value.
+     * @param bool $NewValue Value to set.
+     */
+    public function setReverseSortFlag(bool $NewValue): void
+    {
+        $this->DB->updateBoolValue("ReverseSortFlag", $NewValue);
+    }
+
     /*@)*/ /* Attribute Setting/Retrieval */
     # ------------------------------------------------------------------------
     /** @name Item Operations */ /*@(*/
@@ -288,7 +336,6 @@ class Folder
         $TargetItemType = null,
         $NewItemType = null
     ): void {
-
         $this->addItem($NewItemOrItemId, $NewItemType);
         $this->OrderList->insertBefore(
             $TargetItemOrItemId,
@@ -316,7 +363,6 @@ class Folder
         $TargetItemType = null,
         $NewItemType = null
     ): void {
-
         $this->addItem($NewItemOrItemId, $NewItemType);
         $this->OrderList->insertAfter(
             $TargetItemOrItemId,
@@ -363,6 +409,7 @@ class Folder
      */
     public function appendItems($ItemsOrItemIds, $ItemTypes = null): void
     {
+        $this->setSortFieldId(false);
         # convert ItemTypes to an array if it wasn't one
         if (!is_array($ItemTypes)) {
             $NewItemTypes = [];
@@ -392,18 +439,18 @@ class Folder
     }
 
     /**
-     * Sort items in this folder.
-     * Behavior of sorting is specified by input $CompareCallback function.
-     * $CompareCallback takes IDs of two items in the folder
-     *       and returns a value "usort()" can recognize.
-     * @param callable $CompareCallback A function that takes IDs of
-     *       2 items to compare and returns a value that is
-     *       > 0 if first item > the second; == 0 if equal;
-     *       < 0 if first item < the second
+     * Sort items in this folder based on configured sort field and direction.
      * @return void
+     * @throws Exception if no sort field is set.
      */
-    public function sort(callable $CompareCallback): void
+    public function sort(): void
     {
+        if ($this->getSortFieldId() === false) {
+            throw new Exception(
+                "Cannot sort when no sort field is set."
+            );
+        }
+
         # get resources in current ordering
         $Items = self::getItemIds();
 
@@ -422,12 +469,11 @@ class Folder
             }
         }
 
-        # do sorting in memory
-        usort($Items, function ($ItemA, $ItemB) use ($CompareCallback) {
-            return $CompareCallback($ItemA["ID"], $ItemB["ID"]);
+        usort($Items, function ($ItemA, $ItemB) {
+            return $this->sortCompare($ItemA["ID"], $ItemB["ID"]);
         });
 
-        # reflect the change on db
+        # save new ordering
         foreach ($Items as $Item) {
             $this->OrderList->append($Item["ID"], self::getItemTypeId($Item["Type"]));
         }
@@ -602,7 +648,7 @@ class Folder
         );
 
         # copy old folder metadata to the the new folder
-        foreach (["NormalizedName", "Note", "IsShared"] as $Method) {
+        foreach (["normalizedName", "note", "isShared"] as $Method) {
             $NewFolder->$Method($this->$Method());
         }
 
@@ -637,6 +683,8 @@ class Folder
 
     private $ItemNoteCache;
     private $OrderList;
+
+    private $SortValueCache = [];
 
     # item type IDs (indexed by normalized type name)
     private static $ItemTypeIds;
@@ -768,6 +816,103 @@ class Folder
                     .", ItemId = ".intval($ItemId)
                     .", ItemTypeId = ".intval($ItemTypeId));
         }
+    }
+
+    /**
+     * Compare values from fields in an item for sorting.
+     * @param int $ItemA ID of first item.
+     * @param int $ItemB ID of second item.
+     * @return int -1 when ItemA is before ItemB, 1 if ItemA is after
+     *     ItemB, 0 if their values are equal.
+    */
+    private function sortCompare(
+        int $ItemA,
+        int $ItemB
+    ): int {
+        # get values of ItemA and ItemB
+        $ValA = $this->getItemValueForSorting($ItemA);
+        $ValB = $this->getItemValueForSorting($ItemB);
+
+        if ($ValA === null) {
+            return ($ValB === null) ? 0 : 1;
+        }
+
+        if ($ValB === null) {
+            return -1;
+        }
+
+        return ($this->getReverseSortFlag() ? -1 : 1) * ($ValA <=> $ValB);
+    }
+
+    /**
+     * Get value of field for a given item to be used for sort comparisons.
+     * @param int $ItemId Item to use.
+     * @return string|null Value for sort comparisons.
+     */
+    private function getItemValueForSorting(int $ItemId): ?string
+    {
+        static $SortField = false;
+
+        # if value is already cached, return it
+        if (array_key_exists($ItemId, $this->SortValueCache)) {
+            return $this->SortValueCache[$ItemId];
+        }
+
+        $SortFieldId = $this->getSortFieldId();
+        if ($SortFieldId === false) {
+            throw new Exception(
+                "Cannot get sort item value when no sort field is set."
+            );
+        }
+        if ($SortField === false || $SortField->id() != $SortFieldId) {
+            $SortField = MetadataField::getField($SortFieldId);
+        }
+
+        $Resource = Record::getRecord($ItemId);
+
+        # if sort field is from a different schema, treat value as null
+        if ($Resource->getSchemaId() != $SortField->schemaId()) {
+            $this->SortValueCache[$ItemId] = null;
+            return null;
+        }
+
+        # for arrays, use the smallest element in the array
+        $Value = $Resource->get($SortField);
+        if (is_array($Value)) {
+            if (count($Value)) {
+                sort($Value);
+                $Value = current($Value);
+            } else {
+                $Value = null;
+            }
+        }
+
+        # empty string is considered the same as NULL
+        if (is_string($Value) && strlen(trim($Value)) == 0) {
+            $Value = null;
+        }
+
+        if (!is_null($Value)) {
+            # convert timestamps and dates to UNIX timestamps
+            # downcast values for all other field types
+            switch ($SortField->type()) {
+                case MetadataSchema::MDFTYPE_TIMESTAMP:
+                    $Value = (string)strtotime($Value);
+                    break;
+
+                case MetadataSchema::MDFTYPE_DATE:
+                    $Date = new Date($Value);
+                    $Value = (string)strtotime($Date->beginDate());
+                    break;
+
+                default:
+                    $Value = strtolower($Value);
+                    break;
+            }
+        }
+
+        $this->SortValueCache[$ItemId] = $Value;
+        return $Value;
     }
 
     /**

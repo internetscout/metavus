@@ -2,6 +2,58 @@
 Metavus Change Log
 ==================
 
+Version 1.2.1 - Jul 1, 2025
+
+ADDED
+- Add interface Configuration option for "Browse Page Title".  [AL]
+- EduLink plugin: Add more extensive metrics recording.  [CRH]
+- mvus utility: New command "list loggedin" to list users currently logged in.  [EA]
+
+CHANGED
+- Minimum required PHP version is now 7.4.
+- ChatPDF plugin: Revise error reporting to provide more detail to users.  [CRH]
+- GoogleMaps plugin: Revise and simplify retry logic used if an address could
+	not be geocoded and email after three failures rather than one.  [CRH]
+- FeaturedItems plugin: Revise to use `DataCache`.  [YS]
+- MetricsReporter plugin: Revise to use `DataCache`.  [YS]
+- UrlChecker plugin: Suppress errors on invalid hostnames.  [CRH]
+
+FIXED
+- Fix issue that prevented running on servers where PHP garbage collection
+    settings are undefined.  [EA]
+- WYSIWYG editor: "Link" button only works in rich text editing mode, but would
+	previously silently do nothing in source or markdown mode. Now an error
+	is presented.  [AG]
+- Add a `beforeunload` handler to FormUI-based upload forms to warn the user if
+	they navigate away from an edit page while an upload is still in
+	progress.  [CRH]
+- On `LeaveFeedback`, fix an exception when providing feedback for a resource
+	from a schema where no mapped Title or mapped Url fields are
+	configured.  [CRH]
+- Fix bug in ChangeSetEditingUI where some editing elements were non-functional
+	if the first field in any schema used an incremental search.  [CRH]
+- ApplicationFramework: Fix bug that could PHP's garbage collection settings to
+	be undefined.  [EA]
+- Revise `StdLib::getNumberOfCpuCores()` to work correctly when `shell_exec()`
+	is not available.  [EA]
+- Captcha plugin: Fix bug that prevented caches from being pruned.  [CRH]
+- Folders plugin: Fix broken pagination link on folder items list.  [CRH]
+
+DEVELOPER
+- Add `DataCache` helper class to provide a standardized caching method.  [EA]
+- Extend ApplicationFramework with AF::inlineUIFile() to provide a standard way
+	to load SVGs inline.  [EA]
+- Move the setting of page titles from PageTitle() to methods of
+	ApplicationFramework.  [AL]
+- Standardize generation of HTML forms to use FormUI helper class.  [AL]
+- Standardize generation of HTML tables to use HtmlTable helper class.  [AL]
+- Drop `jquery-migrate` compatibility library, which was no longer used in the
+	core software.  [CRH]
+- Update bundled Bootstrap to v5.3.5.  [CRH]
+- Update bundled jQuery to v3.7.1.  [CRH]
+- Update bundled jquery-ui to v1.14.1.  [CRH]
+
+
 Version 1.2.0 - Apr 3, 2025
 
 ADDED

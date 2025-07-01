@@ -3,7 +3,7 @@
 #   FILE:  EditResource.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -22,19 +22,21 @@ $User = User::getCurrentUser();
 # start off assuming editing mode
 $H_Mode = "Edit";
 
+$H_ErrorNoResource = false;
+
 # if ResourceId was absent or invalid
 $H_ResourceId = StdLib::getFormValue("ID");
 if (is_null($H_ResourceId) ||
     ($H_ResourceId != "NEW" && !Record::itemExists($H_ResourceId))) {
-    # for users without (Personal)? Resource Admin or Release Admin,
-    # use checkAuthorization() to display a permission denied message
-    CheckAuthorization(
+    # for users without one of require privileges, display Unauthorized Access page
+    User::requirePrivilege(
         PRIV_RESOURCEADMIN,
         PRIV_COLLECTIONADMIN,
         PRIV_RELEASEADMIN
     );
 
     # for users that do have these privs, we'll give a more specific error
+    $H_ErrorNoResource = true;
     return;
 }
 
@@ -59,7 +61,7 @@ if ($H_ResourceId == "NEW") {
 
     # bail out if user is not authorized to create new resources
     if (!$Schema->userCanAuthor($User)) {
-        CheckAuthorization(-1);
+        User::handleUnauthorizedAccess();
         return;
     }
 
@@ -73,7 +75,7 @@ if ($H_ResourceId == "NEW") {
 
 # bail out if user is not authorized to modify this resource
 if (!$H_Resource->userCanModify($User)) {
-    CheckAuthorization(-1);
+    User::handleUnauthorizedAccess();
     return;
 }
 

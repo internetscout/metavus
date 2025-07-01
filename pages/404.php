@@ -8,7 +8,10 @@
 #
 # @scout:phpstan
 
+use ScoutLib\ApplicationFramework;
+
 # ----- MAIN -----------------------------------------------------------------
 
 header($_SERVER["SERVER_PROTOCOL"]." 404 Not Found");
-PageTitle("Page Not Found");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Page Not Found");

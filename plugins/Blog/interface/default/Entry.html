@@ -333,9 +333,9 @@ if ($BlogEntryFound) {
     $SeeMoreButton->setSize(HtmlButton::SIZE_SMALL);
     $SeeMoreButton->setLink($Blog->BlogUrl());
 
-    PageTitle(strip_tags($H_Entry->TitleForDisplay()));
+    $AF->setPageTitle(strip_tags($H_Entry->TitleForDisplay()));
 } else {
-    PageTitle("Blog Entry Not Found");
+    $AF->setPageTitle("Blog Entry Not Found");
 }
 
 # ----- DISPLAY --------------------------------------------------------------

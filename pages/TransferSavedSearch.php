@@ -9,12 +9,14 @@
 # @scout:phpstan
 
 use Metavus\SavedSearch;
+use Metavus\User;
 use ScoutLib\UserFactory;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- MAIN -----------------------------------------------------------------
 
-if (!CheckAuthorization(PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_USERADMIN)) {
     return;
 }
 
@@ -27,9 +29,11 @@ if (isset($_GET["ID"])) {
     return;
 }
 
+$PluginMgr = PluginManager::getInstance();
+
 $H_OriginalSearch = new SavedSearch($H_SearchId);
 
-$H_MailingsEnabled = $GLOBALS["G_PluginManager"]->pluginEnabled(
+$H_MailingsEnabled = $PluginMgr->pluginReady(
     "SavedSearchMailings"
 );
 

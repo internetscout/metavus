@@ -3,15 +3,13 @@
 #   FILE:  Folder.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Folders;
 
-use Metavus\RecordFactory;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 /**
@@ -19,6 +17,8 @@ use ScoutLib\ApplicationFramework;
  */
 class Folder extends \Metavus\Folder
 {
+    # ---- PUBLIC INTERFACE --------------------------------------------------
+
     /**
      * Get sharing (viewing) URL for folder.  A clean URL will be returned if
      * support for them is available.

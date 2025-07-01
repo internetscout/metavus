@@ -3,7 +3,7 @@
 #   FILE:  ListEvents.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -12,6 +12,7 @@ use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\CalendarEvents\Event;
 use Metavus\Plugins\CalendarEvents\EventFactory;
 use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 /**
@@ -38,14 +39,15 @@ function GetSqlForField($FieldName, $Condition)
     return $Field;
 }
 
-PageTitle("Calendar Events");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Calendar Events");
 
 # get the plugin
 $Plugin = CalendarEvents::getInstance();
 
 # don't allow unauthorized access
 if (!$Plugin->UserCanEditEvents(User::getCurrentUser())) {
-    CheckAuthorization(false);
+    User::handleUnauthorizedAccess();
     return;
 }
 

@@ -27,6 +27,17 @@ class ResourceSummary_Default extends ResourceSummary
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /**
+     * Return output HTML for resource summary.
+     * @return string|false The HTML string for this ResourceSummary.
+     */
+    public function getHtml()
+    {
+        ob_start();
+        $this->display();
+        return ob_get_clean();
+    }
+
+    /**
      * Display (output HTML) for resource summary.
      */
     public function display() : void
@@ -212,11 +223,8 @@ class ResourceSummary_Default extends ResourceSummary
                                     ? "</a>"
                                     : "");
 
-        if (isset($Screenshot)) {
-            $ScreenshotAltText = $Screenshot->altText();
-            if (!strlen($ScreenshotAltText)) {
-                $ScreenshotAltText = "Screenshot for ".$Title;
-            }
+        if (isset($Screenshot) && isset($Title)) {
+            $Screenshot->setDefaultAltText("Screenshot for ".$Title);
         }
         // @codingStandardsIgnoreStart
         ?>
@@ -232,8 +240,8 @@ class ResourceSummary_Default extends ResourceSummary
                                     <a href="<?= ApplicationFramework::baseUrl() ?>index.php?P=FullImage&amp;RI=<?=
                                             $Resource->id() ?>&amp;FI=<?=
                                             $ScreenshotField->id() ?>&amp;ID=<?=
-                                            $Screenshot->id() ?>" title="View screenshot for <?=
-                                            $Title ?>"><?= $Screenshot->getHtml("mv-image-screenshot") ?></a>
+                                            $Screenshot->id() ?>" title="View screenshot<?= (isset($Title) ? (" for". $Title) : "")
+                                            ?>"><?= $Screenshot->getHtml("mv-image-screenshot") ?></a>
                                 <?PHP } else { ?>
                                     <?= $Screenshot; ?>
                                 <?PHP } ?>
@@ -241,7 +249,7 @@ class ResourceSummary_Default extends ResourceSummary
                             </div>
                         <?PHP } else {?>
                             <?= $GoButtonOpenTagNoFocus ?>
-                            <img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile("go.gif") ?>"
+                            <img src="<?= ApplicationFramework::baseUrl().$AF->gUIFile("go.gif") ?>"
                                  class="mv-content-resourcesummary-gobutton" alt="View Resource" />
                             <?= $GoButtonCloseTag ?>
                         <?PHP } ?>
@@ -271,7 +279,7 @@ class ResourceSummary_Default extends ResourceSummary
                     <td class="mv-content-resourcesummary-actions">
                         <ul class="list-group list-group-flush">
                             <?PHP if (isset($RatingGraphic) && $RatingsEnabled && isset($RatingAltText)) { ?>
-                            <li class="list-group-item"><img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile($RatingGraphic) ?>" title="<?= $RatingAltText; ?>" alt="<?= $RatingAltText; ?>" class="mv-rating-graphic" /></li>
+                            <li class="list-group-item"><img src="<?= ApplicationFramework::baseUrl().$AF->gUIFile($RatingGraphic) ?>" title="<?= $RatingAltText; ?>" alt="<?= $RatingAltText; ?>" class="mv-rating-graphic" /></li>
                             <?PHP } else if (isset($RatingString) && $RatingsEnabled) { ?>
                             <li class="list-group-item"><?= $RatingString ?></li>
                             <?PHP } ?>
@@ -279,12 +287,12 @@ class ResourceSummary_Default extends ResourceSummary
                             <?PHP if ($this->Editable) { ?>
                             <li class="list-group-item">
                               <a class="btn btn-primary btn-sm mv-button-iconed" href="<?= $Resource->getEditPageUrl() ?>">
-                                <img class="mv-button-icon" src="<?= ApplicationFramework::baseUrl().$AF->GUIFile("Pencil.svg") ?>" alt="" />
+                                <img class="mv-button-icon" src="<?= ApplicationFramework::baseUrl().$AF->gUIFile("Pencil.svg") ?>" alt="" />
                                 Edit
                               </a>
                             </li>
                             <?PHP } ?>
-                            <?PHP  $this->SignalInsertionPoint(
+                            <?PHP  $this->signalInsertionPoint(
                                     "Resource Summary Buttons");  ?>
                         </ul>
                     </td>
@@ -383,6 +391,7 @@ class ResourceSummary_Default extends ResourceSummary
                     .($IntConfig->getBool("ResourceLaunchesNewWindowEnabled")
                             ? " target=\"_blank\"" : "").">";
         }
+        # TODO $DisplayableResourceLink is not currently used
         if (isset($UrlLink) && ($ResourceLink == $UrlLink)) {
             if ((strlen($RealUrlLink) > static::MAX_RESOURCE_LINK_LENGTH) &&
                 (strlen(strip_tags($RealUrlLink)) == strlen($RealUrlLink))) {
@@ -526,7 +535,7 @@ class ResourceSummary_Default extends ResourceSummary
         $RatingUrlHead = ApplicationFramework::baseUrl()."index.php?P=RateResource"
             ."&amp;F_ResourceId=".$ResourceId."&amp;F_Rating=";
         $ImageURLBase = ApplicationFramework::baseUrl()
-            .$AF->GUIFile($UserRatingGraphic);
+            .$AF->gUIFile($UserRatingGraphic);
         $ImageURLBase = preg_replace('/BigStars.*/', '', $ImageURLBase);
         $OnMouseOut = "SwapStars( '".$ResourceId."', ".$Stars.", true, '"
             .$ImageURLBase."' );";
@@ -566,7 +575,7 @@ class ResourceSummary_Default extends ResourceSummary
         // @codingStandardsIgnoreStart
 ?>
     <div class="RatingDiv mv-content-rating" id="RatingDiv<?= $ResourceId ?>">
-        <img src="<?= ApplicationFramework::baseUrl().$AF->GUIFile($UserRatingGraphic); ?>"
+        <img src="<?= ApplicationFramework::baseUrl().$AF->gUIFile($UserRatingGraphic); ?>"
           width="75" height="16" border="0" usemap="#StarMap_<?= $ResourceId; ?>"
           id="Stars<?= $ResourceId; ?>" alt="<?= $RatingGraphicAlt; ?>" class="inline">
     </div>

@@ -6,18 +6,35 @@
 #   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\HtmlButton;
+namespace Metavus;
+
+use Exception;
+use Metavus\Plugins\Folders\Folder;
 use ScoutLib\ApplicationFramework;
 
+if (!isset($H_Folders) || !is_array($H_Folders)) {
+    throw new Exception("H_Folders unset or is the wrong type.");
+}
+if (!isset($H_ResourceFolder) || ! $H_ResourceFolder instanceof \Metavus\Folder) {
+    throw new Exception("H_ResourceFolder unset or is the wrong type.");
+}
+if (!isset($H_SelectedFolder) || !($H_SelectedFolder instanceof Folder)) {
+    throw new Exception("H_SelectedFolder unset or is the wrong type.");
+}
+
+
 # ----- SETUP ----------------------------------------------------------------
+
 $AF = ApplicationFramework::getInstance();
-$AF->requireUIFile("jquery-ui.css", AF::ORDER_FIRST);
+$AF->requireUIFile("jquery-ui.css", ApplicationFramework::ORDER_FIRST);
 $AF->requireUIFile("jquery-ui.js");
 $AF->requireUIFile("Folders_TransferFolder.js");
 
 $AddFolderButton = new HtmlButton("Add");
 $AddFolderButton->setIcon("Plus.svg");
+
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
@@ -27,7 +44,7 @@ $AddFolderButton->setIcon("Plus.svg");
     <div class="col">
       <h1>Manage Folders</h1>
     </div>
-    <div class="col text-right">
+    <div class="col text-end">
       <form method="get" action="index.php">
         <input type="hidden" name="P" value="P_Folders_AddFolder" />
 
@@ -59,9 +76,9 @@ $AddFolderButton->setIcon("Plus.svg");
 
 <p class="mv-folders-dragnote"><b>Tip:</b> drag folders and resources to rearrange them.</p>
 
-<?PHP if ($HasFolders) { ?>
+<?PHP if (count($H_Folders) > 0) { ?>
   <div class="mv-folders-folders">
-    <?PHP PrintFolders($ResourceFolder->Id(), $Folders, $SelectedFolder); ?>
+    <?PHP PrintFolders($H_ResourceFolder->id(), $H_Folders, $H_SelectedFolder); ?>
   </div>
 <?PHP } else { ?>
   <p class="mv-folders-noitems">There are no folders.</p>

@@ -3,7 +3,7 @@
 #   FILE:  MetadataFieldOrdering.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,13 +11,16 @@
 use Metavus\MetadataFieldGroup;
 use Metavus\MetadataFieldOrder;
 use Metavus\MetadataSchema;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Metadata Field Ordering");
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Metadata Field Ordering");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
 
 # get the schema ID or use the default one if not specified
 $SchemaId = StdLib::getArrayValue(
@@ -32,12 +35,12 @@ $H_Schema = new MetadataSchema($SchemaId);
 $H_GroupIdOffset = $H_Schema->getHighestFieldId() + 100;
 
 # construct the order objects
-$H_DisplayOrder = $H_Schema->GetDisplayOrder();
-$H_EditOrder = $H_Schema->GetEditOrder();
+$H_DisplayOrder = $H_Schema->getDisplayOrder();
+$H_EditOrder = $H_Schema->getEditOrder();
 
 # in case a bug results in any issues, try to fix them
-$H_DisplayOrder->MendIssues();
-$H_EditOrder->MendIssues();
+$H_DisplayOrder->mendIssues();
+$H_EditOrder->mendIssues();
 
 $H_ButtonPushed = StdLib::getFormValue("Submit");
 
@@ -48,7 +51,7 @@ if ($H_ButtonPushed == "Add") {
 
     if ($GroupName && ($Ordering == "Display" || $Ordering == "Edit")) {
         $Order = $Ordering == "Display" ? $H_DisplayOrder : $H_EditOrder;
-        $Order->CreateGroup($GroupName);
+        $Order->createGroup($GroupName);
     }
     # change pushed button to "Save" so we save changes
     $H_ButtonPushed = "Save";
@@ -63,7 +66,7 @@ if ($H_ButtonPushed == "Add") {
         $Order = new MetadataFieldOrder((int) $OrderId);
         $Group = new MetadataFieldGroup((int) $GroupId);
 
-        $Order->DeleteGroup($Group);
+        $Order->deleteGroup($Group);
     }
 } elseif ($H_ButtonPushed == "EditGroupName") {
     # get values from the user
@@ -88,5 +91,5 @@ if ($H_ButtonPushed == "Save Changes") {
     }
 
     # clear page cache so changed ordering will take effect
-    ApplicationFramework::getInstance()->clearPageCache();
+    $AF->clearPageCache();
 }

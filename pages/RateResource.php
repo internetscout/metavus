@@ -3,7 +3,7 @@
 #   FILE:  RateResource.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -26,12 +26,12 @@ if (is_null($Rating) && isset($_POST["F_Rating"])) {
 if (!is_null($ResourceId)) {
     if (!is_null($Rating)) {
         $Resource = new Record($ResourceId);
-        $Resource->Rating($Rating);
+        $Resource->rating($Rating);
     }
 
     # go to full record page
-    $AF->SetJumpToPage("FullRecord&ID=".$ResourceId);
+    $AF->setJumpToPage("FullRecord&ID=".$ResourceId);
 } else {
     # go to the home page
-    $AF->SetJumpToPage("Home");
+    $AF->setJumpToPage("Home");
 }

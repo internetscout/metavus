@@ -3,7 +3,7 @@
 #   FILE:  ConfigureMappings.php (Exif Tags plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -24,7 +24,6 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use Metavus\Plugins\ExifTags;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -216,9 +215,9 @@ function validateMultiplyMappedFields(array $Mappings, int $SchemaId): array
             continue;
         }
         $Field = MetadataField::getField((int) $MdFieldId);
-        if (!in_array($Field->Type(), $CanHaveMultipleValues)) {
+        if (!in_array($Field->type(), $CanHaveMultipleValues)) {
                $Schema  = new MetadataSchema($SchemaId);
-               $ErrorMessage = "Field: ".$Field->Name(). " of type: "
+               $ErrorMessage = "Field: ".$Field->name(). " of type: "
                          . $Field->typeAsName(). " (in "
                          . $Schema->name() . " schema)"
                          . " may not be mapped to > 1 tag.";
@@ -263,7 +262,7 @@ function getAllMappableFields(): array
 {
     $Fields = [];
     $MappableFields = [];
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
         $SchemaFields = $Schema->getFields(ExifTags::MDFTYPES_TO_INCLUDE);
         $FieldEntriesForSchema = [];
         foreach ($SchemaFields as $MDField) {

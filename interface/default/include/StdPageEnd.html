@@ -49,13 +49,13 @@ $IsLoggedIn = User::getCurrentUser()->isLoggedIn();
           <?PHP if (false) { ?>
           <div class="col-lg text-end">
             <div class="mv-social-logo">
-              <?= file_get_contents($AF->gUIFile("InstagramLogo.svg")) ?>
+              <?= $AF->inlineUIFile("InstagramLogo.svg") ?>
             </div>
             <div class="mv-social-logo">
-              <?= file_get_contents($AF->gUIFile("FacebookLogo.svg")) ?>
+              <?= $AF->inlineUIFile("FacebookLogo.svg") ?>
             </div>
             <div class="mv-social-logo">
-              <?= file_get_contents($AF->gUIFile("TwitterLogo.svg")) ?>
+              <?= $AF->inlineUIFile("TwitterLogo.svg") ?>
             </div>
           </div>
           <?PHP } ?>

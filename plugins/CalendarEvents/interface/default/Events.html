@@ -48,17 +48,17 @@ $AddEventButton->setLink("index.php?P=EditResource&ID=NEW&SC=$SafeSchemaId");
       <h1 class="calendar_events-name"><?= $SafeMonth; ?></h1>
     </div>
     <div class="col">
-      <?PHP if ($H_Plugin->UserCanEditEvents($User)) { ?>
+      <?PHP if ($H_Plugin->userCanEditEvents($User)) { ?>
             <?= $AdminListButton->getHtml(); ?>
       <?PHP } ?>
-      <?PHP if ($H_Plugin->UserCanAuthorEvents($User)) { ?>
+      <?PHP if ($H_Plugin->userCanAuthorEvents($User)) { ?>
             <?= $AddEventButton->getHtml(); ?>
       <?PHP } ?>
     </div>
   </div>
 </div>
 
-<?PHP $H_Plugin->PrintTransportControls(
+<?PHP $H_Plugin->printTransportControls(
     $H_EventCounts,
     $H_FirstMonth,
     $H_Month,
@@ -69,7 +69,7 @@ $AddEventButton->setLink("index.php?P=EditResource&ID=NEW&SC=$SafeSchemaId");
 
 <?PHP if ($H_EventCount > 0) { ?>
     <?PHP CalendarEvents_PrintEvents($H_Events, $H_Month); ?>
-    <?PHP $H_Plugin->PrintTransportControls(
+    <?PHP $H_Plugin->printTransportControls(
         $H_EventCounts,
         $H_FirstMonth,
         $H_Month,

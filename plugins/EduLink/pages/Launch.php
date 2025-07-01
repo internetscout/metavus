@@ -17,9 +17,10 @@
 namespace Metavus;
 
 use Exception;
-use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\EduLink;
 use Metavus\Plugins\EduLink\LTIDatabase;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\MetricsRecorder;
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
@@ -147,3 +148,5 @@ $H_RecordIds = RecordFactory::multiSchemaFilterNonViewableRecords(
     $H_RecordIds,
     User::getAnonymousUser()
 );
+
+$H_Plugin->recordRecordViewing($Launch->get_launch_id(), $H_RecordIds);

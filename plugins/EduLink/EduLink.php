@@ -9,17 +9,19 @@
 # @scout:phpstan
 
 namespace Metavus\Plugins;
+
 use Exception;
 use Metavus\FormUI;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
 use Metavus\Plugin;
-use Metavus\Plugins\Folders\Folder;
-use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\Plugins\EduLink\LMSRegistration;
 use Metavus\Plugins\EduLink\LMSRegistrationFactory;
 use Metavus\Plugins\EduLink\LTICache;
 use Metavus\Plugins\EduLink\LTIDatabase;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\Folders\FolderFactory;
+use Metavus\Plugins\MetricsRecorder;
 use Metavus\Record;
 use Metavus\RecordFactory;
 use Metavus\SearchParameterSet;
@@ -84,7 +86,7 @@ final class EduLink extends Plugin
     public function register(): void
     {
         $this->Name = "EduLink";
-        $this->Version = "1.0.0";
+        $this->Version = "1.1.0";
         $this->Description = "Expose resources to Learning Management Systems using "
             ."the Learning Tools Interopability Deep Linking standard.";
         $this->Author = "Internet Scout Research Group";
@@ -92,23 +94,10 @@ final class EduLink extends Plugin
         $this->Email = "support@metavus.net";
         $this->Requires = [
             "MetavusCore" => "1.2.0",
+            "MetricsRecorder" => "1.2.16",
         ];
         $this->EnabledByDefault = false;
 
-        # set loading order so that plugin config settings can be
-        # modified via developer.ini
-        $this->InitializeBefore = [
-            "MetavusCore",
-            "Developer",
-        ];
-    }
-
-    /**
-     * Set up configuration options for the plugin.
-     * @return null|string NULL on success, error string otherwise.
-     */
-    public function setUpConfigOptions(): ?string
-    {
         $this->CfgSetup["ServiceName"] = [
             "Type" => FormUI::FTYPE_TEXT,
             "Label" => "Service Name",
@@ -275,14 +264,6 @@ final class EduLink extends Plugin
             "Help" => "Use internal caches for HTML and search results."
                 ." (Useful to disable on development sites.)"
         ];
-
-        $this->addAdminMenuEntry(
-            "ListRegistrations",
-            "Learning Tools Interoperability (LTI) Registrations",
-            [ PRIV_SYSADMIN, PRIV_COLLECTIONADMIN ]
-        );
-
-        return null;
     }
 
     /**
@@ -354,6 +335,28 @@ final class EduLink extends Plugin
         foreach ($UrlMap as $CleanUrl => $Page) {
             $AF->addSimpleCleanUrl($CleanUrl, $Page);
         }
+
+        $MetricsRecorder = MetricsRecorder::getInstance();
+
+        $EventTypes = [
+            "ViewRecord",
+            "SelectRecord",
+            "SearchRecords",
+            "ListPublisherFolders",
+            "ListFolderContents",
+        ];
+        foreach ($EventTypes as $EventType) {
+            $MetricsRecorder->registerEventType(
+                $this->Name,
+                $EventType
+            );
+        }
+
+        $this->addAdminMenuEntry(
+            "ListRegistrations",
+            "Learning Tools Interoperability (LTI) Registrations",
+            [ PRIV_SYSADMIN, PRIV_COLLECTIONADMIN ]
+        );
 
         return null;
     }
@@ -757,15 +760,6 @@ final class EduLink extends Plugin
     {
         $Data = @$Launch->get_launch_data();
 
-        # check added for phpstan, and it seems that phpstan only wants this
-        # check because the @return for get_launch_data() in the upstream
-        # library lists `object` when there isn't actually any code path that
-        # will produce an object
-        if (is_object($Data)) {
-            throw new Exception(
-                "Object returned where array was expected (should be impossible)."
-            );
-        }
         $Keys = [
             "ClientId" => "aud",
             "Issuer" => "iss",
@@ -987,6 +981,103 @@ final class EduLink extends Plugin
         return $Options;
     }
 
+    /**
+     * Record metrics for record selection.
+     * @param string $LaunchId Launch Id associated with the event.
+     * @param array $RecordIds Record IDs associated with the event.
+     */
+    public function recordRecordSelection(
+        string $LaunchId,
+        array $RecordIds
+    ): void {
+        $this->recordEventForRecords(
+            "SelectRecord",
+            $LaunchId,
+            $RecordIds
+        );
+    }
+
+    /**
+     * Record metrics for record viewing.
+     * @param string $LaunchId Launch Id associated with the event.
+     */
+    public function recordRecordViewing(
+        string $LaunchId,
+        array $RecordIds
+    ): void {
+        $this->recordEventForRecords(
+            "ViewRecord",
+            $LaunchId,
+            $RecordIds
+        );
+    }
+
+    /**
+     * Record metrics for when a user lists the collections from a publisher.
+     * @param string $LaunchId Launch Id associated with the event.
+     * @param int $PublisherId User ID of the publisher whose folders are
+     *         displayed.
+     */
+    public function recordListPublisherFolders(
+        string $LaunchId,
+        int $PublisherId
+    ): void {
+        $this->recordEventForPageView(
+            "ListPublisherFolders",
+            $LaunchId,
+            $PublisherId
+        );
+    }
+
+    /**
+     * Record metrics for when a user l-ts the contents of a folder.
+     * @param string $LaunchId Launch Id associated with the event.
+     * @param int $FolderId ID of the folder being displayed.
+     */
+    public function recordListFolderContents(
+        string $LaunchId,
+        int $FolderId
+    ): void {
+        $this->recordEventForPageView(
+            "ListFolderContents",
+            $LaunchId,
+            $FolderId
+        );
+    }
+
+    /**
+     * Record metrics for when a user performs a search.
+     * @param string $LaunchId Launch Id associated with the event.
+     * @param SearchParameterSet $SearchParams Search that was performed.
+     * @param int $Page Page of search results being viewed (included so that
+     *         we can tell the difference between repeated searches for the
+     *         same thing vs paging through search results).
+     * @param int $NumResults Number of search results.
+     */
+    public function recordSearch(
+        string $LaunchId,
+        SearchParameterSet $SearchParams,
+        int $Page,
+        int $NumResults
+    ): void {
+        $MetricsRecorder = MetricsRecorder::getInstance();
+
+        $PluginName = $this->getName();
+        $UserId = User::getCurrentUser()->id();
+
+        $SearchData = json_encode([
+            "S" => $SearchParams->data(),
+            "P" => $Page,
+            "N" => $NumResults,
+        ]);
+        $MetricsRecorder->recordEvent(
+            $PluginName,
+            "SearchRecords",
+            $SearchData,
+            $LaunchId,
+            $UserId
+        );
+    }
 
     # ---- PLUGIN COMMANDS ---------------------------------------------------
 
@@ -1147,7 +1238,7 @@ final class EduLink extends Plugin
      * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
      * phpcs:enable
      */
-    public function checkEmbeddingHttpHeaders($Url): bool
+    private function checkEmbeddingHttpHeaders($Url): bool
     {
         $Context = curl_init();
 
@@ -1207,6 +1298,62 @@ final class EduLink extends Plugin
 
         # otherwise, we found no embedding restrictions
         return true;
+    }
+
+    /**
+     * Record metrics data for a specified type of event and list of records.
+     * @param string $EventName Event to record.
+     * @param string $LaunchId Launch Id that triggered the event. (Launch
+     *         data can be retrieved with LTICache::get_launch_data($LaunchId).
+     *         Details of the data contained can be found in the LTI Specs,
+     *         e.g. https://www.imsglobal.org/spec/lti-dl/v2p0#deep-linking-response-example)
+     * @param array $RecordIds Records associated with the event.
+     */
+    private function recordEventForRecords(
+        string $EventName,
+        string $LaunchId,
+        array $RecordIds
+    ): void {
+        $MetricsRecorder = MetricsRecorder::getInstance();
+
+        $PluginName = $this->getName();
+        $UserId = User::getCurrentUser()->id();
+
+        foreach ($RecordIds as $RecordId) {
+            $MetricsRecorder->recordEvent(
+                $PluginName,
+                $EventName,
+                $RecordId,
+                $LaunchId,
+                $UserId
+            );
+        }
+    }
+
+    /**
+     * Record metrics data for a page view
+     * @param string $EventName Event to record.
+     * @param string $LaunchId Launch Id that triggered the event.
+     * @param ?int $ItemId Item being viewed on this page or NULL when there
+     *         is no specific item.
+     */
+    private function recordEventForPageView(
+        string $EventName,
+        string $LaunchId,
+        ?int $ItemId
+    ): void {
+        $MetricsRecorder = MetricsRecorder::getInstance();
+
+        $PluginName = $this->getName();
+        $UserId = User::getCurrentUser()->id();
+
+        $MetricsRecorder->recordEvent(
+            $PluginName,
+            $EventName,
+            $ItemId,
+            $LaunchId,
+            $UserId
+        );
     }
 
     /**

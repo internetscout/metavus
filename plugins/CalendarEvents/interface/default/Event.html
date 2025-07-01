@@ -7,10 +7,13 @@
 #   http://metavus.net
 #
 
+use ScoutLib\ApplicationFramework;
+
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
 $PageTitle = $H_State == "OK" ? strip_tags($H_Event->Get("Title")) : "Event Not Found";
-PageTitle($PageTitle);
+$AF->setPageTitle($PageTitle);
 
 ?>
 

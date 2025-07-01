@@ -1590,7 +1590,7 @@ $Params["Parameters"]
     ) : void {
         $AF = ApplicationFramework::getInstance();
         $PlugManager = PluginManager::getInstance();
-        if (!$PlugManager->pluginEnabled("Captcha")) {
+        if (!$PlugManager->pluginReady("Captcha")) {
             return;
         }
 

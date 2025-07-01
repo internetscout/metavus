@@ -15,8 +15,6 @@ use ScoutLib\Database;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
-PageTitle("System Administration");
-
 # ----- CONFIGURATION --------------------------------------------------------
 
 $CollectionAdminMenuEntries = [
@@ -149,7 +147,7 @@ function DisplayPluginErrorMessages(): void
     if (count($ErrMsgs)) {
         $Output = '<ul class="alert alert-danger"><h3>Plugin Errors</h3>';
         foreach ($ErrMsgs as $PluginName => $Msgs) {
-            if ($GLOBALS["G_PluginManager"]->PluginEnabled($PluginName)) {
+            if (PluginManager::getInstance()->PluginEnabled($PluginName)) {
                 foreach ($Msgs as $Msg) {
                     $Output .= "<li><b>".$PluginName.":</b> ".$Msg."</li>";
                     $ErrMsgDisplayed = true;
@@ -200,6 +198,8 @@ $User = User::getCurrentUser();
 $ClearButton = new HtmlButton("CLEAR");
 $ClearButton->setSize(HtmlButton::SIZE_SMALL);
 $ClearButton->setLink("?P=SysAdmin&AC=ClearPageCache");
+
+$AF->setPageTitle("System Administration");
 
 # ----- DISPLAY --------------------------------------------------------------
 

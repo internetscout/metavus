@@ -3,7 +3,7 @@
 #   FILE:  ListEntries.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -27,7 +27,7 @@ $H_Schema = new MetadataSchema($Blog->GetSchemaId());
 
 # don't allow unauthorized access
 if (!$H_Schema->UserCanEdit(User::getCurrentUser())) {
-    CheckAuthorization(false);
+    User::handleUnauthorizedAccess();
     return;
 }
 

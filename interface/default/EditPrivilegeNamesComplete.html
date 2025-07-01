@@ -10,15 +10,21 @@
 
 namespace Metavus;
 
-use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function UpdatePrivileges(): void
+/**
+ * Get a 2D array of changed permission names and their update statuses.
+ * @return array Array of arrays each containing a privilege and the updates made to that privilege.
+ */
+function updatePrivileges(): array
 {
+    $PrivilegesArray = [];
+
     # Create privilege factory and get all privileges
     $PrivilegeFactory = new PrivilegeFactory();
-    $Privileges = $PrivilegeFactory->GetPrivileges();
+    $Privileges = $PrivilegeFactory->getPrivileges();
 
     # Set starting index
     $Index = 0;
@@ -30,22 +36,22 @@ function UpdatePrivileges(): void
         if (!$Privilege->IsPredefined() &&
                 isset($_POST["F_PermissionText".$Index])) {
             # Initialize status
-            $Status = 0;
+            $Status = "No Update";
 
             # Determine privilege's update/delete status
             if (isset($_POST["F_PermissionText".$Index."_Delete"])) {
                 # Delete the privilege and update status
                 $Privilege->Delete();
-                $Status = 1;
+                $Status = "Deleted";
                 $Counter--;
             } elseif ($Privilege->Name() !== $_POST["F_PermissionText".$Index]) {
                 # Update privilege and status
                 $Privilege->Name(addslashes($_POST["F_PermissionText".$Index]));
-                $Status = 2;
+                $Status = "Updated";
             }
 
             # Display privilege and increment index
-            DisplayField($Privilege->Name(), $Status);
+            $PrivilegesArray[] = [$Privilege->Name(), $Status];
             $Index++;
             $Counter++;
         }
@@ -55,77 +61,68 @@ function UpdatePrivileges(): void
     for ($Index; isset($_POST["F_PermissionText".$Index]); $Index++) {
         $Name = trim($_POST["F_PermissionText".$Index]);
         $MarkedForDeletion = isset($_POST["F_PermissionText".$Index."_Delete"]);
-        $PrivilegeExists = $PrivilegeFactory->PrivilegeNameExists($Name);
+        $PrivilegeExists = $PrivilegeFactory->privilegeNameExists($Name);
 
         # If not whitespace or an existing privilege, add new privilege and
         # display it
         if (strlen($Name) > 0 && !$MarkedForDeletion && !$PrivilegeExists) {
             $EscapedName = $Name;
             $Privilege = new Privilege(null, $EscapedName);
-            DisplayField($Privilege->Name(), 3);
+            $PrivilegesArray[] = [$Privilege->name(), "Added"];
             $Counter++;
         }
     }
 
     # Determine if any privileges exist
     if ($Counter < 1) {
-        DisplayField("No privileges", 0);
+        $PrivilegesArray[] = ["No privileges", "No Update"];
     }
+
+    return $PrivilegesArray;
 }
 
-function DisplayPrivileges(): void
+/**
+ * Get a 2D array of all permission names and their update statuses
+ *     (always "No Update", since no updates are made in this function).
+ * @return array Array of arrays each containing a privilege and update status
+ *     for each (always "No Update").
+ */
+function getPrivileges(): array
 {
+    $PrivilegesArray = [];
+
     # Create privilege factory and get all privileges
     $PrivilegeFactory = new PrivilegeFactory();
-    $Privileges = $PrivilegeFactory->GetPrivileges();
+    $Privileges = $PrivilegeFactory->getPrivileges();
 
     # Determine if any privileges exist
     $PrivFactory = new PrivilegeFactory();
-    if (count($Privileges) - count($PrivFactory->GetPredefinedPrivilegeConstants()) < 1) {
-        DisplayField("No privileges", 0);
+    if (count($Privileges) - count($PrivFactory->getPredefinedPrivilegeConstants()) < 1) {
+        $PrivilegesArray[] = ["No privileges", "No Update"];
     } else {
-        # Loop through each privilege
         foreach ($Privileges as $Privilege) {
             # Determine if current privilege is not predefined
             if (!$Privilege->IsPredefined()) {
-                # Display privilege and increment index
-                DisplayField($Privilege->Name(), 0);
+                $PrivilegesArray[] = [$Privilege->Name(), "No Update"];
             }
         }
     }
-}
-
-function getStatusText(int $Status): string
-{
-    $Map = [
-        0 => "No Update",
-        1 => "Deleted",
-        2 => "Updated",
-        3 => "Added"
-    ];
-
-    $Text = (array_key_exists($Status, $Map)) ? $Map[$Status] : "Unknown";
-
-    return $Text;
-}
-
-function DisplayField(string $Name, int $Status): void
-{
-    $StatusText = GetStatusText($Status);
-    ?>
-
-<tr>
-    <td><?= $Name; ?></td>
-    <td><?= $StatusText; ?></td>
-</tr>
-
-    <?PHP
+    return $PrivilegesArray;
 }
 
 # ----- SETUP ----------------------------------------------------------------
 $EditButton = new HtmlButton("Edit");
 $EditButton->setIcon("Pencil.svg");
 $EditButton->setLink("index.php?P=EditPrivilegeNames");
+
+$ControlledNamesTable = new HtmlTable();
+$ControlledNamesTable->setTableClass("table table-striped");
+$ControlledNamesTable->addHeaderRow(["Permission Name", "Status"]);
+$ControlledNamesTable->addRows(
+    (isset($_POST["Submit"]) && $_POST["Submit"] == "Cancel")
+        ? getPrivileges()
+        : updatePrivileges()
+);
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
@@ -141,26 +138,4 @@ $EditButton->setLink("index.php?P=EditPrivilegeNames");
 </div>
 </div>
 
-<table class="table table-striped">
-    <thead>
-        <th>Permission Name</th>
-        <th>Status</th>
-    </thead>
-    <tbody>
-    <?PHP
-    # take action based on which submit button was pressed
-    switch (isset($_POST["Submit"]) ? $_POST["Submit"] : null) {
-        case "Save":
-        default:
-            # save changes
-            UpdatePrivileges();
-            break;
-
-        case "Cancel":
-            # Display privilegs
-            DisplayPrivileges();
-            break;
-    }
-    ?>
-    </tbody>
-</table>
+<?= $ControlledNamesTable->getHtml(); ?>

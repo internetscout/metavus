@@ -193,7 +193,7 @@
 
     // do UI setup
     $(document).ready(function(){
-        var SubjectFields = jQuery(".field-subject:not(.field-static)");
+        var SubjectFields = jQuery(".field-subject:visible:not(.field-static)");
 
         // hide elements that should be hidden
         SubjectFields.each(function(){

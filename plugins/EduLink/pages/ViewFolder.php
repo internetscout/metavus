@@ -3,7 +3,7 @@
 #   FILE:  ViewFolder.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -12,7 +12,6 @@
 # for EduLink plugin for a description of the request flow.
 
 namespace Metavus;
-
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\EduLink;
 use Metavus\Plugins\EduLink\ResourceSelectionUI;
@@ -23,6 +22,14 @@ use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
 $Plugin = EduLink::getInstance();
+
+$H_LaunchId = $_GET["L"] ?? false;
+$FolderId = $_GET["F"] ?? false;
+if ($H_LaunchId === false || $FolderId === false) {
+    $AF->suppressStandardPageStartAndEnd();
+    $H_Error = "Required parameters not provided.";
+    return;
+}
 
 $H_LaunchId = $_GET["L"];
 $FolderId = $_GET["F"];
@@ -37,10 +44,11 @@ if (filter_var($FolderId, FILTER_VALIDATE_INT) === false
 
 $H_Folder = new Folder((int)$FolderId);
 
+$Launch = $Plugin->getCachedLaunch($H_LaunchId);
+
 # if a folder was selected, send it back to the LMS
 $ButtonPushed = StdLib::getFormValue("Submit");
 if ($ButtonPushed == "Send Collection to LMS") {
-    $Launch = $Plugin->getCachedLaunch($H_LaunchId);
     $DeepLink = $Launch->get_deep_link();
 
     $LinkUrl = $AF->baseUrl()."lti/dl_f/v1/".$H_Folder->id();
@@ -49,7 +57,7 @@ if ($ButtonPushed == "Send Collection to LMS") {
         ->set_title($H_Folder->name())
         ->set_url($LinkUrl);
 
-    $AF->suppressHTMLOutput();
+    $AF->suppressHtmlOutput();
 
     // at-prefix to hide a warning from w/in the LTI libraries
     @$DeepLink->output_response_form([$Reply]);
@@ -74,5 +82,10 @@ if (count($H_ResourceIds) > 0) {
         $H_ResourceIds
     );
 }
+
+$Plugin->recordListFolderContents(
+    $H_LaunchId,
+    $H_Folder->id()
+);
 
 $AF->suppressStandardPageStartAndEnd();

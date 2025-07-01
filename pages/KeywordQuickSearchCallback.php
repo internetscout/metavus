@@ -3,7 +3,7 @@
 #   FILE:  KeywordQuickSearchCallback.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -80,7 +80,7 @@ if ($NumAdditionalResults > 0) {
             .($NumAdditionalResults > 1 ? "s" : "")."</b> "
             ."<a class=\"btn btn-primary\" "
             ."href=\"".ApplicationFramework::baseUrl()."index.php?P=SearchResults&amp;"
-            .$SearchParams->UrlParameterString()."\">"
+            .$SearchParams->urlParameterString()."\">"
             ."View all</a>",
         "value" => "",
         "ItemId" => ""

@@ -115,10 +115,7 @@ $NoIndexPages = [
     <meta charset="<?= $IntConfig->getString("DefaultCharacterSet") ?>" />
     <?= in_array($AF->GetPageName(), $NoIndexPages) ?
     '<meta name="robots" content="noindex" />' : '' ?>
-    <title><?= PageTitle(); ?></title>
-
-    <!-- (jQuery must be loaded before CWIS JavaScript) -->
-    <?PHP  $AF->IncludeUIFile(["jQuery.js", "jquery-migrate.js"]); ?>
+    <title><?= $AF->getPageTitle(); ?></title>
 
     <!-- core CWIS styling/scripting -->
     <?PHP

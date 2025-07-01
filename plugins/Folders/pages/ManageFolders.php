@@ -3,15 +3,17 @@
 #   FILE:  ManageFolders.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
+namespace Metavus;
+
 use Metavus\Plugins\Folders\FolderDisplayUI;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
@@ -32,9 +34,9 @@ function PrintFolders(int $ResourceFolderId, array $Folders, \Metavus\Folder $Se
     for ($i = 0; $i < $N_Folders; $i++) {
         $Previous = isset($Folders[$i - 1]) ? $Folders[$i - 1] : null;
         $Next = isset($Folders[$i + 1]) ? $Folders[$i + 1] : null;
-        $IsSelected = $Folders[$i]->Id() == $SelectedFolder->Id();
+        $IsSelected = $Folders[$i]->id() == $SelectedFolder->id();
 
-        FolderDisplayUI::PrintFolder(
+        FolderDisplayUI::printFolder(
             $ResourceFolderId,
             $Folders[$i],
             $Previous,
@@ -46,29 +48,24 @@ function PrintFolders(int $ResourceFolderId, array $Folders, \Metavus\Folder $Se
 
 # ----- MAIN -----------------------------------------------------------------
 
-global $ResourceFolder;
-global $SelectedFolder;
-global $Folders;
-global $HasFolders;
-
-PageTitle("Manage Folders");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Manage Folders");
 
 # make sure the user is logged in
-if (!CheckAuthorization()) {
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
-$FolderFactory = new FolderFactory(User::getCurrentUser()->Id());
-$ResourceFolder = $FolderFactory->GetResourceFolder();
-$SelectedFolder = $FolderFactory->GetSelectedFolder();
+$FolderFactory = new FolderFactory(User::getCurrentUser()->id());
+$H_ResourceFolder = $FolderFactory->getResourceFolder();
+$H_SelectedFolder = $FolderFactory->getSelectedFolder();
 
 # these should come after fetching the selected folder since a folder might be
 # created by the FolderFactory::GetSelectedFolder method
-$FolderIds = $ResourceFolder->GetItemIds();
-$Folders = [];
-$HasFolders = count($FolderIds);
+$FolderIds = $H_ResourceFolder->getItemIds();
+$H_Folders = [];
 
 # transform folder IDs to objects
 foreach ($FolderIds as $FolderId) {
-    $Folders[$FolderId] = new Folder($FolderId);
+    $H_Folders[$FolderId] = new Folder($FolderId);
 }

@@ -70,7 +70,7 @@ function printInvalidResourceUrl(
 
     # get the resource name and RFC anchor name
     $Name = defaulthtmlentities(
-        StdLib::NeatlyTruncateString($Resource->Get($TitleField), 22),
+        StdLib::neatlyTruncateString($Resource->get($TitleField), 22),
         ENT_QUOTES,
         $DefaultCharSet,
         false
@@ -94,7 +94,7 @@ function printInvalidResourceUrl(
         false
     );
     $FieldName = defaulthtmlentities(
-        $Field->GetDisplayName(),
+        $Field->getDisplayName(),
         ENT_QUOTES,
         $DefaultCharSet,
         false
@@ -115,16 +115,16 @@ function printInvalidResourceUrl(
     $CodeString = strval($InvalidUrl->StatusCode);
 
     # construct a search query string
-    $Search = $Resource->Get($TitleField);
+    $Search = $Resource->get($TitleField);
 
     # add the publisher value if the field exists
     $Publisher = $Schema->fieldExists("Publisher") ?
         $Schema->getField("Publisher") : null;
 
     if (!is_null($Publisher)
-      && $Publisher->Status() == MetadataSchema::MDFSTAT_OK
-      && $Publisher->Type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
-        foreach ($Resource->Get($Publisher) as $PublisherName) {
+      && $Publisher->status() == MetadataSchema::MDFSTAT_OK
+      && $Publisher->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+        foreach ($Resource->get($Publisher) as $PublisherName) {
             $Search .= " ".$PublisherName;
         }
     }
@@ -155,7 +155,7 @@ function printInvalidResourceUrl(
 
         <!-- resource -->
         <td>
-            <a href="index.php?P=FullRecord&amp;ID=<?= $Resource->Id(); ?>"
+            <a href="index.php?P=FullRecord&amp;ID=<?= $Resource->id(); ?>"
                 title="<?= $TitleWithSpaces; ?>"><?= $Name; ?></a>
         </td>
         <td title="<?= $Schema->name() ?>">
@@ -177,7 +177,6 @@ function printInvalidResourceUrl(
             <?PHP } ?>
             <?PHP if ($CodeString[0] == "3" && $InvalidUrl->FinalStatusCode == 200) { ?>
             [<a href="<?= $FinalUrlHref; ?>" target="_blank">Redirect Page</a>]
-            </div>
             <?PHP } ?>
         </td>
 
@@ -188,15 +187,15 @@ function printInvalidResourceUrl(
                 <img src="plugins/UrlChecker/interface/default/images/edit.gif" alt="Edit" />
             </a>
             <?PHP if ($DisplayReleaseActions) { ?>
-                <?PHP if ($Plugin->IsResourceReleased($Resource)) { ?>
-            <a href="index.php?P=P_UrlChecker_Withhold&amp;ResourceId=<?= $Resource->Id();
-            ?>&amp;FieldId=<?= $Field->Id(); ?>"
+                <?PHP if ($Plugin->isResourceReleased($Resource)) { ?>
+            <a href="index.php?P=P_UrlChecker_Withhold&amp;ResourceId=<?= $Resource->id();
+            ?>&amp;FieldId=<?= $Field->id(); ?>"
             title="Remove &quot;<?= $TitleWithSpaces;?>&quot; from public collection">
                 <img src="plugins/UrlChecker/interface/default/images/withhold.gif" alt="Withold" />
             </a>
                 <?PHP } else { ?>
-            <a href="index.php?P=P_UrlChecker_Release&amp;ResourceId=<?= $Resource->Id();
-            ?>&amp;FieldId=<?= $Field->Id(); ?>"
+            <a href="index.php?P=P_UrlChecker_Release&amp;ResourceId=<?= $Resource->id();
+            ?>&amp;FieldId=<?= $Field->id(); ?>"
                 title="Add &quot;<?= $TitleWithSpaces; ?>&quot; to public collection">
                 <img src="plugins/UrlChecker/interface/default/images/release.gif" alt="Release" />
             </a>
@@ -214,7 +213,7 @@ function printInvalidResourceUrl(
                 alt="Auto-fix" />
             </a>
             <?PHP } ?>
-            <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->Id(); ?>"
+            <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->id(); ?>"
                 title="Recheck this URL now. This may take awhile">
                 <img src="plugins/UrlChecker/interface/default/images/check.gif" alt="Check" />
             </a>

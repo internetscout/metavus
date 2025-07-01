@@ -15,15 +15,21 @@ use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 
-if (!isset($H_Collection) || ($H_Collection == null)) {
-    print "ERROR: No collection specified.";
+if (isset($H_Error)) {
+    if (!is_string($H_Error)) {
+        throw new Exception("Variable \$H_Error is the wrong type.");
+    }
+    print $H_Error;
     return;
 }
-if (!isset($H_Items)) {
-    throw new Exception("Collection items not loaded.");
+if (!isset($H_Collection) || !($H_Collection instanceof Collection)) {
+    throw new Exception("Variable \$H_Collection not set or is the wrong type.");
 }
-if (!isset($H_LinkedCategories)) {
-    throw new Exception("Collection category links not loaded.");
+if (!isset($H_Items) || !is_array($H_Items)) {
+    throw new Exception("Variable \$H_Items not set or is the wrong type.");
+}
+if (!isset($H_LinkedCategories) || !is_array($H_LinkedCategories)) {
+    throw new Exception("Variable \$H_LinkedCategories not set or is the wrong type.");
 }
 
 # configuration settings
@@ -52,7 +58,7 @@ $EditResourceButton->setSize(HtmlButton::SIZE_SMALL);
 
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle("Display Collection: ".$CollectionName);
+$AF->setPageTitle("Display Collection: ".$CollectionName);
 
 ?>
 

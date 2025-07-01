@@ -3,7 +3,7 @@
 #   FILE:  EditInterfaceConfig.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -14,6 +14,7 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
 # ----- SETUP ----------------------------------------------------------------
+/** @var FormUI $H_Form */
 
 # verify that required incoming variables are set
 if (!isset($H_Form)) {
@@ -32,18 +33,16 @@ $InterfaceOptList = new HtmlOptionList(
 );
 $InterfaceOptList->submitOnChange(true);
 
-
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle("Interface Configuration");
+$AF->setPageTitle("Interface Configuration");
 
 ?>
 <form method="POST" action="?P=EditInterfaceConfig" enctype="multipart/form-data" class="priv-form">
 <span style="float: right;">Interface: <?PHP  $InterfaceOptList->printHtml();  ?></span>
 <h1>Interface Configuration</h1>
-<?PHP  FormUI::DisplayErrorBlock();  ?>
-<input type="hidden" name="IF" value="<?= addslashes($H_SelectedInterface) ?>">
-<?PHP  $H_Form->DisplayFormTable();  ?>
+<?PHP  FormUI::displayErrorBlock();  ?>
+<?PHP  $H_Form->displayFormTable();  ?>
 <?= $H_Form->getSubmitButtonHtml("Save") ?>
  <?= $H_Form->getSubmitButtonHtml("Cancel") ?>
 </form>

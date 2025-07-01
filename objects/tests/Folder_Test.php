@@ -199,6 +199,10 @@ class Folder_Test extends \PHPUnit\Framework\TestCase
         # Create test folder
         $TestFolder = Folder::create(null, "Resource");
 
+        $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
+
+        $SortFieldId = $Schema->getFieldIdbyName("Title");
+
         # Create and add test records to the test folder
         $TestRecord1 = Record::create(MetadataSchema::SCHEMAID_RESOURCES);
         $TestRecord1->isTempRecord(false);
@@ -224,7 +228,9 @@ class Folder_Test extends \PHPUnit\Framework\TestCase
         $TestRecord2->set("Title", "c");
         $TestRecord3->set("Title", "d");
         $TestRecord4->set("Title", "b");
-        $TestFolder->sort([$this, "ascFolderSortingCallback"]);
+
+        $TestFolder->setSortFieldId($SortFieldId);
+        $TestFolder->sort();
         $this->checkContents($TestFolder, [
             $TestRecord1->id(),
             $TestRecord4->id(),
@@ -237,7 +243,10 @@ class Folder_Test extends \PHPUnit\Framework\TestCase
         $TestRecord2->set("Title", "a");
         $TestRecord3->set("Title", "b");
         $TestRecord4->set("Title", "c");
-        $TestFolder->sort([$this, "descFolderSortingCallback"]);
+
+        $TestFolder->setSortFieldId($SortFieldId);
+        $TestFolder->setReverseSortFlag(true);
+        $TestFolder->sort();
         $this->checkContents($TestFolder, [
             $TestRecord1->id(),
             $TestRecord4->id(),
@@ -431,28 +440,6 @@ class Folder_Test extends \PHPUnit\Framework\TestCase
     }
 
     /**
-     * Sort the items of the folder in ascending order.
-     * @param $ItemA Id of the first item to compare.
-     * @param $ItemB Id of the second item to compare.
-     * @return int 0 if the two items are equal, > 0 if ItemA > ItemB, or < 0 if ItemA < ItemB
-     */
-    public function ascFolderSortingCallback($ItemA, $ItemB)
-    {
-        return $this->sortFolderCallback($ItemA, $ItemB, true);
-    }
-
-    /**
-     * Sort the items of the folder in descending order.
-     * @param $ItemA Id of the first item to compare.
-     * @param $ItemB Id of the second item to compare.
-     * @return int 0 if the two items are equal, > 0 if ItemA > ItemB, or < 0 if ItemA < ItemB
-     */
-    public function descFolderSortingCallback($ItemA, $ItemB)
-    {
-        return $this->sortFolderCallback($ItemA, $ItemB, false);
-    }
-
-    /**
      * Check the contents of a regular folder (not MIXEDCONTENT) to
      * ensure that it has the correct number of items in the correct
      * order.
@@ -493,93 +480,6 @@ class Folder_Test extends \PHPUnit\Framework\TestCase
         $this->assertSame(
             $TgtVal,
             $TestFolder->GetItemIds()
-        );
-    }
-
-    /**
-     * Sort the items of the folder.
-     * @param $ItemA Id of the first item to compare.
-     * @param $ItemB Id of the second item to compare.
-     * @param $AscSortingOrder True to sort the items of the folder in
-     *     ascending order. Otherwise, sort in descending order.
-     * @return int 0 if the two items are equal, > 0 if ItemA > ItemB, or < 0 if ItemA < ItemB
-     */
-    private function sortFolderCallback($ItemA, $ItemB, $AscSortingOrder)
-    {
-        $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_RESOURCES);
-        $SortFieldId = $Schema->getFieldIdByName("Title");
-        $ValueCache = [];
-        $SortField = MetadataField::getField($SortFieldId);
-
-        # load values of items not present in cache to cache
-        # (value will be used later for sorting)
-        foreach ([$ItemA, $ItemB] as $ItemId) {
-            # first lookup this item in cache,
-            # if it's already present, skip it
-            if (isset($ValueCache[$ItemId])) {
-                continue;
-            }
-
-            $Resource = new Record($ItemId);
-            $ResourceSchema = $Resource->getSchema();
-
-            # put this item last if its schema doesn't own the sort_field
-            if ($ResourceSchema->Id() != $SortField->SchemaId()) {
-                $ValueCache[$ItemId] = null;
-                continue;
-            }
-
-            # for array value, use the smallest element in the array
-            $Value = $Resource->Get($SortField->Id());
-            if (is_array($Value)) {
-                if (count($Value)) {
-                    sort($Value);
-                    $Value = current($Value);
-                } else {
-                    $Value = null;
-                }
-            }
-
-            # empty string is considered the same as NULL
-            if (is_string($Value) && !strlen($Value)) {
-                $Value = null;
-            }
-
-            # special processing based on sorting field's type
-            if (!is_null($Value)) {
-                # convert Timestamp type value from string to number (Unix timestamp)
-                if ($SortField->Type() == MetadataSchema::MDFTYPE_TIMESTAMP) {
-                    $Value = strtotime($Value);
-                }
-
-                # convert Date type value from string to number (Unix timestamp)
-                if ($SortField->Type() == MetadataSchema::MDFTYPE_DATE) {
-                    $Date = new Date($Value);
-                    $Value = strtotime($Date->BeginDate());
-                }
-            }
-
-            $ValueCache[$ItemId] = $Value;
-        }
-
-        # get values of ItemA and ItemB
-        $ValA = $ValueCache[$ItemA];
-        $ValB = $ValueCache[$ItemB];
-
-        # resources with NULL as field value is always put last
-        if (is_null($ValA) && !is_null($ValB)) {
-            return 1;
-        }
-        if (is_null($ValB) && !is_null($ValA)) {
-            return -1;
-        }
-
-        # modify the sort comparison result with respect to the required sorting order
-        # in case of descending sorting order, we will reverse the sorting order.
-        # the sorting should be case-insensitive.
-        return ($AscSortingOrder ? 1 : -1) * StdLib::SortCompare(
-            strtolower($ValA),
-            strtolower($ValB)
         );
     }
 }

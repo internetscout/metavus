@@ -26,7 +26,7 @@ class LTICache extends \IMSGlobal\LTI\Cache
     }
 
     // @phpstan-ignore-next-line (suppress 'no type specified') complaint
-    public function get_launch_data($key)
+    public function get_launch_data($key): mixed
     {
         $Value = $this->DB->queryValue(
             "SELECT Value FROM EduLink_Launches "
@@ -42,7 +42,7 @@ class LTICache extends \IMSGlobal\LTI\Cache
     }
 
     // @phpstan-ignore-next-line (suppress 'no type specified') complaint
-    public function cache_launch_data($key, $jwt_body)
+    public function cache_launch_data($key, $jwt_body): self
     {
         $Data = serialize($jwt_body);
 
@@ -58,7 +58,7 @@ class LTICache extends \IMSGlobal\LTI\Cache
     }
 
     // @phpstan-ignore-next-line (suppress 'no type specified') complaint
-    public function cache_nonce($nonce)
+    public function cache_nonce($nonce): self
     {
         $this->DB->query(
             "INSERT INTO EduLink_Nonces (Nonce, SeenAt)"
@@ -68,7 +68,7 @@ class LTICache extends \IMSGlobal\LTI\Cache
     }
 
     // @phpstan-ignore-next-line (suppress 'no type specified') complaint
-    public function check_nonce($nonce)
+    public function check_nonce($nonce): bool
     {
         $N = $this->DB->queryValue(
             "SELECT COUNT(*) AS N FROM EduLink_Nonces"

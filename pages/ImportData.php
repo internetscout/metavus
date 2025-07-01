@@ -3,7 +3,7 @@
 #   FILE:  ImportData.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -11,6 +11,7 @@
 use Metavus\FormUI;
 use Metavus\File;
 use Metavus\MetadataSchema;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
@@ -29,7 +30,7 @@ function validateFileType(string $FieldName, array $FieldValue)
     }
 
     $File = new File(intval($FieldValue[0]));
-    if (preg_match("/\.(tsv)|(csv)|(txt)$/", $File->Name()) && $File->GetType() == 'text/plain') {
+    if (preg_match("/\.(tsv)|(csv)|(txt)$/", $File->name()) && $File->getType() == 'text/plain') {
         return null;
     }
 
@@ -51,7 +52,7 @@ function getUniqueFieldList(): array
     $Schema = new MetadataSchema();
 
     # Get the fields for the schema
-    $Fields = $Schema->GetFields(
+    $Fields = $Schema->getFields(
         MetadataSchema::MDFTYPE_TEXT |
         MetadataSchema::MDFTYPE_PARAGRAPH |
         MetadataSchema::MDFTYPE_NUMBER |
@@ -59,8 +60,8 @@ function getUniqueFieldList(): array
     );
 
     foreach ($Fields as $Field) {
-        if ($Field->Enabled()) {
-            $Values[$Field->Name()] = $Field->Name();
+        if ($Field->enabled()) {
+            $Values[$Field->name()] = $Field->name();
         }
     }
     return $Values;
@@ -69,7 +70,7 @@ function getUniqueFieldList(): array
 # ----- MAIN -----------------------------------------------------------------
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -112,18 +113,18 @@ $FormFields = [
 $H_FormUI = new FormUI($FormFields);
 
 if (isset($_SESSION["ErrorMessage"])) {
-    FormUI::LogError($_SESSION["ErrorMessage"]);
+    FormUI::logError($_SESSION["ErrorMessage"]);
     unset($_SESSION["ErrorMessage"]);
 }
 
 # act on any button press
 switch (StdLib::getFormValue($H_FormUI->getButtonName())) {
     case "Upload":
-        $H_FormUI->HandleUploads();
+        $H_FormUI->handleUploads();
         break;
 
     case "Delete":
-        $H_FormUI->HandleDeletes();
+        $H_FormUI->handleDeletes();
         break;
 
     default:
@@ -135,8 +136,8 @@ $AF = ApplicationFramework::getInstance();
 switch ($ButtonPushed) {
     case "Begin Import":
         # if the input provided was valid
-        if ($H_FormUI->ValidateFieldInput() == 0) {
-            $FieldValues = $H_FormUI->GetNewValuesFromForm();
+        if ($H_FormUI->validateFieldInput() == 0) {
+            $FieldValues = $H_FormUI->getNewValuesFromForm();
 
             # save form values in session for ImportDataExecute to use
             $UniqueField = $FieldValues["UniqueField"];
@@ -145,17 +146,17 @@ switch ($ButtonPushed) {
             $_SESSION["UniqueField"] = $UniqueField;
             $_SESSION["Debug"] = $Debug;
             $_SESSION["Delimiter"] = $Delimiter;
-            $Path = (new File($FieldValues["File"][0]))->GetNameOfStoredFile();
+            $Path = (new File($FieldValues["File"][0]))->getNameOfStoredFile();
             $_SESSION["Path"] = $Path;
             $_SESSION["FileId"] = $FieldValues["File"][0];
 
             # go to ImportDataExecute
-            $AF->SetJumpToPage("ImportDataExecute");
+            $AF->setJumpToPage("ImportDataExecute");
         }
         break;
 
     case "Cancel":
-        $AF->SetJumpToPage("SysAdmin");
+        $AF->setJumpToPage("SysAdmin");
         break;
 
     default:

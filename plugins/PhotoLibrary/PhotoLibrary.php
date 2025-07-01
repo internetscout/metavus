@@ -130,7 +130,7 @@ class PhotoLibrary extends Plugin
         # add "Add Photo" to available secondary nav items if appropriate
         if (User::getCurrentUser()->isLoggedIn()) {
             $PluginMgr = PluginManager::getInstance();
-            if ($PluginMgr->pluginEnabled("SecondaryNavigation")) {
+            if ($PluginMgr->pluginReady("SecondaryNavigation")) {
                 $Schema = new MetadataSchema($this->getConfigSetting("MetadataSchemaId"));
                 $SecondaryNavPlugin = SecondaryNavigation::getInstance();
                 $RequiredPrivs = new PrivilegeSet();

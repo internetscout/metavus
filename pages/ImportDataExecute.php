@@ -31,7 +31,7 @@ function AddControlledName($Field, $Value) : int
         );
     }
 
-    if (!ControlledName::ControlledNameExists($Value, $Field->id())) {
+    if (!ControlledName::controlledNameExists($Value, $Field->id())) {
         $H_ControlledNameCount++;
     }
     $ControlledName = ControlledName::create($Value, $Field->id());
@@ -65,14 +65,14 @@ function AddClassification($Field, $Value) : int
     }
 
     # attempt to look up that value in our field
-    $ClassId = $CFactories[$Field->id()]->GetItemIdByName($Value);
+    $ClassId = $CFactories[$Field->id()]->getItemIdByName($Value);
 
     # if the value didn't exist, create it
     if ($ClassId === false) {
         $Classification = Classification::create($Value, $Field->id());
         $ClassId = $Classification->id();
-        $H_ClassificationCount += Classification::SegmentsCreated();
-        $CFactories[$Field->id()]->ClearCaches();
+        $H_ClassificationCount += Classification::segmentsCreated();
+        $CFactories[$Field->id()]->clearCaches();
     }
 
     return $ClassId;
@@ -82,7 +82,7 @@ function AddClassification($Field, $Value) : int
  * Process a field's value based on its type
  * @param MetadataField $Field Field to which the class should belong.
  * @param string $Value Value to process
- * @return int|string The proccessed value
+ * @return int|string The processed value
  */
 function ProcessFieldValue($Field, $Value)
 {
@@ -160,7 +160,7 @@ function FirstTimeThrough(): bool
             "Unknown metadata fields encountered: "
             .implode(", ", $InvalidFields)."<br/>";
         UnsetSessionVars();
-        ApplicationFramework::getInstance()->SetJumpToPage("ImportData");
+        ApplicationFramework::getInstance()->setJumpToPage("ImportData");
         return false;
     }
 
@@ -258,7 +258,7 @@ function DoWhileLoop(): bool
             }
             $_SESSION["ErrorMessage"] = $ErrorMessage;
             UnsetSessionVars();
-            ApplicationFramework::getInstance()->SetJumpToPage("ImportData");
+            ApplicationFramework::getInstance()->setJumpToPage("ImportData");
             return false;
         }
 
@@ -298,21 +298,19 @@ function DoWhileLoop(): bool
             }
         }
 
-        # old format with ControlledName/ControlleNameTypeName pairs
+        # old format with ControlledName/ControlledNameTypeName pairs
         $Key = array_search("ControlledName", $NameArray);
-        if ($Key !== false && !is_null($Key)) {
+        if ($Key !== false) {
             $Value = $SpecialArray[$Key];
             $Key = array_search("ControlledNameTypeName", $NameArray);
             $Field = $Schema->getField($SpecialArray[$Key]);
-            if (is_object($Field)) {
-                $Value = AddControlledName($Field, $Value);
-                $ValueArray[$Field->id()] = [$Value];
-            }
+            $Value = AddControlledName($Field, $Value);
+            $ValueArray[$Field->id()] = [$Value];
         }
 
         # old format with ClassificationName/ClassificationTypeId pairs
         $Key = array_search("ClassificationName", $NameArray);
-        if ($Key !== false && !is_null($Key)) {
+        if ($Key !== false) {
             $Value = $SpecialArray[$Key];
             $Key = array_search("ClassificationTypeId", $NameArray);
 
@@ -323,10 +321,8 @@ function DoWhileLoop(): bool
             }
 
             $Field = $Schema->getField($SpecialArray[$Key]);
-            if (is_object($Field)) {
-                $Value = AddClassification($Field, $Value);
-                $ValueArray[$Field->id()] = [$Value];
-            }
+            $Value = AddClassification($Field, $Value);
+            $ValueArray[$Field->id()] = [$Value];
         }
 
         # skip the rest if we're not importing records
@@ -350,7 +346,7 @@ function DoWhileLoop(): bool
                     "Correct the problem and try importing again.<br>";
                 $_SESSION["ErrorMessage"] = $ErrorMessage;
                 UnsetSessionVars();
-                $AF->SetJumpToPage("ImportData");
+                $AF->setJumpToPage("ImportData");
                 return false;
             }
 
@@ -376,7 +372,7 @@ function DoWhileLoop(): bool
                     "Correct the problem and try importing again.<br>";
                 $_SESSION["ErrorMessage"] = $ErrorMessage;
                 UnsetSessionVars();
-                $AF->SetJumpToPage("ImportData");
+                $AF->setJumpToPage("ImportData");
                 return false;
             }
 
@@ -409,7 +405,7 @@ function DoWhileLoop(): bool
             }
 
             $UniqueFieldValue = addslashes((string)reset($ValueArray[$Index]));
-            $UniqueFieldDBName = $Field->DBFieldName();
+            $UniqueFieldDBName = $Field->dBFieldName();
 
             $SqlCondition = $UniqueFieldDBName."=\"".$UniqueFieldValue."\"";
         }
@@ -449,7 +445,7 @@ function DoWhileLoop(): bool
 
                     $DORC = explode(" ", (string)reset($ValueArray[$Index]));
                     $Date = new Date($DORC[0]);
-                    $DateBegin = $Date->BeginDate();
+                    $DateBegin = $Date->beginDate();
                     $Resource->set("Date Of Record Creation", $DateBegin);
                 }
 
@@ -468,17 +464,17 @@ function DoWhileLoop(): bool
 
                     $DORC = explode(" ", (string)reset($ValueArray[$Index]));
                     $Date = new Date($DORC[0]);
-                    $DateBegin = $Date->BeginDate();
+                    $DateBegin = $Date->beginDate();
                     $Resource->set("Date Last Modified", $DateBegin);
                 }
 
                 # convert to real resource
-                $Resource->IsTempRecord(false);
+                $Resource->isTempRecord(false);
                 $ResourceId = $Resource->id();
 
                 # make sure search and recommender databases are updated
-                $SearchEngine->QueueUpdateForItem($ResourceId);
-                $Recommender->QueueUpdateForItem($ResourceId);
+                $SearchEngine->queueUpdateForItem($ResourceId);
+                $Recommender->queueUpdateForItem($ResourceId);
 
                 if ($Debug) {
                     $H_DebugInfo .= "ResourceId = $ResourceId<br>";
@@ -505,7 +501,7 @@ function DoWhileLoop(): bool
                     .$H_TotalLineCount.".";
                 $_SESSION["ErrorMessage"] = $ErrorMessage;
                 UnsetSessionVars();
-                $AF->SetJumpToPage("ImportData");
+                $AF->setJumpToPage("ImportData");
                 return false;
             }
         }
@@ -517,7 +513,7 @@ function DoWhileLoop(): bool
                     if (!$Schema->fieldExists($FieldId)) {
                         continue;
                     }
-                    $Field = $Schema->GetField($FieldId);
+                    $Field = $Schema->getField($FieldId);
 
                     if ($Debug) {
                         $H_DebugInfo .= "ResourceId=".$Resource->id().
@@ -525,12 +521,10 @@ function DoWhileLoop(): bool
                             implode(", ", $Value)."<br>";
                     }
 
-                    if (is_object($Field) &&
-                        $Field->Type() == MetadataSchema::MDFTYPE_REFERENCE) {
+                    if ($Field->type() == MetadataSchema::MDFTYPE_REFERENCE) {
                         $ReferenceArray[$Field->id()][$Resource->id()][] =
                             $Value;
-                    } elseif (is_object($Field) &&
-                            $Field->Type() == MetadataSchema::MDFTYPE_USER) {
+                    } elseif ($Field->type() == MetadataSchema::MDFTYPE_USER) {
                         # if we don't have a User object for this one
                         # user, create one by attempting to look them up
                         if (count($Value) != 1) {
@@ -605,7 +599,7 @@ global $Delimiter;
 $H_DebugInfo = "";
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -682,7 +676,7 @@ foreach (array("H_ImportComplete","H_ResourceCount","H_ControlledNameCount",
 
 # time to auto-refresh?
 if ($H_ImportComplete == 0) {
-    ApplicationFramework::getInstance()->SetJumpToPage("index.php?P=ImportDataExecute", 1);
+    ApplicationFramework::getInstance()->setJumpToPage("index.php?P=ImportDataExecute", 1);
 } else {
     global $ReferenceMessages;
 
@@ -693,7 +687,7 @@ if ($H_ImportComplete == 0) {
 
     # first, pull out factories for each schema we wish to consider
     $RFactories = array();
-    $Schemas = MetadataSchema::GetAllSchemas();
+    $Schemas = MetadataSchema::getAllSchemas();
     ksort($Schemas);
 
     foreach ($Schemas as $SchemaId => $Schema) {
@@ -762,13 +756,14 @@ if ($H_ImportComplete == 0) {
     }
     # remove file from database
     $ToDelete = new File($_SESSION["FileId"]);
-    $ToDelete->Destroy();
+    $ToDelete->destroy();
 }
 
-PageTitle("Import Data");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Import Data");
 
 # register post-processing function with the application framework
-ApplicationFramework::getInstance()->AddPostProcessingCall(
+ApplicationFramework::getInstance()->addPostProcessingCall(
     __NAMESPACE__."\\PostProcessingFn",
     $TempFile,
     $fp,

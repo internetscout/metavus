@@ -3,20 +3,22 @@
 #   FILE:  TransferFolders.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+namespace Metavus;
+
 use Metavus\Plugins\Folders;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 use ScoutLib\UserFactory;
 
+# ----- MAIN -----------------------------------------------------------------
+#
 /**
  * Print JSON using given information in JsonHelper format, replaces use of JsonHelper
  * @param string $State to display, "OK" for success, "ERROR" for error
@@ -42,42 +44,41 @@ $AF = ApplicationFramework::getInstance();
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
-$FolderID = StdLib::getArrayValue($_GET, "FID");
-$NewUserName = StdLib::getArrayValue($_POST, "username");
+$FolderID = $_GET["FID"] ?? null;
+$NewUserName = $_POST["username"] ?? null;
 $NewUserID = null;
 $Plugin = Folders::getInstance();
-$UserHasPriv = $User->HasPriv($Plugin->
-        ConfigSetting("PrivsToTransferFolders"));
-$IsAjax = ApplicationFramework::ReachedViaAjax();
+$UserHasPriv = $Plugin->getConfigSetting("PrivsToTransferFolders")->meetsRequirements($User);
+$IsAjax = ApplicationFramework::reachedViaAjax();
 
 # suppress HTML if we are using AJAX
 if ($IsAjax) {
-    $AF->BeginAjaxResponse();
+    $AF->beginAjaxResponse();
 }
 
 # try to retrieve User ID
-if ($NewUserName != null) {
+if ($NewUserName !== null) {
     $UserFactory = new UserFactory();
-    $NewUserID = key($UserFactory->FindUserNames($NewUserName));
+    $NewUserID = key($UserFactory->findUserNames($NewUserName));
 }
 
 # return error messages
-if ($FolderID == null || !$UserHasPriv || $NewUserName == null || $NewUserID == null) {
+if ($FolderID === null || !$UserHasPriv || $NewUserName === null || $NewUserID === null) {
     if ($IsAjax) {
-        if ($FolderID == null || $NewUserName == null) {
+        if ($FolderID === null || $NewUserName === null) {
             printJson("ERROR", "Folder or new user information not received.");
-        } elseif (Folder::ItemExists($FolderID)) {
+        } elseif (!Folder::itemExists($FolderID)) {
             printJson("ERROR", " is an invalid folder ID.");
-        } elseif ($NewUserID == null) {
+        } elseif ($NewUserID === null) {
             printJson("ERROR", "User '".$NewUserName."' not found.");
         } else {
             printJson("ERROR", "You don't have permission to transfer folders.");
         }
     } else {
-        if ($FolderID == null || $NewUserName == null) {
+        if ($FolderID === null || $NewUserName === null) {
             # error: not sufficient information received
             $ErrorID = 1;
-        } elseif ($NewUserID == null) {
+        } elseif ($NewUserID === null) {
             # error: new user not found
             $ErrorID = 2;
         } else {
@@ -85,21 +86,25 @@ if ($FolderID == null || !$UserHasPriv || $NewUserName == null || $NewUserID == 
             $ErrorID = 3;
         }
 
-        $AF->SetJumpToPage("index.php?P=P_Folders_ConfirmFolderTransfer&FID="
-                . $FolderID."&ER=".$ErrorID);
+        $AF->setJumpToPage(
+            "index.php?P=P_Folders_ConfirmFolderTransfer&FID="
+            .$FolderID."&ER=".$ErrorID
+        );
     }
     return;
 }
 
 $Folder = new Folder($FolderID);
 
-if ($Folder->OwnerID() != $User->Id()) {
+if ($Folder->ownerId() != $User->id()) {
     if ($IsAjax) {
         printJson("ERROR", "You are not the owner of the folder.");
     } else {
         # error: user is not the owner of the folder
-        $AF->SetJumpToPage("index.php?P=P_Folders_ConfirmFolderTransfer&FID="
-                . $FolderID."&ER=4");
+        $AF->setJumpToPage(
+            "index.php?P=P_Folders_ConfirmFolderTransfer&FID="
+            .$FolderID."&ER=4"
+        );
     }
     return;
 }
@@ -108,42 +113,46 @@ if ($Folder->OwnerID() != $User->Id()) {
 # (i.e., if the new user id was a string, then cast it to an int)
 $NewUserID = intval($NewUserID);
 
-if ($Folder->OwnerID() == $NewUserID) {
+if ($Folder->ownerId() == $NewUserID) {
     if ($IsAjax) {
         printJson("ERROR", "You cannot transfer this folder to yourself.");
     } else {
         # error: user is trying to transfer the folder to himself
-        $AF->SetJumpToPage("index.php?P=P_Folders_ConfirmFolderTransfer&FID="
-                . $FolderID."&ER=5");
+        $AF->setJumpToPage(
+            "index.php?P=P_Folders_ConfirmFolderTransfer&FID="
+            .$FolderID."&ER=5"
+        );
     }
     return;
 }
 
 # transfer the folder
-$FolderFactory = new FolderFactory($User->Id());
-$OriginalResourceFolder = $FolderFactory->GetResourceFolder($User->Id());
-$NewResourceFolder = $FolderFactory->GetResourceFolder($NewUserID);
-$OriginalResourceFolder->RemoveItem($FolderID);
-$NewResourceFolder->AppendItem($FolderID);
+$FolderFactory = new FolderFactory($User->id());
+$OriginalResourceFolder = $FolderFactory->getResourceFolder($User->id());
+$NewResourceFolder = $FolderFactory->getResourceFolder($NewUserID);
+$OriginalResourceFolder->removeItem($FolderID);
+$NewResourceFolder->appendItem($FolderID);
 
-$Folder->OwnerId($NewUserID);
+$Folder->ownerId($NewUserID);
 
 # create new default folder if none left
-if ($OriginalResourceFolder->GetItemCount() == 0) {
-    $FolderFactory->CreateDefaultFolder();
+if ($OriginalResourceFolder->getItemCount() == 0) {
+    $FolderFactory->createDefaultFolder();
 }
 
 # select new folder if original was transferred
-$SelectedFolder = $FolderFactory->GetSelectedFolder();
-$FolderIds = $OriginalResourceFolder->GetItemIds();
-if ($SelectedFolder->Id() == $FolderID) {
-    $FolderFactory->SelectFolder(new Folder(current($FolderIds)));
+$SelectedFolder = $FolderFactory->getSelectedFolder();
+$FolderIds = $OriginalResourceFolder->getItemIds();
+if ($SelectedFolder->id() == $FolderID) {
+    $FolderFactory->selectFolder(new Folder(current($FolderIds)));
 }
 
 # success
 if ($IsAjax) {
     printJson("OK", "Folder successfully transferred to ".$NewUserName.".");
 } else {
-    $AF->SetJumpToPage("index.php?P=P_Folders_ConfirmFolderTransfer&FID="
-            . $FolderID."&SC=TRUE");
+    $AF->setJumpToPage(
+        "index.php?P=P_Folders_ConfirmFolderTransfer&FID="
+        . $FolderID."&SC=TRUE"
+    );
 }

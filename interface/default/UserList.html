@@ -57,8 +57,10 @@ if (!isset($H_ItemsPerPage)) {
     throw new Exception("Required variable \$H_ItemsPerPage is not initialized");
 }
 
+$AF = ApplicationFramework::getInstance();
+
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("User List");
+$AF->setPageTitle("User List");
 ?>
 
 <div class="container-fluid">

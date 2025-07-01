@@ -11,6 +11,7 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -29,6 +30,8 @@ if (!isset($H_FormUI)) {
     throw new Exception("Variable \$H_FormUI not set.");
 }
 
+$AF = ApplicationFramework::getInstance();
+
 $SaveButton = new HtmlButton("Save");
 $SaveButton->makeSubmitButton();
 $SaveButton->setName($H_FormUI->getButtonName());
@@ -39,7 +42,7 @@ $CancelButton->setName($H_FormUI->getButtonName());
 
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle("Edit Folder Settings");
+$AF->setPageTitle("Edit Folder Settings");
 ?>
 <h1>Edit Folder Settings</h1>
 <?PHP  FormUI::DisplayErrorBlock();  ?>

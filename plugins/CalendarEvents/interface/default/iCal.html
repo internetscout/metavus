@@ -7,9 +7,11 @@
 #   http://metavus.net
 #
 
-# ----- MAIN -----------------------------------------------------------------
+use ScoutLib\ApplicationFramework;
 
-PageTitle("Event Not Found");
+# ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Event Not Found");
 
 if ($H_State == "Invalid Date") {
     ?>

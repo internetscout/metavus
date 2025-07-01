@@ -8,8 +8,11 @@
 #
 
 use Metavus\HtmlButton;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
 
@@ -25,7 +28,7 @@ $CancelButton->addSemanticClass("btn-danger");
 
 <?PHP
 if ($H_EditPage) {
-    PageTitle("Edit Item");
+    $AF->setPageTitle("Edit Item");
     ?>
     <h2>Edit Nav Item</h2>
     <p>
@@ -34,7 +37,7 @@ if ($H_EditPage) {
     </p>
     <?PHP
 } else {
-    PageTitle("Add Item");
+    $AF->setPageTitle("Add Item");
     ?>
     <h2>Add Nav Item</h2>
     <p>Add a link to your secondary navigation menu to be displayed with the given label.</p>

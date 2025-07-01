@@ -3,12 +3,13 @@
 #   FILE:  HtmlCheckboxSet.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2019-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
+use Exception;
 
 /**
  * Convenience class for generating a set of HTML checkbox form elements.
@@ -50,9 +51,13 @@ class HtmlCheckboxSet extends HtmlInputSet
      */
     private function numColumns() : int
     {
-        # determine the length of the longest value in order to determine how many
-        # options will be displayed per row
-        $MaxValueLength = max(array_map("strlen", $this->Options));
+        # determine the length of the longest value in order to determine
+        #       how many options will be displayed per row
+        $ValueLengths = array_map("strlen", $this->Options);
+        if (count($ValueLengths) == 0) {
+            throw new Exception("No options defined (should be impossible).");
+        }
+        $MaxValueLength = max($ValueLengths);
 
         # determine how many values per row based on length of longest value
         if ($MaxValueLength > 25) {
@@ -65,8 +70,8 @@ class HtmlCheckboxSet extends HtmlInputSet
             $NumColumns = 5;
         }
 
-        # if we have fewer items than columns, just put everything on a single
-        # row by specifying a single repeating column
+        # if we have fewer items than columns, just put everything on
+        #       a single row by specifying a single repeating column
         if (count($this->Options) < $NumColumns) {
             return 1;
         }

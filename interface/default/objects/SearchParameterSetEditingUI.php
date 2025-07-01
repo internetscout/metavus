@@ -92,8 +92,9 @@ class SearchParameterSetEditingUI
      */
     public function displayAsTable(?string $TableId = null, ?string $TableStyle = null): void
     {
+        $CssClass = "mv-speui-container".($TableStyle !== null ? " ".$TableStyle : "");
         print('<table id="'.defaulthtmlentities($TableId).'" '
-              .'class="'.defaulthtmlentities($TableStyle).'" '
+              .'class="'.defaulthtmlentities($CssClass).'" '
               .'style="width: 100%">');
         $this->displayAsRows();
         print('</table>');
@@ -136,7 +137,7 @@ class SearchParameterSetEditingUI
         foreach ($Fields as $FieldRow) {
             if (is_string($FieldRow) && $FieldRow == "(") {
                 $Depth++;
-                print('<tr><td colspan=2 style="padding-left: 2em;">'
+                print('<tr class="mv-speui-subgroup-row"><td>'
                       .'<input type="hidden" name="'.$this->EditFormName.'[]" '
                       .'value="X-BEGIN-SUBGROUP-X"/>'
                       .'<table class="mv-speui-subgroup">');
@@ -147,7 +148,7 @@ class SearchParameterSetEditingUI
                     .'value="X-END-SUBGROUP-X"/></table></td></tr>');
             } elseif (is_array($FieldRow) && isset($FieldRow["Logic"])) {
                 print('<tr class="mv-speui-logic-row '.$this->EditFormName.'">'
-                      .'<td colspan="3">'
+                      .'<td>'
                       .($Depth == 0 ? 'Top-Level Logic: ' : 'Subgroup with '));
 
                 $ListName = $this->EditFormName."[]";
@@ -167,7 +168,7 @@ class SearchParameterSetEditingUI
                     print('<tr class="mv-speui-field-row '.$this->EditFormName.'"'
                           .' style="white-space: nowrap;">'
                           .'<td><span class="btn btn-primary btn-sm '
-                          .'mv-speui-delete">X</span></td><td>');
+                          .'mv-speui-delete">X</span>');
 
                     # for selectable fields, we need to generate all the
                     # html elements that we might need and then depend on
@@ -207,6 +208,11 @@ class SearchParameterSetEditingUI
 
         # add a template row, used for adding new fields
         $this->printTemplateRow();
+        print '<tr><td>'
+            .'<table><tr><td valign="top">'
+            .'<div class="pt-2">Sort by:</div></td><td>';
+        $this->printSortFieldSelector();
+        print '</td></tr></table></td></tr>';
     }
 
     /**
@@ -411,6 +417,21 @@ class SearchParameterSetEditingUI
 
             $Result = array_pop($GroupStack);
         }
+
+        $SortFields = [];
+        $SortDescending = [];
+        foreach ($_POST as $Key => $Val) {
+            if (preg_match('%^'.$this->EditFormName.'_SF([0-9]+)$%', $Key, $Matches) === 1) {
+                $SortFields[(int)$Matches[1]] = ($Val != -1) ? $Val : false;
+            }
+
+            if (preg_match('%^'.$this->EditFormName.'_SD([0-9]+)$%', $Key, $Matches) === 1) {
+                $SortDescending[(int)$Matches[1]] = $Val;
+            }
+        }
+
+        $Result->sortBy($SortFields);
+        $Result->sortDescending($SortDescending);
 
         $this->SearchParams = $Result;
 
@@ -755,6 +776,8 @@ class SearchParameterSetEditingUI
             $SelectedValue[] = "X-KEYWORD-X";
         }
 
+        $OptionData = [];
+
         # prepare options for print
         foreach ($this->MFields as $MField) {
             if (!in_array($MField->schemaId(), $this->AllowedSchemaIds)) {
@@ -769,14 +792,15 @@ class SearchParameterSetEditingUI
                 $TypeName .= " required";
             }
 
-            $FieldName = $MField->Name();
-            if ($MField->SchemaId() != MetadataSchema::SCHEMAID_DEFAULT) {
-                $FieldName = $this->AllSchemas[$MField->SchemaId()]->Name()
-                           .": ".$FieldName;
-            }
+            $FieldName = "["
+                .$this->AllSchemas[$MField->schemaId()]->abbreviatedName()
+                ."] ".$MField->name();
+            $SchemaName = $this->AllSchemas[$MField->schemaId()]->name();
 
-            $Options[$MField->Id()] = defaulthtmlentities($FieldName);
+            $Options[$SchemaName][$MField->Id()] = defaulthtmlentities($FieldName);
+
             $OptionClass[$MField->Id()] = "field-type-".$TypeName;
+            $OptionData[$MField->id()] = ["schema-id" => $MField->schemaId()];
 
             if ($FieldId == $MField->Id()) {
                 $SelectedValue[] = $MField->Id();
@@ -787,10 +811,10 @@ class SearchParameterSetEditingUI
         $OptList = new HtmlOptionList($ListName, $Options, $SelectedValue);
         $OptList->classForList("mv-speui-field-subject");
         $OptList->classForOptions($OptionClass);
+        $OptList->dataForOptions($OptionData);
         $OptList->maxLabelLength($this->MaxFieldLabelLength);
         $OptList->printHtml();
     }
-
 
     /**
     * Print HTML elements for the value selector for Option and Flag fields.
@@ -923,6 +947,87 @@ class SearchParameterSetEditingUI
         );
     }
 
+
+    /**
+     * Print HTML elements for the sort field selector.
+     * @return void
+     */
+    private function printSortFieldSelector(): void
+    {
+        $SortBy = $this->SearchParams->sortBy();
+        if ($SortBy === false) {
+            $SortBy = -1;
+        }
+        $SortDescending = $this->SearchParams->sortDescending();
+
+        # form field values
+        $AscendingOrder = 0;
+        $DescendingOrder = 1;
+
+        print "<table>";
+
+        # load sort info
+        foreach ($this->AllowedSchemaIds as $SchemaId) {
+            $Schema = new MetadataSchema($SchemaId);
+
+            $NumericTypes = MetadataSchema::MDFTYPE_NUMBER
+                | MetadataSchema::MDFTYPE_DATE
+                | MetadataSchema::MDFTYPE_TIMESTAMP;
+            $NumericFields = [];
+            foreach ($Schema->getFields($NumericTypes) as $Field) {
+                $NumericFields[$Field->id()] = true;
+            }
+
+            $Options = [
+                -1 => "(Relevance)",
+            ];
+            $Data = [
+                -1 => ["sort-dir" => 0],
+            ];
+            $Fields = $Schema->getSortFields();
+            foreach ($Fields as $FieldId => $FieldName) {
+                $Options[$FieldId] = $FieldName;
+                $Data[$FieldId]["sort-dir"] = isset($NumericFields[$FieldId]) ?
+                    $DescendingOrder : $AscendingOrder;
+            }
+
+            $SelectedSort = is_array($SortBy) ?
+                ($SortBy[$SchemaId] ?? -1) : $SortBy;
+
+            # instantiate option list and print
+            $OptList = new HtmlOptionList(
+                $this->EditFormName."_SF".$SchemaId,
+                $Options,
+                $SelectedSort
+            );
+            $OptList->classForList("mv-speui-sort-field");
+            $OptList->dataForOptions($Data);
+
+            $SelectedDescending = is_array($SortDescending) ?
+                ($SortDescending[$SchemaId] ?? false) : $SortDescending;
+
+            $DirList = new HtmlOptionList(
+                $this->EditFormName."_SD".$SchemaId,
+                [
+                    $AscendingOrder => "Asc",
+                    $DescendingOrder => "Dsc",
+                ],
+                (int)$SelectedDescending
+            );
+            $DirList->classForList("btn btn-primary mv-speui-sort-dir");
+
+            print "<tr class='mv-speui-sort-by mv-speui-sort-by-schema-".$SchemaId."'>"
+                ."<td><span class='mv-speui-schema-name'>"
+                .$Schema->name()."</span></td><td>";
+            $OptList->printHtml();
+            print "</td><td>";
+            $DirList->printHtml();
+            print "</td></tr>";
+        }
+        print "</table>";
+    }
+
+
     /**
      * Output template row for JS to copy when new fields are added.
      * @return void
@@ -937,7 +1042,7 @@ class SearchParameterSetEditingUI
             ."<td>"
             ."<span class=\"btn btn-primary btn-sm "
             ."mv-speui-delete\">X</span>"
-            ."</td><td>");
+        );
         $this->printFieldSelector(null);
         $this->printValueSelector(null, "");
         print("<input type=\"text\" class=\"mv-speui-field-value-edit\" "
@@ -945,7 +1050,7 @@ class SearchParameterSetEditingUI
               ."value=\"\">");
         $this->printQuicksearch(null, "");
         print("</td></tr>");
-        print("<tr><td colspan=2>"
+        print("<tr><td>"
               ."<span class=\"btn btn-primary btn-sm "
               ."mv-speui-add-field\">Add Field</span>"
               ."<span class=\"btn btn-primary btn-sm "

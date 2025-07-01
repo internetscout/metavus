@@ -629,7 +629,7 @@ class OAIServer
 
         # if arguments were bad
         $Arg = isset($this->Args["identifier"]) ? $this->Args["identifier"] : null;
-        $ItemId = $this->DecodeIdentifier($Arg);
+        $ItemId = ($Arg !== null) ? $this->DecodeIdentifier($Arg) : null;
         if (isset($this->Args["identifier"]) && ($ItemId == null)) {
             # add error tag
             $Response .= $this->GetRequestTag();

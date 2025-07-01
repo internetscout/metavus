@@ -2195,6 +2195,11 @@ class Developer extends Plugin
                 $ProfileData = false;
             } else {
                 $ProfileData = xhprof_disable();
+
+                # (despite the docs on php.net and phpstan's opinion,
+                # xhprof_disable() will return null when there was no profile
+                # collected)
+                // @phpstan-ignore-next-line
                 if (!is_array($ProfileData)) {
                     $ProfileData = false;
                 }

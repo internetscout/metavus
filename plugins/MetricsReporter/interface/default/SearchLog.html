@@ -3,77 +3,119 @@
 #   FILE:  SearchLog.html (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
-use Metavus\TransportControlsUI;
+namespace Metavus;
+use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
-# construct the ListUI
-$ListUI = new ItemListUI($H_ListFields, $H_TransportUI);
-$ListUI->itemsPerPage($H_ResultsPerPage);
-$ListUI->baseLink($H_BaseLink);
+# ----- CONFIGURATION --------------------------------------------------------
 
-$ListUI->AddActionButton(
-    "Spam",
-    $H_BaseLink
-    ."&amp;".TransportControlsUI::PNAME_STARTINGINDEX."=".$H_TransportUI->startingIndex()
-    ."&amp;Spam=\$ID"
-);
+$TimePeriodOptions = [
+    ST_FOREVER => "All time",
+    ST_24_MONTH => "Last 24 months",
+    ST_12_MONTH => "Last 12 months",
+    ST_6_MONTH => "Last 6 months",
+    ST_3_MONTH => "Last 3 months",
+    ST_1_MONTH => "Last month",
+    ST_1_WEEK => "Last week",
+    ST_1_DAY => "Last day"
+];
+$UserTypeOptions = [
+    UT_ALL => "All Users",
+    UT_ANON => "Anonymous",
+    UT_PRIV => "Privileged",
+    UT_UNPRIV => "Unprivileged"
+];
+$SearchTypeOptions = [
+    STY_ALL => "All",
+    STY_SUCCESSFUL => "Successful",
+    STY_FAILED => "Failed"
+];
+$ResultsPerPageOptions = [
+    50  =>  50,
+    100 => 100,
+    250 => 250,
+    500 => 500,
+    750 => 750
+];
 
-$StartOptionList = new HtmlOptionList(
-    "ST",
-    [
-        ST_FOREVER => "All time",
-        ST_24_MONTH => "Last 24 months",
-        ST_12_MONTH => "Last 12 months",
-        ST_6_MONTH => "Last 6 months",
-        ST_3_MONTH => "Last 3 months",
-        ST_1_MONTH => "Last month",
-        ST_1_WEEK => "Last week",
-        ST_1_DAY => "Last day"
-    ],
-    $H_StartTime
-);
-$StartOptionList->SubmitOnChange(true);
 
-$UserTypeOptionList = new HtmlOptionList(
-    "UT",
-    [
-        UT_ALL => "All Users",
-        UT_ANON => "Anonymous",
-        UT_PRIV => "Privileged",
-        UT_UNPRIV => "Unprivileged"
-    ],
-    $UserType
-);
-$UserTypeOptionList->SubmitOnChange(true);
+# ----- SETUP ----------------------------------------------------------------
 
-$SearchTypeOptionList = new HtmlOptionList(
-    "STY",
-    [
-        STY_ALL => "All",
-        STY_SUCCESSFUL => "Successful",
-        STY_FAILED => "Failed"
-    ],
-    $H_SearchType
-);
-$SearchTypeOptionList->SubmitOnChange(true);
+# verify that required incoming variables are set
+if (!isset($H_ListData)) {
+    throw new Exception("Variable \$H_ListData not set.");
+}
+if (!isset($H_ListFields)) {
+    throw new Exception("Variable \$H_ListFields not set.");
+}
+if (!isset($H_TransportUI)) {
+    throw new Exception("Variable \$H_TransportUI not set.");
+}
+if (!isset($H_ResultsPerPage)) {
+    throw new Exception("Variable \$H_ResultsPerPage not set.");
+}
+if (!isset($H_BaseLink)) {
+    throw new Exception("Variable \$H_BaseLink not set.");
+}
+if (!isset($UserType)) {
+    throw new Exception("Variable \$UserType not set.");
+}
+if (!isset($H_SearchType)) {
+    throw new Exception("Variable \$H_SearchType not set.");
+}
+if (!isset($H_View)) {
+    throw new Exception("Variable \$H_View not set.");
+}
+if (!isset($H_TotalResults)) {
+    throw new Exception("Variable \$H_TotalResults not set.");
+}
+if (!isset($H_StartTime)) {
+    throw new Exception("Variable \$H_StartTime not set.");
+}
 
-$RPOtionList = new HtmlOptionList(
-    "RP",
-    [
-        50  =>  50,
-        100 => 100,
-        250 => 250,
-        500 => 500,
-        750 => 750
-    ],
-    $H_ResultsPerPage
-);
-$RPOtionList->SubmitOnChange(true);
+$ListUI = new ItemListUI($H_ListFields, $H_ListData);
+$ListUI->setTransportControls($H_TransportUI);
+$ListUI->setItemsPerPage($H_ResultsPerPage);
+$ListUI->setTotalItemCount($H_TotalResults);
+$ListUI->setBaseLink($H_BaseLink);
+
+$SpamButtonLink = $H_BaseLink."&amp;".TransportControlsUI::PNAME_STARTINGINDEX
+        ."=".$H_TransportUI->startingIndex()."&amp;Spam=\$ID";
+$ListUI->addActionButton("Spam", $SpamButtonLink);
+
+$PeriodOptionList = new HtmlOptionList("ST", $TimePeriodOptions, $H_StartTime);
+$PeriodOptionList->submitOnChange(true);
+
+$UserTypeOptionList = new HtmlOptionList("UT", $UserTypeOptions, $UserType);
+$UserTypeOptionList->submitOnChange(true);
+
+$SearchTypeOptionList = new HtmlOptionList("STY", $SearchTypeOptions, $H_SearchType);
+$SearchTypeOptionList->submitOnChange(true);
+
+$RPOtionList = new HtmlOptionList("RP", $ResultsPerPageOptions, $H_ResultsPerPage);
+$RPOtionList->submitOnChange(true);
+
+$StartingItemNumber = min(($H_TransportUI->StartingIndex() + 1), $H_TotalResults);
+$EndingItemNumber = min(($H_TransportUI->StartingIndex() + $H_ResultsPerPage),
+        $H_TotalResults);
+$TransportMessage = "Results <b>".number_format($StartingItemNumber)."</b>"
+        ." - <b>".number_format($EndingItemNumber)."</b>"
+        ." of <b>".number_format($H_TotalResults)."</b>";
+$H_TransportUI->message($TransportMessage);
+
+$PageTitle = ($H_View == "Frequency") ? "Search Frequency" : "Search Log";
+
+# ----- DISPLAY --------------------------------------------------------------
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle($PageTitle);
+
 ?>
 <style type="text/css">
 .search-params { word-break: break-all; }
@@ -84,32 +126,14 @@ $RPOtionList->SubmitOnChange(true);
   <input type="hidden" name="P" value="P_MetricsReporter_SearchLog">
   <input type="hidden" name="V" value="<?= $H_View ?>">
   <?PHP if ($H_View == "Frequency") { ?>
-    Period: <?= $StartOptionList->GetHtml(); ?>
+    Period: <?= $PeriodOptionList->getHtml(); ?>
   <?PHP } ?>
-    Users: <?= $UserTypeOptionList->GetHtml(); ?>
-    Search Type: <?= $SearchTypeOptionList->GetHtml(); ?>
-    Results: <?= $RPOtionList->GetHtml(); ?>
+    Users: <?= $UserTypeOptionList->getHtml(); ?>
+    Search Type: <?= $SearchTypeOptionList->getHtml(); ?>
+    Results: <?= $RPOtionList->getHtml(); ?>
 </form>
 </span>
-<?PHP
-if ($H_View == "Frequency") {
-    PageTitle("Search Frequency");
-    print "<h1>Search Frequency</h1>";
-} else {
-    PageTitle("Search Log");
-    print "<h1>Search Log</h1>";
-}
 
-$H_TransportUI->message("Results <b>"
-    .number_format(min(($H_TransportUI->StartingIndex() + 1), $H_TotalResults))
-    ."</b> - <b>"
-    .number_format(min(
-        ($H_TransportUI->StartingIndex() + $H_ResultsPerPage),
-        $H_TotalResults
-    ))
-    ."</b> of <b>".number_format($H_TotalResults)."</b>");
-$H_TransportUI->display();
+<h1><?= $PageTitle ?></h1>
 
-$ListUI->Display($H_ListData);
-
-$H_TransportUI->display();
+<?= $ListUI->getHtml(); ?>

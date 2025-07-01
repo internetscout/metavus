@@ -3,16 +3,16 @@
 #   FILE:  UserNameSearchCallback.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\StdLib;
 use ScoutLib\UserFactory;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Highlight (insert <b></b> tags) the search string in a term.
@@ -77,14 +77,14 @@ ApplicationFramework::getInstance()->beginAjaxResponse();
 # retrieve user currently logged in
 $LoggedInUser = User::getCurrentUser();
 
-$SearchString = StdLib::getArrayValue($_GET, "SS");
+$SearchString = $_GET["SS"] ?? null;
 $UserFactory = new UserFactory();
-$RawResult = $UserFactory->GetMatchingUsers($SearchString, "UserName", "UserName", 0, 10);
+$RawResult = $UserFactory->getMatchingUsers($SearchString, "UserName", "UserName", 0, 10);
 $UserNames = [];
 
 foreach ($RawResult as $Id => $User) {
     # filter out current user name
-    if ($User["UserName"] == $LoggedInUser->Name()) {
+    if ($User["UserName"] == $LoggedInUser->name()) {
         continue;
     }
 

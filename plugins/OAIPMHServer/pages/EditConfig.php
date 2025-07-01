@@ -3,15 +3,16 @@
 #   FILE:  EditConfig.php (OAI-PMH Server plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\Plugins\OAIPMHServer;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
-if (!CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN)) {
     return;
 }
 

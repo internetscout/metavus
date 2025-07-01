@@ -32,10 +32,10 @@ class ApplicationFramework
 
     /** TO DO:  Move these constants to AFTaskManagerTrait when minimum */
     /**     required PHP version can support trait constants.  (PHP 8.2) */
-    const PRIORITY_HIGH = 1;        /**  Highest priority. */
-    const PRIORITY_MEDIUM = 2;      /**  Medium (default) priority. */
-    const PRIORITY_LOW = 3;         /**  Lower priority. */
-    const PRIORITY_BACKGROUND = 4;  /**  Lowest priority. */
+    public const PRIORITY_HIGH = 1;        # highest priority
+    public const PRIORITY_MEDIUM = 2;      # medium (default) priority
+    public const PRIORITY_LOW = 3;         # lower priority
+    public const PRIORITY_BACKGROUND = 4;  # lowest priority
 
 
     /** @name Application Framework */ /*@(*/
@@ -399,9 +399,7 @@ class ApplicationFramework
         callable $Callback,
         array $Parameters = []
     ): void {
-        if (is_callable($Callback)) {
-            $this->UnbufferedCallbacks[] = [ $Callback, $Parameters ];
-        }
+        $this->UnbufferedCallbacks[] = [ $Callback, $Parameters ];
     }
 
     /**
@@ -625,7 +623,8 @@ class ApplicationFramework
         );
         if (($SignalResult["PageName"] != $this->PageName)
             && strlen($SignalResult["PageName"])) {
-            $this->PageName = $SignalResult["PageName"];
+            $PageName = $SignalResult["PageName"];
+            $this->PageName = $PageName;
         }
 
         # load PHP file
@@ -665,7 +664,16 @@ class ApplicationFramework
             $this->loadUIFunctions();
 
             # load HTML file
-            $PageContentOutput = $this->loadHtmlFileForPage($PageName);
+            $HtmlFilesLoaded = 0;
+            do {
+                $HtmlPageName = $this->HtmlPageNameOverride ?? $PageName;
+                $PageContentOutput = $this->loadHtmlFileForPage($HtmlPageName);
+                $HtmlFilesLoaded++;
+                if ($HtmlFilesLoaded > self::MAX_HTML_FILE_OVERRIDES) {
+                    throw new Exception("Maximum number of HTML file overrides reached.");
+                }
+            } while (isset($this->HtmlPageNameOverride)
+                    && ($HtmlPageName != $this->HtmlPageNameOverride));
 
             # load standard page start/end if not suppressed
             if (!$this->SuppressStdPageStartAndEnd) {
@@ -894,6 +902,21 @@ class ApplicationFramework
     public function jumpToPageIsSet(): bool
     {
         return ($this->JumpToPage === null) ? false : true;
+    }
+
+    /**
+     * Set interface file to use, in place of file that would normally be
+     * loaded.  If this is called from an interface file and specifies a
+     * file different from the one currently being loaded, the results from
+     * the current interface file are discarded and the new file is loaded.
+     * If this is called after interface file loading is complete, it will
+     * have no effect.
+     * @param string $PageName Base name for interface file (in effect,
+     *      a new page name).
+     */
+    public function overrideInterfaceFile(string $PageName): void
+    {
+        $this->HtmlPageNameOverride = $PageName;
     }
 
     /**
@@ -1263,14 +1286,14 @@ class ApplicationFramework
         }
     }
 
-    /** File loading context: PHP page file (from "pages"). */
-    const CONTEXT_PAGE = 1;
-    /** File loading context: HTML interface file. */
-    const CONTEXT_INTERFACE = 2;
-    /** File loading context: page start file. */
-    const CONTEXT_START = 3;
-    /** File loading context: page end file. */
-    const CONTEXT_END = 4;
+    # file loading context: PHP page file (from "pages")
+    public const CONTEXT_PAGE = 1;
+    # file loading context: HTML interface file
+    public const CONTEXT_INTERFACE = 2;
+    # file loading context: page start file
+    public const CONTEXT_START = 3;
+    # file loading context: page end file
+    public const CONTEXT_END = 4;
 
     /**
      * Search UI directories for specified image or CSS file and return name
@@ -1280,6 +1303,12 @@ class ApplicationFramework
      */
     public function gUIFile(string $FileName): ?string
     {
+        # return cached name if we already have one found on this page load
+        $CacheKey = $FileName.$this->urlFingerprintingEnabled();
+        if (array_key_exists($CacheKey, $this->FoundFileNameCache)) {
+            return $this->FoundFileNameCache[$CacheKey];
+        }
+
         # determine which location to search based on file suffix
         $FileType = $this->getFileType($FileName);
         $DirsToSearch = ($FileType == self::FT_IMAGE)
@@ -1349,6 +1378,7 @@ class ApplicationFramework
 
         # bail out (no more processing needed) if file not found
         if ($FoundFileName === null) {
+            $this->FoundFileNameCache[$CacheKey] = $FoundFileName;
             return $FoundFileName;
         }
 
@@ -1376,6 +1406,7 @@ class ApplicationFramework
         }
 
         # return file name to caller
+        $this->FoundFileNameCache[$CacheKey] = $FoundFileName;
         return $FoundFileName;
     }
 
@@ -1546,6 +1577,71 @@ class ApplicationFramework
     }
 
     /**
+     * Search UI directories for specified JavaScript, CSS, or SVG file and
+     * retrieve file contents.  For JavaScript and CSS files, the necessary
+     * tags are also prepended and appended for the contents to work inline.
+     * If the file is not found, an empty string is returned and a warning
+     * is logged.
+     * @param string $BaseFileName Name of file to look for and get contents of.
+     */
+    public function inlineUIFile(string $BaseFileName): string
+    {
+        # retrieve full file name without any URL fingerprinting
+        $FPSetting = $this->urlFingerprintingEnabled();
+        $this->urlFingerprintingEnabled(false);
+        $FileName = $this->gUIFile($BaseFileName);
+        $this->urlFingerprintingEnabled($FPSetting);
+
+        # if file was not found in UI directories return empty string
+        if ($FileName === null) {
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "Could not find UI file \"" . $BaseFileName
+                . "\" to add inline.  (Active UI: " . self::$ActiveUI . ")"
+            );
+            return "";
+        }
+
+        # load file content
+        $Content = file_get_contents($FileName);
+
+        # check that content loading was successful
+        if ($Content === false) {
+            $this->logError(
+                self::LOGLVL_WARNING,
+                "Could not load UI file content \"" . $FileName
+                . "\" to add inline.  (Active UI: " . self::$ActiveUI . ")"
+            );
+            return "";
+        }
+
+        # add any needed beginning or ending tags to content
+        $FileType = $this->getFileType($FileName);
+        switch ($FileType) {
+            case self::FT_CSS:
+                $Content = "<style>\n".$Content."\n</style>\n";
+                break;
+
+            case self::FT_JAVASCRIPT:
+                $Content = "<script>\n".$Content."\n</script>\n";
+                break;
+
+            case self::FT_IMAGE:
+                if (strtolower(substr($FileName, -3)) != "svg") {
+                    throw new InvalidArgumentException("Attempt to inline"
+                            ." unsupported image file type (\"".$FileName."\").");
+                }
+                break;
+
+            default:
+                throw new InvalidArgumentException("Attempt to inline"
+                        ." unsupported file type (\"".$FileName."\").");
+        }
+
+        return $Content;
+    }
+
+    /**
      * Clear all CSS files compiled from SCSS.  This must be called ONLY
      * before any CSS files have been generated on this page load, via calls
      * to gUIFile(), gUIFileTag(), gUIFileTagAbs(), pUIFile(), includeUIFile()
@@ -1593,6 +1689,9 @@ class ApplicationFramework
     public function doNotUrlFingerprint(string $Pattern): void
     {
         $this->UrlFingerprintBlacklist[] = $Pattern;
+
+        # clear cache for file name lookup
+        $this->FoundFileNameCache = [];
     }
 
     /**
@@ -1649,14 +1748,14 @@ class ApplicationFramework
         return $FileTypeCache[$FileName];
     }
 
-    /** File type other than CSS, image, or JavaScript. */
-    const FT_OTHER = 0;
-    /** CSS file type. */
-    const FT_CSS = 1;
-    /** Image (GIF/JPG/PNG) file type. */
-    const FT_IMAGE = 2;
-    /** JavaScript file type. */
-    const FT_JAVASCRIPT = 3;
+    # file type other than CSS, image, or JavaScript
+    public const FT_OTHER = 0;
+    # CSS file type
+    public const FT_CSS = 1;
+    # image (GIF/JPG/PNG) file type
+    public const FT_IMAGE = 2;
+    # JavaScript file type
+    public const FT_JAVASCRIPT = 3;
 
     /**
      * Get time elapsed since constructor was called.
@@ -1708,6 +1807,50 @@ class ApplicationFramework
 
     # ---- Page Building -----------------------------------------------------
 
+    /**
+     * Register a callback that the page title will be filtered through when retrieved.
+     * @param callable $Callback The callback to filter the page title through.
+     * @see getPageTitle()
+     */
+    public function registerPageTitleFilteringCallback(callable $Callback): void
+    {
+        $this->PageTitleCallback = $Callback;
+    }
+
+    /**
+     * Set the page title, intended to be used for the <title> tag and potentially other places.
+     * @param string $NewTitle The title to use for the page.
+     */
+    public function setPageTitle(string $NewTitle): void
+    {
+        $this->PageTitle = $NewTitle;
+    }
+
+    /**
+     * Get the page title, intended to be used for the <title> tag and potentially other places.
+     * Uses the registered callback to filter the title.
+     * @return ?string The page title.
+     * @see registerPageTitleFilteringCallback()
+     */
+    public function getPageTitle(): ?string
+    {
+        if (is_callable($this->PageTitleCallback)) {
+            return call_user_func($this->PageTitleCallback, $this->PageTitle);
+        }
+        return $this->PageTitle;
+    }
+
+    /**
+     * Get the page title, as previously set by setPageTitle() (and not filtered
+     * through the registered callback).
+     * Does not use the registered callback.
+     * @return ?string The page title.
+     */
+    public function getUnfilteredPageTitle(): ?string
+    {
+        return $this->PageTitle;
+    }
+
     /** @name Page Building */ /*@(*/
 
     /**
@@ -1734,10 +1877,6 @@ class ApplicationFramework
         if (!strlen($Keyword) || !ctype_alnum(str_replace("-", "", $Keyword))) {
             throw new InvalidArgumentException("Invalid insertion keyword ('" . $Keyword
                 . "') passed from " . StdLib::getMyCaller() . ".");
-        }
-        if (!is_callable($Callback)) {
-            throw new InvalidArgumentException("Invalid callback passed from "
-                . StdLib::getMyCaller() . ".");
         }
         $this->InsertionKeywordCallbacks[$Keyword][] = [
             "Callback" => $Callback,
@@ -2479,39 +2618,37 @@ class ApplicationFramework
      * TRACE error logging level.  Very detailed logging, usually only used
      * when attempting to diagnose a problem in one specific section of code.
      */
-    const LOGLVL_TRACE = 6;
+    public const LOGLVL_TRACE = 6;
     /**
      * DEBUG error logging level.  Information that is diagnostically helpful
      * when debugging.
      */
-    const LOGLVL_DEBUG = 5;
+    public const LOGLVL_DEBUG = 5;
     /**
      * INFO error logging level.  Generally-useful information, that may
      * come in handy but to which little attention is normally paid.  (This
      * should not be used for events that routinely occur with every page load.)
      */
-    const LOGLVL_INFO = 4;
+    public const LOGLVL_INFO = 4;
     /**
      * WARNING error logging level.  An event that may potentially cause
      * problems, but is automatically recovered from.
      */
-    const LOGLVL_WARNING = 3;
+    public const LOGLVL_WARNING = 3;
     /**
      * ERROR error logging level.  Any error which is fatal to the operation
      * currently being performed, but does not result in overall application
      * shutdown or persistent data corruption.
      */
-    const LOGLVL_ERROR = 2;
+    public const LOGLVL_ERROR = 2;
     /**
      * FATAL error logging level.  Any error which results in overall
      * application shutdown or persistent data corruption.
      */
-    const LOGLVL_FATAL = 1;
+    public const LOGLVL_FATAL = 1;
 
-    /**
-     * Maximum length for a line in the log file.
-     */
-    const LOGFILE_MAX_LINE_LENGTH = 2048;
+    # maximum length for a line in the log file
+    public const LOGFILE_MAX_LINE_LENGTH = 2048;
 
     /*@)*/ /* Logging */
 
@@ -2523,19 +2660,19 @@ class ApplicationFramework
     /**
      * Default event type.  Any handler return values are ignored.
      */
-    const EVENTTYPE_DEFAULT = 1;
+    public const EVENTTYPE_DEFAULT = 1;
     /**
      * Result chaining event type.  For this type the parameter array to each
      * event handler is the return value from the previous handler, and the
      * final return value is sent back to the event signaller.
      */
-    const EVENTTYPE_CHAIN = 2;
+    public const EVENTTYPE_CHAIN = 2;
     /**
      * First response event type.  For this type event handlers are called
      * until one returns a non-NULL result, at which point no further handlers
      * are called and that last result is passed back to the event signaller.
      */
-    const EVENTTYPE_FIRST = 3;
+    public const EVENTTYPE_FIRST = 3;
     /**
      * Named result event type.  Return values from each handler are placed into an
      * array with the handler (function or class::method) name as the index, and
@@ -2543,14 +2680,14 @@ class ApplicationFramework
      * class methods is the class name plus "::" plus the method name.
      * are called and that last result is passed back to the event signaller.
      */
-    const EVENTTYPE_NAMED = 4;
+    public const EVENTTYPE_NAMED = 4;
 
-    /** Handle item first (i.e. before ORDER_MIDDLE items). */
-    const ORDER_FIRST = 1;
-    /** Handle item after ORDER_FIRST and before ORDER_LAST items. */
-    const ORDER_MIDDLE = 2;
-    /** Handle item last (i.e. after ORDER_MIDDLE items). */
-    const ORDER_LAST = 3;
+    # handle item first (i.e. before ORDER_MIDDLE items)
+    public const ORDER_FIRST = 1;
+    # handle item after ORDER_FIRST and before ORDER_LAST items
+    public const ORDER_MIDDLE = 2;
+    # handle item last (i.e. after ORDER_MIDDLE items)
+    public const ORDER_LAST = 3;
 
     /**
      * Register one or more events that may be signaled.
@@ -3368,8 +3505,8 @@ class ApplicationFramework
         );
     }
 
-    /** minimum threshold for what is considered a slow database query */
-    const MIN_DB_SLOW_QUERY_THRESHOLD = 2;
+    # minimum threshold for what is considered a slow database query
+    public const MIN_DB_SLOW_QUERY_THRESHOLD = 2;
 
     /*@)*/ /* Server Environment */
 
@@ -3689,8 +3826,10 @@ class ApplicationFramework
     private $DoNotMinimizeList = [];
     private $DoNotLogSlowPageLoad = false;
     private $ExecutionStartTime;
+    private $FoundFileNameCache = [];
     private $FoundUIFiles = [];
     private $HtmlCharset = "UTF-8";
+    private $HtmlPageNameOverride;
     private $InterfaceSettingsCache = null;
     private $InterfaceSettingsByDirCache = null;
     private $JSMinimizerJavaScriptPackerAvailable = false;
@@ -3706,6 +3845,8 @@ class ApplicationFramework
     private $OutputModificationReplacements = [];
     private $PageCacheTags = [];
     private $PageName = "";
+    private $PageTitle = null;
+    private $PageTitleCallback;
     private $PostProcessingFuncs = [];
     private $RunningInBackground = false;
     private $SavedContext;
@@ -3760,11 +3901,12 @@ class ApplicationFramework
     private static $UserInterfaceListCache = [];
     private static $UserInterfacePathsCache = [];
 
-    # offset used to generate page cache tag IDs from numeric tags
-    const PAGECACHETAGIDOFFSET = 100000;
-
+    # maximum number of HTML file overrides allowed in a single page load
+    private const MAX_HTML_FILE_OVERRIDES = 20;
     # minimum expired session garbage collection probability
-    const MIN_GC_PROBABILITY = 0.01;
+    private const MIN_GC_PROBABILITY = 0.01;
+    # offset used to generate page cache tag IDs from numeric tags
+    private const PAGECACHETAGIDOFFSET = 100000;
 
     /**
      * Set to TRUE to not close browser connection before running
@@ -3826,7 +3968,6 @@ class ApplicationFramework
         # make sure a default time zone is set
         # (using CST/CDT if nothing set because we have to use something
         #       and Scout is based in Madison, WI, USA which is in CST/CDT)
-        /* @phpstan-ignore-next-line */
         if ((ini_get("date.timezone") === false)
             || !strlen(ini_get("date.timezone"))) {
             ini_set("date.timezone", "America/Chicago");
@@ -4113,7 +4254,7 @@ class ApplicationFramework
 
             # expand directory list to include variants
             $OriginList = [];
-            $DirectoryList = $this->expandDirectoryList($DirectoryList, $OriginList);
+            $this->expandDirectoryList($DirectoryList, $OriginList);
 
             # for each possible location
             $FoundFileName = null;
@@ -4122,13 +4263,14 @@ class ApplicationFramework
 
                 # for each possible file name
                 foreach ($FileNames as $File) {
-                    # map file name if mapping function available for this directory
+                    # if mapping function available for this directory
                     if ($MapFunc !== null) {
+                        # map file name
                         $File = ($MapFunc)($OrigDir, $File);
                     }
 
                     # if template is found at location
-                    if (file_exists($Dir.$File)) {
+                    if (strlen($File) && file_exists($Dir.$File)) {
                         # save full template file name and stop looking
                         $FoundFileName = $Dir.$File;
                         break 2;
@@ -4416,8 +4558,9 @@ class ApplicationFramework
             if (is_writable($SessionStorage)) {
                 # save parameters of our session storage as instance variables
                 #   for later use
-                $this->SessionGcProbability =
-                    (int)ini_get("session.gc_probability") / (int)ini_get("session.gc_divisor");
+                $this->SessionGcProbability = (int)ini_get("session.gc_probability")
+                        / max((int)ini_get("session.gc_divisor"), 1);
+
                 # require a gc probability of at least MIN_GC_PROBABILITY
                 if ($this->SessionGcProbability < self::MIN_GC_PROBABILITY) {
                     $this->SessionGcProbability = self::MIN_GC_PROBABILITY;
@@ -4658,7 +4801,7 @@ class ApplicationFramework
                 }
 
                 # if minimization succeeded
-                if (isset($MinimizedCode) && ($MinimizedCode !== null)) {
+                if (isset($MinimizedCode)) {
                     # write out minimized file
                     file_put_contents($DstFile, $MinimizedCode);
                 } else {
@@ -5816,8 +5959,8 @@ class ApplicationFramework
         return $OutputToUse;
     }
 
-    /** Threshold below which page output modifications are considered to have failed. */
-    const OUTPUT_MODIFICATION_THRESHOLD = 0.10;
+    # threshold below which page output modifications are considered to have failed
+    private const OUTPUT_MODIFICATION_THRESHOLD = 0.10;
 
     /**
      * Convenience function for getting/setting our string settings.
@@ -5828,7 +5971,7 @@ class ApplicationFramework
      *       just the current page load.  (OPTIONAL, defaults to TRUE)
      * @return string Current value for setting.
      */
-    public function updateStringSetting(
+    private function updateStringSetting(
         string $FieldName,
         ?string $NewValue = null,
         bool $Persistent = true
@@ -5866,7 +6009,7 @@ class ApplicationFramework
      *       just the current page load.  (OPTIONAL, defaults to TRUE)
      * @return int Current value for setting.
      */
-    public function updateIntSetting(
+    private function updateIntSetting(
         string $FieldName,
         ?int $NewValue = null,
         bool $Persistent = true
@@ -5904,7 +6047,7 @@ class ApplicationFramework
      *       just the current page load.  (OPTIONAL, defaults to TRUE)
      * @return bool Current value for setting.
      */
-    public function updateBoolSetting(
+    private function updateBoolSetting(
         string $FieldName,
         ?bool $NewValue = null,
         bool $Persistent = true
@@ -6036,7 +6179,7 @@ class ApplicationFramework
     private $ExpandedDirectoryListCache = [];
     private $ExpandedDirectoryListOriginCache = [];
 
-    const NOVALUE = ".-+-.NO VALUE PASSED IN FOR ARGUMENT.-+-.";
+    private const NOVALUE = ".-+-.NO VALUE PASSED IN FOR ARGUMENT.-+-.";
 
 
     # ---- Page Building (Internal Methods) ----------------------------------
@@ -6124,16 +6267,14 @@ class ApplicationFramework
         # look for HTML file for page
         $PageFile = $this->findFile(
             $this->InterfaceDirList,
-            $this->PageName,
+            $PageName,
             [ "tpl", "html" ]
         );
 
         # signal HTML file load (providing opportunity to modify file name)
         $SignalResult = $this->signalEvent(
             "EVENT_HTML_FILE_LOAD",
-            ["PageName" => $this->PageName,
-                "FileName" => $PageFile
-            ]
+            ["PageName" => $PageName, "FileName" => $PageFile ]
         );
 
         # if signal handler returned new file name
@@ -6148,12 +6289,12 @@ class ApplicationFramework
                 # log error about bad file name
                 $this->logError(
                     self::LOGLVL_ERROR,
-                    "Bad HTML file name (\"" . $NewPageFile
-                    . "\") returned from EVENT_HTML_FILE_LOAD."
+                    "Bad HTML file name (\"".$NewPageFile
+                            ."\") returned from EVENT_HTML_FILE_LOAD."
                 );
             }
             # else if signal handler returned new page name
-        } elseif (($SignalResult["PageName"] != $this->PageName)
+        } elseif (($SignalResult["PageName"] != $PageName)
             && strlen($SignalResult["PageName"])) {
             # use new page name to try to find HTML file
             $PageFile = $this->findFile(
@@ -6167,11 +6308,14 @@ class ApplicationFramework
                 $this->logError(
                     self::LOGLVL_INFO,
                     "No HTML file found for modified page name."
-                    . "  (Original: " . $this->PageName
-                    . "  Modified: " . $SignalResult["PageName"]
-                    . "  PHP: " . $this->PagePhpFile . ")"
+                            ."  (Original: ".$PageName
+                            ."  Modified: ".$SignalResult["PageName"]
+                            ."  PHP: ".$this->PagePhpFile.")"
                 );
             }
+
+            # use new page name
+            $PageName = $SignalResult["PageName"];
         }
 
         # begin buffering content
@@ -6196,7 +6340,7 @@ class ApplicationFramework
             $this->PageHtmlFile = $PageFile;
         } else {
             # print error message indicating no HTML file found
-            print str_replace("%PAGENAME%", $this->PageName, $this->NoHtmlFileFoundMsg);
+            print str_replace("%PAGENAME%", $PageName, $this->NoHtmlFileFoundMsg);
 
             # if PHP file was loaded
             #       and it was not default PHP file or default PHP file was requested
@@ -6206,9 +6350,9 @@ class ApplicationFramework
                 # log error about no HTML file found
                 $this->logError(
                     self::LOGLVL_ERROR,
-                    "No HTML file found for page.  (Page: " . $this->PageName
-                    . "  PHP: " . $this->PagePhpFile
-                    . "  HTML: " . $PageFile . ")"
+                    "No HTML file found for page.  (Page: ".$PageName
+                        ."  PHP: ".$this->PagePhpFile
+                        ."  HTML: ".$PageFile . ")"
                 );
             }
 
@@ -6582,8 +6726,8 @@ class ApplicationFramework
                 throw new Exception("Invalid insertion keyword argument string (\""
                         .$ArgString."\").");
             }
-            $ArgName = isset($ArgPieces[0]) ? $ArgPieces[0] : "";
-            $ArgValue = isset($ArgPieces[1]) ? $ArgPieces[1] : null;
+            $ArgName = $ArgPieces[0];
+            $ArgValue = $ArgPieces[1];
 
             # un-escape any special characters in value
             if ($ArgValue) {

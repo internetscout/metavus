@@ -6,12 +6,15 @@
 #   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
+# @scout:phpstan
 
 namespace ScoutLib;
 use Closure;
 use Exception;
 use DOMDocument;
 use InvalidArgumentException;
+use LengthException;
+use RangeException;
 use ReflectionClass;
 use ReflectionFunction;
 use ReflectionFunctionAbstract;
@@ -28,6 +31,73 @@ class StdLib
     const CACHED_DATA_TTL = 60 * 60 * 24;
 
     # ---- PUBLIC INTERFACE --------------------------------------------------
+
+    /**
+     * Convert a date range into a user-friendly printable format. Example outputs:
+     * - "January 1" (start date = end date)
+     * - "January 1, 2054" (start date = end date, different year than current)
+     * - "January 1-10" (start month = end month)
+     * - "January 1-10, 2054" (start month = end month, different year than current)
+     * - "January 21 - February 3" (start year = end year)
+     * - "January 21 - February 3, 2054" (start year = end year, different year than current)
+     * - "December 21, 2013 - January 3, 2014" (day, month, year are all different)
+     * @param string $StartDate Starting date, in any format parseable by strtotime().
+     * @param string $EndDate Ending date, in any format parseable by strtotime().
+     * @param bool $Verbose Whether to be verbose about dates.  (OPTIONAL, defaults to TRUE)
+     * @param string $BadDateString String to display if start date appears invalid.
+     *       (OPTIONAL, defaults to "-")
+     * @return string Returns a string containing a nicely-formatted date value.
+     */
+    public static function getPrettyDateRange(
+        string $StartDate,
+        string $EndDate,
+        bool $Verbose = true,
+        string $BadDateString = "-"
+    ): string {
+        # convert dates to seconds
+        $Start = strtotime($StartDate);
+        $End = strtotime($EndDate);
+
+        # return bad date string if start date was invalid
+        if ($Start === false) {
+            return $BadDateString;
+        }
+
+        # return pretty printed date if end date was invalid or same as start date
+        if (($End === false) || ($End == $Start)) {
+            return StdLib::getPrettyDate($EndDate, $Verbose, $BadDateString);
+        }
+
+        # use short or long month names based on verbosity setting
+        $MChar = $Verbose ? "F" : "M";
+
+        $AddYear = true;
+
+        # set the date range format
+        if (date("dmY", $Start) == date("dmY", $End)) {
+            # if the start and end have the same day & month, use "January 1"
+            $Range = date($MChar." j", $Start);
+        } elseif (date("mY", $Start) == date("mY", $End)) {
+            # if start and end month are the same use "January 1-10"
+            $Range = date($MChar." j-", $Start).date("j", $End);
+        } elseif (date("Y", $Start) == date("Y", $End)) {
+            # else if start and end year are the same use "January 21 - February 3"
+            $Range = date($MChar." j - ", $Start).date($MChar." j", $End);
+        } else {
+            # else use "December 21, 2013 - January 3, 2014"
+            $Range = date($MChar." j, Y - ", $Start).date($MChar." j, Y", $End);
+            $AddYear = false;
+        }
+
+        # if end year is not current year and we haven't already added it
+        if ((date("Y", $End) != date("Y")) && $AddYear) {
+            # add end year to date
+            $Range .= date(", Y", $End);
+        }
+
+        # return pretty date range to caller
+        return $Range;
+    }
 
     /**
      * Get info about call to current function.
@@ -115,22 +185,22 @@ class StdLib
             if ($ExceptionMsg !== null) {
                 # make any needed substitutions in exception message
                 $Msg = str_replace(
-                    array(
+                    [
                         "%FILE%",
                         "%LINE%",
                         "%FULLFILE%",
                         "%CLASS%",
                         "%FUNCTION%",
                         "%METHOD%"
-                    ),
-                    array(
+                    ],
+                    [
                         $File,
-                        $Line,
+                        (string)$Line,
                         $FullFile,
                         $Class,
                         $Function,
                         $Class . "::" . $Function
-                    ),
+                    ],
                     $ExceptionMsg
                 );
 
@@ -303,21 +373,25 @@ class StdLib
                 $MasterValue
             );
 
-            # store "local" info values
-            foreach ($LocalValue[0] as $MatchString => $Dummy) {
-                $MatchString = trim((string)$MatchString);
-                $Info[$ModuleName][trim(strip_tags($LocalValue[1][$MatchString]))] =
-                    array(trim(strip_tags($LocalValue[2][$MatchString])));
+            # store "local" info values if available
+            if (count($LocalValue) == 2) {
+                foreach ($LocalValue[0] as $MatchString => $Dummy) {
+                    $MatchString = trim((string)$MatchString);
+                    $Info[$ModuleName][trim(strip_tags($LocalValue[1][$MatchString]))] =
+                            [ trim(strip_tags($LocalValue[2][$MatchString])) ];
+                }
             }
 
-            # store "master" info values
-            foreach ($MasterValue[0] as $MatchString => $Dummy) {
-                $MatchString = trim((string)$MatchString);
-                $Info[$ModuleName][trim(strip_tags($MasterValue[1][$MatchString]))] =
-                    array(
-                        trim(strip_tags($MasterValue[2][$MatchString])),
-                        trim(strip_tags($MasterValue[3][$MatchString]))
-                    );
+            # store "master" info values if available
+            if (count($MasterValue) == 2) {
+                foreach ($MasterValue[0] as $MatchString => $Dummy) {
+                    $MatchString = trim((string)$MatchString);
+                    $Info[$ModuleName][trim(strip_tags($MasterValue[1][$MatchString]))] =
+                            [
+                                trim(strip_tags($MasterValue[2][$MatchString])),
+                                trim(strip_tags($MasterValue[3][$MatchString]))
+                            ];
+                }
             }
         }
 
@@ -1785,6 +1859,10 @@ class StdLib
      */
     public static function getNumberOfCpuCores(): ?int
     {
+        if (!function_exists("shell_exec")) {
+            return null;
+        }
+
         $OSName = strtoupper(substr(PHP_OS, 0, 3));
         switch ($OSName) {
             case "LIN":     # Linux
@@ -2051,6 +2129,54 @@ class StdLib
     public static function getPercentFreeMemory(): float
     {
         return (self::getFreeMemory() / self::getPhpMemoryLimit()) * 100;
+    }
+
+    /**
+     * Generate a string containing a random sequence of characters, in a
+     * cryptographically-secure manner.
+     * @param int $Length The number of characters we want.
+     * @param string $Keyspace A string of all possible characters from which
+     *         to select.
+     * @return string The random string.
+     */
+    public static function getRandomCharacters(
+        int $Length,
+        string $Keyspace = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    ): string {
+        if ($Length < 1) {
+            throw new RangeException("Length must be a positive integer.");
+        }
+        if (strlen($Keyspace) === 0) {
+            throw new LengthException("Keyspace must have non-zero length.");
+        }
+        $RandomString = "";
+        $Bytes = random_bytes($Length);
+        $KeyspaceLen = strlen($Keyspace);
+        for ($Index = 0; $Index < $Length; $Index++) {
+            $ByteVal = ord($Bytes[$Index]);
+            $RandomString .= $Keyspace[$ByteVal % $KeyspaceLen];
+        }
+        return $RandomString;
+    }
+
+    /**
+     * Randomly shuffle a string in a cryptographically secure manner, returning it.
+     * @param string $StringToShuffle The string to shuffle.
+     * @return string The shuffled string.
+     */
+    public static function shuffleString(string $StringToShuffle): string
+    {
+        $CurrentIndex = 0;
+        $MaxIndex = strlen($StringToShuffle) - 1;
+
+        while ($CurrentIndex < $MaxIndex) {
+            $RandIndex = random_int($CurrentIndex, $MaxIndex); /** @phpstan-ignore argument.type */
+            $StringToShuffle = $StringToShuffle[$RandIndex]
+                . substr_replace($StringToShuffle, "", $RandIndex, 1);
+            $CurrentIndex++;
+        }
+
+        return $StringToShuffle;
     }
 
     /** Format to feed to date() to get SQL-compatible date/time string. */

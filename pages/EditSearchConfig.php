@@ -3,23 +3,22 @@
 #   FILE:  EditSearchConfig.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2006-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2006-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 use Metavus\FormUI;
 use Metavus\SearchEngine;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
-
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # ----- MAIN -----------------------------------------------------------------
 
 $AF = ApplicationFramework::getInstance();
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -79,11 +78,11 @@ switch ($ButtonPushed) {
         }
 
         # set page to administration
-        $AF->SetJumpToPage("SysAdmin");
+        $AF->setJumpToPage("SysAdmin");
         break;
 
     case "Cancel":
         # don't save anything and set page to administration.
-        $AF->SetJumpToPage("SysAdmin");
+        $AF->setJumpToPage("SysAdmin");
         break;
 }

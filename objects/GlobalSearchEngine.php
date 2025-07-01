@@ -3,7 +3,7 @@
 #   FILE:  GlobalSearchEngine.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2005-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2005-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -13,7 +13,6 @@ OUTSTANDING ISSUES:
 - search string(s) must be escaped (~XX)
 - search scores must be normalized
 */
-
 
 use ScoutLib\Database;
 use ScoutLib\OAIClient;
@@ -44,20 +43,20 @@ class GlobalSearchEngine
     public function search($SearchString, $StartingResult = 0, $NumberOfResults = 10): array
     {
         # save start time to use in calculating search time
-        $StartTime = $this->GetMicrotime();
+        $StartTime = $this->getMicrotime();
 
         # create OAI-SQ set specification from search string
         $SetSpec = "OAI-SQ!".$SearchString;
 
         # perform global search
-        $SearchResults = $this->PerformSearch(
+        $SearchResults = $this->performSearch(
             $SetSpec,
             $StartingResult,
             $NumberOfResults
         );
 
         # record search time
-        $this->LastSearchTime = $this->GetMicrotime() - $StartTime;
+        $this->LastSearchTime = $this->getMicrotime() - $StartTime;
 
         # return results to caller
         return $SearchResults;
@@ -98,18 +97,18 @@ class GlobalSearchEngine
     {
         # for each global search site
         $DB = new Database();
-        $DB->Query("SELECT * FROM GlobalSearchSites");
+        $DB->query("SELECT * FROM GlobalSearchSites");
         $SearchResults = [];
-        while ($SiteInfo = $DB->FetchRow()) {
+        while ($SiteInfo = $DB->fetchRow()) {
             # retrieve results from site
-            $SiteSearchResults = $this->SearchSite($SiteInfo, $SetSpec);
+            $SiteSearchResults = $this->searchSite($SiteInfo, $SetSpec);
 
             # add results to result list
             $SearchResults = array_merge($SearchResults, $SiteSearchResults);
         }
 
         usort($SearchResults, function ($A, $B) {
-            return StdLib::SortCompare($A["Search Score"], $B["Search Score"]);
+            return StdLib::sortCompare($A["Search Score"], $B["Search Score"]);
         });
 
         # save number of results found
@@ -132,8 +131,8 @@ class GlobalSearchEngine
     {
         # create OAI client and perform query
         $Client = new OAIClient($SiteInfo["OaiUrl"]);
-        $Client->SetSpec($SetSpec);
-        $QueryResults = $Client->GetRecords();
+        $Client->setSpec($SetSpec);
+        $QueryResults = $Client->getRecords();
         $SearchResults = [];
 
         # for each result returned from query

@@ -102,31 +102,9 @@ class MetricsReporter extends Plugin
     public function install(): ?string
     {
         $DB = new Database();
-
-        $DB->query("CREATE TABLE IF NOT EXISTS MetricsReporter_Cache (
-              Id VARCHAR(32),
-              Page VARCHAR(32),
-              Data LONGBLOB,
-              LastUpdate TIMESTAMP DEFAULT NOW(),
-              INDEX (Id, Page),
-              INDEX (LastUpdate),
-              UNIQUE (Id, Page) )");
-
         $DB->query("CREATE TABLE IF NOT EXISTS MetricsReporter_SpamSearches ("
                    ."SearchKey VARCHAR(32), UNIQUE (SearchKey) )");
         return null;
-    }
-
-    /**
-     * Hook the events into the application framework.
-     * @return array Returns an array of events to be hooked into the application
-     *      framework.
-     */
-    public function hookEvents(): array
-    {
-        return [
-            "EVENT_HOURLY" => "ExpireCache",
-        ];
     }
 
 
@@ -134,55 +112,34 @@ class MetricsReporter extends Plugin
 
     /**
      * Get a cached value.
-     * @param string $Name Key to use when looking up value.
+     * @param string $Key Key to use when looking up value.
      * @return mixed Cached value.
      */
-    public function cacheGet($Name)
+    public function cacheGet($Key)
     {
         $AF = ApplicationFramework::getInstance();
-        $DB = new Database();
-
-        $DB->query("SELECT Data FROM MetricsReporter_Cache "
-                   ."WHERE Id='".md5($Name)."' AND "
-                   ."Page='".md5($AF->getPageName())."'");
-
-        if ($DB->numRowsSelected() == 0) {
-            return null;
-        }
-
-        $Row = $DB->fetchRow();
-        if ($Row === false) {
-            return null;
-        }
-        $Result = unserialize(
-            (string)gzinflate((string)base64_decode((string)$Row["Data"]))
-        );
-
-        return $Result;
+        $FullKey = $AF->getPageName()."-".$Key;
+        return self::getDataCache()->get($FullKey);
     }
 
     /**
      * Store a value in the cache.
-     * @param string $Name Key to use for later retrieval.
+     * @param string $Key Key to use for later retrieval.
      * @param mixed $Data Value to store (must be serializable).
      * @return void
      */
-    public function cachePut($Name, $Data): void
+    public function cachePut($Key, $Data): void
     {
         $AF = ApplicationFramework::getInstance();
-        $DB = new Database();
+        $FullKey = $AF->getPageName()."-".$Key;
 
-        $CacheId = md5($Name);
-        $Page = md5($AF->getPageName());
+        $Cache = self::getDataCache();
 
-        $DB->query("LOCK TABLES MetricsReporter_Cache WRITE");
-        $DB->query("DELETE FROM MetricsReporter_Cache WHERE "
-                   ."Id='".$CacheId."' AND "
-                   ."Page='".$Page."'");
-        $DB->query("INSERT INTO MetricsReporter_Cache( Id, Page, Data ) "
-                   ."VALUES ('".$CacheId."','".$Page."','"
-                   .addslashes(base64_encode((string)gzdeflate(serialize($Data))))."') ");
-        $DB->query("UNLOCK TABLES");
+        $KeyList = $Cache->get("KeyList") ?? [];
+        $KeyList[$FullKey] = true;
+        $Cache->set("KeyList", $KeyList);
+
+        $Cache->set($FullKey, $Data, self::CACHED_DATA_TTL);
     }
 
     /**
@@ -191,22 +148,17 @@ class MetricsReporter extends Plugin
      */
     public function cacheClear(): void
     {
-        $AF = ApplicationFramework::getInstance();
-        $DB = new Database();
-        $DB->query("DELETE FROM MetricsReporter_Cache "
-                   ."WHERE Page='".md5($AF->getPageName())."'");
-    }
+        $Cache = self::getDataCache();
 
-    /**
-     * Periodic task to expire old cache entries.
-     * @return void
-     */
-    public function expireCache(): void
-    {
-        # Delete entries from the cache if they are older than 4 hours
-        $DB = new Database();
-        $DB->query("DELETE FROM MetricsReporter_Cache "
-                   ."WHERE NOW() - LastUpdate > 14400");
+        $KeyList = $Cache->get("KeyList");
+        if ($KeyList === null) {
+            return;
+        }
+
+        foreach ($KeyList as $Key => $Value) {
+            $Cache->delete($Key);
+        }
+        $Cache->delete("KeyList");
     }
 
     /**
@@ -233,9 +185,9 @@ class MetricsReporter extends Plugin
     {
         $RequestString = urldecode($RequestString);
 
-        # check each injection pattern
+      # check each injection pattern
         foreach (self::$SqlInjectionPatterns as $Pattern) {
-            # if we find a match
+          # if we find a match
             if (stripos($RequestString, $Pattern) !== false) {
                 return true;
             }
@@ -251,4 +203,6 @@ class MetricsReporter extends Plugin
         " unhex(hex(",
         "'a=0",
     ];
+
+    private const CACHED_DATA_TTL = 4 * 60 * 60; # time to live value for cached items in seconds
 }

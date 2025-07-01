@@ -67,45 +67,6 @@ class ResourceExporter extends Plugin
         return null;
     }
 
-    /**
-     * Perform upgrade-tasks.
-     * @param string $PreviousVersion Version we're coming from.
-     * @return string|null NULL on success, error string on failure.
-     */
-    public function upgrade(string $PreviousVersion): ?string
-    {
-        if (version_compare($PreviousVersion, "1.1.0", "<")) {
-            $IdLists = $this->getConfigSetting("SelectedFieldIdLists");
-
-            $Formats = $this->getConfigSetting("SelectedFormats");
-            $DefaultFormat = current($this->getFormats());
-            $FormatParameters = $this->getConfigSetting("FormatParameterValues");
-
-            if (is_array($IdLists)) {
-                $ExportConfigs = [];
-                foreach ($IdLists as $UserId => $FieldIds) {
-                    $ExportConfigs[$UserId]["Default"] = [
-                        "FieldIds" => $FieldIds,
-                        "Format" => StdLib::getArrayValue($Formats, $UserId, $DefaultFormat),
-                        "FormatParams" => $FormatParameters,
-                    ];
-                }
-                $this->setConfigSetting("ExportConfigs", $ExportConfigs);
-
-                foreach (
-                    ["SelectedFieldIdLists", "SelectedFormats",
-                        "FormatParameterValues"
-                    ] as $Var
-                ) {
-                    $this->setConfigSetting($Var, null);
-                }
-            }
-        }
-
-        return null;
-    }
-
-
     # ---- HOOKED METHODS ----------------------------------------------------
 
     /**

@@ -185,7 +185,7 @@ class CalendarEvents extends Plugin
         $MRPlugin->registerEventType("CalendarEvents", "iCalDownload");
 
         # add our menu options to those offered for secondary navigation
-        if ($PluginMgr->pluginEnabled("SecondaryNavigation") &&
+        if ($PluginMgr->pluginReady("SecondaryNavigation") &&
             User::getCurrentUser()->isLoggedIn()) {
             $SecondaryNav = SecondaryNavigation::getInstance();
             $Schema = new MetadataSchema($this->getSchemaId());

@@ -9,6 +9,7 @@
 # @scout:phpstan
 
 use Metavus\ItemListUI;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -33,9 +34,10 @@ if (!isset($H_PageOffset)) {
 }
 
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
 $PageTitle = "Add/Edit Blogs";
-PageTitle($PageTitle);
+$AF->setPageTitle($PageTitle);
 
 # blog list item button links
 $BaseLink = "index.php?P=P_Blog_ListBlogs&amp;CK=" . $H_Checksum;

@@ -3,7 +3,7 @@
 #   FILE:  Preferences.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -112,8 +112,7 @@ function changeUserEmailIfNecessary(UserEditingUI $EditingUI): void
 $User = User::getCurrentUser();
 
 # make sure the user is logged in
-if (!$User->isLoggedIn()) {
-    CheckAuthorization(false);
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
@@ -226,6 +225,7 @@ $H_UserEditingUI = new UserEditingUI(
     $User,
     $FormFields
 );
+$H_UserEditingUI->addHiddenField("F_ReturnTo", $H_ReturnTo);
 
 # if a button in the EditingUI was pushed, process its actions
 switch ($H_UserEditingUI->getSubmitButtonValue()) {

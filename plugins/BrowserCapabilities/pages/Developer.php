@@ -3,14 +3,15 @@
 #   FILE: Developer.php (BrowserCapabilities plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
 use Metavus\Plugins\BrowserCapabilities;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
-if (!CheckAuthorization(PRIV_SYSADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
     return;
 }
 
@@ -18,7 +19,8 @@ $AF = ApplicationFramework::getInstance();
 
 $BrowserCaptabilitiesPlugin = BrowserCapabilities::getInstance();
 if (!$BrowserCaptabilitiesPlugin->getConfigSetting("EnableDeveloper")) {
-    CheckAuthorization(false);
+    User::handleUnauthorizedAccess();
+    return;
 }
 
 $H_BrowserData = $AF->SignalEvent(

@@ -3,7 +3,7 @@
 #   FILE:  EditRegistration.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -28,7 +28,7 @@ use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-CheckAuthorization(PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_SYSADMIN);
 
 $H_Id = $_GET["ID"] ?? null;
 if (is_null($H_Id)) {

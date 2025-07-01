@@ -92,7 +92,11 @@ class GoogleMaps extends Plugin
     const POINT_LATITUDE = "X";
     const POINT_LONGITUDE = "Y";
 
+    # template to use for error notifications
     const MAILER_TEMPLATE_NAME = "GoogleMaps Geocode Error";
+
+    # number of errors before an email notification is sent
+    const ERROR_EMAIL_THRESHOLD = 3;
 
     /**
      * Register information about this plugin.
@@ -101,7 +105,7 @@ class GoogleMaps extends Plugin
     public function register(): void
     {
         $this->Name = "Google Maps";
-        $this->Version = "1.3.8";
+        $this->Version = "1.3.9";
         $this->Description = "Adds the ability to add a Google Maps"
                 ." window to a Metavus page or interface, pulling"
                 ." map marker data from record metadata.";
@@ -205,7 +209,7 @@ class GoogleMaps extends Plugin
         $this->CfgSetup["GeocodeFailureCacheExpirationTime"] = [
             "Type" => "Number",
             "MaxVal" => 31536000,
-            "Default" => 1800,
+            "Default" => 86400, # (24 hours)
             "Label" => "Geocode Failure Cache Expiration Time",
             "Help" => "Specifies how long to cache a failure to geocode an address, in seconds. "
                 ."Until this time elapses, repeated requests for the same address will also fail. "
@@ -399,7 +403,7 @@ class GoogleMaps extends Plugin
     public function hookEvents(): array
     {
         $Events = [
-            "EVENT_HOURLY" => "cleanCaches",
+            "EVENT_HOURLY" => "doMaintenance",
             "GoogleMaps_EVENT_HTML_TAGS" => "generateHTMLTags",
             "GoogleMaps_EVENT_HTML_TAGS_SIMPLE" => "generateHTMLTagsSimple",
             "GoogleMaps_EVENT_STATIC_MAP"   => "staticMap",
@@ -738,17 +742,19 @@ class GoogleMaps extends Plugin
             );
         }
 
-        $MapApplication = str_replace(
-            array_keys($Replacements),
-            array_values($Replacements),
-            $GoogleMapsDisplayJS
-        );
+        foreach ($Replacements as $ReplacementKey => $ReplacementValue) {
+            $GoogleMapsDisplayJS = str_replace(
+                $ReplacementKey,
+                $ReplacementValue,
+                $GoogleMapsDisplayJS
+            );
+        }
 
         print '<style type="text/css">';
         print file_get_contents("plugins/GoogleMaps/GoogleMapsDisplay.css");
         print '</style>';
 
-        print('<script type="text/javascript">'.$MapApplication.'</script>');
+        print('<script type="text/javascript">'.$GoogleMapsDisplayJS.'</script>');
     }
 
     /**
@@ -882,58 +888,60 @@ class GoogleMaps extends Plugin
             return null;
         }
 
-        $DB = new Database();
-
         $Key = md5($Address);
 
-        # Then look for the desired address
+        $DB = new Database();
+
+        # then look for the desired address
         $DB->query(
-            "SELECT Lat, Lng, AddrData FROM GoogleMaps_Geocodes "
-            ."WHERE Id='".$Key."'"
+            "SELECT Response FROM GoogleMaps_Geocodes"
+            ." WHERE Id='".$Key."'"
         );
 
-        # If we couldn't find the desired address:
+        # if desired address was not found
         if ($DB->numRowsSelected() == 0) {
-            # If we're running in the foreground, fetch it now,
-            #  otherwise, use a background task to fetch it.
-            if ($Foreground) {
-                $this->geocodeRequest($Address);
-                $DB->query("SELECT Lat,Lng,AddrData FROM GoogleMaps_Geocodes "
-                           ."WHERE Id='".$Key."'");
-                $Row = $DB->fetchRow();
-            } else {
-                # if we can't find it, set up a Geocoding request and return NULL
+            # for background requests, queue an update task and return null
+            if (!$Foreground) {
                 $this->queueUniqueTask(
-                    "geocodeRequest",
+                    "performGeocodingHttpRequest",
                     [$Address],
                     ApplicationFramework::PRIORITY_HIGH
                 );
                 return null;
             }
-        } else {
-            $Row = $DB->fetchRow();
+
+            # otherwise, run the request immediately and then re-query the db
+            $this->performGeocodingHttpRequest($Address);
             $DB->query(
-                "UPDATE GoogleMaps_Geocodes "
-                ."SET LastUsed=NOW() "
-                ."WHERE Id='".$Key."'"
+                "SELECT Response FROM GoogleMaps_Geocodes"
+                ." WHERE Id='".$Key."'"
             );
         }
 
-        # if there was no value, return null
-        #  otherwise, unpack the serialized array and return the result
-        if ($Row == false || $Row["Lat"] == null) {
-            return null;
-        } else {
-            $Row["AddrData"] = unserialize($Row["AddrData"]);
-            return $Row;
+        # fetch result from the db
+        $Row = $DB->fetchRow();
+
+        $DB->query(
+            "UPDATE GoogleMaps_Geocodes SET LastUsed=NOW()"
+            ." WHERE Id='".$Key."'"
+        );
+
+        # decode XML reply
+        $Result = null;
+        if (is_array($Row) && isset($Row["Response"])) {
+            $Result = $this->parseGeocodeResponseXML(
+                $Row["Response"]
+            );
         }
+
+        return $Result;
     }
 
     /**
      * Perform the request necessary to geocode an address.
      * @param string $Address Address of a location.
      */
-    public function geocodeRequest($Address): void
+    public function performGeocodingHttpRequest($Address): void
     {
         $ApiKey = $this->getConfigSetting("GeocodingAPIKey");
         if (strlen($ApiKey) == 0) {
@@ -942,11 +950,9 @@ class GoogleMaps extends Plugin
             );
         }
 
-        # compute database id *before* doing any normalization
-        $Id = md5($Address);
-
-        # normalize line endings
         $Address = str_replace("\r\n", "\n", $Address);
+
+        $Id = md5($Address);
 
         $TargetUrl = "https://maps.google.com/maps/api/geocode/xml?address="
             .urlencode($Address)
@@ -966,67 +972,21 @@ class GoogleMaps extends Plugin
             ])
         );
 
-        if ($Data == false) {
+        if ($Data === false) {
             ApplicationFramework::getInstance()->logMessage(
                 ApplicationFramework::LOGLVL_ERROR,
-                "GoogleMaps geocode request failed to retrieve data for address '".$Address
-                ."' using API key '".$ApiKey."'."
+                "[GoogleMaps] HTTP Error issuing geocoding request for '".$Address."'"
+                ." using API key '".$ApiKey."'."
             );
             return;
         }
 
-        $ParsedData = simplexml_load_string($Data);
-        if (($ParsedData !== false)
-                && ($ParsedData->status == "OK")) {
-            # extract lat and lng
-            $Lat = floatval($ParsedData->result->geometry->location->lat);
-            $Lng = floatval($ParsedData->result->geometry->location->lng);
-
-            # extract more detailed address data
-            $AddrData = [];
-            foreach ($ParsedData->result->address_component as $Item) {
-                foreach ($Item->type as $ItemType) {
-                    # skip the 'political' elements, we don't want those
-                    if ((string)$ItemType == "political") {
-                        continue;
-                    }
-
-                    # snag the value
-                    $AddrData[(string)$ItemType]["Name"] = (string)$Item->long_name;
-
-                    # if there was a distinct abbreviation, get that as well
-                    if ((string)$Item->long_name != (string)$Item->short_name) {
-                        $AddrData[(string)$ItemType]["ShortName"] =
-                            (string)$Item->short_name;
-                    }
-                }
-            }
-
-            $this->cacheGeocodingResult(
-                $Id,
-                $Lat,
-                $Lng,
-                $AddrData
-            );
-        } else {
-            $this->cacheGeocodingFailure(
-                $Id,
-                $Address,
-                $Data
-            );
-
-            ApplicationFramework::getInstance()->logMessage(
-                ApplicationFramework::LOGLVL_INFO,
-                "[GoogleMaps] Geocoding Error for "
-                .$Address.": ".$Data
-                ."TargetUrl was: ".$TargetUrl
-            );
-
-            $this->sendGeocodeFailureEmail(
-                $Address,
-                $Data
-            );
-        }
+        $this->saveResultOfGeocoding(
+            $TargetUrl,
+            $Id,
+            $Address,
+            $Data
+        );
     }
 
     /**
@@ -1041,18 +1001,8 @@ class GoogleMaps extends Plugin
         }
 
         $DB = new Database();
-
-        $DB->query(
-            "LOCK TABLES GoogleMaps_Geocodes, GoogleMaps_GeocodeErrors WRITE"
-        );
         $DB->query(
             "DELETE FROM GoogleMaps_Geocodes WHERE Id='".addslashes($Id)."'"
-        );
-        $DB->query(
-            "DELETE FROM GoogleMaps_GeocodeErrors WHERE Id='".addslashes($Id)."'"
-        );
-        $DB->query(
-            "UNLOCK TABLES"
         );
     }
 
@@ -1103,57 +1053,22 @@ class GoogleMaps extends Plugin
     }
 
     /**
-     * Periodic function to clean old data from DB cache tables.
+     * Periodic function to clean old data from DB tables and retry failed
+     *   geocoding.
      */
-    public function cleanCaches(): void
+    public function doMaintenance(): void
     {
-        $DB = new Database();
-
-        # clean the cache of entries older than the configured expiration time
-        $DB->query(
-            "DELETE FROM GoogleMaps_Geocodes WHERE "
-            ."TIMESTAMPDIFF(SECOND, LastUsed, NOW()) >"
-            .$this->getConfigSetting("ExpTime")
-        );
-
-        # clean error info for expired geocodes
-        $DB->query(
-            "DELETE FROM GoogleMaps_GeocodeErrors WHERE "
-            ."Id NOT IN (SELECT Id FROM GoogleMaps_Geocodes)"
-        );
-
-        $DB->query(
-            "SELECT Id FROM GoogleMaps_Geocodes "
-            ."WHERE Lat IS NULL AND "
-            ."TIMESTAMPDIFF(SECOND, LastUpdate, NOW()) >"
-            .$this->getConfigSetting("GeocodeFailureCacheExpirationTime")
-        );
-        $FailedIds = $DB->fetchColumn("Id");
-
-        # if we had any ids that failed
-        if (count($FailedIds)) {
-            $this->clearFailureCacheAndRetryGeocoding($FailedIds);
-        }
+        $this->cleanCaches();
+        $this->queueRetriesForFailedGeocodeRequests();
 
         # clean out expired callbacks
         $this->CallbackManager->expireCallbacks();
 
         # delete js error data older than 2 hours
+        $DB = new Database();
         $DB->query(
             "DELETE FROM GoogleMaps_JavascriptErrors WHERE "
             ."TIMESTAMPDIFF(SECOND, ErrorTime, NOW()) > 7200"
-        );
-
-        # clean out old KML files
-        $this->cleanCacheDirectory(
-            $this->getKmlCachePath(),
-            '/^[0-9a-f]+_[0-9a-f]+\.kml$/'
-        );
-
-        # clean out old map markers
-        $this->cleanCacheDirectory(
-            $this->getMarkerCachePath(),
-            '/^[A-Za-z0-9_]+\.png$/'
         );
     }
 
@@ -1246,7 +1161,7 @@ class GoogleMaps extends Plugin
         # make sure the cache directories exist and are usable before attempting
         # to generate the KML
         if (strlen($this->checkCacheDirectory())) {
-            $AF->LogMessage(
+            $AF->logMessage(
                 ApplicationFramework::LOGLVL_ERROR,
                 "[GoogleMaps] KML Cache directory is not writable."
             );
@@ -1271,7 +1186,7 @@ class GoogleMaps extends Plugin
                 ."WHERE Id='".addslashes(${$Type."ProviderHash"})."'"
             );
             if ($DB->numRowsSelected() == 0) {
-                $AF->LogMessage(
+                $AF->logMessage(
                     ApplicationFramework::LOGLVL_ERROR,
                     "[GoogleMaps] Callback for ".$Type." Provider Hash "
                     .${$Type."ProviderHash"}." not found. Either the hash "
@@ -1305,11 +1220,11 @@ class GoogleMaps extends Plugin
             ];
 
             if (!is_callable($Callbacks[$Abbr][$CallbackKey])) {
-                $AF->LogMessage(
+                $AF->logMessage(
                     ApplicationFramework::LOGLVL_ERROR,
                     "[GoogleMaps] Registered ".$Type." Provider could not be "
                     ."loaded. This probably indicates an error in user interface code. "
-                    ."Callback was ".var_export(${$Abbr."PCallback"}, true)
+                    ."Callback was ".var_export(unserialize($Row["Payload"]), true)
                 );
                 $CallbackErrors = true;
             }
@@ -1340,7 +1255,7 @@ class GoogleMaps extends Plugin
                 true
             );
 
-            $AF->LogMessage(ApplicationFramework::LOGLVL_INFO, $Message);
+            $AF->logMessage(ApplicationFramework::LOGLVL_INFO, $Message);
         }
 
         # initialize the KML file
@@ -1643,11 +1558,11 @@ class GoogleMaps extends Plugin
     public function getMailerTemplateId(): int
     {
         $Mailer = Mailer::getInstance();
-        $MailerTemplates = $Mailer->GetTemplateList();
+        $MailerTemplates = $Mailer->getTemplateList();
 
         # set up a template if one doesn't yet exist
         if (!in_array(self::MAILER_TEMPLATE_NAME, $MailerTemplates)) {
-            $Mailer->AddTemplate(
+            $Mailer->addTemplate(
                 self::MAILER_TEMPLATE_NAME,
                 "X-PORTALNAME-X <X-ADMINEMAIL-X>",
                 "GoogleMaps: Geocoding Error",
@@ -1663,7 +1578,7 @@ class GoogleMaps extends Plugin
 
             # need to get the template again if we just added the
             # template so we have up-to-date config vaules
-            $MailerTemplates = $Mailer->GetTemplateList();
+            $MailerTemplates = $Mailer->getTemplateList();
         }
 
         $TemplateId = array_search(
@@ -1762,129 +1677,193 @@ class GoogleMaps extends Plugin
     }
 
     /**
-     * Update database with location information from a successful geocode request.
-     * @param string $Id Address identifier.
-     * @param float $Lat Latitude.
-     * @param float $Lng Longitude.
-     * @param array $AddrData Decoded XML response from Google.
+     * Save the result of a geocoding API call to the database.
+     * @param string $TargetUrl URL for the API request.
+     * @param string $Id Database ID for the address.
+     * @param string $Address Address being geocoded.
+     * @param string $ResponseData Response from Google.
      */
-    private function cacheGeocodingResult(
+    private function saveResultOfGeocoding(
+        string $TargetUrl,
         string $Id,
-        float $Lat,
-        float $Lng,
-        array $AddrData
+        string $Address,
+        string $ResponseData
     ): void {
+        $Result = $this->parseGeocodeResponseXML($ResponseData);
+
+        if ($Result === null) {
+            ApplicationFramework::getInstance()->logMessage(
+                ApplicationFramework::LOGLVL_ERROR,
+                "[GoogleMaps] Geocoding request produced unparseable reply."
+                ." Address: ".$Address
+                    ." Reply: ".$ResponseData
+                    ." Request Url: ".$TargetUrl
+            );
+            return;
+        }
+
         $DB = new Database();
-
         $DB->query(
-            "LOCK TABLES GoogleMaps_Geocodes WRITE, GoogleMaps_GeocodeErrors WRITE"
-        );
-        $DB->query(
-            "INSERT INTO GoogleMaps_Geocodes "
-            ."(Id,Lat,Lng,AddrData,LastUpdate,LastUsed) VALUES ("
-            ."'".$Id."',"
-            .$Lat.","
-            .$Lng.","
-            ."'".$DB->escapeString(serialize($AddrData))."',"
-            ."NOW(),"
-            ."NOW()"
-            .")"
-        );
-        $DB->query(
-            "DELETE FROM GoogleMaps_GeocodeErrors "
-            ."WHERE Id='".$Id."'"
-        );
-        $DB->query(
-            "UNLOCK TABLES"
+            "LOCK TABLES GoogleMaps_Geocodes WRITE"
         );
 
-        $this->setConfigSetting("GeocodeLastSuccessful", time());
+        # create/update a row to store data for this Id
+        $DB->query(
+            "INSERT INTO GoogleMaps_Geocodes (Id, Address, LastUpdate, LastUsed)"
+            ." VALUES (" ."'".$Id."', '".$DB->escapeString($Address)."', NOW(), NOW() )"
+            ." ON DUPLICATE KEY UPDATE LastUpdate = NOW()"
+        );
+
+        # store updated response data (done as a separate update so we don't need to
+        # repeat the data in the INSERT and the UPDATE clauses in the query above)
+        $DB->query(
+            "UPDATE GoogleMaps_Geocodes"
+            ." SET Response = '".$DB->escapeString($ResponseData)."'"
+            ." WHERE Id='".$Id."'"
+        );
+
+        if (isset($Result["Error"])) {
+            # if response indicated an error, increment error counter
+            $DB->query(
+                "UPDATE GoogleMaps_Geocodes SET ErrorCount = ErrorCount + 1"
+                    ." WHERE Id='".$Id."'"
+            );
+        } else {
+            # otherwise reset error counter
+            $DB->query(
+                "UPDATE GoogleMaps_Geocodes SET ErrorCount = 0, ErrorEmailSent = 0"
+                    ." WHERE Id='".$Id."'"
+            );
+        }
+
+        $DB->query("UNLOCK TABLES");
+
+        # log and report errors
+        # (outside the table locks)
+        if (isset($Result["Error"])) {
+            ApplicationFramework::getInstance()->logMessage(
+                ApplicationFramework::LOGLVL_INFO,
+                "[GoogleMaps] Geocoding Error for "
+                .$Address.": ".$ResponseData
+                    ."TargetUrl was: ".$TargetUrl
+            );
+
+            $this->sendGeocodeFailureEmail($Result["Error"], $Address, $ResponseData);
+        }
     }
 
     /**
-     * Update database to indicate that an address could not be geocoded.
-     * @param string $Id Address identifier.
-     * @param string $Address Address.
-     * @param string $Data Full XML response from Google.
+     * Parse XML from a Geocode Response to produce an array of Lat/Lng/Details.
+     * @param string $ResponseData XML data from Google.
+     * @return array|NULL Array containing Lat, Lng, and AddrData elements on
+     *   success, an array with a single "Error" element giving the status
+     *   value returned when the reply was valid XML but indicated a failed
+     *   request, or NULL when the reply could not be parsed as XML.
      */
-    private function cacheGeocodingFailure(
-        $Id,
-        $Address,
-        $Data
-    ): void {
-        $DB = new Database();
+    private function parseGeocodeResponseXML(string $ResponseData): ?array
+    {
+        $ParsedData = simplexml_load_string($ResponseData);
+        if ($ParsedData === false) {
+            return null;
+        }
 
+        if ($ParsedData->status != "OK") {
+            return [
+                "Error" => $ParsedData->status
+            ];
+        }
+
+        # extract lat and lng
+        $Lat = floatval($ParsedData->result->geometry->location->lat);
+        $Lng = floatval($ParsedData->result->geometry->location->lng);
+
+        # extract more detailed address data
+        $AddrData = [];
+        foreach ($ParsedData->result->address_component as $Item) {
+            foreach ($Item->type as $ItemType) {
+                # skip the 'political' elements, we don't want those
+                if ((string)$ItemType == "political") {
+                    continue;
+                }
+
+                # snag the value
+                $AddrData[(string)$ItemType]["Name"] = (string)$Item->long_name;
+
+                # if there was a distinct abbreviation, get that as well
+                if ((string)$Item->long_name != (string)$Item->short_name) {
+                    $AddrData[(string)$ItemType]["ShortName"] =
+                        (string)$Item->short_name;
+                }
+            }
+        }
+
+        return [
+            "Lat" => $Lat,
+            "Lng" => $Lng,
+            "AddrData" => $AddrData,
+        ];
+    }
+
+    /**
+     * Clean old cached data from DB tables and cache directories.
+     */
+    private function cleanCaches(): void
+    {
+        # clean the cache of entries older than the configured expiration time
+        $DB = new Database();
         $DB->query(
-            "LOCK TABLES GoogleMaps_Geocodes, GoogleMaps_GeocodeErrors WRITE"
+            "DELETE FROM GoogleMaps_Geocodes WHERE "
+            ."TIMESTAMPDIFF(SECOND, LastUsed, NOW()) > "
+            .$this->getConfigSetting("ExpTime")
         );
-        $DB->query(
-            "INSERT INTO GoogleMaps_Geocodes "
-            ."(Id,Lat,Lng,AddrData,LastUpdate,LastUsed) VALUES "
-            ."('".$Id."',NULL,NULL,NULL,NOW(),NOW())"
+
+        # clean out old KML files
+        $this->cleanCacheDirectory(
+            $this->getKmlCachePath(),
+            '/^[0-9a-f]+_[0-9a-f]+\.kml$/'
         );
-        $DB->query(
-            "DELETE FROM GoogleMaps_GeocodeErrors "
-            ."WHERE Id='".$Id."'"
-        );
-        $DB->query(
-            "INSERT INTO GoogleMaps_GeocodeErrors "
-            ."(Id, Address, ErrorData) VALUES "
-            ."('".$Id."',"
-            ."'".$DB->escapeString($Address)."',"
-            ."'".$DB->escapeString($Data)."')"
-        );
-        $DB->query(
-            "UNLOCK TABLES"
+
+        # clean out old map markers
+        $this->cleanCacheDirectory(
+            $this->getMarkerCachePath(),
+            '/^[A-Za-z0-9_]+\.png$/'
         );
     }
 
     /**
-     * Clear geocode failure cache and retry geocoding for failing addresses.
-     * @param array $FailedIds IDs corresponding to failing addresses.
+     * Retry geocoding on addresses that failed and are due for another attempt.
      */
-    private function clearFailureCacheAndRetryGeocoding($FailedIds): void
+    private function queueRetriesForFailedGeocodeRequests(): void
     {
         $DB = new Database();
 
-        # break them up into chunks of less than a thousand
-        foreach (array_chunk($FailedIds, 1000) as $IdChunk) {
-            # construct the ... part of a WHERE Id IN (...) clause
-            $InText = implode(
-                ",",
-                array_map(
-                    function ($x) {
-                        return "'".addslashes($x)."'";
-                    },
-                    $IdChunk
-                )
-            );
+        # get the list of addresses where geocoding has failed and needs to be retried
+        $DB->query(
+            "SELECT Address FROM GoogleMaps_Geocodes "
+            ."WHERE ErrorCount > 0 AND "
+            ."TIMESTAMPDIFF(SECOND, LastUpdate, NOW()) > "
+            .$this->getConfigSetting("GeocodeFailureCacheExpirationTime")
+        );
+        $Addresses = $DB->fetchColumn("Address");
 
-            # get the corresponding addresses that failed
-            $DB->query(
-                "SELECT Address FROM GoogleMaps_GeocodeErrors "
-                ."WHERE Id IN (".$InText.")"
+        # queue updates for all the failed addresses
+        foreach ($Addresses as $Address) {
+            $this->queueUniqueTask(
+                "performGeocodingHttpRequest",
+                [$Address],
+                ApplicationFramework::PRIORITY_HIGH
             );
-            $Addresses = $DB->fetchColumn("Address");
-
-            # delete cached failures
-            $DB->query(
-                "DELETE FROM GoogleMaps_Geocodes "
-                ."WHERE Id IN (".$InText.")"
-            );
-
-            # queue updates for all the failed addresses
-            foreach ($Addresses as $Address) {
-                $this->geocode($Address);
-            }
         }
     }
 
     /**
      * Send email notifications about geocoding failures.
+     * @param string $Error Error returned by Google.
      * @param string $Address Address that could not be geocoded.
      * @param string $Data XML error string from Google.
      */
     private function sendGeocodeFailureEmail(
+        string $Error,
         string $Address,
         string $Data
     ): void {
@@ -1893,14 +1872,32 @@ class GoogleMaps extends Plugin
             "REQUEST_DENIED",
         ];
 
-        $ParsedError = simplexml_load_string($Data);
-        if (($ParsedError === false)
-                || in_array((string)$ParsedError->status, $ErrorsToSkip)) {
+        if (in_array($Error, $ErrorsToSkip)) {
+            return;
+        }
+
+        $Key = md5($Address);
+
+        $DB = new Database();
+        $DB->query(
+            "SELECT ErrorCount, ErrorEmailSent FROM GoogleMaps_Geocodes"
+                ." WHERE Id='".$Key."'"
+        );
+        $Row = $DB->fetchRow();
+
+        # bail if query failed
+        if ($Row === false) {
+            return;
+        }
+
+        # if we're below the threshold to notify or have already notified,
+        # then nothing to do
+        if ($Row["ErrorCount"] < self::ERROR_EMAIL_THRESHOLD
+                || (bool)$Row["ErrorEmailSent"]) {
             return;
         }
 
         $Mailer = Mailer::getInstance();
-
         $Recipients = array_keys(
             (new UserFactory())->getUsersWithPrivileges(
                 $this->getConfigSetting("GeocodeErrorEmailRecipients")
@@ -1913,11 +1910,16 @@ class GoogleMaps extends Plugin
             "GOOGLEMAPS:ERROR" => $Data,
         ];
 
-        $Mailer->SendEmail(
+        $Mailer->sendEmail(
             $this->getConfigSetting("GeocodeErrorEmailTemplate"),
             $Recipients,
             [],
             $Tokens
+        );
+
+        $DB->query(
+            "UPDATE GoogleMaps_Geocodes SET ErrorEmailSent=1"
+            ." WHERE Id='".$Key."'"
         );
     }
 
@@ -2038,17 +2040,12 @@ class GoogleMaps extends Plugin
         "Geocodes" =>
             "CREATE TABLE GoogleMaps_Geocodes (
             Id VARCHAR(32),
-            Lat DOUBLE,
-            Lng DOUBLE,
+            Address MEDIUMBLOB,
+            Response MEDIUMBLOB,
+            ErrorCount INT DEFAULT 0,
+            ErrorEmailSent INT DEFAULT 0,
             LastUpdate TIMESTAMP,
             LastUsed TIMESTAMP,
-            AddrData MEDIUMBLOB,
-            UNIQUE UIndex_I (Id))",
-        "GeocodeErrors" =>
-            "CREATE TABLE GoogleMaps_GeocodeErrors (
-            Id VARCHAR(32),
-            Address MEDIUMBLOB,
-            ErrorData MEDIUMBLOB,
             UNIQUE UIndex_I (Id))",
         "JavascriptErrors" =>
             "CREATE TABLE GoogleMaps_JavascriptErrors (

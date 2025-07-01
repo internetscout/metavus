@@ -8,10 +8,7 @@
 #
 #   @scout:phpstan
 
-ParseArguments();
-PageTitle("Recommend Resources");
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -36,6 +33,9 @@ function ParseArguments(): void
 }
 
 # ----- MAIN -----------------------------------------------------------------
+ParseArguments();
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Recommend Resources");
 
 # non-standard global variables
 global $CurrentResourceId;

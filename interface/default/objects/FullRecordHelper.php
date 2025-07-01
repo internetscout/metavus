@@ -191,30 +191,27 @@ foreach ($Values as $ImageId => $Image) {
     ): string {
         $AF = ApplicationFramework::getInstance();
 
-        $CssClasses = "btn btn-sm btn-primary";
-
+        $Button = new HtmlButton($Label);
+        $Button->setSize(HtmlButton::SIZE_SMALL);
+        $Button->setTitle($Title);
+        $Button->addClass($AdditionalCssClasses);
         if ($IconName !== null) {
-            $CssClasses .= " mv-button-iconed";
+            $Button->setIcon($IconName.".svg");
         }
 
-        if (strlen($AdditionalCssClasses)) {
-            $CssClasses .= " " .$AdditionalCssClasses;
+        if (strlen($Link) > 0) {
+            $Button->setLink($Link);
         }
 
-        $AttributeHtml = "";
-        foreach ($Attributes as $Key => $Val) {
-            $AttributeHtml .= " " .$Key ."=\"" .htmlspecialchars($Val) ."\"";
-        }
+        if (isset($Attributes["onclick"])) {
+            $OnClick = $Attributes["onclick"];
+            unset($Attributes["onclick"]);
 
-        $IconTag = ($IconName === null) ? ""
-            : "<img class=\"mv-button-icon\" alt=\"\" "
-            ."src=\"" .$AF->gUIFile($IconName .".svg") ."\"> ";
-        return "<a href=\"" .$Link ."\""
-            ." title=\"" .htmlspecialchars($Title) ."\""
-            ." class=\"" .$CssClasses ."\""
-            .$AttributeHtml
-            ." role=\"button\">"
-            .$IconTag .htmlspecialchars($Label) ."</a>";
+            $Button->setOnclick($OnClick);
+        }
+        $Button->addAttributes($Attributes);
+
+        return $Button->getHtml();
     }
 
     /**

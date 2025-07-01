@@ -3,33 +3,32 @@
 #   FILE:  RemoveAllItems.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
+
+namespace Metavus;
 
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 
 $AF = ApplicationFramework::getInstance();
 
-use ScoutLib\StdLib;
+$FolderId = $_GET["FolderId"] ?? null;
 
-$FolderId = StdLib::getArrayValue($_GET, "FolderId");
-
-# if "ReturnTo" is set, then jump back to that address
-if (StdLib::getArrayValue($_GET, "ReturnTo", false)) {
-    $AF->SetJumpToPage(urldecode($_GET["ReturnTo"]));
-} elseif (isset($_SERVER["HTTP_REFERER"])) {
+if (isset($_SERVER["HTTP_REFERER"])) {
     # else jump back to the page which this page is being directed from
-    $AF->SetJumpToPage($_SERVER["HTTP_REFERER"]);
+    $AF->setJumpToPage($_SERVER["HTTP_REFERER"]);
 } else {
     # jump to ViewFolder page if nothing is set
-    $AF->SetJumpToPage($AF->
-        getCleanRelativeUrlForPath("index.php?P=P_Folders_ViewFolder&FolderId=".$FolderId));
+    $AF->setJumpToPage(
+        ApplicationFramework::baseUrl()
+            ."index.php?P=P_Folders_ViewFolder&FolderId=".$FolderId
+    );
 }
 
 # retrieve user currently logged in
@@ -41,17 +40,17 @@ if (!$User->isLoggedIn()) {
     return;
 }
 
-$FolderFactory = new FolderFactory($User->Id());
-$ResourceFolder = $FolderFactory->GetResourceFolder();
+$FolderFactory = new FolderFactory($User->id());
+$ResourceFolder = $FolderFactory->getResourceFolder();
 $Folder = new Folder($FolderId);
-$ItemsInFolder = $Folder->GetItemIds();
 
 # check if the user owns the folder
-if ($User->Id() != $Folder->OwnerId()) {
+if ($User->id() != $Folder->ownerId()) {
     # we cannot proceed if the user currently logged in is not this folder's owner
     return;
 }
 
+$ItemsInFolder = $Folder->getItemIds();
 foreach ($ItemsInFolder as $ItemId) {
-    $Folder->RemoveItem($ItemId);
+    $Folder->removeItem($ItemId);
 }

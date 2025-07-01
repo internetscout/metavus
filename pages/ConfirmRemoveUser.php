@@ -3,7 +3,7 @@
 #   FILE:  ConfirmRemoveUser.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -13,19 +13,17 @@ use ScoutLib\ApplicationFramework;
 use Metavus\User;
 
 # ----- MAIN -----------------------------------------------------------------
-
-PageTitle("Confirm Remove User");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Remove User");
 
 # check if current user is authorized
-CheckAuthorization(PRIV_USERADMIN, PRIV_SYSADMIN);
-
-$AF = ApplicationFramework::getInstance();
+User::requirePrivilege(PRIV_USERADMIN, PRIV_SYSADMIN);
 
 # get the list of users to remove
 $H_UsersToRemove = StdLib::getArrayValue($_SESSION, "UserRemoveArray", []);
 
 # check if the user is trying to remove his or her own account
-$OwnIdKey = array_search(User::getCurrentUser()->Id(), $H_UsersToRemove);
+$OwnIdKey = array_search(User::getCurrentUser()->id(), $H_UsersToRemove);
 $H_TriedRemovingOwnAccount = false;
 
 # check whether any of the users should not be removed

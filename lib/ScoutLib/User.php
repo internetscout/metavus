@@ -11,8 +11,6 @@
 namespace ScoutLib;
 use Exception;
 use InvalidArgumentException;
-use ScoutLib\Database;
-use ScoutLib\StdLib;
 
 /**
  * Class representing site user.
@@ -868,12 +866,6 @@ class User
                 . ") to anonymous user.");
         }
 
-        # check to make sure privilege value looks reasonable
-        if (!is_numeric($Privilege)) {
-            throw new InvalidArgumentException("Attempt to grant invalid privilege ('"
-                . $Privilege . "').");
-        }
-
         # if user does not already have privilege
         $PrivCount = $this->DB->queryValue(
             "SELECT COUNT(*) AS PrivCount FROM APUserPrivileges"
@@ -901,12 +893,6 @@ class User
         if ($this->isAnonymous()) {
             throw new Exception("Attempt to revoke privilege (" . $Privilege
                 . ") from anonymous user.");
-        }
-
-        # check to make sure privilege value looks reasonable
-        if (!is_numeric($Privilege)) {
-            throw new InvalidArgumentException("Attempt to revoke invalid privilege ('"
-                . $Privilege . "').");
         }
 
         # remove privilege from database (if present)
@@ -1040,6 +1026,55 @@ class User
     }
 
     /**
+     * Generate and return a standard-length randomly-generated password. It
+     * will be generated in such a way as to comply with currently-configured
+     * password requirements.
+     * @return string The password.
+     */
+    public static function generateRandomPassword(): string
+    {
+        $PossibleChars =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}[]:;<>";
+        $Password = "";
+        # satisfy punctuation requirement - note $^+<> do not count as punctuation
+        if (self::$PasswordRules & self::PW_REQUIRE_PUNCTUATION) {
+            $Password .= StdLib::getRandomCharacters(1, "!@#%&*()_{}[]:;");
+        }
+        # satisfy mixed case requirement
+        if (self::$PasswordRules & self::PW_REQUIRE_MIXEDCASE) {
+            $Password .= StdLib::getRandomCharacters(1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+            $Password .= StdLib::getRandomCharacters(1, "abcdefghijklmnopqrstuvwxyz");
+        }
+        # satisfy digits requirement
+        if (self::$PasswordRules & self::PW_REQUIRE_DIGITS) {
+            $Password .= StdLib::getRandomCharacters(1, "0123456789");
+        }
+        # satisfy length requirement
+        if (strlen($Password) < self::$PasswordMinLength) {
+            $Password .= StdLib::getRandomCharacters(
+                (self::$PasswordMinLength - strlen($Password)),
+                $PossibleChars
+            );
+        }
+        # satisfy unique chars requirement
+        $UniqueCharCount = count(array_unique(str_split($Password)));
+        while ($UniqueCharCount < self::$PasswordMinUniqueChars) {
+            $UnusedChars = implode(array_diff(
+                str_split($PossibleChars),
+                str_split($Password)
+            ));
+            $Password .= StdLib::getRandomCharacters(1, $UnusedChars);
+            $UniqueCharCount++;
+        }
+        # secure shuffle
+        $Password = StdLib::shuffleString($Password);
+        if (count(User::checkPasswordForErrors($Password)) > 0) {
+            throw new Exception("Unable to create valid password (should be impossible).");
+        }
+        return $Password;
+    }
+
+    /**
      * Check whether a password is valid according to configured rules.
      * (User name and email address are required to support checking that
      * the password doesn't match either of those.)
@@ -1103,15 +1138,8 @@ class User
         }
 
         # unique characters requirement
-        $PasswordChars = preg_split('//u', $Password, -1, PREG_SPLIT_NO_EMPTY);
-        if (!is_array($PasswordChars)) {
-            throw new InvalidArgumentException(
-                "Unable to split password into characters."
-            );
-        }
-        $UniqueChars = count(array_unique($PasswordChars));
-
-        if ($UniqueChars < self::$PasswordMinUniqueChars) {
+        $UniqueCharCount = count(array_unique(str_split($Password)));
+        if ($UniqueCharCount < self::$PasswordMinUniqueChars) {
             $Errors[] = self::U_PASSWORDTOOSIMPLE;
         }
 

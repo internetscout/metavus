@@ -3,12 +3,11 @@
 #   FILE:  Event.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
 use Metavus\Plugins\CalendarEvents;
 use Metavus\Plugins\CalendarEvents\Event;
 use Metavus\User;
@@ -32,7 +31,7 @@ if (!is_numeric($EventId)) {
 }
 
 # if the event ID actually is invalid
-if (!Event::ItemExists((int)$EventId)) {
+if (!Event::itemExists((int)$EventId)) {
     $AF->doNotCacheCurrentPage();
     $H_State = "Invalid ID";
     return;
@@ -41,22 +40,22 @@ if (!Event::ItemExists((int)$EventId)) {
 $H_Event = new Event((int)$EventId);
 
 # if the entry is some other type of resource
-if (!$H_Plugin->IsEvent($H_Event)) {
+if (!$H_Plugin->isEvent($H_Event)) {
     $H_State = "Not Event";
     return;
 }
 
 # if the user can't view the event
-if (!$H_Event->UserCanView(User::getCurrentUser())) {
+if (!$H_Event->userCanView(User::getCurrentUser())) {
     $H_State = "Viewing not permitted";
     return;
 }
 
 # get the events's metrics
-$H_Metrics = $H_Plugin->GetEventMetrics($H_Event);
+$H_Metrics = $H_Plugin->getEventMetrics($H_Event);
 
 # record an event
-$H_Plugin->RecordEventView($H_Event);
+$H_Plugin->recordEventView($H_Event);
 
 # everything is fine
 $H_State = "OK";

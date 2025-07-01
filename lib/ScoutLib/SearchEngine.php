@@ -1597,7 +1597,7 @@ abstract class SearchEngine
                 );
 
                 # if we have sorted item IDs
-                if (count($SortedIds) && count($TypeScores)) {  // @phpstan-ignore-line
+                if (count($SortedIds) && count($TypeScores)) {
                     # strip sorted ID list down to those that appear in search results
                     $SortedIds = array_intersect(
                         $SortedIds,

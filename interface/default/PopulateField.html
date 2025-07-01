@@ -11,8 +11,10 @@
 namespace Metavus;
 
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 # ----- SETUP ----------------------------------------------------------------
+/* @var ?MetadataField $H_Field */
 if (!isset($H_AddedItemCount)) {
     $H_AddedItemCount = null;
 }
@@ -28,16 +30,57 @@ if (!isset($H_Vocabulary)) {
 
 $AF = ApplicationFramework::getInstance();
 
-$ReturnButton = new HtmlButton("Return");
-$ReturnButton->setIcon("BackArrow.svg");
-$ReturnButton->setLink("index.php?P=EditMetadataField&Id=" . $H_Field->Id());
+if (isset($H_IsVocabImport)) {
+    $ReturnButton = new HtmlButton("Return");
+    $ReturnButton->setIcon("BackArrow.svg");
+    $ReturnButton->setLink("index.php?P=EditMetadataField&Id=" . $H_Field->id());
+}
 
-$PopulateButton = new HtmlButton("Populate");
-$PopulateButton->setIcon("MagicWand.svg");
+if (isset($H_IsVocabPreview)) {
+    $Version = strlen($H_Vocabulary->Version())
+        ? $H_Vocabulary->Version() : "(no version specified)";
+    $Terms = $H_Vocabulary->TermList();
+    $URLElement = "<a href=\"" . $H_Vocabulary->Url() . "\" target=\"_blank\">"
+        . $H_Vocabulary->Url() . "</a>";
+    $OwnerElement = "<a href=\"" . $H_Vocabulary->OwnerUrl() . "\" target=\"_blank\">"
+        . $H_Vocabulary->OwnerName() . "</a>";
+    $TermsHtml = "<ul class=\"list-group list-group-flush\">";
+    foreach ($Terms as $Term) {
+        $TermsHtml .= "<li class=\"list-group-item\"><i>" . $Term . "</i></li>";
+    }
+    $TermsHtml .= "</ul>";
 
-$CancelSingleButton = new HtmlButton("Cancel");
-$CancelSingleButton->setIcon("Cross.svg");
-$CancelSingleButton->addSemanticClass("btn-danger");
+    $PopulateButton = new HtmlButton("Populate");
+    $PopulateButton->setIcon("MagicWand.svg");
+    $PopulateButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->id()
+        . "&VH=" . $H_Vocabulary->Hash() . "&CP=Y");
+
+    $CancelSingleButton = new HtmlButton("Cancel");
+    $CancelSingleButton->setIcon("Cross.svg");
+    $CancelSingleButton->addSemanticClass("btn-danger");
+    $CancelSingleButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->id());
+
+    $ConfirmPopulateTable = new HtmlTable();
+    $ConfirmPopulateTable->setTableClass("table table-striped");
+    $ConfirmPopulateTable->addRowsWithHeaders([
+        ["Vocabulary", "<i>" . $H_Vocabulary->Name() . "</i> (" . count($Terms) . " terms)"],
+        ["Version", $Version],
+        ["URL", $URLElement],
+        ["Owner/Maintainer", $OwnerElement],
+        ["Description", $H_Vocabulary->Description()]
+    ]);
+    if ($H_Vocabulary->HasQualifier() && strlen($H_Vocabulary->QualifierUrl())) {
+        $QualifierElement = "<a href=\"" . $H_Vocabulary->QualifierUrl() . "\">"
+            . $H_Vocabulary->QualifierName() . "</a>";
+        $ConfirmPopulateTable->addRowWithHeader(["Qualifier", $QualifierElement]);
+    }
+    if (strlen($H_Vocabulary->QualifierNamespace())) {
+        $NamespaceElement = "<a href=\"" . $H_Vocabulary->QualifierNamespace() . "\"><i>"
+            . $H_Vocabulary->QualifierNamespace() . "</i></a>";
+        $ConfirmPopulateTable->addRowWithHeader(["Namespace", $NamespaceElement]);
+    }
+    $ConfirmPopulateTable->addRowWithHeader(["Terms", $TermsHtml]);
+}
 
 $PreviewButton = new HtmlButton("Preview");
 $PreviewButton->setIcon("EyeOpen.svg");
@@ -46,7 +89,24 @@ $PreviewButton->setSize(HtmlButton::SIZE_SMALL);
 $CancelAllButton = new HtmlButton("Cancel");
 $CancelAllButton->setIcon("Cross.svg");
 $CancelAllButton->addSemanticClass("btn-danger");
-$CancelAllButton->setLink("index.php?P=EditMetadataField&Id=" . $H_Field->Id());
+$CancelAllButton->setLink("index.php?P=EditMetadataField&Id=" . $H_Field->id());
+
+$AvailableVocabs = new HtmlTable();
+$AvailableVocabs->addHeaderRow(["Name", "Version", "Owner", "Description", ""]);
+$AvailableVocabs->setTableClass("table table-striped");
+if ($H_Vocabularies !== null) {
+    foreach ($H_Vocabularies as $Vocab) {
+        $PreviewButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->id()
+            . "&VH=" . $Vocab->Hash());
+        $AvailableVocabs->addRow([
+            $Vocab->Name(),
+            $Vocab->Version(),
+            "<a href=\"" . $Vocab->OwnerUrl() . "\" target=\"_blank\">" . $Vocab->OwnerName() . "</a>",
+            $Vocab->Description() . " (" . count($Vocab->TermList()) . " terms)",
+            $PreviewButton->getHtml()
+        ]);
+    }
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 
@@ -58,7 +118,7 @@ CASES:
 - display list of available vocabs
 */
 
-PageTitle("Populate Metadata Field");
+$AF->setPageTitle("Populate Metadata Field");
 ?>
 
 <?PHP if (isset($H_ErrorMessages)) { ?>
@@ -73,7 +133,7 @@ PageTitle("Populate Metadata Field");
 <?PHP } elseif (isset($H_IsVocabImport)) { ?>
 <h1>Field Populated</h1>
 
-<p>The <i><?= $H_Field->GetDisplayName(); ?></i> field was populated with
+<p>The <i><?= $H_Field->getDisplayName(); ?></i> field was populated with
     <?= $H_AddedItemCount; ?> new terms.</p>
 
     <?PHP if ($H_AddedItemCount < count($H_Vocabulary->TermList())) { ?>
@@ -85,79 +145,12 @@ field.</p>
     <?= $ReturnButton->getHtml(); ?>
 
 <?PHP } elseif (isset($H_IsVocabPreview)) { ?>
-    <?PHP
-    $PopulateButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->Id()
-        . "&VH=" . $H_Vocabulary->Hash() . "&CP=Y");
-    $CancelLink = "index.php?P=PopulateField&amp;ID=".$H_Field->Id();
-    $CancelSingleButton->setLink("index.php?P=PopulateField&ID=" . $H_Field->Id());
-    $Version = strlen($H_Vocabulary->Version())
-        ? $H_Vocabulary->Version() : "(no version specified)";
-    $Terms = $H_Vocabulary->TermList();
-    ?>
-
 <h1>Confirm Populate</h1>
 
 <p>If some of the terms are already in use for this field, they will not be
 replaced or overwritten.</p>
 
-<table class="table table-striped">
-    <tbody>
-        <tr>
-            <th>Vocabulary</th>
-            <td><?= "<i>".$H_Vocabulary->Name()."</i> (".count($Terms)." terms)"; ?></td>
-        </tr>
-        <tr>
-            <th>Version</th>
-            <td><?= $Version; ?></td>
-        </tr>
-        <tr>
-            <th>URL</th>
-            <td><a href="<?= $H_Vocabulary->Url(); ?>"
-                    target="_blank"><?= $H_Vocabulary->Url(); ?></a></td>
-        </tr>
-        <tr>
-            <th>Owner/Maintainer</th>
-            <td>
-                <a href="<?= $H_Vocabulary->OwnerUrl();?>"
-                    target="_blank"><?= $H_Vocabulary->OwnerName(); ?></a>
-            </td>
-        </tr>
-        <tr>
-            <th>Description</th>
-            <td><?= $H_Vocabulary->Description(); ?></td>
-        </tr>
-        <?PHP if ($H_Vocabulary->HasQualifier() && strlen($H_Vocabulary->QualifierUrl())) { ?>
-        <tr>
-            <th>Qualifier</th>
-            <td>
-                <a href="<?= $H_Vocabulary->QualifierUrl(); ?>">
-                  <?= $H_Vocabulary->QualifierName(); ?>
-                </a>
-            </td>
-        </tr>
-        <?PHP } ?>
-        <?PHP if (strlen($H_Vocabulary->QualifierNamespace())) { ?>
-        <tr>
-            <th>Namespace</th>
-            <td>
-                <a href="<?= $H_Vocabulary->QualifierNamespace(); ?>">
-                <i><?= $H_Vocabulary->QualifierNamespace(); ?></i>
-                </a>
-            </td>
-        </tr>
-        <?PHP } ?>
-        <tr>
-            <th>Terms</th>
-            <td>
-                <ul class="list-group list-group-flush">
-                    <?PHP foreach ($Terms as $Term) { ?>
-                    <li class="list-group-item"><i><?= $Term; ?></i></li>
-                    <?PHP } ?>
-                </ul>
-            </td>
-        </tr>
-    </tbody>
-</table>
+    <?= $ConfirmPopulateTable->getHtml(); ?>
 
 <p>
     <?= $PopulateButton->getHtml(); ?>
@@ -168,34 +161,9 @@ replaced or overwritten.</p>
 <h1>Available Vocabularies</h1>
 
 <p>Controlled vocabularies available for populating the <i><?=
-    $H_Field->GetDisplayName(); ?></i> field:</p>
+    $H_Field->getDisplayName(); ?></i> field:</p>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Version</th>
-            <th>Owner</th>
-            <th>Description</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        <?PHP foreach ($H_Vocabularies as $Vocab) {
-            $PreviewButton->setLink("index.php?P=PopulateField&ID="
-                . $H_Field->Id() . "&VH=" . $Vocab->Hash());
-            ?>
-        <tr>
-            <td><?= $Vocab->Name(); ?></td>
-            <td><?= $Vocab->Version(); ?></td>
-            <td><a href="<?= $Vocab->OwnerUrl();?>"
-                    target="_blank"><?= $Vocab->OwnerName(); ?></a></td>
-            <td><?= $Vocab->Description()." (".count($Vocab->TermList())." terms)";  ?></td>
-            <td><?= $PreviewButton->getHtml(); ?></td>
-        </tr>
-        <?PHP } ?>
-    </tbody>
-</table>
+    <?= $AvailableVocabs->getHtml(); ?>
 
 <p>
     <?= $CancelAllButton->getHtml(); ?>

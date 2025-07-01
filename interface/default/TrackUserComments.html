@@ -3,7 +3,7 @@
 #   FILE:  TrackUserComments.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -12,8 +12,6 @@ use Metavus\ItemListUI;
 use Metavus\Record;
 use Metavus\RecordFactory;
 use ScoutLib\StdLib;
-
-CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_USERADMIN);
 
 if (!isset($H_ListChecksum)) {
     throw new Exception("Required variable \$H_ListChecksum is not initialized");

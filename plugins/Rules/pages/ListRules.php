@@ -3,7 +3,7 @@
 #   FILE:  ListRules.php (Rules plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,10 +11,13 @@
 use Metavus\Plugins\Rules\Rule;
 use Metavus\Plugins\Rules\RuleFactory;
 use Metavus\TransportControlsUI;
+use Metavus\User;
 use ScoutLib\StdLib;
 
 # check authorization to see rule list
-CheckAuthorization(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN);
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_SYSADMIN)) {
+    return;
+}
 
 # retrieve sort parameters from URL
 $DefaultSortField = "Name";

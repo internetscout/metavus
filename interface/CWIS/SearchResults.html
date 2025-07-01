@@ -9,7 +9,10 @@
 
 namespace Metavus;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
+
+$PluginMgr = PluginManager::getInstance();
 
 # bail out if under a high load
 if (!isset($H_HighLoad)) {
@@ -37,7 +40,7 @@ if ($H_IsBot) {
     print "<p>Please do not spider search results in an automated fashion. "
         ."It can generate significant system load. ";
 
-    if ($GLOBALS["G_PluginManager"]->PluginEnabled("XmlSitemap")) {
+    if ($PluginMgr->PluginReady("XmlSitemap")) {
         print "Instead, please use the "
             ."<a href='index.php?P=P_XmlSitemap_Sitemap'>XML Sitemap</a> "
             ."that we provide.";
@@ -48,7 +51,7 @@ if ($H_IsBot) {
 }
 
 # set page title
-PageTitle("Search Results - ".StdLib::NeatlyTruncateString(
+$AF->setPageTitle("Search Results - ".StdLib::NeatlyTruncateString(
     $H_SearchParams->TextDescription(false),
     120
 ));
@@ -306,10 +309,10 @@ function GetSortControls(
 
 /**
  * Get the details for the sort order button, e.g., the label and help text.
- * @param MetadataField $Field The metadata field to use as context.
- * @return Returns the details for the sort order button.
+ * @param ?MetadataField $Field The metadata field to use as context.
+ * @return array Returns the details for the sort order button.
  */
-function GetSortOrderButton(MetadataField $Field = null)
+function GetSortOrderButton(?MetadataField $Field = null): array
 {
     $Ascending = [
         "Message" => "Display the results in ascending order",
@@ -380,6 +383,7 @@ function printSearchResults(
     $TransportUI,
     $ListChecksums
 ) {
+    $PluginMgr = PluginManager::getInstance();
     # ----- SETUP (STRING BUILDING) ----------------------------------------------
 
     # get text description of search parameters
@@ -396,8 +400,8 @@ function printSearchResults(
             ."</strong>";
 
     # build blurb for footer
-    if ((rand(0, 100) > 50) || !$GLOBALS["G_PluginManager"]->PluginEnabled("RSSExport") ||
-        !$GLOBALS["G_PluginManager"]->GetPlugin("RSSExport")->ConfigSetting("SearchFeed")) {
+    if ((rand(0, 100) > 50) || !$PluginMgr->PluginReady("RSSExport") ||
+        !$PluginMgr->GetPlugin("RSSExport")->ConfigSetting("SearchFeed")) {
         $RefineLink = "index.php?P=AdvancedSearch&amp;RF=1&amp;"
             .$SearchParams->UrlParameterString();
         $FooterBlurb = "Too many (or not the right) results?"

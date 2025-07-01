@@ -9,12 +9,13 @@
 
 use Metavus\Plugins\GoogleMaps;
 use Metavus\TransportControlsUI;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
 # check that user should be on this page
-CheckAuthorization(PRIV_SYSADMIN);
+User::requirePrivilege(PRIV_SYSADMIN);
 
 # set base link
 $H_BaseLink = "index.php?P=P_GoogleMaps_ErrorLog";
@@ -47,8 +48,8 @@ $H_SortField = StdLib::getFormValue(TransportControlsUI::PNAME_SORTFIELD);
 
 $DB = new Database();
 $DB->query(
-    "SELECT * FROM GoogleMaps_GeocodeErrors "
-    ."ORDER BY Address"
+    "SELECT * FROM GoogleMaps_Geocodes WHERE ErrorCount > 0"
+    ." ORDER BY Address"
 );
 
 $H_Items = $DB->fetchRows();

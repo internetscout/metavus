@@ -8,8 +8,10 @@
 #
 
 use Metavus\ItemListUI;
+use ScoutLib\ApplicationFramework;
 
-PageTitle("GoogleMaps Error Log");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("GoogleMaps Error Log");
 
 # report errors
 if (isset($H_Error)) {
@@ -34,9 +36,15 @@ if (!isset($H_TotalItems)) {
 $ListFields = [
     "Address" => [
     ],
-    "ErrorData" => [
+    "Response" => [
         "Heading" => "Error",
     ],
+    "ErrorCount" => [
+        "Heading" => "Error Count",
+    ],
+    "LastUpdate" => [
+        "Heading" => "Last Attempt",
+    ]
 ];
 
 $ListUI = new ItemListUI($ListFields);

@@ -1017,6 +1017,13 @@ class Securimage
     protected $gdsignaturecolor;
 
     /**
+     * The GD color for the noise
+     *
+     * @var int
+     */
+    protected $gdnoisecolor;
+
+    /**
      * Create a new securimage object, pass options to set in the constructor.
      *
      * The object can then be used to display a captcha, play an audible captcha, or validate a submission.
@@ -1620,7 +1627,7 @@ class Securimage
                 require_once dirname(__FILE__) . '/WavFile.php';
                 $audio = $this->getAudibleCode();
 
-                if (strtolower($format) == 'mp3') {
+                if ($format !== null && strtolower($format) == 'mp3') {
                     $audio = $this->wavToMp3($audio);
                 }
 
@@ -1747,7 +1754,7 @@ class Securimage
     {
         $code = array();
 
-        if ($returnExisting && strlen($this->code) > 0) {
+        if ($returnExisting && strlen((string)$this->code) > 0) {
             if ($array) {
                 return array(
                     'code'         => $this->code,
@@ -2249,9 +2256,9 @@ class Securimage
         $py       = array(); // y coordinates of poles
         $rad      = array(); // radius of distortion from pole
         $amp      = array(); // amplitude
-        $x        = ($this->image_width / 4); // lowest x coordinate of a pole
+        $x        = (int)($this->image_width / 4); // lowest x coordinate of a pole
         $maxX     = $this->image_width - $x;  // maximum x coordinate of a pole
-        $dx       = mt_rand($x / 10, $x);     // horizontal distance between poles
+        $dx       = mt_rand((int)($x / 10), $x);     // horizontal distance between poles
         $y        = mt_rand(20, $this->image_height - 20);  // random y coord
         $dy       = mt_rand(20, $this->image_height * 0.7); // y distance
         $minY     = 20;                                     // minimum y coordinate
@@ -2261,7 +2268,7 @@ class Securimage
         for ($i = 0; $i < $numpoles; ++ $i) {
             $px[$i]  = ($x + ($dx * $i)) % $maxX;
             $py[$i]  = ($y + ($dy * $i)) % $maxY + $minY;
-            $rad[$i] = mt_rand($this->image_height * 0.4, $this->image_height * 0.8);
+            $rad[$i] = mt_rand((int)($this->image_height * 0.4), (int)($this->image_height * 0.8));
             $tmp     = ((- $this->frand()) * 0.15) - .15;
             $amp[$i] = $this->perturbation * $tmp;
         }
@@ -2294,10 +2301,10 @@ class Securimage
                 $x *= $this->iscale;
                 $y *= $this->iscale;
                 if ($x >= 0 && $x < $width2 && $y >= 0 && $y < $height2) {
-                    $c = imagecolorat($this->tmpimg, $x, $y);
+                    $c = imagecolorat($this->tmpimg, (int)$x, (int)$y);
                 }
                 if ($c != $bgCol) { // only copy pixels of letters to preserve any background image
-                    imagesetpixel($this->im, $ix, $iy, $c);
+                    imagesetpixel($this->im, (int)$ix, (int)$iy, (int)$c);
                 }
             }
         }
@@ -2315,7 +2322,7 @@ class Securimage
 
             $theta = ($this->frand() - 0.5) * M_PI * 0.33;
             $w = $this->image_width;
-            $len = mt_rand($w * 0.4, $w * 0.7);
+            $len = mt_rand((int)($w * 0.4), (int)($w * 0.7));
             $lwid = mt_rand(0, 2);
 
             $k = $this->frand() * 0.6 + 0.2;
@@ -2335,7 +2342,14 @@ class Securimage
             for ($i = 0; $i < $n; ++ $i) {
                 $x = $x0 + $i * $dx + $amp * $dy * sin($k * $i * $step + $phi);
                 $y = $y0 + $i * $dy - $amp * $dx * sin($k * $i * $step + $phi);
-                imagefilledrectangle($this->im, $x, $y, $x + $lwid, $y + $lwid, $this->gdlinecolor);
+                imagefilledrectangle(
+                    $this->im,
+                    (int)$x,
+                    (int)$y,
+                    (int)($x + $lwid),
+                    (int)($y + $lwid),
+                    $this->gdlinecolor
+                );
             }
         }
     }
@@ -2447,7 +2461,7 @@ class Securimage
         $code    = $this->getCode(true, true);
 
         if (empty($code) || empty($code['code'])) {
-            if (strlen($this->display_value) > 0) {
+            if (strlen((string)$this->display_value) > 0) {
                 $code = array('code' => $this->display_value, 'display' => $this->display_value);
             } else {
                 $this->createCode();
@@ -2866,7 +2880,7 @@ class Securimage
             return false;
         }
 
-        if (mt_rand(0, 100) / 100.0 == 1.0) {
+        if (mt_rand(0, 100) / 100.0 >= 0.95) {
             $this->purgeOldCodesFromDatabase();
         }
 
@@ -3121,7 +3135,7 @@ class Securimage
             $query = sprintf("DELETE FROM %s WHERE %s - created > %s",
                              $this->database_table,
                              $now,
-                             $this->pdo_conn->quote("$limit", PDO::PARAM_INT));
+                             (int)$limit);
 
             $result = $this->pdo_conn->query($query);
         }

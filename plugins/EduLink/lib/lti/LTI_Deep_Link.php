@@ -2,19 +2,31 @@
 namespace IMSGlobal\LTI;
 
 use \Firebase\JWT\JWT;
+
 class LTI_Deep_Link {
 
-    private $registration;
-    private $deployment_id;
-    private $deep_link_settings;
+    private LTI_Registration $registration;
+    private string $deployment_id;
+    /** @var array<mixed> $deep_link_settings */
+    private array $deep_link_settings;
 
-    public function __construct($registration, $deployment_id, $deep_link_settings) {
+    /**
+     * @param array<mixed> $deep_link_settings
+     */
+    public function __construct(
+        LTI_Registration $registration,
+        string $deployment_id,
+        array $deep_link_settings
+    ) {
         $this->registration = $registration;
         $this->deployment_id = $deployment_id;
         $this->deep_link_settings = $deep_link_settings;
     }
 
-    public function get_response_jwt($resources, string $kid = null) {
+    /**
+     * @param array<LTI_Deep_Link_Resource> $resources
+     */
+    public function get_response_jwt(array $resources, ?string $kid = null): string {
         $message_jwt = [
             "iss" => $this->registration->get_client_id(),
             "aud" => $this->registration->get_issuer(),
@@ -36,7 +48,10 @@ class LTI_Deep_Link {
         );
     }
 
-    public function output_response_form($resources, string $kid = null) {
+    /**
+     * @param array<LTI_Deep_Link_Resource> $resources
+     */
+    public function output_response_form(array $resources, ?string $kid = null): void {
         $jwt = $this->get_response_jwt($resources, $kid);
         ?>
         <form id="auto_submit" action="<?= $this->deep_link_settings['deep_link_return_url']; ?>" method="POST">
@@ -49,4 +64,3 @@ class LTI_Deep_Link {
         <?php
     }
 }
-?>

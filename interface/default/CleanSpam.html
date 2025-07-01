@@ -11,8 +11,11 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 $RemovePrivButton = new HtmlButton("Remove Post Privilege");
 $RemovePrivButton->setIcon("Ban.svg");
 $RemovePrivButton->makeSubmitButton();
@@ -27,7 +30,7 @@ $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Moderate Spam");
+$AF->setPageTitle("Moderate Spam");
 ?>
 
 <?PHP if (isset($H_ErrorMessages)) { ?>
@@ -59,13 +62,13 @@ their posting privilege, and disable their account.  </p>
 
 <?PHP
 $Resource = new Record($H_ResourceId);
-$Comments = (new MessageFactory())->GetMessagesPostedByUser($H_TgtUser->Id());
+$Comments = (new MessageFactory())->getMessagesPostedByUser($H_TgtUser->Id());
 foreach ($Comments as $Comment) {
     MessageUI::printForumMessage($Comment, $Resource);
 }
 ?>
 
-<form name="updatemessage" method="post" action="index.php?P=CleanSpamComplete" />
+<form name="updatemessage" method="post" action="index.php?P=CleanSpamComplete" >
     <input type="hidden" name="F_PosterId" value="<?= $H_TgtUser->Id(); ?>" />
     <input type="hidden" name="F_ResourceId" value="<?= $H_ResourceId; ?>" />
     <?= $RemovePrivButton->getHtml() ?>

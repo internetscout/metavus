@@ -82,13 +82,20 @@ abstract class TransportControlsUI_Base
         # retrieve sort fields (if any) from URL
         $SortField = StdLib::getFormValue(static::PNAME_SORTFIELD.$Id);
 
-        if ($SortField !== null && (is_string($SortField) || is_numeric($SortField))) {
-            $this->sortField((string)$SortField);
+        if ($SortField !== null) {
+            if (is_string($SortField) || is_numeric($SortField)) {
+                $this->sortField((string)$SortField);
+            } elseif (is_array($SortField) && isset($SortField[$ControlId])) {
+                $this->sortField((string)$SortField[$ControlId]);
+            }
         }
         $ReverseSortFlag = StdLib::getFormValue(static::PNAME_REVERSESORT.$Id);
-        if (($ReverseSortFlag !== null)
-                && (is_string($ReverseSortFlag) || is_numeric($ReverseSortFlag))) {
-            $this->reverseSortFlag((bool)$ReverseSortFlag);
+        if ($ReverseSortFlag !== null) {
+            if (is_string($ReverseSortFlag) || is_numeric($ReverseSortFlag)) {
+                $this->reverseSortFlag((bool)$ReverseSortFlag);
+            } elseif (is_array($ReverseSortFlag) && isset($ReverseSortFlag[$ControlId])) {
+                $this->reverseSortFlag((bool)$ReverseSortFlag[$ControlId]);
+            }
         }
 
         # add this instance to list of active controls

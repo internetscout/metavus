@@ -3,21 +3,21 @@
 #   FILE:  ImportUsersExecute.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2021 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
+
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
@@ -48,7 +48,7 @@ if ($FSeek > 0) {
 
 # begin import
 $Schema = new MetadataSchema();
-$PrivDescriptions = (new PrivilegeFactory())->GetPrivileges(true, false);
+$PrivDescriptions = (new PrivilegeFactory())->getPrivileges(true, false);
 $LocalLineCount = 0;
 
 
@@ -86,7 +86,7 @@ while (!feof($fp) && $LocalLineCount < 500) {
         unlink($TempFile);
 
         # jump back and display error message
-        $AF->SetJumpToPage("ImportUsers");
+        $AF->setJumpToPage("ImportUsers");
         return;
     }
 
@@ -114,7 +114,7 @@ while (!feof($fp) && $LocalLineCount < 500) {
 
     # force FieldId to reasonable value if not set
     if (is_object($Field)) {
-        $FieldId = $Field->Id();
+        $FieldId = $Field->id();
     } else {
         $FieldId = "NULL";
     }
@@ -165,7 +165,7 @@ while (!feof($fp) && $LocalLineCount < 500) {
 
     # attemp to create user
     $UserFactory = new UserFactory();
-    $User = $UserFactory->CreateNewUser(
+    $User = $UserFactory->createNewUser(
         $UserName,
         $UserPassword,
         $UserPassword,
@@ -178,27 +178,27 @@ while (!feof($fp) && $LocalLineCount < 500) {
         $H_ErrorMessages[$UserName]["LineNumber"] = $LineCount;
         foreach ($User as $ErrorCode) {
             $H_ErrorMessages[$UserName]["Messages"][] =
-                    User::GetStatusMessageForCode($ErrorCode);
+                    User::getStatusMessageForCode($ErrorCode);
         }
         continue;
     }
 
-    $User->Set("WebSite", isset($Website) ? $Website : "");
-    $User->Set("AddressLineOne", $AddressLineOne);
-    $User->Set("AddressLineTwo", $AddressLineTwo);
-    $User->Set("City", $City);
-    $User->Set("State", $State);
-    $User->Set("ZipCode", $ZipCode);
-    $User->Set("Country", $Country);
-    $User->Set("RealName", $RealName);
-    $User->Set("ActiveUI", $ActiveUI);
+    $User->set("WebSite", isset($Website) ? $Website : "");
+    $User->set("AddressLineOne", $AddressLineOne);
+    $User->set("AddressLineTwo", $AddressLineTwo);
+    $User->set("City", $City);
+    $User->set("State", $State);
+    $User->set("ZipCode", $ZipCode);
+    $User->set("Country", $Country);
+    $User->set("RealName", $RealName);
+    $User->set("ActiveUI", $ActiveUI);
 
-    $User->IsActivated(true);
+    $User->isActivated(true);
 
     if (!isset($_POST["F_PasswordFlag"])) {
-        $User->SetEncryptedPassword($UserPassword);
+        $User->setEncryptedPassword($UserPassword);
     } elseif ($_POST["F_PasswordFlag"] != 1) {
-        $User->SetEncryptedPassword($UserPassword);
+        $User->setEncryptedPassword($UserPassword);
     }
 
     # add in privilege if set
@@ -225,7 +225,7 @@ if (feof($fp)) {
 
     # annihilate uploaded file
     $ToDelete = new File($_SESSION["FileId"]);
-    $ToDelete->Destroy();
+    $ToDelete->destroy();
     unset($_SESSION["FileId"]);
 }
 $_SESSION["UserCount"] = $H_UserCount;
@@ -239,13 +239,13 @@ $_SESSION["LastUserName"] = $LastUserName;
 $_SESSION["Encrypt"] = $Encrypt;
 #  Time to auto-refresh?
 if ($H_ImportComplete == false) {
-    $AF->SetJumpToPage("index.php?P=ImportUsersExecute", 1);
+    $AF->setJumpToPage("index.php?P=ImportUsersExecute", 1);
 }
 
-PageTitle("Import Users");
+$AF->setPageTitle("Import Users");
 
 # register post-processing function with the application framework
-$AF->AddPostProcessingCall(
+$AF->addPostProcessingCall(
     __NAMESPACE__."\\PostProcessingFn",
     $TempFile,
     $fp,

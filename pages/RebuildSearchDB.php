@@ -3,19 +3,21 @@
 #   FILE:  RebuildSearchDB.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\RecordFactory;
 use Metavus\SearchEngine;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
-PageTitle("Rebuilding Search Database");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Rebuilding Search Database");
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -115,11 +117,10 @@ if ($H_PercentRebuildComplete < 5) {
 
 # set up page auto-refresh
 if ($StartingResourceId != -1) {
-    $AF = ApplicationFramework::getInstance();
     $ElapsedTime = intval($Elapsed
-            + $AF->GetElapsedExecutionTime());
-    $AF->SlowPageLoadThreshold(60);
-    $AF->SetJumpToPage(
+            + $AF->getElapsedExecutionTime());
+    $AF->slowPageLoadThreshold(60);
+    $AF->setJumpToPage(
         "index.php?P=RebuildSearchDB"
             ."&RSDStartingResourceId=".$StartingResourceId
         ."&RSDElapsed=".$ElapsedTime,

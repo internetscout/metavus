@@ -56,9 +56,16 @@ abstract class ResourceSummary
     }
 
     /**
-    * Display (output HTML) for resource summary.
-    */
+     * Display (output HTML) for resource summary.
+     * @deprecated 2025-02-17 Use getHtml() instead.
+     */
     abstract public function display(): void;
+
+    /**
+     * Get output HTML for resource summary.
+     * @return string|false The HTML string for this ResourceSummary.
+     */
+    abstract public function getHtml();
 
     /**
      * Display compact resource summary (by default, falling back to the

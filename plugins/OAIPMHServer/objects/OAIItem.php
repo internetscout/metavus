@@ -3,13 +3,12 @@
 #   FILE:  OAIItem.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\OAIPMHServer;
-
 use InvalidArgumentException;
 use Metavus\Image;
 use Metavus\MetadataSchema;
@@ -47,7 +46,7 @@ class OAIItem implements \ScoutLib\OAIItem
         $this->RepDescr = $RepDescr;
 
         # if resource ID was invalid
-        if (!Record::ItemExists($ItemId)) {
+        if (!Record::itemExists($ItemId)) {
             # throw exception with reason to indicate constructor failure
             throw new InvalidArgumentException("Item ID is invalid.");
         } else {

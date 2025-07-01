@@ -12,7 +12,7 @@ namespace Metavus;
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
-use Metavus\User;
+use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -39,7 +39,7 @@ $User = User::getCurrentUser();
 $PluginMgr = PluginManager::getInstance();
 
 # get HTML for image collage (if any)
-$ImageCollageHtml = $PluginMgr->pluginEnabled("Collage")
+$ImageCollageHtml = $PluginMgr->pluginReady("Collage")
         ? $PluginMgr->getPlugin("Collage")->getCollageHtml($CollageSchemaId)
         : "";
 
@@ -78,7 +78,7 @@ if (isset($H_NewsItems)) {
 
 # ----- DISPLAY --------------------------------------------------------------
 
-PageTitle("Home");
+$AF->setPageTitle("Home");
 
 ?>
 <div class="container-fluid">
@@ -171,7 +171,7 @@ PageTitle("Home");
         } else {
             foreach ($H_Events as $Event) {
                 # ----- SETUP (LOOP) ---------------------------------------------
-                $EventDateRange = getPrettyDateRange(   // @phpstan-ignore-line
+                $EventDateRange = StdLib::getPrettyDateRange(
                     $Event->get("Start Date"),
                     $Event->get("End Date")
                 );

@@ -3,64 +3,58 @@
 #   FILE:  ChangeResourceNote.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
+namespace Metavus;
+
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\Record;
-use Metavus\User;
-use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-global $Folder;
-global $FolderId;
-global $ItemId;
-global $Note;
-global $ReturnTo;
-
-PageTitle("Change Resource Note");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Change Resource Note");
 
 # make sure the user is logged in
-if (!CheckAuthorization()) {
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
-$FolderId = StdLib::getFormValue("FolderId");
-$ItemId = StdLib::getFormValue("ItemId");
-$AF = ApplicationFramework::getInstance();
+# get parameters
+$H_FolderId = StdLib::getFormValue("FolderId");
+$H_ItemId = StdLib::getFormValue("ItemId");
 
-# redirect if no IDs are given
-if (!strlen($FolderId) || !strlen($ItemId)) {
-    $AF->SetJumpToPage("P_Folders_ManageFolders");
+# nothing to do for invalid folders
+if ($H_FolderId === null || !Folder::itemExists($H_FolderId)) {
+    $AF->setJumpToPage("P_Folders_ManageFolders");
     return;
 }
 
-$FolderFactory = new FolderFactory(User::getCurrentUser()->Id());
-$ResourceFolder = $FolderFactory->GetResourceFolder();
-try {
-    $Folder = new Folder($FolderId);
-} catch (Exception $Exception) {
-    # redirect if given a bad folder ID
-    $AF->SetJumpToPage("P_Folders_ManageFolders");
+# nothing to do for invalid records
+if ($H_ItemId === null || !Record::itemExists($H_ItemId)) {
+    $AF->setJumpToPage("P_Folders_ManageFolders");
     return;
 }
+
+$Folder = new Folder($H_FolderId);
+$FolderFactory = new FolderFactory(User::getCurrentUser()->id());
+$ResourceFolder = $FolderFactory->getResourceFolder();
 
 # redirect if the user should not see the folder
-if (!$ResourceFolder->ContainsItem($Folder->Id())) {
-    $AF->SetJumpToPage("P_Folders_ManageFolders");
+if (!$ResourceFolder->containsItem($Folder->id())) {
+    $AF->setJumpToPage("P_Folders_ManageFolders");
     return;
 }
 
-# make sure the resource is valid and belongs to the folder
-if (!Record::ItemExists($ItemId) || !$Folder->ContainsItem($ItemId)) {
-    $AF->SetJumpToPage("P_Folders_ManageFolders");
+# nothing to do when resource isn't in this folder
+if (!$Folder->containsItem($H_ItemId)) {
+    $AF->setJumpToPage("P_Folders_ManageFolders");
     return;
 }
 
-$Note = $Folder->NoteForItem($ItemId);
-$ReturnTo = defaulthtmlentities(StdLib::getFormValue("ReturnTo"));
+$H_Note = $Folder->noteForItem($H_ItemId) ?? "";

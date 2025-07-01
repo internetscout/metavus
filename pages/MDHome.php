@@ -3,13 +3,12 @@
 #   FILE:  MDHome.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2004-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2004-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 
@@ -18,7 +17,7 @@ use ScoutLib\Database;
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
-if (!CheckAuthorization(
+if (!User::requirePrivilege(
     PRIV_RESOURCEADMIN,
     PRIV_CLASSADMIN,
     PRIV_NAMEADMIN,
@@ -37,7 +36,7 @@ if (isset($_GET["US"])) {
     CollectionStats::updateCollectionStats();
     $AF->setJumpToPage("MDHome");
 } else {
-    $G_StatsUpdateTime = $DB->Query(
+    $G_StatsUpdateTime = $DB->query(
         "SELECT Updated FROM CachedValues WHERE Name='CollectionStats'",
         "Updated"
     );
@@ -55,7 +54,7 @@ if (isset($_GET["US"])) {
     }
 
     $H_CollectionStats = null;
-    $QueryValue = $DB->Query(
+    $QueryValue = $DB->query(
         "SELECT Value FROM CachedValues WHERE Name='CollectionStats'",
         "Value"
     );
@@ -65,7 +64,7 @@ if (isset($_GET["US"])) {
 
     # generate collection stats if they don't exist yet
     if (!$H_CollectionStats) {
-        $AF->SetJumpToPage("MDHome&US");
+        $AF->setJumpToPage("MDHome&US");
     }
 }
 
@@ -73,7 +72,7 @@ if (isset($_GET["US"])) {
 # retrieve lists of recently modified and recently added resources to display
 $RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
 
-$AllRecentlyAdded = $RFactory->GetRecordIdsSortedBy("Date Of Record Creation", false);
+$AllRecentlyAdded = $RFactory->getRecordIdsSortedBy("Date Of Record Creation", false);
 $H_RecentlyAdded = [];
 foreach ($AllRecentlyAdded as $Id) {
     if ($Id < 0) {
@@ -81,7 +80,7 @@ foreach ($AllRecentlyAdded as $Id) {
     }
 
     $Resource = new Record($Id);
-    if (!$Resource->UserCanView($User)) {
+    if (!$Resource->userCanView($User)) {
         continue;
     }
 
@@ -92,7 +91,7 @@ foreach ($AllRecentlyAdded as $Id) {
 }
 
 # retrieve list of recently modified resources that aren't also new resources
-$AllRecentlyModified = $RFactory->GetRecordIdsSortedBy("Date Last Modified", false);
+$AllRecentlyModified = $RFactory->getRecordIdsSortedBy("Date Last Modified", false);
 $H_RecentlyModified = [];
 foreach ($AllRecentlyModified as $Id) {
     if ($Id < 0) {
@@ -100,13 +99,13 @@ foreach ($AllRecentlyModified as $Id) {
     }
 
     $Resource = new Record($Id);
-    if (!$Resource->UserCanView($User)) {
+    if (!$Resource->userCanView($User)) {
         continue;
     }
 
     if (in_array($Id, $H_RecentlyAdded) &&
-        strtotime($Resource->Get("Date Last Modified"))
-          <= strtotime($Resource->Get("Date Of Record Creation"))) {
+        strtotime($Resource->get("Date Last Modified"))
+          <= strtotime($Resource->get("Date Of Record Creation"))) {
         continue;
     }
 

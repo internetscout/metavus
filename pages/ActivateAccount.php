@@ -11,6 +11,7 @@
 use Metavus\FormUI;
 use Metavus\User;
 use Metavus\UserFactory;
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -34,9 +35,9 @@ function getParameter(string $ShortName, string $LongName) : ?string
     return null;
 }
 
-PageTitle("New Account Activation");
-
 # ----- MAIN -----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("New Account Activation");
 
 # retrieve user name and confirmation code from URL or form
 $UserName = getParameter("UN", "F_UserName");

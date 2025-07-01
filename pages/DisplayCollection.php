@@ -3,7 +3,7 @@
 #   FILE:  DisplayCollection.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -89,23 +89,26 @@ $User = User::getCurrentUser();
 $AF = ApplicationFramework::getInstance();
 
 # load collection
-$CFactory = new CollectionFactory();
 $CollectionId = StdLib::getFormValue("ID");
-$H_Collection = $CFactory->itemExists($CollectionId)
-        ? new Collection($CollectionId) : null;
+# return to show error if collection ID isn't an int (or int string)
+if (!is_numeric($CollectionId) || $CollectionId != intval($CollectionId)) {
+    $H_Error = "ERROR: Invalid collection ID specified.";
+    return;
+}
+$CFactory = new CollectionFactory();
+$CollectionId = intval($CollectionId);
+# return to show error if collection doesn't exist
+if (!$CFactory->itemExists($CollectionId)) {
+    $H_Error = "ERROR: Invalid collection ID specified.";
+    return;
+}
+$H_Collection = new Collection($CollectionId);
 
 # retrieve list of all items in collection
 $ItemIds = $H_Collection->getItemIds();
 
 # prune out invalid or unviewable items
 $ItemIds = RecordFactory::multiSchemaFilterNonViewableRecords($ItemIds, $User);
-
-# sort items by title
-usort($ItemIds, function (int $IdA, int $IdB) {
-    $ItemA = new Record($IdA);
-    $ItemB = new Record($IdB);
-    return $ItemA->getMapped("Title") <=> $ItemB->getMapped("Title");
-});
 
 # if we have more than one page of items
 if (count($ItemIds) > $MaxItemsPerPage) {

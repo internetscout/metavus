@@ -3,7 +3,7 @@
 #   FILE:  UserList.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -16,7 +16,7 @@ use ScoutLib\StdLib;
 
 # make sure user has needed privileges for user editing
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
     return;
 }
 
@@ -51,8 +51,8 @@ if ($Privilege !== null) {
     $Query = "SELECT DISTINCT UserId, `".addslashes($G_SortField)."`"
         ." FROM APUsers";
 }
-$DB->Query($Query.$SortClause);
-$PrivUserIds = $DB->FetchColumn("UserId");
+$DB->query($Query.$SortClause);
+$PrivUserIds = $DB->fetchColumn("UserId");
 $H_ExtraParams = (!is_null($Privilege) && strlen($Privilege)) ?
     "&F_Privilege=".$Privilege : "";
 $H_ExtraParams .= "&SA=".$G_SortAscending;
@@ -107,8 +107,8 @@ if (StdLib::getFormValue("F_Field") && StdLib::getFormValue("F_Condition")
                     ."`, '%M %D %Y %l:%i%p') ".$Target;
         } else {
             $SearchDate = new Date($SearchText);
-            if (strlen($SearchDate->Formatted())) {
-                $WhereClause = $SearchDate->SqlCondition(
+            if (strlen($SearchDate->formatted())) {
+                $WhereClause = $SearchDate->sqlCondition(
                     StdLib::getFormValue("F_Field"),
                     null,
                     $Condition
@@ -120,8 +120,8 @@ if (StdLib::getFormValue("F_Field") && StdLib::getFormValue("F_Condition")
     } else {
         $WhereClause = "`".addslashes(StdLib::getFormValue("F_Field"))."` ".$Target;
     }
-    $DB->Query("SELECT UserId FROM APUsers WHERE ".$WhereClause.$SortClause);
-    $SearchUserIds = $DB->FetchColumn("UserId");
+    $DB->query("SELECT UserId FROM APUsers WHERE ".$WhereClause.$SortClause);
+    $SearchUserIds = $DB->fetchColumn("UserId");
 } else {
     $SearchUserIds = $PrivUserIds;
 }

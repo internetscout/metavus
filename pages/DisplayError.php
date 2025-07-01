@@ -8,6 +8,8 @@
 #
 # @scout:phpstan
 
+use ScoutLib\ApplicationFramework;
+
 # ----- MAIN -----------------------------------------------------------------
 
 # prepare error message for print
@@ -18,4 +20,5 @@ if (isset($_SESSION["ErrorMessage"])) {
     $H_ErrorMessage = "(No error message available)";
 }
 
-PageTitle("Error");
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Error");

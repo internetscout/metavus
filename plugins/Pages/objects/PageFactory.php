@@ -3,13 +3,12 @@
 #   FILE:  PageFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Pages;
-
 use Metavus\Plugins\Pages;
 use Metavus\RecordFactory;
 use Metavus\UserFactory;
@@ -49,11 +48,11 @@ class PageFactory extends RecordFactory
     {
         # for each existing page
         $CleanUrls = [];
-        $Ids = $this->GetItemIds();
+        $Ids = $this->getItemIds();
         foreach ($Ids as $Id) {
             # retrieve clean URL
             $Page = new Page($Id);
-            $Url = trim($Page->Get("Clean URL") ?? "");
+            $Url = trim($Page->get("Clean URL") ?? "");
 
             # add to list if non-empty, including tabs
             if (strlen($Url) > 0) {

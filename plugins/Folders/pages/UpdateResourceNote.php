@@ -6,49 +6,58 @@
 #   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Plugins\Folders\Common;
+namespace Metavus;
+
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\Record;
-use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-# check authorization and setup HTML suppression and page redirection
-if (!Common::ApiPageCompletion("P_Folders_ManageFolders")) {
+# make sure the user is logged in
+if (!CheckAuthorization()) {
     return;
 }
 
-# canceled editing
-if (StdLib::getFormValue("Submit") === "Cancel") {
-    return;
-}
+$AF = ApplicationFramework::getInstance();
 
 $FolderId = StdLib::getFormValue("FolderId");
 $ItemId = StdLib::getFormValue("ItemId");
 $ResourceNote = StdLib::getFormValue("ResourceNote");
 
-# can't do anything if there aren't IDs to work with
-if (!strlen($FolderId) || !strlen($ItemId)) {
+# if no valid folder id, go back to ManageFolders
+if ($FolderId === null || !Folder::itemExists($FolderId)) {
+    $AF->setJumpToPage("P_Folders_ManageFolders");
     return;
 }
 
-$FolderFactory = new FolderFactory(User::getCurrentUser()->Id());
-$ResourceFolder = $FolderFactory->GetResourceFolder();
+# otherwise, back to the ViewFolder page for this folder
+$AF->setJumpToPage(
+    "index.php?P=P_Folders_ViewFolder&FolderId=".$FolderId
+);
 
-try {
-    $Folder = new Folder($FolderId);
-
-    # withdraw only if the resource folder contains this folder, which implies
-    # that the user owns the folder and it's a valid folder of resources
-    if ($ResourceFolder->ContainsItem($FolderId)) {
-        # make sure the resource is valid and the folder contains it
-        if (Record::ItemExists($ItemId) && $Folder->ContainsItem($ItemId)) {
-            $Folder->NoteForItem($ItemId, $ResourceNote);
-        }
-    }
-} catch (Exception $Exception) {
-    # do nothing if bad folder ID
+# if we weren't saving a new note, nothing to do
+if (StdLib::getFormValue("Submit") != "Change Resource Note") {
+    return;
 }
+
+# can't do anything if there aren't valid IDs to work with
+if ($ItemId === null || !Record::itemExists($ItemId)) {
+    return;
+}
+
+$FolderFactory = new FolderFactory(User::getCurrentUser()->id());
+$ResourceFolder = $FolderFactory->getResourceFolder();
+$Folder = new Folder($FolderId);
+
+# if resource folder does not contain the target FolderId, that implies that a
+# different user owns the folder
+if (!$ResourceFolder->containsItem($FolderId)) {
+    return;
+}
+
+# update folder note
+$Folder->noteForItem($ItemId, $ResourceNote);

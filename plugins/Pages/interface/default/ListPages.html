@@ -3,40 +3,47 @@
 #   FILE:  ListPages.html (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
-use Metavus\User;
+namespace Metavus;
+use Exception;
+use Metavus\Plugins\Pages\Page;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
-PageTitle("Page List");
-
 /**
 * Get text for "Last Modified" field for item in list.
-* @param object $Item Current item in list.
+* @param Page $Item Current item in list.
 * @return string Text for field.
 */
-function GetLastModifiedText($Item)
+function getLastModifiedText(Page $Item)
 {
-    $Modified = $Item->Get("Date Last Modified");
+    $Modified = $Item->get("Date Last Modified");
     if ($Modified == "0000-00-00 00:00:00") {
         $Modified = "&mdash;";
     } else {
-        $MUser = $Item->Get("Last Modified By Id", true);
+        $MUser = $Item->get("Last Modified By Id", true);
         $MUser = array_shift($MUser);
         $Modified = StdLib::getPrettyTimestamp($Modified)
                 ." - <i>".(($MUser instanceof User)
-                        ? $MUser->Name() : "(unknown)")."</i>";
+                        ? $MUser->name() : "(unknown)")."</i>";
         $Modified = str_replace(" ", "&nbsp;", $Modified);
     }
     return $Modified;
 }
 
+# ----- SETUP ----------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_Pages)) {
+    throw new Exception("Variable \$H_Pages not set.");
+}
+
 # set up links
-$BaseLink = "index.php?P=P_Pages_ListPages&CK=".$H_ListChecksum;
+$BaseLink = "index.php?P=P_Pages_ListPages";
 $AddPageLink = "index.php?P=P_Pages_EditPage&ID=NEW";
 $PageDisplayLink = "index.php?P=P_Pages_DisplayPage&ID=\$ID";
 $PageEditLink = "index.php?P=P_Pages_EditPage&ID=\$ID";
@@ -46,14 +53,16 @@ $PageDeleteLink = "index.php?P=P_Pages_DeletePage&ID=\$ID";
 $AnonUser = User::getAnonymousUser();
 $AF = ApplicationFramework::getInstance();
 
+$AF->setPageTitle("Page List");
+
 # set up fields to display
 $Fields = [
     "Pages: Viewable" => [
         "Heading" => "",
         "ValueFunction" => function ($Item) use ($AnonUser, $AF) {
-                $EyeSlashLink = $AF->guiFile("EyeSlash.svg");
+                $EyeSlashLink = $AF->gUIFile("EyeSlash.svg");
                 return $Item->userCanView($AnonUser) ? "" :
-                "<img style=\"max-width: 25px; max-height: 25px;\" 
+                "<img style=\"max-width: 25px; max-height: 25px;\"
                     src=\"".$EyeSlashLink."\" title=\"Page is not publicly viewable.\">";
         }
     ],
@@ -68,19 +77,23 @@ $Fields = [
     ],
     "Pages: Date Last Modified" => [
         "Heading" => "Modified",
-        "ValueFunction" => "GetLastModifiedText",
+        "ValueFunction" => "Metavus\\getLastModifiedText",
         "DefaultSortField" => true,
         "DefaultToDescendingSort" => true
     ],
 ];
 
-# create and display list UI
-$ListUI = new ItemListUI($Fields, $H_TransportUI);
-$ListUI->heading("Page List");
-$ListUI->itemsPerPage($H_PagesPerPage);
-$ListUI->baseLink($BaseLink);
-$ListUI->itemTypeName("Page");
+# set up list UI
+$ListUI = new ItemListUI($Fields, $H_Pages);
+$ListUI->setHeading("Page List");
+$ListUI->setItemsPerPage(25);
+$ListUI->setBaseLink($BaseLink);
+$ListUI->setItemTypeName("Page");
+$ListUI->sort();
 $ListUI->addTopButton("Add New Page", $AddPageLink, "Plus.svg");
 $ListUI->addActionButton("Edit", $PageEditLink, "Pencil.svg");
 $ListUI->addActionButton("Delete", $PageDeleteLink, "Delete.svg");
-$ListUI->display($H_Pages, $H_PageCount, $H_StartingIndex);
+
+# ----- DISPLAY --------------------------------------------------------------
+
+print $ListUI->getHtml();

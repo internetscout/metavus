@@ -3,13 +3,12 @@
 #   FILE:  DBExportField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -44,31 +43,31 @@ function DoWhileLoop(): void
     # write out the header line only on first time
     if (!empty($fpo) && $FSeek == 0) {
         # replace trailing tab with newline
-        $Header = $Field->Name()."\n";
+        $Header = $Field->name()."\n";
         fwrite($fpo, $Header);
     }
 
-    if ($Field->Type() == MetadataSchema::MDFTYPE_TREE) {
+    if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
         $Factory = new ClassificationFactory();
-    } elseif ($Field->Type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+    } elseif ($Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
         $Factory = new ControlledNameFactory();
-    } elseif ($Field->Type() == MetadataSchema::MDFTYPE_OPTION) {
+    } elseif ($Field->type() == MetadataSchema::MDFTYPE_OPTION) {
         $Factory = new ControlledNameFactory();
     } else {
         throw new Exception("Unexpected field type (".$Field->type().").");
     }
 
-    $ItemIds = $Factory->GetItemIds("FieldId = ".$Field->Id());
+    $ItemIds = $Factory->getItemIds("FieldId = ".$Field->id());
 
     foreach ($ItemIds as $Id) {
         # can only export trees
-        if ($Field->Type() == MetadataSchema::MDFTYPE_TREE) {
+        if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
             $Class = new Classification($Id);
-            $Value = $Class->FullName();
+            $Value = $Class->fullName();
         # or controllednames or options
         } else {
             $CN = new ControlledName($Id);
-            $Value = $CN->Name();
+            $Value = $CN->name();
         }
 
         # write out the value
@@ -91,7 +90,7 @@ global $FieldCount;
 global $fpo;
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -107,7 +106,7 @@ $TempDir = realpath(__DIR__."/../tmp/")."/";
 if (!file_exists($TempDir)) {
     $ErrorMessage = "Error: Destination directory ".$TempDir.
                     " doesn't exist.";
-    $AF->SetJumpToPage("EditMetadataField&Id=".$FieldId
+    $AF->setJumpToPage("EditMetadataField&Id=".$FieldId
                        ."&ERR=".urlencode($ErrorMessage));
     return;
 }
@@ -116,7 +115,7 @@ if (!file_exists($TempDir)) {
 if (!is_writable($TempDir)) {
     $ErrorMessage = "Error: Destination directory ".$TempDir.
                     " is not writable.";
-    $AF->SetJumpToPage("EditMetadataField&Id=".$FieldId
+    $AF->setJumpToPage("EditMetadataField&Id=".$FieldId
                        ."&ERR=".urlencode($ErrorMessage));
     return;
 }
@@ -128,7 +127,7 @@ if (isset($_POST["Submit"])) {
 }
 
 if ($Submit == "Cancel") {
-    $AF->SetJumpToPage("DBEditor");
+    $AF->setJumpToPage("DBEditor");
     return;
 }
 
@@ -137,7 +136,7 @@ InitExportVars();
 # open export path
 if (!isset($_SESSION["ExportPath"])) {
     $TmpDir = realpath(__DIR__."/../tmp/")."/";
-    $FileNamePrefix = preg_replace("/[^a-z0-9]/i", "", $Field->Name());
+    $FileNamePrefix = preg_replace("/[^a-z0-9]/i", "", $Field->name());
     $BaseName = $FileNamePrefix."_".date("YmdHis").".txt";
     $ExportPath = $TmpDir.$BaseName;
 } else {
@@ -148,13 +147,13 @@ if (!isset($_SESSION["ExportPath"])) {
 $fpo = fopen($ExportPath, "a");
 if ($fpo == false) {
     $ErrorMessage = "Cannot open Export Filename: ".$ExportPath;
-    $AF->SetJumpToPage("EditMetadataField&Id=".$FieldId
+    $AF->setJumpToPage("EditMetadataField&Id=".$FieldId
                        ."&ERR=".urlencode($ErrorMessage));
     return;
 }
 
 # suppress any HTML output
-$AF->SuppressHTMLOutput();
+$AF->suppressHtmlOutput();
 
 # the main work happenes here
 DoWhileLoop();

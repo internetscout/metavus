@@ -234,9 +234,9 @@ class EventFactory extends RecordFactory
      * Get the event IDs for past events.
      * @param bool $ReleasedOnly Set to TRUE to get only events with the
      *      "Release Flag" field set to TRUE. (OPTIONAL, defaults to TRUE)
-     * @param int $Limit Number of events to return. (OPTIONAL, defaults
+     * @param ?int $Limit Number of events to return. (OPTIONAL, defaults
      *      to all events)
-     * @param string $EndMonth The last date of the specified month,
+     * @param ?string $EndMonth The last date of the specified month,
      *      used as the end point for retrieving events. (OPTIONAL, defaults
      *      to using the current date and timestamp)
      * @return array Event IDs, sorted by descending order of start date,

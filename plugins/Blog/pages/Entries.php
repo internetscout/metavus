@@ -38,7 +38,7 @@ if (isset($_GET["BlogId"])) {
 $H_Blog->setCurrentBlog($BlogId);
 
 # set the page title to the blog name
-PageTitle($H_Blog->blogName());
+$AF->setPageTitle($H_Blog->blogName());
 
 # set up some basic values
 $H_SchemaId = $H_Blog->getSchemaId();

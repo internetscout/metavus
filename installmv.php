@@ -24,7 +24,7 @@ class Installer
     # ----- CONFIGURATION --------------------------------------------------------
 
     const MINIMUM_MYSQL_VERSION = "5.0";
-    const MINIMUM_PHP_VERSION = "7.2.0";
+    const MINIMUM_PHP_VERSION = "7.4.0";
     const OLDEST_UPGRADABLE_VERSION = "3.2.0";
 
     const MINIMUM_PASSWORD_LENGTH = 6;
@@ -741,7 +741,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
 
             if (is_dir($Dir) && !is_writable($Dir)) {
                 @chmod($Dir, $DirMode);
-                if (is_writable($Dir) !== true) {
+                if (is_writable($Dir) !== true) {   /* @phpstan-ignore notIdentical.alwaysTrue */
                     $this->ErrMsgs[] = "Directory <i>".$Dir."</i> is not writable.";
                 }
             }
@@ -1646,11 +1646,11 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     private function loadOldInstallInfo(): void
     {
         # load values from existing configuration file
-        if (file_exists("local/config.php")) {
+        if (is_readable("local/config.php")) {
             include("local/config.php");
-        } elseif (file_exists("config.php")) {
+        } elseif (is_readable("config.php")) {
             include("config.php");
-        } elseif (file_exists("include/SPT--Config.php")) {
+        } elseif (is_readable("include/SPT--Config.php")) {
             include("include/SPT--Config.php");
         }
 
@@ -1709,6 +1709,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
 
         $AF = ApplicationFramework::getInstance();
         foreach ($Tasks as $Task) {
+            /* @phpstan-ignore-next-line function.alreadyNarrowedType */
             if (!is_callable($Task["Callback"])) {
                 throw new Exception("Invalid callback.");
             }
@@ -1789,7 +1790,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
      * Read in checksums for older versions of distribution files.
      * @param string $SrcFile containing VERSION\tMD5 for old versions.  Lines
      *      starting with a hashmark are ignored.
-     * @return array(VERSION => MD5)
+     * @return array VERSION => MD5
      * @throws Exception If unable to read checksum file.
      */
     private function getFileChecksums(string $SrcFile): array

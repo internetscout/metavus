@@ -3,7 +3,7 @@
 #   FILE:  UserQuickSearchCallback.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -11,11 +11,9 @@
 use Metavus\QuickSearchHelper;
 use ScoutLib\ApplicationFramework;
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
-
 # ----- MAIN -----------------------------------------------------------------
-#
-ApplicationFramework::getInstance()->BeginAjaxResponse();
+
+ApplicationFramework::getInstance()->beginAjaxResponse();
 
 if (!isset($_GET["SS"])) {
     print json_encode([
@@ -29,13 +27,13 @@ $Search = $_GET["SS"];
 
 # grab all the matches, sort them, and pull out the chunk we want
 list($NumResults, $NumAdditionalResults, $ANames) =
-    QuickSearchHelper::SearchForUsers($Search);
+    QuickSearchHelper::searchForUsers($Search);
 
 # convert results into a format that jquery-ui can grok
 $AvailableNames = array();
 foreach ($ANames as $Id => $Name) {
     $AvailableNames[] = [
-        "label" => QuickSearchHelper::HighlightSearchString(
+        "label" => QuickSearchHelper::highlightSearchString(
             $Search,
             $Name
         ),

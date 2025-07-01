@@ -50,7 +50,7 @@ function ownerInfo(string $LaunchId, int $UserId)
     if (!is_null($UserImageField)) {
         $Avatar = $Owner->get($UserImageField);
         if (count($Avatar)) {
-            $Html.= (new Image($Avatar[0]))
+            $Html .= (new Image($Avatar[0]))
                 ->getHtml("mv-image-thumbnail");
             $FoundImage = true;
         }
@@ -66,19 +66,32 @@ function ownerInfo(string $LaunchId, int $UserId)
 }
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
 
-# if there was not an error, check for required parameters
-if (!isset($H_Error)) {
-    if (!isset($H_LaunchId)) {
-        throw new Exception("H_LaunchId not defined.");
-    }
-
-    if (!isset($H_Folder)) {
-        throw new Exception("H_Folder not defined.");
-    }
+# if there was an error, complain and bail
+if (isset($H_Error)) {
+    include($AF->gUIFile("EduLink-StdPageStart.html"));
+    print "<div style='alert alert-danger'>"
+        ."<p><b>ERROR:</b> ".$H_Error."</p>"
+        ."</div>";
+    include($AF->gUIFile("EduLink-StdPageEnd.html"));
+    return;
 }
 
-$AF = ApplicationFramework::getInstance();
+# if there was not an error, check for required parameters
+if (!isset($H_Folder) || !($H_Folder instanceof Folder)) {
+    throw new Exception("Variable \$H_Folder not set or is the wrong type.");
+}
+if (!isset($H_LaunchId) || !is_string($H_LaunchId)) {
+    throw new Exception("Variable \$H_LaunchId not set or is the wrong type.");
+}
+if (!isset($H_ResourceIds) || !is_array($H_ResourceIds)) {
+    throw new Exception("Variable \$H_ResourceIds not set or is the wrong type.");
+}
+if (!isset($H_SelectedRecordIds) || !is_array($H_SelectedRecordIds)) {
+    throw new Exception("Variable \$H_SelectedRecordIds not set or is the wrong type.");
+}
+
 $Plugin = EduLink::getInstance();
 $User = User::getCurrentUser();
 
@@ -120,14 +133,6 @@ $SelectionUI = new ResourceSelectionUI(
 # ----- DISPLAY --------------------------------------------------------------
 
 include($AF->gUIFile("EduLink-StdPageStart.html"));
-
-if (isset($H_Error)) {
-    print "<div style='alert alert-danger'>"
-        ."<p><b>ERROR:</b> ".$H_Error."</p>"
-        ."</div>";
-    include($AF->gUIFile("EduLink-StdPageEnd.html"));
-    return;
-}
 
 ?>
 <div class="float-end"><?= ownerInfo($H_LaunchId, $H_Folder->ownerId()) ?></div>

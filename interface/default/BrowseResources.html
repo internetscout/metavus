@@ -16,29 +16,6 @@ use ScoutLib\HtmlOptionList;
 use ScoutLib\HtmlTable;
 use ScoutLib\StdLib;
 
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-/**
- * Display a resource entry.
- * @param Record $Resource The resource to display.
- * @param string $FullRecordLink The resource full record page link.
- * @param int|null $CumulativeRating The cumulative rating of the resource.
- *     Note: NULL can be used to indicate that this resource was never rated before.
- * @param bool $ShowScreenshot Whether to show the resource screenshot in the entry.
- * @return void
- */
-function PrintResourceEntry(
-    Record $Resource,
-    string $FullRecordLink,
-    $CumulativeRating,
-    bool $ShowScreenshot = true
-): void {
-    $Summary = ResourceSummary::create($Resource->id());
-    $Summary->editable($Resource->userCanEdit(User::getCurrentUser()));
-    $Summary->showScreenshot($ShowScreenshot);
-    $Summary->display();
-}
-
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 /**
  * Return HTML for the list of the names of classifications under the specified
@@ -175,6 +152,10 @@ function getAlphabeticClassificationLinks(int $ParentId, bool $EditingEnabled): 
         }
     }
 
+    if (!is_string($LinkString)) {
+        throw new Exception("Value returned by BuildClassificationLinkString() was not a string.");
+    }
+
     # if link string is placeholder
     if ($LinkString == "X") {
         # clear link string
@@ -195,6 +176,10 @@ function getAlphabeticClassificationLinks(int $ParentId, bool $EditingEnabled): 
                 ($EditingEnabled ? "1" : "0"),
                 $LinkString
             );
+
+            if ($LinkString === null) {
+                throw new Exception("preg_replace() failed");
+            }
         }
     }
 
@@ -309,7 +294,10 @@ if (!isset($H_StartingResourceIndex)) {
     throw new Exception("H_StartingResourceIndex not defined.");
 }
 
-$Header = $H_EditingEnabled ? "Add/Edit Classifications" : "Browse Resources";
+$IntConfig = InterfaceConfiguration::getInstance();
+$Header = $H_EditingEnabled
+    ? "Add/Edit Classifications"
+    : $IntConfig->getString("BrowsingPageTitle");
 $Schema = new MetadataSchema();
 
 $HasClassifications = ($H_ClassificationCount > 0);
@@ -332,7 +320,7 @@ if ($HasClassifications) {
         $HeaderHTML .= $TreeName;
         if ((strpos($TreeName, "Classification") === false)
             && (strpos($TreeName, "classification") === false)) {
-            $HeaderHTML .= "Classifications";
+            $HeaderHTML .= " Classifications";
         }
     }
     $HeaderHTML .= "</form>";
@@ -347,25 +335,44 @@ if ($HasClassifications) {
     ));
 }
 
-$PreviousResourcesAvailable = $H_StartingResourceIndex > 0;
-$NextResourcesAvailable = ($H_StartingResourceIndex + $H_MaxResourcesPerPage) < $H_ResourceCount;
+if ($HasResources) {
+    $PreviousResourcesAvailable = $H_StartingResourceIndex > 0;
+    $NextResourcesAvailable = ($H_StartingResourceIndex + $H_MaxResourcesPerPage)
+        < $H_ResourceCount;
 
-$NumberOfNextResources = min(
-    $H_MaxResourcesPerPage,
-    ($H_ResourceCount - ($H_StartingResourceIndex + $H_MaxResourcesPerPage))
-);
-$BasePaginationLink = "index.php?P=BrowseResources&ID=" . $ParentId
-    . ($H_EditingEnabled ? "&Editing=1" : "")
-    . "&StartingResourceIndex="
-;
+    $NumberOfNextResources = min(
+        $H_MaxResourcesPerPage,
+        ($H_ResourceCount - ($H_StartingResourceIndex + $H_MaxResourcesPerPage))
+    );
+    $BasePaginationLink = "index.php?P=BrowseResources&ID=" . $ParentId
+        . ($H_EditingEnabled ? "&Editing=1" : "")
+        . "&StartingResourceIndex="
+    ;
 
-$PreviousButton = new HtmlButton("← Previous");
-$PreviousButton->setTitle("Previous " . $H_MaxResourcesPerPage . " resources");
-$PreviousButton->setLink($BasePaginationLink . ($H_StartingResourceIndex - $H_MaxResourcesPerPage));
-
-$NextButton = new HtmlButton("Next →");
-$NextButton->setTitle("Next " . $NumberOfNextResources . " resources");
-$NextButton->setLink($BasePaginationLink . ($H_StartingResourceIndex + $H_MaxResourcesPerPage));
+    $FooterCell = "";
+    if ($PreviousResourcesAvailable) {
+        $PreviousButton = new HtmlButton("← Previous");
+        $PreviousButton->setTitle("Previous " . $H_MaxResourcesPerPage . " resources");
+        $PreviousButton->setLink($BasePaginationLink
+            . ($H_StartingResourceIndex - $H_MaxResourcesPerPage));
+        $FooterCell = "<span style='float: left;'>" . $PreviousButton->getHtml() . "</span>";
+    }
+    if ($NextResourcesAvailable) {
+        $NextButton = new HtmlButton("Next →");
+        $NextButton->setTitle("Next " . $NumberOfNextResources . " resources");
+        $NextButton->setLink($BasePaginationLink
+            . ($H_StartingResourceIndex + $H_MaxResourcesPerPage));
+        $FooterCell .= "<span style='text-align: center; display: block;'>"
+            . $NextButton->getHtml() . "</span>";
+    }
+    $ResourcesTable = new HtmlTable();
+    $ResourcesTable->setTableClass(
+        "mv-table mv-table-fullsize mv-table-pagination mv-content-browsetable"
+    );
+    $ResourcesTable->addHeaderRow(["<h2 style=\"font-size: 1.0rem\">Resources</h2>"]);
+    $ResourcesTable->addRow([getResourceListHtml()]); // @phpstan-ignore function.notFound
+    $ResourcesTable->addFooterRow([$FooterCell]);
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
@@ -408,30 +415,7 @@ $NextButton->setLink($BasePaginationLink . ($H_StartingResourceIndex + $H_MaxRes
 <?PHP } ?>
 
 <?PHP if ($HasResources) { ?>
-<?PHP // phpcs:disable Generic.Files.LineLength.MaxExceeded ?>
-<table class="mv-table mv-table-fullsize mv-table-pagination mv-content-browsetable">
-    <thead>
-        <tr><th colspan="2" scope="col"><h2 style="font-size: 1.0rem">Resources</h2></th></tr>
-    </thead>
-    <tbody>
-        <tr><td colspan="2"><?PHP DisplayResourceList(); /** @phpstan-ignore function.notFound */?></td></tr>
-    </tbody>
-    <tfoot>
-        <tr>
-            <td>
-                <?PHP if ($PreviousResourcesAvailable) { ?>
-                    <?= $PreviousButton->getHtml(); ?>
-                <?PHP } ?>
-            </td>
-            <td>
-                <?PHP if ($NextResourcesAvailable) { ?>
-                    <?= $NextButton->getHtml(); ?>
-                <?PHP } ?>
-            </td>
-        </tr>
-    </tfoot>
-</table>
-<?PHP // phpcs:enable ?>
+    <?PHP print $ResourcesTable->getHtml(); ?>
 <?PHP } ?>
 
 <?PHP if (!$H_EditingEnabled) { ?>

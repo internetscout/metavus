@@ -3,18 +3,17 @@
 #   FILE:  MetadataFieldQuickSearchResponse.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
-# set headers to control caching
-ApplicationFramework::getInstance()->BeginAjaxResponse();
+
+ApplicationFramework::getInstance()->beginAjaxResponse();
 
 # retrieve field to search
 if (isset($_GET["MF"])) {
@@ -45,14 +44,14 @@ $Field = MetadataField::getField($FieldId);
 
 # grab all the matches, sort them, and pull out the chunk we want
 list($NumResults, $NumAdditionalResults, $ANames) =
-    QuickSearchHelper::SearchField($Field, $Search);
+    QuickSearchHelper::searchField($Field, $Search);
 
 # convert results into a format that jquery-ui can grok
 $AvailableNames = array();
 foreach ($ANames as $Id => $Name) {
     if (is_array($Name)) {
         $AvailableNames[] = [
-            "label" => QuickSearchHelper::HighlightSearchString(
+            "label" => QuickSearchHelper::highlightSearchString(
                 $Search,
                 $Name["name"]
             ),
@@ -61,7 +60,7 @@ foreach ($ANames as $Id => $Name) {
         ];
     } else {
         $AvailableNames[] = [
-            "label" => QuickSearchHelper::HighlightSearchString(
+            "label" => QuickSearchHelper::highlightSearchString(
                 $Search,
                 $Name
             ),

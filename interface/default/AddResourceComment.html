@@ -12,6 +12,7 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 # ----- SETUP ----------------------------------------------------------------
 
@@ -21,13 +22,33 @@ if (!isset($H_MaxCommentLength)) {
 if (!isset($H_Preview)) {
     throw new Exception("H_Preview not defined.");
 }
+if ($H_Preview) {
+    if (!isset($H_Body)) {
+        throw new Exception("H_Body not defined.");
+    }
+    if (!isset($H_Resource)) {
+        throw new Exception("H_Resource not defined.");
+    }
+    if (!isset($H_Title)) {
+        throw new Exception("H_Title not defined.");
+    }
+
+    $FormTable = new HtmlTable();
+    $FormTable->setTableClass("table table-striped");
+    $FormTable->addRowsWithHeaders([
+        ["Resource", defaulthtmlentities("Comment On: " . $H_Title)],
+        ["Body", nl2br(defaulthtmlentities($H_Body))]
+    ]);
+}
+
+$AF = ApplicationFramework::getInstance();
 
 if (isset($H_MessageId)) {
-    PageTitle("Update Resource Comment");
+    $AF->setPageTitle("Update Resource Comment");
 } elseif ($H_Preview) {
-    PageTitle("Preview Resource Comment");
+    $AF->setPageTitle("Preview Resource Comment");
 } else {
-    PageTitle("Add Resource Comment");
+    $AF->setPageTitle("Add Resource Comment");
 }
 
 $UpdateButton = new HtmlButton("Update Comment");
@@ -53,24 +74,7 @@ $PreviewButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
 
-# we have to use ResourceCommentPreview's old HTML here because:
-# 1) we can't display HTML in comments with FormUI paragraphs, as FormUI's ReadOnly fields
-# do not display HTML with the proper formatting, and
-# 2) it's difficult to pull values out of the FormUI and place them into a different field,
-# which is why we don't move the comment values into a HTML-friendly custom-content box.
-?>
-<?PHP if ($H_Preview) { ?>
-    <?PHP
-    if (!isset($H_Body)) {
-        throw new Exception("H_Body not defined.");
-    }
-    if (!isset($H_Resource)) {
-        throw new Exception("H_Resource not defined.");
-    }
-    if (!isset($H_Title)) {
-        throw new Exception("H_Title not defined.");
-    }
-    ?>
+if ($H_Preview) { ?>
 <h1>Preview Comment</h1>
 
 <form name="updatemessage" action="<?PHP
@@ -79,19 +83,7 @@ if (isset($H_MessageId)) {
     print "&amp;MI=".$H_MessageId;
 }
 ?>" method="post">
-<table class="table table-striped">
-    <tbody>
-    <tr>
-        <th>Resource</th>
-
-        <td><?= defaulthtmlentities("Comment On: ".$H_Title) ?></td>
-    </tr>
-    <tr>
-        <th>Body</th>
-        <td><?= nl2br(defaulthtmlentities($H_Body)); ?></td>
-    </tr>
-    </tbody>
-</table>
+    <?= $FormTable->getHtml(); ?>
 
 <input type="hidden" name="F_Body" value="<?= defaulthtmlentities($H_Body); ?>">
     <?PHP if (isset($H_MessageId)) { ?>

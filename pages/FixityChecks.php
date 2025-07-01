@@ -3,12 +3,14 @@
 #   FILE:  FixityChecks.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
 namespace Metavus;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Get a field from a File object for display.
@@ -45,7 +47,7 @@ function getImageData(int $Id, string $Function)
 # ----- MAIN -----------------------------------------------------------------
 
 # check if current user is authorized
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -148,28 +150,32 @@ $ImageFields = [
 
 # get the list of files with problems
 $H_FileListUI = new ItemListUI($FileFields);
-$H_FileListUI->noItemsMessage("No file integrity problems found.");
-$H_FileListUI->itemsPerPage($ItemsPerPage);
+$FLTransport = new TransportControlsUI();
+$H_FileListUI->setTransportControls($FLTransport);
+$H_FileListUI->setNoItemsMessage("No file integrity problems found.");
+$H_FileListUI->setItemsPerPage($ItemsPerPage);
 
 $H_Files = (new FileFactory())->getFilesWithFixityProblems();
 $H_NumFiles = count($H_Files);
 
 $H_Files = array_slice(
     $H_Files,
-    $H_FileListUI->transportUI()->startingIndex(),
-    $H_FileListUI->transportUI()->itemsPerPage()
+    $FLTransport->startingIndex(),
+    $FLTransport->itemsPerPage()
 );
 
 # get the list of images with problems
 $H_ImageListUI = new ItemListUI($ImageFields);
-$H_ImageListUI->noItemsMessage("No image integrity problems found.");
-$H_ImageListUI->itemsPerPage($ItemsPerPage);
+$ILTransport = new TransportControlsUI();
+$H_FileListUI->setTransportControls($ILTransport);
+$H_ImageListUI->setNoItemsMessage("No image integrity problems found.");
+$H_ImageListUI->setItemsPerPage($ItemsPerPage);
 
 $H_Images = (new ImageFactory())->getImagesWithFixityProblems();
 $H_NumImages = count($H_Images);
 
 $H_Images = array_slice(
     $H_Images,
-    $H_ImageListUI->transportUI()->startingIndex(),
-    $H_ImageListUI->transportUI()->itemsPerPage()
+    $ILTransport->startingIndex(),
+    $ILTransport->itemsPerPage()
 );

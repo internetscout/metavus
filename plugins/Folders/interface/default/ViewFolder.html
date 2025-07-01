@@ -76,7 +76,7 @@ function signalButtonInsertionPoint(Folder $Folder) : void
             "PageName" => $AF->getPageName(),
             "Location" => "Folder Buttons",
             "Context" => [
-                "FolderId" => $Folder->Id()
+                "FolderId" => $Folder->id()
             ]
         ]
     );
@@ -113,14 +113,14 @@ if (!isset($H_TransportUI)) {
 $AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 
-$AF->RequireUIFile("jquery-ui.css", ApplicationFramework::ORDER_FIRST);
-$AF->RequireUIFile("jquery-ui.js");
+$AF->requireUIFile("jquery-ui.css", ApplicationFramework::ORDER_FIRST);
+$AF->requireUIFile("jquery-ui.js");
 
 $IsOwner = $User->isLoggedIn() && ($H_Folder->ownerId() == $User->id());
 
 $SafeName = defaulthtmlentities($H_Folder->name());
 $SafeTruncatedName = defaulthtmlentities(
-    StdLib::NeatlyTruncateString($H_Folder->name(), 18)
+    StdLib::neatlyTruncateString($H_Folder->name(), 18)
 );
 $SafeNote = defaulthtmlentities($H_Folder->note());
 $SafeShareUrl = defaulthtmlentities(Common::getShareUrl($H_Folder));
@@ -131,7 +131,7 @@ $HasItems = (count($H_Items) > 0) ? true : false;
 $ShowTransportControls = $HasItems &&
     $H_TransportUI->itemCount() > $H_TransportUI->itemsPerPage();
 
-$SortItemList["Placeholder"] = "-- select an option --";
+$SortItemList[-1] = "(manual)";
 $FieldTypesForSorting = [
     MetadataSchema::MDFTYPE_TEXT,
     MetadataSchema::MDFTYPE_NUMBER,
@@ -145,13 +145,13 @@ $FieldTypesForSorting = [
 # schemas to retrieve field (for sorting) from
 foreach ($H_FolderSchemas as $SchemaId => $Val) {
     $Schema = new MetadataSchema($SchemaId);
-    $SchemaName = $Schema->Name();
+    $SchemaName = $Schema->name();
 
     # retrieve field names for all field type
     foreach ($FieldTypesForSorting as $Type) {
-        $Fields = $Schema->GetFields($Type);
+        $Fields = $Schema->getFields($Type);
         foreach ($Fields as $FieldId => $Field) {
-            $SortItemList[$SchemaName][$FieldId] = $Field->Name();
+            $SortItemList[$SchemaName][$FieldId] = $Field->name();
         }
     }
 }
@@ -221,7 +221,9 @@ select#RS {
 <form method="get" action="index.php" style="display: inline-block">
   <input type="hidden" name="P" value="P_Folders_ViewFolder" />
   <input type="hidden" name="FolderId" value="<?= $H_Folder->id() ?>" />
-  <label>Sort: <?= $SortOptionList->getHtml() ?></label><?= $SortDirOptionList->getHtml() ?>
+    <?PHP if ($IsOwner) { ?>
+        <label>Sort: <?= $SortOptionList->getHtml() ?></label><?= $SortDirOptionList->getHtml() ?>
+    <?PHP } ?>
   <label class="ms-2">Per Page: <?= $LengthOptionList->getHtml() ?></label>
 </form>
 <?PHP } ?>
@@ -229,8 +231,8 @@ select#RS {
     <?= $EditButton->getHtml() ?>
     <?PHP if ($HasItems) {?>
         <?= $ClearButton->getHtml(); ?>
-        <?= $ManageButton->getHtml() ?>
     <?PHP } ?>
+    <?= $ManageButton->getHtml() ?>
     <?PHP signalButtonInsertionPoint($H_Folder); ?>
 <?PHP } ?>
 </div>

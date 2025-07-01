@@ -12,8 +12,11 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\HtmlOptionList;
+use ScoutLib\HtmlTable;
 
 # ----- SETUP ----------------------------------------------------------------
+/** @var ?MetadataSchema $H_Schema */
+
 if (!isset($H_ControlledName)) {
     $H_ControlledName = null;
 }
@@ -36,19 +39,19 @@ if (!isset($H_VariantName)) {
     $H_VariantName = null;
 }
 
-$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$SafeSchemaId = defaulthtmlentities($H_Schema->id());
 $SafeFieldId = !is_null($H_Field) ? defaulthtmlentities($H_Field->Id()) : "";
 $SafeErrorMessage = defaulthtmlentities($H_ErrorMessage);
 $SafeControlledName = defaulthtmlentities($H_ControlledName);
 $SafeVariantName = defaulthtmlentities($H_VariantName);
 
 $SchemaOptions = [];
-foreach (MetadataSchema::GetAllSchemas() as $Schema) {
+foreach (MetadataSchema::getAllSchemas() as $Schema) {
     $SchemaOptions[$Schema->Id()] = $Schema->Name() . " Schema";
 }
 
-$SchemaOptionList = new HtmlOptionList("SC", $SchemaOptions, $H_Schema->Id());
-$SchemaOptionList->SubmitOnChange(true);
+$SchemaOptionList = new HtmlOptionList("SC", $SchemaOptions, $H_Schema->id());
+$SchemaOptionList->submitOnChange(true);
 
 if (!is_null($H_Field)) {
     $FieldList = $H_Schema->getFieldsAsOptionListObject(
@@ -57,9 +60,15 @@ if (!is_null($H_Field)) {
         $H_Field->Id(),
         false
     );
-    $FieldList->SubmitOnChange(true);
-    $FieldList->PrintIfEmpty(false);
+    $FieldList->submitOnChange(true);
+    $FieldList->printIfEmpty(false);
     $H_FormUI->addHiddenField("F_FieldId", $H_Field->Id());
+    $FormTable = new HtmlTable();
+    $FormTable->setTableClass("table");
+    $FormTable->addRowWithHeader([
+        "<label for=\"F_FieldId\">Field:</label>",
+        $FieldList->getHtml()
+    ]);
 }
 
 $AddButton = new HtmlButton("Add");
@@ -93,7 +102,7 @@ $AddButton->setIcon("Plus.svg");
       <div class="col">
         <form method="get" action="index.php">
           <input type="hidden" name="P" value="AddControlledName" />
-          <?PHP $SchemaOptionList->PrintHtml(); ?>
+          <?PHP $SchemaOptionList->printHtml(); ?>
         </form>
       </div>
     </div>
@@ -106,14 +115,7 @@ $AddButton->setIcon("Plus.svg");
     <?PHP if (!is_null($H_Field)) { ?>
     <form method="post"
           action="index.php?P=AddControlledName&amp;SC=<?= $SafeSchemaId; ?>">
-      <table class="table">
-        <tbody>
-          <tr>
-            <th><label for="F_FieldId">Field:</label></th>
-            <td><?PHP $FieldList->PrintHtml(); ?></td>
-          </tr>
-        </tbody>
-      </table>
+        <?= $FormTable->getHtml(); ?>
     </form>
 
     <form method="post"

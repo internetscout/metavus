@@ -91,8 +91,6 @@ class SearchParameterSet
     {
         if (is_callable($Func)) {
             self::$CanonicalFieldFunction = $Func;
-        } elseif (!is_null($Func)) {
-            throw new InvalidArgumentException("Invalid function supplied.");
         }
         return self::$CanonicalFieldFunction;
     }
@@ -109,8 +107,6 @@ class SearchParameterSet
     {
         if (is_callable($Func)) {
             self::$PrintableFieldFunction = $Func;
-        } elseif (!is_null($Func)) {
-            throw new InvalidArgumentException("Uncallable function supplied.");
         }
         return self::$PrintableFieldFunction;
     }
@@ -128,8 +124,6 @@ class SearchParameterSet
     {
         if (is_callable($Func)) {
             self::$PrintableValueFunction = $Func;
-        } elseif (!is_null($Func)) {
-            throw new InvalidArgumentException("Uncallable function supplied.");
         }
         return self::$PrintableValueFunction;
     }
@@ -199,7 +193,7 @@ class SearchParameterSet
                     # if there are search parameters for this field
                     if (isset($this->SearchStrings[$Field])) {
                         # remove any matching search parameters
-                        $NewSearchStrings = array();
+                        $NewSearchStrings = [];
                         foreach ($this->SearchStrings[$Field] as $Value) {
                             if ($Value != $String) {
                                 $NewSearchStrings[] = $Value;
@@ -213,7 +207,7 @@ class SearchParameterSet
                     }
                 } else {
                     # remove any matching keyword search parameters
-                    $NewSearchStrings = array();
+                    $NewSearchStrings = [];
                     foreach ($this->KeywordSearchStrings as $Value) {
                         if ($Value != $String) {
                             $NewSearchStrings[] = $Value;
@@ -231,12 +225,12 @@ class SearchParameterSet
                 }
             } else {
                 # clear all keyword search parameters
-                $this->KeywordSearchStrings = array();
+                $this->KeywordSearchStrings = [];
             }
         }
 
         # for each parameter subgroup
-        $NewSubgroups = array();
+        $NewSubgroups = [];
         foreach ($this->Subgroups as $Group) {
             # remove parameter from subgroup
             $Group->RemoveParameter($SearchStrings, $Field);
@@ -414,7 +408,7 @@ class SearchParameterSet
 
         # start with our string values
         $Strings = isset($this->SearchStrings[$Field])
-                ? $this->SearchStrings[$Field] : array();
+                ? $this->SearchStrings[$Field] : [];
 
         # if strings from subgroups should also be returned
         if ($IncludeSubgroups) {
@@ -480,7 +474,6 @@ class SearchParameterSet
 
     /**
      * Get/set search parameter set data, in the form of an opaque string.
-     * "SortBy" and "SortDescending" will not be preserved.
      * This method can be used to retrieve an opaque string containing
      * set data, which can then be saved (e.g. to a database) and later used
      * to reload a search parameter set.  (Use instead of serialize() to avoid
@@ -498,7 +491,7 @@ class SearchParameterSet
         }
 
         # serialize current data and return to caller
-        $Data = array();
+        $Data = [];
         if ($this->Logic !== "AND") {
             $Data["Logic"] = $this->Logic;
         }
@@ -516,12 +509,15 @@ class SearchParameterSet
         if ($this->ItemTypes !== false) {
             $Data["ItemTypes"] = array_unique($this->ItemTypes);
         }
+        if ($this->SortBy !== false) {
+            $Data["SortBy"] = $this->SortBy;
+        }
+        $Data["SortDescending"] = $this->SortDescending;
         return serialize($Data);
     }
 
     /**
      * Get/set search parameter set, in the form of URL parameters.
-     * "SortBy" and "SortDescending" are not included in parameters.
      * @param string|array $NewValue New parameter set in the form of a URL
      *       parameter string or URL parameter array.  (OPTIONAL)
      * @return array URL parameter values, with parameter names for the index.
@@ -547,7 +543,6 @@ class SearchParameterSet
 
     /**
      * Get/set search parameter set, in the form of an URL parameter string.
-     * "SortBy" and "SortDescending" are not included in parameters.
      * @param string|array $NewValue New parameter set in the form of a URL
      *       parameter string or URL parameter array.  (OPTIONAL)
      * @return string URL parameter string.
@@ -610,7 +605,7 @@ class SearchParameterSet
         $Indent .= $IncludeHtml ? "&nbsp;&nbsp;&nbsp;&nbsp;" : "  ";
 
         # for each keyword search string
-        $Descriptions = array();
+        $Descriptions = [];
         foreach ($this->KeywordSearchStrings as $SearchString) {
             # skip empty keyword search strings
             if (!strlen($SearchString)) {
@@ -905,7 +900,7 @@ class SearchParameterSet
      */
     public function getAsLegacyArray(): array
     {
-        $Legacy = array();
+        $Legacy = [];
 
         $Group = $this->convertToLegacyGroup();
         if (count($Group)) {
@@ -955,9 +950,9 @@ class SearchParameterSet
     public function setFromLegacyArray(array $SearchGroups): void
     {
         # clear current settings
-        $this->KeywordSearchStrings = array();
-        $this->SearchStrings = array();
-        $this->Subgroups = array();
+        $this->KeywordSearchStrings = [];
+        $this->SearchStrings = [];
+        $this->Subgroups = [];
 
         # iterate over legacy search groups
         foreach ($SearchGroups as $GroupId => $SearchGroup) {
@@ -984,9 +979,9 @@ class SearchParameterSet
     public function setFromLegacyUrl(string $ParameterString): void
     {
         # clear current settings
-        $this->KeywordSearchStrings = array();
-        $this->SearchStrings = array();
-        $this->Subgroups = array();
+        $this->KeywordSearchStrings = [];
+        $this->SearchStrings = [];
+        $this->Subgroups = [];
 
         # extact array of parameters from passed string
         parse_str($ParameterString, $GetVars);
@@ -1099,13 +1094,13 @@ class SearchParameterSet
     /*@)*/
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
-    private $KeywordSearchStrings = array();
+    private $KeywordSearchStrings = [];
     private $ItemTypes = false;
     private $Logic;
-    private $SearchStrings = array();
+    private $SearchStrings = [];
     private $SortBy = false;
     private $SortDescending = true;
-    private $Subgroups = array();
+    private $Subgroups = [];
 
     private static $CanonicalFieldFunction;
     private static $DefaultLogic = "AND";
@@ -1115,10 +1110,14 @@ class SearchParameterSet
     private static $TextDescriptionFilterFunction;
     private static $UrlParameterPrefix = "F";
 
+    # parameter ($_GET) building elements
     const URL_ITEMTYPE_INDICATOR = "01";
     const URL_KEYWORDFREE_RANGE = "A-JL-Z";
     const URL_KEYWORD_INDICATOR = "K";
     const URL_LOGIC_INDICATOR = "00";
+    # parameter ($_GET) names
+    const PNAME_SORTDESCENDING = "SD";
+    const PNAME_SORTFIELD = "SF";
 
     /**
      * Load set from serialized data.
@@ -1140,12 +1139,12 @@ class SearchParameterSet
 
         # load search strings
         $this->SearchStrings = isset($Data["SearchStrings"])
-                ? $Data["SearchStrings"] : array();
+                ? $Data["SearchStrings"] : [];
         $this->KeywordSearchStrings = isset($Data["KeywordSearchStrings"])
-                ? $Data["KeywordSearchStrings"] : array();
+                ? $Data["KeywordSearchStrings"] : [];
 
         # load any subgroups
-        $this->Subgroups = array();
+        $this->Subgroups = [];
         if (isset($Data["Subgroups"])) {
             foreach ($Data["Subgroups"] as $SubgroupData) {
                 $this->Subgroups[] = new static($SubgroupData);
@@ -1156,6 +1155,14 @@ class SearchParameterSet
         if (isset($Data["ItemTypes"])) {
             $this->ItemTypes = array_unique($Data["ItemTypes"]);
         }
+
+        # load sort information
+        if (isset($Data["SortBy"])) {
+            $this->SortBy = $Data["SortBy"];
+        }
+        if (isset($Data["SortDescending"])) {
+            $this->SortDescending = $Data["SortDescending"];
+        }
     }
 
     /**
@@ -1164,7 +1171,7 @@ class SearchParameterSet
      */
     private function convertToLegacyGroup(): array
     {
-        $Group = array();
+        $Group = [];
         # for each set of search strings
         foreach ($this->SearchStrings as $Field => $Strings) {
             # get text name of field
@@ -1230,21 +1237,23 @@ class SearchParameterSet
 
     /**
      * Get the search set parameter set as an array of URL parameters.
-     * "SortBy" and "SortDescending" are not preserved.
      * URL parameters names follow this format:
      *     URL Parameter Prefix ("F")
      *     Set Prefix (one or more letters) (OPTIONAL)
      *     Field ID (number) or Keyword Search Indicator ("K")
      *     Parameter Suffix (single letter) (omitted for first parameter)
      * The magic field ID "00" indicates a search logic value and the magic
-     * field ID "01" indicates an item type restriction.
+     * field ID "01" indicates an item type restriction.  If sort field and/or
+     * sort direction are set in this parameter set or any of its subgroups,
+     * the values closest to the root of the subgroup tree will be encoded
+     * into the URL parameters.
      * @param string $SetPrefix Prefix to use after the URL parameter prefix.
-     * @return array Array of URL parameters.
+     * @return array Array of URL parameters, with parameter names for the index.
      */
     private function getAsUrlParameters(string $SetPrefix = ""): array
     {
         # for each search string group in set
-        $Params = array();
+        $Params = [];
         foreach ($this->SearchStrings as $FieldId => $Values) {
             # get numeric version of field ID if not already numeric
             if (!is_numeric($FieldId)) {
@@ -1293,7 +1302,7 @@ class SearchParameterSet
             }
 
             # retrieve URL string for subgroup and add it to URL
-            $Params = array_merge($Params, $Subgroup->GetAsUrlParameters(
+            $Params = array_merge($Params, $Subgroup->getAsUrlParameters(
                 $SetPrefix.$SetLetter
             ));
 
@@ -1301,6 +1310,14 @@ class SearchParameterSet
             $SetLetter = ($SetLetter == chr(ord(self::URL_KEYWORD_INDICATOR) - 1))
                     ? chr(ord(self::URL_KEYWORD_INDICATOR) + 1)
                     : chr(ord($SetLetter) + 1);
+        }
+
+        # add sort field and sort direction (if set)
+        if ($this->SortBy !== false) {
+            $Params[self::PNAME_SORTFIELD] = $this->SortBy;
+        }
+        if (!$this->SortDescending) {
+            $Params[self::PNAME_SORTDESCENDING] = 1;
         }
 
         # return constructed URL parameter string to caller
@@ -1337,7 +1354,7 @@ class SearchParameterSet
 
     /**
      * Set search parameter from URL parameters in the same format as
-     * produced by GetAsUrlParameters().
+     * produced by getAsUrlParameters().
      * @param string|array $UrlParameters URL parameter string or array.
      * @see SearchParameterSet::getAsUrlParameters()
      * @throws InvalidArgumentException If some new settings are invalid.
@@ -1355,6 +1372,15 @@ class SearchParameterSet
                         ." parameter string (\"".$UrlParameters."\").");
             }
             $UrlParameters = $UrlParamsFromSplit;
+        }
+
+        # get sort field and sort direction if available
+        if (isset($UrlParameters[self::PNAME_SORTFIELD])) {
+            $this->SortBy = $UrlParameters[self::PNAME_SORTFIELD];
+        }
+        if (isset($UrlParameters[self::PNAME_SORTDESCENDING])) {
+            $this->SortDescending =
+                    $UrlParameters[self::PNAME_SORTDESCENDING] ? false : true;
         }
 
         # pare down parameter array to search parameter elements

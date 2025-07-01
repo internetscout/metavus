@@ -11,11 +11,14 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
 if (!isset($H_FormUI)) {
     throw new Exception("H_FormUI not defined.");
 }
+
+$AF = ApplicationFramework::getInstance();
 
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
@@ -27,7 +30,7 @@ $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Edit Search Configuration");
+$AF->setPageTitle("Edit Search Configuration");
 ?>
 
 <h1>Search Configuration</h1>

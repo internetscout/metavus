@@ -3,7 +3,7 @@
 #   FILE:  EditInterfaceConfig.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -20,7 +20,7 @@ use ScoutLib\StdLib;
 
 # ----- MAIN -----------------------------------------------------------------
 
-CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
 
 $AF = ApplicationFramework::getInstance();
 
@@ -45,8 +45,9 @@ $IntCfg = InterfaceConfiguration::getInstance($H_SelectedInterface);
 
 # set up form (force values if we have switched to editing a difference interface)
 $FormParams = $IntCfg->getFormParameters();
-$FormValues = $IntCfg->getFormValues();
 $H_Form = new FormUI($FormParams);
+# remember current interface so that we can clear form on interface change (see above)
+$H_Form->addHiddenField("IF", $H_SelectedInterface);
 
 # act on any button push
 switch ($H_Form->getSubmitButtonValue()) {

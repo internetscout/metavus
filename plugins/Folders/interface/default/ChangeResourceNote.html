@@ -6,13 +6,26 @@
 #   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\HtmlButton;
+namespace Metavus;
+
+use Exception;
 
 # ----- SETUP ----------------------------------------------------------------
-$SafeFolderId = defaulthtmlentities($FolderId);
-$SafeItemId = defaulthtmlentities($ItemId);
-$SafeNote = defaulthtmlentities($Note);
+if (!isset($H_FolderId)) {
+    throw new Exception("H_FolderId not set.");
+}
+if (!isset($H_ItemId)) {
+    throw new Exception("H_ItemId not set.");
+}
+if (!isset($H_Note)) {
+    throw new Exception("H_Note not set.");
+}
+
+$SafeFolderId = defaulthtmlentities($H_FolderId);
+$SafeItemId = defaulthtmlentities($H_ItemId);
+$SafeNote = defaulthtmlentities($H_Note);
 
 $ChangeResourceNoteButton = new HtmlButton("Change Resource Note");
 $ChangeResourceNoteButton->setIcon("Pencil.svg");
@@ -22,25 +35,14 @@ $CancelButton->setIcon("Cross.svg");
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
-
-<?PHP if ($SafeNote) { ?>
-  <h1>Change Resource Note</h1>
-<?PHP } else { ?>
-  <h1>Update Resource Note</h1>
-<?PHP } ?>
-
+<h1>Change Resource Note</h1>
 <form method="get" action="index.php">
   <input type="hidden" name="P" value="P_Folders_UpdateResourceNote" />
   <input type="hidden" name="FolderId" value="<?= $SafeFolderId; ?>" />
   <input type="hidden" name="ItemId" value="<?= $SafeItemId; ?>" />
-  <?PHP if ($ReturnTo) { ?>
-    <input type="hidden" name="ReturnTo" value="<?= $ReturnTo; ?>" />
-  <?PHP } ?>
-
   <p>
     <textarea class="mv-folders-noteinput" name="ResourceNote"><?= $SafeNote; ?></textarea>
   </p>
-
   <?= $ChangeResourceNoteButton->getHtml(); ?>
   <?= $CancelButton->getHtml(); ?>
 </form>

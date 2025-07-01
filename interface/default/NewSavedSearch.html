@@ -11,11 +11,15 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- SETUP ----------------------------------------------------------------
 if (!isset($H_FormUI)) {
     throw new Exception("H_FormUI not defined.");
 }
+
+$AF = ApplicationFramework::getInstance();
 
 $SaveButton = new HtmlButton("Save");
 $SaveButton->setIcon("Disk.svg");
@@ -26,10 +30,10 @@ $CancelButton->setIcon("Cross.svg");
 $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
-$MailingsEnabled = $GLOBALS["G_PluginManager"]->PluginEnabled("SavedSearchMailings");
+$MailingsEnabled = PluginManager::getInstance()->PluginEnabled("SavedSearchMailings");
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("Save Search");
+$AF->setPageTitle("Save Search");
 ?>
 <h1>New Saved Search</h1>
 

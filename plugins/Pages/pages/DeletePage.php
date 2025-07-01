@@ -3,7 +3,7 @@
 #   FILE:  DeletePage.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -30,7 +30,7 @@ if (!isset($_GET["ID"])) {
 
     # make sure user has privileges to delete page
     if (!$H_Page->userCanEdit(User::getCurrentUser())) {
-        DisplayUnauthorizedAccessPage();
+        User::handleUnauthorizedAccess();
         return;
     }
 

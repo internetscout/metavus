@@ -8,6 +8,7 @@
 #
 
 use Metavus\HtmlButton;
+use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -26,6 +27,8 @@ function pe($MatchVal, $CurrVal)
 }
 
 # ----- SETUP ----------------------------------------------------------------
+$AF = ApplicationFramework::getInstance();
+
 $EditFormatButton = new HtmlButton("Edit");
 $EditFormatButton->setIcon("Pencil.svg");
 
@@ -39,7 +42,7 @@ $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setIcon("Cross.svg");
 
 # ----- DISPLAY --------------------------------------------------------------
-PageTitle("OAI-PMH Server - Configuration");
+$AF->setPageTitle("OAI-PMH Server - Configuration");
 ?>
 
 <div class="container">

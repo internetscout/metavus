@@ -3,15 +3,18 @@
 #   FILE:  DeleteBlogComplete.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use Metavus\Plugins\Blog;
 
-CheckAuthorization(PRIV_SYSADMIN);
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
+}
 
 if ($_POST["Submit"] == "Delete") {
     $BlogPlugin = Blog::getInstance();

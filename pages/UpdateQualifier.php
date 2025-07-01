@@ -3,7 +3,7 @@
 #   FILE:  UpdateQualifier.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -12,6 +12,7 @@ use Metavus\MetadataSchema;
 use Metavus\Qualifier;
 use Metavus\QualifierFactory;
 use Metavus\RecordFactory;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -48,8 +49,8 @@ function RemoveListValue(): void
 
     foreach ($Qualifiers as $QualifierId) {
         $Qualifier = new Qualifier($QualifierId);
-        $Schema->RemoveQualifierAssociations($Qualifier);
-        $RFactory->ClearQualifier($Qualifier);
+        $Schema->removeQualifierAssociations($Qualifier);
+        $RFactory->clearQualifier($Qualifier);
         $Qualifier->destroy();
     }
 }
@@ -80,9 +81,9 @@ function AddListValue($NewName, $NewNamespace, $NewUrl)
         }
 
         # create new qualifier
-        $Qualifier = Qualifier::Create($NewName);
-        $Qualifier->NSpace($NewNamespace);
-        $Qualifier->Url($NewUrl);
+        $Qualifier = Qualifier::create($NewName);
+        $Qualifier->nSpace($NewNamespace);
+        $Qualifier->url($NewUrl);
     } else {
         return "<b>Error: </b>No Value Entered";
     }
@@ -124,9 +125,9 @@ function UpdateListValue(): void
             if (!empty($QualifierName) && isset($QualifierId) && isset($QualifierNamespace)) {
                 # create new qualifier
                 $Qualifier = new Qualifier($QualifierId);
-                $Qualifier->Name($QualifierName);
-                $Qualifier->NSpace($QualifierNamespace);
-                $Qualifier->Url($QualifierUrl);
+                $Qualifier->name($QualifierName);
+                $Qualifier->nSpace($QualifierNamespace);
+                $Qualifier->url($QualifierUrl);
                 $QualifierId = null;
             }
         }
@@ -141,7 +142,7 @@ global $F_NewName;
 global $F_NewNamespace;
 global $F_NewUrl;
 
-if (!CheckAuthorization(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
     return;
 }
 
@@ -173,9 +174,9 @@ $AF = ApplicationFramework::getInstance();
 if ($Submit == "Cancel") {
     # cancel from confirm delete
     if ($OkayToDelete) {
-        $AF->SetJumpToPage("AddQualifier");
+        $AF->setJumpToPage("AddQualifier");
     } else {
-        $AF->SetJumpToPage("SysAdmin");
+        $AF->setJumpToPage("SysAdmin");
     }
     return;
 } elseif (substr($Submit, 0, 6) == "Delete") {
@@ -186,7 +187,7 @@ if ($Submit == "Cancel") {
         $Qualifiers = GetRemoveList();
         if (count($Qualifiers) > 0) {
             $_SESSION["Qualifiers"] = $Qualifiers;
-            $AF->SetJumpToPage("ConfirmDeleteQualifier");
+            $AF->setJumpToPage("ConfirmDeleteQualifier");
             return;
         } else {
             $ErrorMessages[] = "<b>Error: </b>No Qualifiers selected";
@@ -204,4 +205,4 @@ if ($Submit == "Cancel") {
 }
 
 $_SESSION["ErrorMessages"] = $ErrorMessages;
-ApplicationFramework::getInstance()->SetJumpToPage("AddQualifier");
+ApplicationFramework::getInstance()->setJumpToPage("AddQualifier");
