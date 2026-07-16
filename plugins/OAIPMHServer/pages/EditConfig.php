@@ -23,7 +23,7 @@ $OAIPMHServerPlugin = OAIPMHServer::getInstance();
 $Formats = $OAIPMHServerPlugin->getConfigSetting("Formats");
 $Index = 0;
 $FormatToEdit = "";
-foreach ($Formats as $FormatName => $Format) {
+foreach ($Formats as $Format) {
     if (isset($_POST["FormatEdit".$Index])) {
         $FormatToEdit = $_POST["H_FormatName".$Index];
         $_POST["Submit"] = "Edit";
@@ -48,7 +48,7 @@ if (isset($_POST["Submit"])) {
         ];
 
         foreach ($FormVars as $FieldName => $PrintableName) {
-            if (!strlen(trim($_POST["F_RepDescr_".$FieldName]))) {
+            if (strlen(trim($_POST["F_RepDescr_".$FieldName])) === 0) {
                 $H_ErrorMessages[] = "<i>".$PrintableName."</i> is required.";
             } else {
                 if ($FieldName == "AdminEmail") {

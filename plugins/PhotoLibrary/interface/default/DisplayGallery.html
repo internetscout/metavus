@@ -3,7 +3,7 @@
 #   FILE:  DisplayGallery.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -20,6 +20,7 @@ $ImageSizeInPx = 250;
 
 # ----- SETUP ----------------------------------------------------------------
 
+# if there was an error, report it and bail
 if (isset($H_Error)) {
     print '<p class="alert alert-danger">'.$H_Error."</p>";
     return;
@@ -40,6 +41,8 @@ if (!isset($H_BaseLink)) {
 $AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 
+SearchFacetUI::addSupportingJavascript();
+
 # make sure CSS styles specific to our page are loaded
 $AF->requireUIFile("P_PhotoGallery.css");
 
@@ -54,21 +57,23 @@ $EditButton = new HtmlButton("Edit");
 $EditButton->setIcon("Pencil.svg");
 $EditButton->setSize(HtmlButton::SIZE_SMALL);
 
-# set up facet interface
-$PseudoSearchScores = array_fill_keys($H_ItemIds, 1);
-$FacetUI = new SearchFacetUI($H_SearchParams, $PseudoSearchScores);
-$FacetUI->setBaseLink($H_BaseLink);
-$FacetUI->setAllFacetsOpenByDefault();
-
+$FacetUrl = $AF->baseUrl()."index.php?P=P_PhotoLibrary_GenerateFacetHtml&"
+    .$H_SearchParams->urlParameterString();
 
 # ----- DISPLAY --------------------------------------------------------------
 
 $AF->setPageTitle("Display Photo Gallery");
 
 ?>
-<h1>Photo Library</h1>
 <div class="d-flex">
     <div class="col">
+        <div class="d-flex justify-content-between align-items-end">
+            <h1>Photo Library</h1>
+            <?PHP if (isset($H_FolderButtonsHtml)
+                    && strlen($H_FolderButtonsHtml) !== 0) { ?>
+                <div class="text-end mb-2"><?= $H_FolderButtonsHtml ?></div>
+            <?PHP } ?>
+        </div>
         <?= $TransportControlsHtml ?>
         <div class="row mv-tileset"><?PHP
         foreach ($H_ItemIds as $ItemId) {
@@ -112,5 +117,6 @@ $AF->setPageTitle("Display Photo Gallery");
         ?></div>
         <?= $TransportControlsHtml ?>
     </div>
-    <div class="col-2"><?= $FacetUI->getHtml() ?></div>
+    <div class="col-2"><div id="mv-facet-container"
+         hx-get="<?= $FacetUrl ?>" hx-trigger="load"></div></div>
 </div>

@@ -3,7 +3,7 @@
 #   FILE:  EditRegistration.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -47,7 +47,9 @@ if ($H_Id != "NEW") {
 
     $Registration = new LMSRegistration($H_Id);
     $Values = [
+        "InstitutionName" => $Registration->getInstitutionName(),
         "ContactEmail" => $Registration->getContactEmail(),
+        "Internal" => $Registration->getIsInternal(),
         "LMS" => $Registration->getLms(),
         "Issuer" => $Registration->getIssuer(),
         "ClientId" => $Registration->getClientId(),
@@ -81,11 +83,21 @@ $FormFields = [
         "OptionType" => FormUI::OTYPE_LIST,
         "OptionThreshold" => 0,
     ],
+    "InstitutionName" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Institution Name",
+        "Required" => true,
+    ],
     "ContactEmail" => [
         "Type" => FormUI::FTYPE_TEXT,
         "Label" => "Contact Email",
         "ValidateFunction" => ["\\Metavus\\FormUI", "validateEmail"],
         "Required" => true,
+    ],
+    "Internal" => [
+        "Label" => "Internal",
+        "Type" => FormUI::FTYPE_FLAG,
+        "Help" => "Flag to distinguish testing LMSes from external partners.",
     ],
     "Issuer" => [
         "Label" => "Issuer",
@@ -165,7 +177,7 @@ switch ($ButtonPushed) {
     case "Save":
         /* fall through */
     case "Add":
-        if ($H_FormUI->validateFieldInput()) {
+        if ($H_FormUI->validateFieldInput() !== 0) {
             return;
         }
 
@@ -186,6 +198,7 @@ switch ($ButtonPushed) {
                 );
             }
 
+            $Registration->setInstitutionName($NewValues["InstitutionName"]);
             $Registration->setContactEmail($NewValues["ContactEmail"]);
             $Registration->setLms($NewValues["LMS"]);
             $Registration->setIssuer($NewValues["Issuer"]);
@@ -194,6 +207,7 @@ switch ($ButtonPushed) {
             $Registration->setAuthTokenUrl($NewValues["AuthTokenUrl"]);
             $Registration->setKeySetUrl($NewValues["KeySetUrl"]);
             $Registration->setSearchParameters($NewValues["SearchParameters"]);
+            $Registration->setIsInternal($NewValues["Internal"]);
         }
         /* fall through */
 

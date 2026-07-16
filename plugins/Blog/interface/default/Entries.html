@@ -68,7 +68,7 @@ $NewEntryButton->setLink(str_replace('$ID', "NEW&SC=".$SafeSchemaId, $BlogSchema
 </div>
 
 <?PHP
-if (count($H_Entries)) {
+if (count($H_Entries) !== 0) {
     foreach ($H_Entries as $Entry) {
         BlogEntryUI::printBlogEntry($Entry);
     }

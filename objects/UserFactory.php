@@ -45,7 +45,7 @@ class UserFactory extends \ScoutLib\UserFactory
     ): array {
         # if there are necessary privileges for this privilege set
         $ReqPrivs = $Privset->getPossibleNecessaryPrivileges();
-        if (count($ReqPrivs)) {
+        if (count($ReqPrivs) !== 0) {
             # start with only those users who have at least one of those privileges
             $UserIds = array_keys($this->getUsersWithPrivileges($ReqPrivs));
         } else {
@@ -134,7 +134,7 @@ class UserFactory extends \ScoutLib\UserFactory
 
         # if privileged user found assume user most recently logged in is owner
         if (count($PrivUserIds) > 0) {
-            usort($PrivUserIds, function ($A, $B) {
+            usort($PrivUserIds, function ($A, $B): int {
                 $UserA = new \ScoutLib\User($A);
                 $UserB = new \ScoutLib\User($B);
                 return ($UserA->get("LastLoginDate")
@@ -226,12 +226,12 @@ class UserFactory extends \ScoutLib\UserFactory
                     $User
                 );
 
-                if (count($VisibleResources)) {
+                if (count($VisibleResources) !== 0) {
                     $UserResources[$SchemaId] = $VisibleResources;
                 }
             }
 
-            if (count($UserResources)) {
+            if (count($UserResources) !== 0) {
                 $Result[$UserId] = RecordFactory::flattenMultiSchemaRecordList(
                     $UserResources
                 );

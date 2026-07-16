@@ -3,7 +3,7 @@
 #   FILE:  MetadataFieldOrder.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -232,7 +232,10 @@ class MetadataFieldOrder extends Folder
             } else {
                 $Item = MetadataField::getField($ItemId);
             }
-            if (!is_null($Parent) && $Parent != "null" && $Item instanceof MetadataField) {
+            if (!is_null($Parent)
+                    && $Parent != "null"
+                    && $Item instanceof MetadataField
+                    && $Previous !== null) {
                 $this->moveItemAfter($Previous, $Item);
                 $Parent = new MetadataFieldGroup($Parent - $GroupIdOffset);
                 $this->moveFieldToGroup($Parent, $Item, "append");
@@ -268,8 +271,14 @@ class MetadataFieldOrder extends Folder
         $OrderId = $this->getItemId($this);
         $OrderType = $this->getItemType($this);
         $ItemId = $this->getItemId($Item);
+        if ($ItemId === null) {
+            throw new Exception("Unable to retrieve item ID.");
+        }
         $ItemType = $this->getItemType($Item);
         $ItemEnclosure = $this->getEnclosure($Item);
+        if ($ItemEnclosure === null) {
+            throw new Exception("Unable to retrieve item enclosure.");
+        }
         $ItemEnclosureId = $this->getItemId($ItemEnclosure);
         $ItemEnclosureType = $this->getItemType($ItemEnclosure);
 
@@ -305,8 +314,14 @@ class MetadataFieldOrder extends Folder
         $GroupId = $this->getItemId($Group);
         $GroupType = $this->getItemType($Group);
         $FieldId = $this->getItemId($Field);
+        if ($FieldId === null) {
+            throw new Exception("Unable to retrieve field ID.");
+        }
         $FieldType = $this->getItemType($Field);
         $FieldEnclosure = $this->getEnclosure($Field);
+        if ($FieldEnclosure === null) {
+            throw new Exception("Unable to retrieve field enclosure.");
+        }
         $FieldEnclosureId = $this->getItemId($FieldEnclosure);
         $FieldEnclosureType = $this->getItemType($FieldEnclosure);
 
@@ -346,11 +361,20 @@ class MetadataFieldOrder extends Folder
         $TargetId = $this->getItemId($Target);
         $TargetType = $this->getItemType($Target);
         $ItemId = $this->getItemId($Item);
+        if ($ItemId === null) {
+            throw new Exception("Unable to retrieve item ID.");
+        }
         $ItemType = $this->getItemType($Item);
         $TargetEnclosure = $this->getEnclosure($Target);
+        if ($TargetEnclosure === null) {
+            throw new Exception("Unable to retrieve target enclosure.");
+        }
         $TargetEnclosureId = $this->getItemId($TargetEnclosure);
         $TargetEnclosureType = $this->getItemType($TargetEnclosure);
         $ItemEnclosure = $this->getEnclosure($Item);
+        if ($ItemEnclosure === null) {
+            throw new Exception("Unable to retrieve item enclosure.");
+        }
         $ItemEnclosureId = $this->getItemId($ItemEnclosure);
         $ItemEnclosureType = $this->getItemType($ItemEnclosure);
 
@@ -391,7 +415,7 @@ class MetadataFieldOrder extends Folder
             return false;
         }
 
-        $ItemId = $this->getItemId($Item);
+        $ItemId = $Item->id();
         $ItemType = $this->getItemType($Item);
 
         # if the item is in the order, i.e., not in a group
@@ -457,7 +481,7 @@ class MetadataFieldOrder extends Folder
 
         # finally, add any remaining fields that weren't removed in the loop
         # above
-        foreach ($Fields as $FieldId => $Field) {
+        foreach (array_keys($Fields) as $FieldId) {
             $Folder->appendItem($FieldId, "Metavus\\MetadataField");
         }
 
@@ -532,12 +556,11 @@ class MetadataFieldOrder extends Folder
         $DB = new Database();
 
         # query the database for the orders associated with the schema
-        $DB->query("
-            SELECT * FROM MetadataFieldOrders
-            WHERE SchemaId = '".$SchemaId."'");
+        $DB->query("SELECT * FROM MetadataFieldOrders WHERE SchemaId = ".$SchemaId);
 
         # loop through each found record
-        foreach ($DB->fetchRows() as $Row) {
+        $Rows = $DB->fetchRows();
+        foreach ($Rows as $Row) {
             try {
                 # construct an object using the ID and add it to the array
                 $Orders[$Row["OrderName"]] = new MetadataFieldOrder($Row["OrderId"]);
@@ -585,7 +608,7 @@ class MetadataFieldOrder extends Folder
      * @param mixed $Item Item of type MetadataField, MetadataFieldGroup, or MetadataFieldOrder
      * @return string|null The type of the item or NULL if the item is invalid.
      */
-    protected function getItemType($Item)
+    protected function getItemType($Item): ?string
     {
         return is_object($Item) ? get_class($Item) : null;
     }
@@ -610,7 +633,7 @@ class MetadataFieldOrder extends Folder
      */
     protected function getEnclosure($Item)
     {
-        $ItemId = $this->getItemId($Item);
+        $ItemId = $Item->id();
         $ItemType = $this->getItemType($Item);
 
         # the item is in the order, i.e., not in a group
@@ -638,7 +661,7 @@ class MetadataFieldOrder extends Folder
      */
     protected function getSiblingItem($Item, int $Offset, ?callable $Filter = null)
     {
-        $Id = $this->getItemId($Item);
+        $Id = $Item->id();
         $Type = $this->getItemType($Item);
         $Sibling = null;
 
@@ -727,8 +750,8 @@ class MetadataFieldOrder extends Folder
         # determine which action to use based on the placement value
         $Action = $Placement == "prepend" ? "prependItem" : "appendItem";
 
-        $GroupId = $this->getItemId($Group);
-        $FieldId = $this->getItemId($Field);
+        $GroupId = $Group->id();
+        $FieldId = $Field->id();
 
         $OrderHasGroup = $this->containsItem($GroupId, "Metavus\\MetadataFieldGroup");
         $OrderHasField = $this->containsItem($FieldId, "Metavus\\MetadataField");
@@ -757,8 +780,8 @@ class MetadataFieldOrder extends Folder
         # determine which action to use based on the placement value
         $Action = $Placement == "before" ? "insertItemBefore" : "insertItemAfter";
 
-        $GroupId = $this->getItemId($Group);
-        $FieldId = $this->getItemId($Field);
+        $GroupId = $Group->id();
+        $FieldId = $Field->id();
 
         $OrderHasGroup = $this->containsItem($GroupId, "Metavus\\MetadataFieldGroup");
         $GroupHasField = $Group->containsItem($FieldId, "Metavus\\MetadataField");

@@ -78,7 +78,7 @@ class ExifTags extends Plugin
         foreach (MetadataSchema::getAllSchemas() as $Schema) {
             $ImageFields = $Schema->getFields(MetadataSchema::MDFTYPE_IMAGE);
 
-            foreach ($ImageFields as $Index => $ImageField) {
+            foreach ($ImageFields as $ImageField) {
                 MetadataField::registerObserver(
                     MetadataField::EVENT_ADD,
                     [$this, "observeImageAdditions"],
@@ -536,7 +536,7 @@ class ExifTags extends Plugin
         $Mappings = [];
         $AllSchemas = MetadataSchema::getAllSchemas();
         foreach ($AllSchemas as $Schema) {
-            $SchemaId = $Schema->Id();
+            $SchemaId = $Schema->id();
             $Mappings[$SchemaId] = [];
         }
         return $Mappings;

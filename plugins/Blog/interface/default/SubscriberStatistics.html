@@ -3,16 +3,24 @@
 #   FILE:  SubscriberStatistics.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\ItemListUI;
-use Metavus\User;
+namespace Metavus;
+use Exception;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
-function getUserInfo(int $UserId, string $UserField)
+/**
+ * Get information about a specified user for display, with caching.
+ * @param int $UserId ID of user to fetch information for.
+ * @param string $UserField Name of field to fetch.
+ * @return string Requested data from User::get() or empty string when no data
+ *     was available.
+ */
+function getUserInfo(int $UserId, string $UserField): string
 {
     static $UserData = [];
 
@@ -25,7 +33,7 @@ function getUserInfo(int $UserId, string $UserField)
         $User = new User($UserId);
         $UserData[$UserId] = [];
         foreach ($UserFields as $Field) {
-            $UserData[$UserId][$Field] = $User->get($Field);
+            $UserData[$UserId][$Field] = $User->get($Field) ?? "";
         }
     }
 
@@ -34,11 +42,27 @@ function getUserInfo(int $UserId, string $UserField)
 
 # ----- MAIN -----------------------------------------------------------------
 
+if (!isset($H_Graph) || !($H_Graph instanceof LineChart)) {
+    throw new Exception("Variable H_Graph is unset or incorrect type.");
+}
+if (!isset($H_ItemsPerPage) || !is_int($H_ItemsPerPage)) {
+    throw new Exception("Variable H_ItemsPerPage is unset or incorrect type.");
+}
+if (!isset($H_StartingIndex) || !is_int($H_StartingIndex)) {
+    throw new Exception("Variable H_StartingIndex is unset or incorrect type.");
+}
+if (!isset($H_SubscriberCount) || !is_int($H_SubscriberCount)) {
+    throw new Exception("Variable H_SubscriberCount is unset or incorrect type.");
+}
+if (!isset($H_Subscribers) || !is_array($H_Subscribers)) {
+    throw new Exception("Variable H_Subscribers is unset or incorrect type.");
+}
+
 $BaseLink = "index.php?P=P_Blog_SubscriberStatistics";
 
 $Fields = [
     "UserName" => [
-        "ValueFunction" => function ($UserId, $UserField) {
+        "ValueFunction" => function ($UserId, $UserField): string {
             $UserName = getUserInfo($UserId, $UserField);
             return "<a href='index.php?P=EditUser&ID=".$UserId."'>".$UserName."</a>";
         },
@@ -46,14 +70,14 @@ $Fields = [
     "EMail" => [
         "Heading" => "E-Mail",
         "AllowHTML" => true,
-        "ValueFunction" => function ($UserId, $UserField) {
+        "ValueFunction" => function ($UserId, $UserField): string {
             $SafeEmail = defaulthtmlentities(getUserInfo($UserId, $UserField));
             return "<a href='mailto:".$SafeEmail."'>".$SafeEmail."</a>";
         },
     ],
     "RealName" => [
         "Heading" => "Full Name",
-        "ValueFunction" => "getUserInfo",
+        "ValueFunction" => __NAMESPACE__."\\getUserInfo",
     ],
 ];
 
@@ -61,12 +85,9 @@ $ListUI = new ItemListUI($Fields);
 $ListUI->noItemsMessage("There are no subscribers.");
 $ListUI->itemsPerPage($H_ItemsPerPage);
 $ListUI->baseLink($BaseLink);
-
 ?>
 <h1>Blog Subscriber Statistics</h1>
 
-<?PHP if (isset($H_Graph)) { ?>
-    <?PHP $H_Graph->Display(); ?>
-<?PHP } ?>
+<?PHP $H_Graph->display("mv-subscriber-chart"); ?>
 
 <?PHP $ListUI->display($H_Subscribers, $H_SubscriberCount, $H_StartingIndex); ?>

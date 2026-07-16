@@ -3,7 +3,7 @@
 #   FILE:  MySearches.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -111,9 +111,7 @@ class MySearches extends Plugin
             return "";
         }
 
-        $Searches = (new SavedSearchFactory())->getSearchesForUser(
-            $User->id()
-        );
+        $Searches = (new SavedSearchFactory())->getSearchesForUser((int)$User->id());
         if (count($Searches) == 0) {
             return "";
         }
@@ -145,13 +143,20 @@ class MySearches extends Plugin
      */
     public function getHtmlForRecentSearchesBox(): string
     {
-        $PluginManager = PluginManager::getInstance();
+        # bail out if display of recent searches is disabled
+        if ($this->getConfigSetting("RecentSearches") != "Yes") {
+            return "";
+        }
 
-        # retrieve user currently logged in
+        # bail out if metrics recorder (source of recent search data) is not available
+        $PManager = PluginManager::getInstance();
+        if (!$PManager->pluginReady("MetricsRecorder")) {
+            return "";
+        }
+
+        # bail out if user is not logged in
         $User = User::getCurrentUser();
-
-        # bail if display of recent searches is disabled or user is not logged in
-        if (($this->getConfigSetting("RecentSearches") != "Yes") || !$User->isLoggedIn()) {
+        if (!$User->isLoggedIn()) {
             return "";
         }
 

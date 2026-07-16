@@ -65,9 +65,11 @@ CREATE TABLE IF NOT EXISTS MetadataSchemas (
     AuthoringPrivileges     BLOB DEFAULT NULL,
     EditingPrivileges       BLOB DEFAULT NULL,
     ViewingPrivileges       BLOB DEFAULT NULL,
+    DeletingPrivileges      BLOB DEFAULT NULL,
     ViewPage                TEXT DEFAULT NULL,
     EditPage                TEXT DEFAULT NULL,
     CommentsEnabled         INT DEFAULT 1,
+    Owner                   TEXT DEFAULT NULL,
     INDEX                   Index_S (SchemaId)
 );
 
@@ -146,6 +148,7 @@ CREATE TABLE IF NOT EXISTS MetadataFields (
     AuthoringPrivileges             BLOB DEFAULT NULL,
     EditingPrivileges               BLOB DEFAULT NULL,
     ViewingPrivileges               BLOB DEFAULT NULL,
+    VocabularyEditable              INT DEFAULT 1,
     INDEX                           Index_I (FieldId),
     INDEX                           Index_T (FieldType)
 );

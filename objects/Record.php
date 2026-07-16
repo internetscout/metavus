@@ -76,7 +76,7 @@ class Record extends Item
      * @return Record New Record object.
      * @throws Exception If record creation failed.
      */
-    public static function create(int $SchemaId)
+    public static function create(int $SchemaId): \Metavus\Record
     {
         # be sure the DB access values are set
         $Class = get_called_class();
@@ -118,12 +118,12 @@ class Record extends Item
                 | MetadataSchema::MDFTYPE_POINT);
         foreach ($Fields as $Field) {
             # if there is a default value available
-            $DefaultValue = $Field->DefaultValue();
+            $DefaultValue = $Field->defaultValue();
             if (($DefaultValue !== false) || ($Field->type() == MetadataSchema::MDFTYPE_FLAG)) {
                 # if the default value is an array
                 if (is_array($DefaultValue)) {
                     # if there are values in the array
-                    if (!empty($DefaultValue)) {
+                    if ($DefaultValue !== []) {
                         # set default value
                         $Record->set($Field, $DefaultValue);
                     }
@@ -162,7 +162,7 @@ class Record extends Item
     public static function duplicate(
         int $ResourceId,
         bool $MarkAsDuplicate = true
-    ) {
+    ): self {
         # check that resource to be duplicated exists
         if (!Record::itemExists($ResourceId)) {
             throw new InvalidArgumentException(
@@ -268,7 +268,7 @@ class Record extends Item
         );
 
         # for each classification type
-        foreach ($Classifications as $ClassType => $ClassesOfType) {
+        foreach ($Classifications as $ClassesOfType) {
             # for each classification of that type
             foreach ($ClassesOfType as $ClassId => $ClassName) {
                 # recalculate resource count for classification
@@ -390,7 +390,7 @@ class Record extends Item
             MetadataSchema::MDFTYPE_TIMESTAMP
         );
         foreach ($TimestampFields as $Field) {
-            if ($Field->UpdateMethod() == $UpdateType) {
+            if ($Field->updateMethod() == $UpdateType) {
                 $this->set($Field, "now");
             }
         }
@@ -405,7 +405,7 @@ class Record extends Item
             MetadataSchema::MDFTYPE_USER
         );
         foreach ($UserFields as $Field) {
-            if ($Field->UpdateMethod() == $UpdateType) {
+            if ($Field->updateMethod() == $UpdateType) {
                 $this->set($Field, $User);
             }
         }
@@ -667,7 +667,7 @@ class Record extends Item
                 $End = $this->DB->updateValue($DBFieldName."End");
                 $Precision = $this->DB->updateValue($DBFieldName."Precision");
 
-                if (strlen($Begin)) {
+                if (strlen($Begin) !== 0) {
                     if (Date::isValidDate($Begin, $End) == false) {
                         (ApplicationFramework::getInstance())->logMessage(
                             ApplicationFramework::LOGLVL_WARNING,
@@ -884,7 +884,7 @@ class Record extends Item
 
             case MetadataSchema::MDFTYPE_SEARCHPARAMETERSET:
                 $SPSData = $this->DB->updateValue($DBFieldName);
-                $ReturnValue = new SearchParameterSet((strlen($SPSData) ? $SPSData : null));
+                $ReturnValue = new SearchParameterSet((strlen($SPSData) !== 0 ? $SPSData : null));
                 break;
 
             default:
@@ -968,14 +968,14 @@ class Record extends Item
         # for each field
         foreach ($Fields as $Field) {
             # if field is enabled or caller requested disabled fields
-            if ($Field->Enabled() || $IncludeDisabledFields) {
+            if ($Field->enabled() || $IncludeDisabledFields) {
                 # retrieve info and add it to the array
-                $FieldStrings[$Field->Name()] = $this->get($Field, $ReturnObjects);
+                $FieldStrings[$Field->name()] = $this->get($Field, $ReturnObjects);
 
                 # if field uses qualifiers
-                if ($Field->UsesQualifiers()) {
+                if ($Field->usesQualifiers()) {
                     # get qualifier attributes and add to the array
-                    $FieldStrings[$Field->Name()." Qualifier"] =
+                    $FieldStrings[$Field->name()." Qualifier"] =
                             $this->getQualifier($Field, $ReturnObjects);
                 }
             }
@@ -1009,7 +1009,7 @@ class Record extends Item
         bool $IncludeVariants = false
     ) {
         $FieldId = $this->getSchema()->stdNameToFieldMapping($MappedName);
-        return $FieldId
+        return $FieldId !== null && $FieldId !== 0
                 ? $this->get($FieldId, $ReturnObject, $IncludeVariants)
                 : null;
     }
@@ -1194,7 +1194,7 @@ class Record extends Item
      *      for user interface (e.g., 'preview').
      * @return array Persistent image URLs, keyed by ImageId
      */
-    public function getPersistentImageUrls($Field, string $ImageSize)
+    public function getPersistentImageUrls($Field, string $ImageSize): array
     {
         # get our target field and extract its values
         $Field = $this->normalizeFieldArgument($Field);
@@ -1222,7 +1222,7 @@ class Record extends Item
      * @param int $ImageSize Desired size as an Metavus\Image::SIZE_ constant.
      * @return array Persistent image URLs, keyed by ImageId
      */
-    public function getLegacyPersistentImageUrls($Field, int $ImageSize = Image::SIZE_FULL)
+    public function getLegacyPersistentImageUrls($Field, int $ImageSize = Image::SIZE_FULL): array
     {
         # get our target field and extract its values
         $Field = $this->normalizeFieldArgument($Field);
@@ -1263,15 +1263,16 @@ class Record extends Item
      * @param string|int|MetadataField $Field Metadata field name, ID, or field object.
      * @param mixed $NewValue New value for field.
      * @param bool $Reset When TRUE Controlled Names, Classifications,
-     *       and Options will be set to contain *ONLY* the contents of
-     *       NewValue, rather than appending $NewValue to the current value.
-     * @return void
+     *      and Options will be set to contain *ONLY* the contents of
+     *      NewValue, rather than appending $NewValue to the current value.
+     * @return bool TRUE if the value for the field was changed in some fashion,
+     *      otherwise FALSE.
      * @throws Exception When attempting to set a value for a field that is
-     *       part of a different schema than the resource.
+     *      part of a different schema than the resource.
      * @throws InvalidArgumentException When attempting to set a controlled
-     *       name with an invalid ID.
+     *      name with an invalid ID.
      */
-    public function set($Field, $NewValue, bool $Reset = false)
+    public function set($Field, $NewValue, bool $Reset = false): bool
     {
         $Field = $this->normalizeFieldArgument($Field);
 
@@ -1403,17 +1404,12 @@ class Record extends Item
                 throw new Exception("Attempt to set unknown resource field type");
         }
 
-        # if no changes, nothing else to do
-        if (!$ValueWasChanged) {
-            return;
+        # if field value was changed and this is not a temp record, do housekeeping
+        if ($ValueWasChanged && !$this->isTempRecord()) {
+            $this->doHousekeepingAfterChangeToValue($Field);
         }
 
-        # if temp record, nothing else to do
-        if ($this->isTempRecord()) {
-            return;
-        }
-
-        $this->doHousekeepingAfterChangeToValue($Field);
+        return $ValueWasChanged;
     }
 
     /**
@@ -1490,7 +1486,7 @@ class Record extends Item
                     }
 
                     # for each element of array
-                    foreach ($ValueToClear as $Id => $Dummy) {
+                    foreach (array_keys($ValueToClear) as $Id) {
                         if (array_key_exists($Id, $Value)) {
                             unset($Value[$Id]);
                         }
@@ -1782,7 +1778,7 @@ class Record extends Item
      * @return array Array where first index is classification (field) name,
      *       second index is classification ID.
      */
-    public function classifications()
+    public function classifications(): array
     {
         $DB = $this->DB;
 
@@ -1982,13 +1978,13 @@ class Record extends Item
      * Determine if the given user can view the resource, e.g., on the full
      * record page.The result of this method can be modified via the
      * EVENT_RESOURCE_VIEW_PERMISSION_CHECK event.
-     * @param \ScoutLib\User $User User to check against.
+     * @param User $User User to check against.
      * @param bool $AllowHooksToModify TRUE if hook functions should be
      *     allowed to modify the return value (OPTIONAL default TRUE).
      * @return bool TRUE if the user can view the resource and FALSE otherwise
      * @see Record::getViewCacheExpirationDate()
      */
-    public function userCanView(\ScoutLib\User $User, bool $AllowHooksToModify = true)
+    public function userCanView($User, bool $AllowHooksToModify = true)
     {
         # anon users cannot view temp records
         if ($this->isTempRecord() && !$User->isLoggedIn()) {
@@ -1999,23 +1995,23 @@ class Record extends Item
     }
 
     /**
-     * Determine if the given user can edit the resource.The result of this
+     * Determine if the given user can edit the resource. The result of this
      * method can be modified via the EVENT_RESOURCE_EDIT_PERMISSION_CHECK event.
-     * @param \ScoutLib\User $User User to check against.
+     * @param User $User User to check against.
      * @return bool TRUE if the user can edit the resource and FALSE otherwise
      */
-    public function userCanEdit($User)
+    public function userCanEdit($User): bool
     {
         return $this->checkSchemaPermissions($User, "Edit");
     }
 
     /**
-     * Determine if the given user can edit the resource.The result of this
-     * method can be modified via the EVENT_RESOURCE_EDIT_PERMISSION_CHECK event.
-     * @param \ScoutLib\User $User User to check against.
-     * @return bool TRUE if the user can edit the resource and FALSE otherwise
+     * Determine if the given user can author the resource. The result of this
+     * method can be modified via the EVENT_RESOURCE_AUTHOR_PERMISSION_CHECK event.
+     * @param User $User User to check against.
+     * @return bool TRUE if the user can author the resource and FALSE otherwise
      */
-    public function userCanAuthor($User)
+    public function userCanAuthor($User): bool
     {
         return $this->checkSchemaPermissions($User, "Author");
     }
@@ -2030,6 +2026,21 @@ class Record extends Item
     {
         $CheckFn = "userCan".($this->isTempRecord() ? "Author" : "Edit");
         return $this->$CheckFn($User);
+    }
+
+    /**
+     * Determine if the given user can delete the resource.
+     * @param User $User User to check against.
+     * @return bool TRUE if the user can delete the resource and FALSE otherwise
+     */
+    public function userCanDelete($User): bool
+    {
+        # do not allow users to delete records they cannot edit
+        if (!$this->userCanEdit($User)) {
+            return false;
+        }
+
+        return $this->checkSchemaPermissions($User, "Delete");
     }
 
     /**
@@ -2051,7 +2062,7 @@ class Record extends Item
      * @param mixed $FieldOrFieldName Field name or object.
      * @return bool TRUE if user can view field, otherwise FALSE.
      */
-    public function userCanViewField($User, $FieldOrFieldName)
+    public function userCanViewField($User, $FieldOrFieldName): bool
     {
         return $this->checkFieldPermissions($User, $FieldOrFieldName, "View");
     }
@@ -2062,7 +2073,7 @@ class Record extends Item
      * @param string $MappedName Name of standard (mapped) field.
      * @return bool TRUE if user can view field, otherwise FALSE.
      */
-    public function userCanViewMappedField($User, $MappedName)
+    public function userCanViewMappedField($User, $MappedName): bool
     {
         $FieldId = $this->getSchema()->stdNameToFieldMapping($MappedName);
         return ($FieldId === null) ? false
@@ -2075,7 +2086,7 @@ class Record extends Item
      * @param mixed $FieldOrFieldName Field name or object.
      * @return bool TRUE if user can edit field, otherwise FALSE.
      */
-    public function userCanEditField($User, $FieldOrFieldName)
+    public function userCanEditField($User, $FieldOrFieldName): bool
     {
         return $this->checkFieldPermissions($User, $FieldOrFieldName, "Edit");
     }
@@ -2086,7 +2097,7 @@ class Record extends Item
      * @param mixed $FieldOrFieldName Field name or object.
      * @return bool TRUE if user can author field, otherwise FALSE.
      */
-    public function userCanAuthorField($User, $FieldOrFieldName)
+    public function userCanAuthorField($User, $FieldOrFieldName): bool
     {
         return $this->checkFieldPermissions($User, $FieldOrFieldName, "Author");
     }
@@ -2198,7 +2209,7 @@ class Record extends Item
 
         # load info if any data was missing
         $MissingIds = array_diff($RecordIds, array_keys(self::$SchemaIdCache));
-        if (count($MissingIds)) {
+        if (count($MissingIds) !== 0) {
             $DB = new Database();
             $IdColumnName = self::$ItemIdColumnNames[$Class];
             $TableName = self::$ItemTableNames[$Class];
@@ -2458,7 +2469,7 @@ class Record extends Item
                 $ToRemove,
                 $Field
             );
-            if ($ValueChanged) {
+            if ($ValueChanged !== 0) {
                 $Field->notifyObservers(
                     MetadataField::EVENT_REMOVE,
                     $this->Id,
@@ -2474,7 +2485,7 @@ class Record extends Item
             $NewValue,
             $Field
         );
-        if ($ValueChanged) {
+        if ($ValueChanged !== 0) {
             $Field->notifyObservers(
                 MetadataField::EVENT_ADD,
                 $this->Id,
@@ -2602,7 +2613,7 @@ class Record extends Item
         if ($Reset) {
             # remove values that were in the old value but not the new one
             $ToRemove = array_diff($OldValue, $NewValue);
-            if (count($ToRemove)) {
+            if (count($ToRemove) !== 0) {
                 $ValueChanged = true;
                 $this->removeAssociation(
                     "RecordClassInts",
@@ -2619,7 +2630,7 @@ class Record extends Item
         $ToAdd = array_diff($NewValue, $OldValue);
 
         # if there are values to add
-        if (count($ToAdd)) {
+        if (count($ToAdd) !== 0) {
             # for each value to be added
             foreach ($ToAdd as $ClassificationId) {
                 $Class = new Classification($ClassificationId);
@@ -2716,7 +2727,7 @@ class Record extends Item
             ($Field->type() == MetadataSchema::MDFTYPE_OPTION &&
             $Field->allowMultiple() == false)) {
             $ToRemove = array_diff($OldValue, $NewValue);
-            if (count($ToRemove)) {
+            if (count($ToRemove) !== 0) {
                 $ValueChanged = true;
                 $this->removeAssociation(
                     "RecordNameInts",
@@ -2727,7 +2738,7 @@ class Record extends Item
         }
 
         $ToAdd = array_diff($NewValue, $OldValue);
-        if (count($ToAdd)) {
+        if (count($ToAdd) !== 0) {
             $ValueChanged = true;
             $this->addAssociation(
                 "RecordNameInts",
@@ -2806,7 +2817,7 @@ class Record extends Item
         # if necessary, remove values from the record
         if ($Reset) {
             $ToRemove = array_diff($OldValue, $NewValue) ;
-            if (count($ToRemove)) {
+            if (count($ToRemove) !== 0) {
                 $ValueChanged = true;
                 foreach ($ToRemove as $ImageId) {
                     (new Image($ImageId))->destroy();
@@ -2885,7 +2896,7 @@ class Record extends Item
         if ($Reset) {
             $ToRemove = array_diff($OldValue, $NewValue);
 
-            if (count($ToRemove)) {
+            if (count($ToRemove) !== 0) {
                 $ValueChanged = true;
                 $this->clear($Field, $ToRemove);
             }
@@ -2893,7 +2904,7 @@ class Record extends Item
 
         # if necessary, add values to the record
         $ToAdd = array_diff($NewValue, $OldValue);
-        if (count($ToAdd)) {
+        if (count($ToAdd) !== 0) {
             $ValueChanged = true;
 
             # for each new incoming file
@@ -2956,7 +2967,7 @@ class Record extends Item
 
         if ($Reset) {
             $ToRemove = array_diff($OldValue, $NewValue);
-            if (count($ToRemove)) {
+            if (count($ToRemove) !== 0) {
                 $ValueChanged = true;
 
                 $this->DB->query(
@@ -3003,7 +3014,7 @@ class Record extends Item
      * @return void
      */
     private function modifyFieldValue(
-        $User,
+        ?\Metavus\User $User,
         MetadataField $Field,
         $NewValue
     ): void {
@@ -3086,7 +3097,7 @@ class Record extends Item
     /**
      * Check schema permissions to see if user is allowed to
      *         View/Edit/Author this resource.
-     * @param \ScoutLib\User $User User to check.
+     * @param User $User User to check.
      * @param string $CheckType Type of check to perform (one of View,
      *       Author, or Edit).
      * @param bool $AllowHooksToModify TRUE if hook functions should be
@@ -3098,17 +3109,30 @@ class Record extends Item
         string $CheckType,
         bool $AllowHooksToModify = true
     ): bool {
+        $PermsFunctions = [
+            "Author" => "authoringPrivileges",
+            "Delete" => "deletingPrivileges",
+            "Edit" => "editingPrivileges",
+            "View" => "viewingPrivileges",
+        ];
+
+        if (!isset($PermsFunctions[$CheckType])) {
+            throw new InvalidArgumentException(
+                "Invalid permission check type: ".$CheckType
+            );
+        }
+
         # construct a key to use for our permissions cache
         $CacheKey = "UserCan".$CheckType.$User->id();
 
         # if we don't have a cached value for this perm, compute one
         if (!isset($this->PermissionCache[$CacheKey])) {
             # get privileges for schema
-            $PermsFn = $CheckType."ingPrivileges";
+            $PermsFn = $PermsFunctions[$CheckType];
             $SchemaPrivs = $this->getSchema()->$PermsFn();
 
             # check passes if user privileges are greater than resource set
-            $CheckResult = $SchemaPrivs->MeetsRequirements($User, $this);
+            $CheckResult = $SchemaPrivs->meetsRequirements($User, $this);
 
             # save the result of this check in our cache
             $this->PermissionCache[$CacheKey] = $CheckResult;
@@ -3120,7 +3144,9 @@ class Record extends Item
 
         $Value = $this->PermissionCache[$CacheKey];
 
-        if ($AllowHooksToModify) {
+        # if events were requested and this is a check type that supports them,
+        # signal the events. ("Delete" does not support an EVENT_)
+        if ($AllowHooksToModify && $CheckType != "Delete") {
             $SignalResult = (ApplicationFramework::getInstance())->signalEvent(
                 "EVENT_RESOURCE_".strtoupper($CheckType)."_PERMISSION_CHECK",
                 [
@@ -3433,7 +3459,9 @@ class Record extends Item
             $this->DB->query("INSERT INTO ".$TableName." SET"
                         ." RecordId = ".intval($this->Id)
                         .", ".$FieldName." = ".intval($Value)
-                        .($Field ? ", FieldId = ".intval($Field->id()) : ""));
+                        .($Field instanceof \Metavus\MetadataField ?
+                          ", FieldId = ".intval($Field->id()) :
+                          ""));
 
             # if the insert ran without a duplicate key error,
             #  then we added an association
@@ -3482,7 +3510,9 @@ class Record extends Item
             # remove any intersections with target ID from DB
             $this->DB->query("DELETE FROM ".$TableName
                     ." WHERE RecordId = ".intval($this->Id)
-                    .($Field ? " AND FieldId = ".intval($Field->id()) : "")
+                    .($Field instanceof \Metavus\MetadataField ?
+                      " AND FieldId = ".intval($Field->id()) :
+                      "")
                     ." AND ".$FieldName." = ".intval($Value));
             if ($this->DB->NumRowsAffected()) {
                 $AssociationRemoved = true;
@@ -3520,7 +3550,7 @@ class Record extends Item
      * @throws InvalidArgumentException when the provided value cannot be converted
      *  to an array of item IDs
      */
-    private function normalizeValueToItemIds($NewValue, MetadataField $Field): array
+    protected function normalizeValueToItemIds($NewValue, MetadataField $Field): array
     {
         # if we were just given a single value, normalize it and be done
         if (!is_array($NewValue)) {
@@ -3568,7 +3598,7 @@ class Record extends Item
 
         # apply our single value normalizer to the given values
         return array_map(
-            function ($Item) use ($Field) {
+            function ($Item) use ($Field): int {
                 return $this->normalizeSingleValueToItemId($Item, $Field);
             },
             $NewValue

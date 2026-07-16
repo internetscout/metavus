@@ -22,9 +22,24 @@ if (!isset($H_Collections)) {
 }
 
 # configuration settings
-$NewsBlogName = "News";
-$CollageSchemaId = MetadataSchema::SCHEMAID_DEFAULT;
 $IntCfg = InterfaceConfiguration::getInstance();
+$PluginMgr = PluginManager::getInstance();
+
+$NewsBlogId = $IntCfg->getInt("NewsBlogId");
+
+$NewsBlogName = $IntCfg->getString("AnnouncementsSectionTitle");
+if ($NewsBlogName === "") {
+    if ($PluginMgr->pluginReady("Blog")) {
+        $Blog = $PluginMgr->getPlugin("Blog");
+        $Blog->setCurrentBlog($NewsBlogId);
+        $NewsBlogName = $Blog->blogName();
+    } else {
+        $NewsBlogName = "News";
+    }
+}
+$NewsBlogName = htmlspecialchars($NewsBlogName);
+
+$CollageSchemaId = $IntCfg->getInt("CollageSchema");
 $FeaturedItemsSectionTitle = htmlspecialchars(
     $IntCfg->getString("FeaturedItemsSectionTitle")
 );
@@ -36,7 +51,6 @@ $HideCollectionMonograms = $IntCfg->getBool("HideCollectionMonograms");
 # initialize convenience values
 $AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
-$PluginMgr = PluginManager::getInstance();
 
 # get HTML for image collage (if any)
 $ImageCollageHtml = $PluginMgr->pluginReady("Collage")
@@ -44,7 +58,7 @@ $ImageCollageHtml = $PluginMgr->pluginReady("Collage")
         : "";
 
 # if no image collage, get HTML for hero image
-if (!strlen($ImageCollageHtml)) {
+if (strlen($ImageCollageHtml) === 0) {
     $HeroImageIds = $IntCfg->getArray("HeroImage");
     if (count($HeroImageIds) > 0) {
         $HeroImageId = array_pop($HeroImageIds);
@@ -68,11 +82,7 @@ $FeaturedItemsHtml = $AF->formatInsertionKeyword(
 # retrieve news item list page link
 $NewsPageLink = "";
 if (isset($H_NewsItems)) {
-    $BlogPlugin = $PluginMgr->getPlugin("Blog");
-    $NewsBlogId = $BlogPlugin->getBlogIdByName($NewsBlogName);
-    if ($NewsBlogId !== false) {
-        $NewsPageLink = "index.php?P=P_Blog_Entries&ID=".$NewsBlogId;
-    }
+    $NewsPageLink = "index.php?P=P_Blog_Entries&BlogId=".$NewsBlogId;
 }
 
 
@@ -82,8 +92,8 @@ $AF->setPageTitle("Home");
 
 ?>
 <div class="container-fluid">
-  <div class="row g-0 d-none d-lg-flex">
-    <?PHP if (strlen($ImageCollageHtml)) {
+  <div class="row g-0 d-flex">
+    <?PHP if (strlen($ImageCollageHtml) !== 0) {
         print $ImageCollageHtml;
     } else { ?>
     <div class="col">
@@ -144,12 +154,12 @@ $AF->setPageTitle("Home");
       <?PHP } ?>
       <?PHP if (isset($H_NewsItems)) { ?>
       <div class="mv-section-header">
-        <h2><a href="<?= $NewsPageLink ?>">News</a></h2>
+        <h2><a href="<?= $NewsPageLink ?>"><?= $NewsBlogName ?></a></h2>
       </div>
       <div class="mv-news">
         <div class="contentbox mv-content-box">
             <?PHP
-            if (!count($H_NewsItems)) {
+            if (count($H_NewsItems) === 0) {
                 ?>(no news items to display)<?PHP
             } else {
                 foreach ($H_NewsItems as $NewsItem) {

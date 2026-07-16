@@ -3,7 +3,7 @@
 #   FILE:  Datastore.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2019-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -67,7 +67,7 @@ abstract class Datastore
     public function getArray(string $FieldName): array
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_ARRAY ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->OverrideValues[$FieldName] ?? $this->Values[$FieldName];
     }
 
@@ -99,7 +99,7 @@ abstract class Datastore
     public function getBool(string $FieldName): bool
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_BOOL ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->OverrideValues[$FieldName] ?? $this->Values[$FieldName];
     }
 
@@ -131,7 +131,7 @@ abstract class Datastore
     public function getDatetime(string $FieldName): int
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_DATETIME ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return strtotime($this->OverrideValues[$FieldName]
                 ?? $this->Values[$FieldName]);
     }
@@ -168,7 +168,7 @@ abstract class Datastore
     public function getFloat(string $FieldName): float
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_FLOAT ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->OverrideValues[$FieldName] ?? $this->Values[$FieldName];
     }
 
@@ -200,7 +200,7 @@ abstract class Datastore
     public function getInt(string $FieldName): int
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_INT ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->OverrideValues[$FieldName] ?? $this->Values[$FieldName];
     }
 
@@ -233,7 +233,7 @@ abstract class Datastore
     public function getString(string $FieldName): string
     {
         $this->checkFieldNameAndType($FieldName, self::$StringBasedTypes);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->OverrideValues[$FieldName] ?? $this->Values[$FieldName];
     }
 
@@ -262,7 +262,7 @@ abstract class Datastore
      */
     public function isSet(string $FieldName): bool
     {
-        $ColumnName = Database::normalizeToColumnName($FieldName);
+        $ColumnName = $this->ColumnNames[$FieldName];
         return ($this->RawValues[$ColumnName] === null) ? false : true;
     }
 
@@ -428,7 +428,7 @@ abstract class Datastore
     public function getRawArray(string $FieldName): array
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_ARRAY ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->Values[$FieldName];
     }
 
@@ -440,7 +440,7 @@ abstract class Datastore
     public function getRawBool(string $FieldName): bool
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_BOOL ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->Values[$FieldName];
     }
 
@@ -452,7 +452,7 @@ abstract class Datastore
     public function getRawDatetime(string $FieldName): int
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_DATETIME ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return strtotime($this->Values[$FieldName]);
     }
 
@@ -464,7 +464,7 @@ abstract class Datastore
     public function getRawFloat(string $FieldName): float
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_FLOAT ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->Values[$FieldName];
     }
 
@@ -476,7 +476,7 @@ abstract class Datastore
     public function getRawInt(string $FieldName): int
     {
         $this->checkFieldNameAndType($FieldName, [ self::TYPE_INT ]);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->Values[$FieldName];
     }
 
@@ -489,13 +489,14 @@ abstract class Datastore
     public function getRawString(string $FieldName): string
     {
         $this->checkFieldNameAndType($FieldName, self::$StringBasedTypes);
-        $this->checkThatValueIsAvailable($FieldName);
+        $this->makeSureValueIsAvailable($FieldName);
         return $this->Values[$FieldName];
     }
 
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+    protected $ColumnNames;
     protected $DB;
     protected $Fields;
     protected $FieldsWithDefaultNotYetLoaded = [];
@@ -523,11 +524,16 @@ abstract class Datastore
      */
     protected function __construct(array $Fields, string $DbTableName)
     {
-        if (!isset($this->DB)) {
-            $this->DB = new Database();
-        }
+        $this->DB = new Database();
         $this->Fields = $Fields;
         $this->DbTableName = $DbTableName;
+
+        # normalize field names to DB column names and store for later use
+        foreach (array_keys($Fields) as $FieldName) {
+            $this->ColumnNames[$FieldName] =
+                    Database::normalizeToColumnName($FieldName);
+        }
+
         $this->checkDatabaseTable();
         $this->loadFieldsFromDatabase();
     }
@@ -549,150 +555,6 @@ abstract class Datastore
         }
         $this->SelectorClause = " WHERE `".$this->DB->escapeString($Column)
                 ."` = '".$this->DB->escapeString($Value)."'";
-    }
-
-    /**
-     * Check that supplied fields table is all valid.
-     * @param array $Fields System configuration fields list, with "Type",
-     *      "Default", and "Description" entries for each field.
-     * @throws InvalidArgumentException If no type is specified for a field.
-     * @throws InvalidArgumentException If an invalid type is specified for a field.
-     * @throws InvalidArgumentException If no default is specified for a field.
-     * @throws InvalidArgumentException If no description is specified for a field.
-     */
-    protected static function checkFieldsList(array $Fields): void
-    {
-        foreach ($Fields as $FieldName => $FieldInfo) {
-            # check that type is specified
-            if (!isset($FieldInfo["Type"])) {
-                throw new InvalidArgumentException("No type specified for field \""
-                    .$FieldName."\".");
-            # check that specified type is valid
-            } elseif (StdLib::getConstantName(__CLASS__, $FieldInfo["Type"], "TYPE_")
-                    === null) {
-                throw new InvalidArgumentException("Invalid type specified for field \""
-                        .$FieldName."\".");
-            }
-
-            # check that valid value list has entries if specified
-            if (isset($FieldInfo["ValidValues"])) {
-                if (!is_array($FieldInfo["ValidValues"])) {
-                    throw new InvalidArgumentException("Valid values list supplied"
-                            ." that is not an array.");
-                }
-                if (!count($FieldInfo["ValidValues"])) {
-                    throw new InvalidArgumentException("Valid values list supplied"
-                            ." with no entries.");
-                }
-            }
-
-            # if default value was specified
-            if (array_key_exists("Default", $FieldInfo)) {
-                # check that default value is correct type
-                self::checkFieldDefaultType(
-                    $FieldName,
-                    $FieldInfo["Default"],
-                    $FieldInfo["Type"]
-                );
-                # check that default value is valid
-                if ($FieldInfo["Default"] !== null) {
-                    self::checkValue($FieldInfo, $FieldName, $FieldInfo["Default"]);
-                }
-            # else if default-retrieval function was specified
-            } elseif (array_key_exists("DefaultFunction", $FieldInfo)) {
-                if (!is_callable($FieldInfo["DefaultFunction"])) {
-                    throw new InvalidArgumentException("Uncallable default function"
-                            ." specified for field \"".$FieldName."\".");
-                }
-            # else error out if field was not explicitly marked as not having a default
-            } elseif (!($FieldInfo["NoDefault"] ?? false)) {
-                throw new InvalidArgumentException("No default or"
-                        ." default-retrieval function specified for field \""
-                        .$FieldName."\".");
-            }
-
-            # check that description is specified
-            if (!isset($FieldInfo["Description"])) {
-                throw new InvalidArgumentException("No description specified for"
-                        ." field \"".$FieldName."\".");
-            }
-
-            # check that minimum or maximum are not specified for non-numeric field
-            if (!self::isNumericFieldType($FieldInfo["Type"])) {
-                if (isset($FieldInfo["MinVal"])) {
-                    throw new InvalidArgumentException("Minimum value specified"
-                            ." for non-numeric field \"".$FieldName."\".");
-                }
-                if (isset($FieldInfo["MaxVal"])) {
-                    throw new InvalidArgumentException("Maximum value specified"
-                            ." for non-numeric field \"".$FieldName."\".");
-                }
-            }
-        }
-    }
-
-    /**
-     * Check that field default value has a valid type.
-     * @param string $FieldName Name of field.
-     * @param mixed $Default Default value.
-     * @param string $Type Field type.
-     */
-    protected static function checkFieldDefaultType(
-        string $FieldName,
-        $Default,
-        string $Type
-    ): void {
-        if ($Default !== null) {
-            switch ($Type) {
-                case self::TYPE_ARRAY:
-                    if (!is_array($Default)) {
-                        throw new InvalidArgumentException(
-                            "Default value for field \"".$FieldName
-                                    ."\" of type ARRAY is not an array."
-                        );
-                    }
-                    break;
-
-                case self::TYPE_BOOL:
-                    if (!is_bool($Default)) {
-                        throw new InvalidArgumentException(
-                            "Default value for field \"".$FieldName
-                                    ."\" of type BOOL is not true or false."
-                        );
-                    }
-                    break;
-
-                case self::TYPE_DATETIME:
-                    if (!is_numeric($Default) && (strtotime($Default) === false)) {
-                        throw new InvalidArgumentException(
-                            "Default value for field \"".$FieldName
-                                    ."\" of type DATETIME is not a Unix timestamp"
-                                    ." or a parseable date."
-                        );
-                    }
-                    break;
-
-                case self::TYPE_FLOAT:
-                case self::TYPE_INT:
-                    if (!is_numeric($Default)) {
-                        $TypeName = ($Type == self::TYPE_INT) ? "INT" : "FLOAT";
-                        throw new InvalidArgumentException(
-                            "Default value for field \"".$FieldName
-                                    ."\" of type ".$TypeName." is not a number."
-                        );
-                    }
-                    break;
-
-                case self::TYPE_STRING:
-                    if (!is_string($Default)) {
-                        throw new InvalidArgumentException(
-                            "Default value for field \"".$FieldName
-                                    ."\" of type STRING is not a string."
-                        );
-                    }
-                    break;
-            }
-        }
     }
 
     /**
@@ -718,9 +580,16 @@ abstract class Datastore
             self::TYPE_STRING => "TEXT",
             self::TYPE_URL => "TEXT",
         ];
+
+        $ExistingColumns = [];
+        $this->DB->query("DESC ".$this->DbTableName);
+        while ($ColumnName = $this->DB->fetchField("Field")) {
+            $ExistingColumns[$ColumnName] = true;
+        }
+
         foreach ($this->Fields as $FieldName => $FieldInfo) {
-            $ColumnName = Database::normalizeToColumnName($FieldName);
-            if (!$this->DB->fieldExists($this->DbTableName, $ColumnName)) {
+            $ColumnName = $this->ColumnNames[$FieldName];
+            if (!isset($ExistingColumns[$ColumnName])) {
                 if (!isset($ColumnTypes[$FieldInfo["Type"]])) {
                     throw new Exception("Unknown type (\"".$FieldInfo["Type"]."\")"
                             ." for field \"".$FieldName."\".");
@@ -728,6 +597,7 @@ abstract class Datastore
                 $Query = "ALTER TABLE ".$this->DbTableName." ADD COLUMN `"
                         .$ColumnName."` ".$ColumnTypes[$FieldInfo["Type"]];
                 $this->DB->query($Query);
+                $ExistingColumns[$ColumnName] = true;
             }
         }
 
@@ -752,7 +622,7 @@ abstract class Datastore
      * @param string $FieldName Name of field.
      * @throws Exception If no value is available.
      */
-    protected function checkThatValueIsAvailable(string $FieldName): void
+    protected function makeSureValueIsAvailable(string $FieldName): void
     {
         # if field is tagged to have default value loaded
         if (isset($this->FieldsWithDefaultNotYetLoaded[$FieldName])) {
@@ -762,7 +632,8 @@ abstract class Datastore
 
             # if no raw value for field was found in DB earlier
             #       and there is a default value now available
-            if (($this->RawValues[$FieldName] === null)
+            $ColumnName = $this->ColumnNames[$FieldName];
+            if (($this->RawValues[$ColumnName] === null)
                     && ($this->Values[$FieldName] !== null)) {
                 # set field value in database to default
                 $this->updateValueInDatabase(
@@ -771,9 +642,10 @@ abstract class Datastore
                 );
             }
         }
+
+        # if there is no value available and there is no override value
         if (($this->Values[$FieldName] === null)
-                && !isset($this->OverrideValues[$FieldName])
-                && !($this->Fields[$FieldName]["NoDefault"] ?? false)) {
+                && !isset($this->OverrideValues[$FieldName])) {
             throw new Exception("No value is available for field \""
                     .$FieldName."\" in table \"".$this->DbTableName."\".");
         }
@@ -805,34 +677,42 @@ abstract class Datastore
     protected function loadFieldsFromDatabase(): void
     {
         # attempt to retrieve current values from database
-        $this->DB->query("LOCK TABLES ".$this->DbTableName." WRITE");
-        $Query = "SELECT * FROM `".$this->DbTableName."`".$this->SelectorClause;
+        $Query = "SELECT * FROM `".$this->DbTableName."`"
+                .$this->SelectorClause." LIMIT 2";
         $this->DB->query($Query);
 
-        # if no row with values was found in database
         $RowsSelected = $this->DB->numRowsSelected();
-        if ($RowsSelected == 0) {
-            # add row with values to database
-            $this->addNewRowToDatabase();
-
-            # re-query database to get values from newly-added row
+        if ($RowsSelected == 1) {
+            # when exactly one row found (the common case), fetch it
+            $this->RawValues = $this->DB->fetchRow();
+        } elseif ($RowsSelected == 0) {
+            # when no row with values was found in database
+            # grab a lock, clear caches, and reload
+            $this->DB->query("LOCK TABLES ".$this->DbTableName." WRITE");
+            Database::clearCaches();
             $this->DB->query($Query);
-        # else if more than one row was found in database
-        } elseif ($RowsSelected > 1) {
-            # error out (should never be multiple matching rows)
+
+            # if still no row, add one and re-query
+            $RowsSelected = $this->DB->numRowsSelected();
+            if ($RowsSelected == 0) {
+                $this->addNewRowToDatabase();
+                $this->DB->query($Query);
+            }
+
+            # fetch values, release the lock
+            $this->RawValues = $this->DB->fetchRow();
             $this->DB->query("UNLOCK TABLES");
+        } elseif ($RowsSelected > 1) {
+            # when multiple rows found error out
+            # (should never be multiple matching rows)
             throw new Exception("Multiple rows unexpectedly found in"
                     ." datastore table ".$this->DbTableName.".");
         }
 
-        # retrieve raw values from query
-        $this->RawValues = $this->DB->fetchRow();
-        $this->DB->query("UNLOCK TABLES");
-
         # for each field
         foreach ($this->Fields as $FieldName => $FieldInfo) {
             # if no raw value was found for this field
-            $ColumnName = Database::normalizeToColumnName($FieldName);
+            $ColumnName = $this->ColumnNames[$FieldName];
             if ($this->RawValues[$ColumnName] === null) {
                 # if "lazy" loading of default values is appropriate for this field
                 if ($this->isLazyDefaultForField($FieldName)) {
@@ -1055,7 +935,7 @@ abstract class Datastore
     {
         switch ($Type) {
             case self::TYPE_BOOL:
-                return $RawValue ? true : false;
+                return $RawValue !== '' && $RawValue !== '0' ? true : false;
 
             case self::TYPE_ARRAY:
                 return unserialize($RawValue);
@@ -1073,7 +953,7 @@ abstract class Datastore
         string $FieldName,
         $Value
     ): void {
-        $ColumnName = Database::normalizeToColumnName($FieldName);
+        $ColumnName = $this->ColumnNames[$FieldName];
         if ($Value === null) {
             $this->RawValues[$ColumnName] = null;
             $QueryValue = "NULL";
@@ -1096,18 +976,17 @@ abstract class Datastore
     {
         # use selector column if available, otherwise use first defined column
         if (isset($this->SelectorColumn)) {
-            $Column = $this->SelectorColumn;
+            $ColumnName = $this->SelectorColumn;
             $Value = $this->SelectorValue;
         } else {
-            reset($this->Fields);
-            $FieldName = key($this->Fields);
-            $Column = Database::normalizeToColumnName($FieldName);
+            $FieldName = array_key_first($this->Fields);
+            $ColumnName = $this->ColumnNames[$FieldName];
             $Value = $this->getDefaultValue($FieldName);
         }
 
         # add row to database
         $this->DB->query("INSERT INTO ".$this->DbTableName." SET `"
-                .$this->DB->escapeString($Column)."` = '"
+                .$this->DB->escapeString($ColumnName)."` = '"
                 .$this->DB->escapeString($Value)."'");
 
         # set default values for new row if appropriate

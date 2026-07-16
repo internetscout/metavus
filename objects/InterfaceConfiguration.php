@@ -103,7 +103,7 @@ class InterfaceConfiguration extends Configuration
                 # if we may have privilege restrictions
                 if (isset($Pieces[2])) {
                     $Privs = self::parseOutPrivileges($Pieces[2]);
-                    if (count($Privs)) {
+                    if (count($Privs) !== 0) {
                         # discard this menu item if current user does not have
                         #       one of the specified privileges
                         $User = User::getCurrentUser();
@@ -244,7 +244,7 @@ class InterfaceConfiguration extends Configuration
 
         $Privs = [];
         foreach ($Pieces as $Piece) {
-            if (strlen($Piece)) {
+            if (strlen($Piece) !== 0) {
                 $Priv = Privilege::translateNameToId($Piece);
                 if ($Priv === false) {
                     throw new Exception("Unknown privilege name (\"".$Piece."\").");

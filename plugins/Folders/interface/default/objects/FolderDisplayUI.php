@@ -12,13 +12,10 @@ namespace Metavus\Plugins\Folders;
 use Metavus\HtmlButton;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\Folders;
-use Metavus\Plugins\Folders\Common;
-use Metavus\Plugins\Folders\Folder;
 use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
-use Exception;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -183,7 +180,9 @@ class FolderDisplayUI
                          } ?>
                                 <?PHP if ($AF->getPageName() == "P_Folders_ManageFolders") { ?>
                   <span title="Making this folder public will allow anyone to view it, including users who are not logged in.To share a folder when it's public, click the folder name to view the folder page and share the URL listed beneath the folder name">
-                  <input type="checkbox" id="ShareFolder_<?= $SafeFolderId ?>" name="Share" data-folderid="<?= $SafeFolderId; ?>" <?PHP if ($IsShared) print 'checked="true"'; ?> />
+                  <input type="checkbox" id="ShareFolder_<?= $SafeFolderId ?>" name="Share" data-folderid="<?= $SafeFolderId; ?>" <?PHP if ($IsShared) {
+                             print 'checked="true"';
+                         } ?> />
                   <label for="ShareFolder_<?= $SafeFolderId ?>">public</label>
                 </span>
                 <?= $SelectButton->getHtml(); ?>
@@ -219,8 +218,9 @@ class FolderDisplayUI
            # if we're not at the beginning of the folder, put a hidden placeholder item
            #  so that dragging things to the top of what is currently displayed doesn't
            # put them all the way at the beginning of the folder
-           if ($Offset>0)
+           if ($Offset>0) {
                self::printFolderItem($Folder->id(), $ItemIds[$Offset-1], TRUE);
+           }
 
            # slice off the items to display, show them
            $ItemIds = array_slice($ItemIds, $Offset, 550);
@@ -291,7 +291,7 @@ class FolderDisplayUI
         bool $ResultsInFolder
     ): void {
         $ButtonStyleClasses = "btn btn-primary btn-sm mv-folders-removeallsearch";
-        $RemoveAllFromFolderButton = new HtmlButton("Remove All From Folder");
+        $RemoveAllFromFolderButton = new HtmlButton("Remove All from Folder");
         $RemoveAllFromFolderButton->setIcon("FolderMinus.svg");
         $RemoveAllFromFolderButton->setSize(HtmlButton::SIZE_SMALL);
         $RemoveAllFromFolderButton->addClass("mv-folders-removeallsearch");
@@ -416,7 +416,7 @@ class FolderDisplayUI
         <p class="mv-folders-item-note" data-folderid="<?= defaulthtmlentities($FolderId); ?>"
            data-itemid="<?= defaulthtmlentities($ResourceId); ?>">
           <span class="mv-folders-item-notetext"><?= nl2br(defaulthtmlentities($ResourceNote)); ?></span>
-        <?PHP if ($ResourceNote) { ?>
+        <?PHP if ($ResourceNote !== null && $ResourceNote !== '' && $ResourceNote !== '0') { ?>
                <br />
         <?PHP } ?>
         <?= $NoteButton->getHtml(); ?>
@@ -464,7 +464,7 @@ class FolderDisplayUI
 
         foreach ($ItemIds as $ResourceId) {
             $Resource = new Record($ResourceId);
-            $Title = Common::getSafeResourceTitle($Resource);
+            $Title = Folder::getSafeResourceTitle($Resource);
             $ResourceCSSClass = $Resource->userCanView(User::getAnonymousUser())
                 ? ""
                 : "mv-notpublic";
@@ -504,7 +504,7 @@ class FolderDisplayUI
     <?= $EditButton->getHtml(); ?>
     <a href="<?= defaulthtmlentities($ViewFolderLink) ?>">
         <img src="<?= $OpenFolderImgPath ?>" alt="">
-        <?PHP if($FolderName) { ?>
+        <?PHP if($FolderName !== '' && $FolderName !== '0') { ?>
           <?=  defaulthtmlentities($FolderName) ?>
         <?PHP } else { ?>
           <strong>Current Folder</strong>
@@ -552,7 +552,7 @@ class FolderDisplayUI
         $PublicResource = $Resource->userCanView(User::getAnonymousUser());
         $SafeFolderId = defaulthtmlentities($FolderId);
         $SafeId = defaulthtmlentities($Resource->id());
-        $SafeTitle = Common::getSafeResourceTitle($Resource);
+        $SafeTitle = Folder::getSafeResourceTitle($Resource);
 
         # get the schema name associated with this resource
         $Schema = new MetadataSchema($Resource->getSchemaId());

@@ -12,12 +12,12 @@ namespace Metavus\Plugins;
 use Exception;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
-use Metavus\Plugins\ResourceExporter;
+use Metavus\Plugins\RecordExporter;
 use Metavus\Record;
 use ScoutLib\Plugin;
 
 /**
- * Resource Export format implementing Tab Seperated Value (TSV) files.
+ * Record Export format implementing Tab Seperated Value (TSV) files.
  */
 class REFormatTsv extends Plugin
 {
@@ -30,16 +30,16 @@ class REFormatTsv extends Plugin
      */
     public function register(): void
     {
-        $this->Name = "Resource Export Format: TSV";
-        $this->Version = "1.0.0";
-        $this->Description = "Add support to Resource Exporter for exporting "
-            ."resources in Tab Separated Value (TSV) format.";
+        $this->Name = "Record Export Format: TSV";
+        $this->Version = "2.0.0";
+        $this->Description = "Add support to Record Exporter for exporting "
+            ."records in Tab Separated Value (TSV) format.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
             "MetavusCore" => "1.2.0",
-            "ResourceExporter" => "1.0.0"
+            "RecordExporter" => "1.0.0"
         ];
         $this->EnabledByDefault = true;
     }
@@ -94,7 +94,7 @@ class REFormatTsv extends Plugin
                 ."puts the values on the same row, separated by the given delimiter"
         ];
 
-        ResourceExporter::getInstance()->
+        RecordExporter::getInstance()->
             registerFormat(
                 "TSV",
                 "tsv",
@@ -184,7 +184,7 @@ class REFormatTsv extends Plugin
 
         # iterate over selected unique fields, being sure that we're
         # exporting those as well
-        foreach ($UniqueFields as $FieldId => $Flag) {
+        foreach (array_keys($UniqueFields) as $FieldId) {
             if (!isset($Fields[$FieldId])) {
                 $Fields[$FieldId] = MetadataField::getField((int)$FieldId);
             }
@@ -229,7 +229,7 @@ class REFormatTsv extends Plugin
                             case MetadataSchema::MDFTYPE_NUMBER:
                             case MetadataSchema::MDFTYPE_TIMESTAMP:
                             case MetadataSchema::MDFTYPE_URL:
-                                if (strlen($Value)) {
+                                if (strlen($Value) !== 0) {
                                     $OutputValue = str_replace(
                                         ["\r","\n","\t"],
                                         " ",
@@ -239,7 +239,7 @@ class REFormatTsv extends Plugin
                                 break;
 
                             case MetadataSchema::MDFTYPE_DATE:
-                                if (strlen($Value->Formatted())) {
+                                if (strlen($Value->Formatted()) !== 0) {
                                     $OutputValue = $Value->Formatted();
                                 }
                                 break;
@@ -265,7 +265,7 @@ class REFormatTsv extends Plugin
                                 $OutputValue = [];
 
                                 foreach ($Value as $Item) {
-                                    if (strlen($Item->Get("UserName"))) {
+                                    if (strlen($Item->Get("UserName")) !== 0) {
                                         $OutputValue[] = $Item->Get("UserName");
                                     }
                                 }

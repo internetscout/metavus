@@ -3,7 +3,7 @@
 #   FILE:  MetricsRecorder.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -13,6 +13,7 @@ use Exception;
 use InvalidArgumentException;
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
+use Metavus\Plugins\BotDetector;
 use Metavus\Plugins\MetricsReporter;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
@@ -25,8 +26,8 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Email;
 use ScoutLib\Plugin;
-use ScoutLib\StdLib;
 use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
 
 /**
  * Plugin for recording usage and system metrics data.
@@ -385,7 +386,7 @@ class MetricsRecorder extends Plugin
         );
         $IPs = $this->DB->fetchColumn("IPAddress");
         foreach ($IPs as $IP) {
-            $this->removeEventsForIPAddress((string)long2ip($IP), $LastRunAt);
+            $this->removeEventsForIPAddress(long2ip($IP), $LastRunAt);
         }
 
         # prune hosts that viewed the same record more than 60 times in an hour
@@ -398,7 +399,7 @@ class MetricsRecorder extends Plugin
         );
         $IPs = $this->DB->fetchColumn("IPAddress");
         foreach ($IPs as $IP) {
-            $this->removeEventsForIPAddress((string)long2ip($IP), $LastRunAt);
+            $this->removeEventsForIPAddress(long2ip($IP), $LastRunAt);
         }
 
         # prune hosts that clicked the same URL more than 20 times in 10 min
@@ -411,7 +412,7 @@ class MetricsRecorder extends Plugin
         );
         $IPs = $this->DB->fetchColumn("IPAddress");
         foreach ($IPs as $IP) {
-            $this->removeEventsForIPAddress((string)long2ip($IP), $LastRunAt);
+            $this->removeEventsForIPAddress(long2ip($IP), $LastRunAt);
         }
     }
 
@@ -585,31 +586,70 @@ class MetricsRecorder extends Plugin
     }
 
     /**
-     * Remove events recorded with a specified IP address.The starting and/or
-     * ending date can be specified in any format parsable by strtotime().
-     * @param string $IPAddress Address to remove for, in dotted-quad format.
+     * Remove events recorded for specified IP address. The starting and/or
+     *         ending date can be specified in any format parsable by strtotime().
+     * @param string $IPAddress Address to remove data for, in dotted-quad
+     *         format.
      * @param string $StartDate Starting date/time of period (inclusive) for
-     *       which to remove events.(OPTIONAL, defaults to NULL, which imposes
-     *       no starting date)
+     *         which to remove events. (OPTIONAL, defaults to NULL, which imposes
+     *         no starting date)
      * @param string $EndDate Ending date/time of period (inclusive) for
-     *       which to remove events.(OPTIONAL, defaults to NULL, which imposes
-     *       no ending date)
+     *         which to remove events. (OPTIONAL, defaults to NULL, which imposes
+     *         no ending date)
      * @return void
      */
     public function removeEventsForIPAddress(
-        $IPAddress,
+        string $IPAddress,
         $StartDate = null,
         $EndDate = null
     ): void {
-        $Query = "DELETE FROM MetricsRecorder_EventData"
-                ." WHERE IPAddress = INET_ATON('"
-                .addslashes($IPAddress)."')";
+        $this->removeEventsForIPAddresses([$IPAddress], $StartDate, $EndDate);
+    }
+
+    /**
+     * Remove events recorded for specified IP addresses. The starting and/or
+     *         ending date can be specified in any format parsable by strtotime().
+     * @param array $IPAddresses Addresses to remove data for, in dotted-quad
+     *         format.
+     * @param string $StartDate Starting date/time of period (inclusive) for
+     *         which to remove events. (OPTIONAL, defaults to NULL, which imposes
+     *         no starting date)
+     * @param string $EndDate Ending date/time of period (inclusive) for
+     *         which to remove events. (OPTIONAL, defaults to NULL, which imposes
+     *         no ending date)
+     * @return void
+     */
+    public function removeEventsForIPAddresses(
+        array $IPAddresses,
+        $StartDate = null,
+        $EndDate = null
+    ): void {
+        # ensure that some addresses were given
+        if (count($IPAddresses) == 0) {
+            throw new InvalidArgumentException(
+                "No IP Addresses provided."
+            );
+        }
+
+        # verify that all the incoming values are valid IPs
+        foreach ($IPAddresses as $IPAddress) {
+            if (filter_var($IPAddress, FILTER_VALIDATE_IP) === false) {
+                throw new InvalidArgumentException(
+                    $IPAddress." is not a valid IP Address."
+                );
+            }
+        }
+
+        $QueryStart = "DELETE FROM MetricsRecorder_EventData"
+            ." WHERE IPAddress IN (";
+        $QueryEnd = ")";
+
         if ($StartDate !== null) {
             $StartDate = strtotime($StartDate);
             if ($StartDate === false) {
                 throw new InvalidArgumentException("Unparseable start date.");
             }
-            $Query .= " AND EventDate >= '"
+            $QueryEnd .= " AND EventDate >= '"
                     .date(StdLib::SQL_DATE_FORMAT, $StartDate)."'";
         }
         if ($EndDate !== null) {
@@ -617,10 +657,28 @@ class MetricsRecorder extends Plugin
             if ($EndDate === false) {
                 throw new InvalidArgumentException("Unparseable end date.");
             }
-            $Query .= " AND EventDate <= '"
+            $QueryEnd .= " AND EventDate <= '"
                     .date(StdLib::SQL_DATE_FORMAT, $EndDate)."'";
         }
-        $this->DB->query($Query);
+
+        # convert list of IP Addresses to a list of terms for the SQL query
+        $Terms = array_map(
+            function ($Item): string {
+                return "INET_ATON('".addslashes($Item)."')";
+            },
+            $IPAddresses
+        );
+
+        # figure out how many terms can fit in one query
+        $MaxListLength = $this->DB->getMaxQueryLength()
+            - strlen($QueryStart.$QueryEnd);
+        $MaxTermLength = max(array_map("strlen", $Terms));
+        $TermsPerChunk = (int)floor($MaxListLength / ($MaxTermLength + 1));
+
+        # divide our terms into chunks, run a query per chunk
+        foreach (array_chunk($Terms, $TermsPerChunk) as $Chunk) {
+            $this->DB->query($QueryStart.implode(",", $Chunk).$QueryEnd);
+        }
     }
 
 
@@ -688,7 +746,7 @@ class MetricsRecorder extends Plugin
             .'(FromAddr, ToAddr, Subject, LogData, DateSent) VALUES ('
             .'"'.addslashes($From).'","'.addslashes($To).'",'
             .'"'.addslashes($Subject).'","'
-            .(count($LogData) ? $DB->escapeString(serialize($LogData)) : "")
+            .(count($LogData) !== 0 ? $DB->escapeString(serialize($LogData)) : "")
             .'",NOW())'
         );
     }
@@ -798,7 +856,7 @@ class MetricsRecorder extends Plugin
         }
 
         # add clause for user exclusion if specified
-        if (count($PrivsToExclude)) {
+        if (count($PrivsToExclude) !== 0) {
             $Query .= " AND (UserId IS NULL OR UserId NOT IN ("
                     .\ScoutLib\User::getSqlQueryForUsersWithPriv($PrivsToExclude)."))";
         }
@@ -954,7 +1012,7 @@ class MetricsRecorder extends Plugin
         }
 
         # add clause to exclude users if supplied
-        if (count($PrivsToExclude)) {
+        if (count($PrivsToExclude) !== 0) {
             $Query .= " AND (UserId IS NULL OR UserId NOT IN ("
                     .\ScoutLib\User::getSqlQueryForUsersWithPriv($PrivsToExclude)."))";
         }
@@ -1276,7 +1334,7 @@ class MetricsRecorder extends Plugin
      * @param int $SampleValue Data for sample.
      * @return void
      */
-    private function recordSample($SampleType, $SampleValue): void
+    private function recordSample(int $SampleType, int $SampleValue): void
     {
         $this->DB->query("INSERT INTO MetricsRecorder_SampleData SET"
                 ." SampleDate = NOW(),"
@@ -1303,7 +1361,7 @@ class MetricsRecorder extends Plugin
      *       or triggered by a bot), otherwise FALSE.
      */
     private function recordEventData(
-        $EventTypeId,
+        int $EventTypeId,
         $DataOne = null,
         $DataTwo = null,
         $UserId = null,
@@ -1315,11 +1373,12 @@ class MetricsRecorder extends Plugin
         # if we should check if the event was triggered by a bot
         if ($CheckForBot) {
             # exit if event appears to be triggered by a bot
-            $SignalResult = $AF->signalEvent(
-                "BotDetector_EVENT_CHECK_FOR_BOT"
-            );
-            if ($SignalResult === true) {
-                return false;
+            $PluginManager = PluginManager::getInstance();
+            if ($PluginManager->pluginReady("BotDetector")) {
+                $BotDetector = BotDetector::getInstance();
+                if ($BotDetector->checkForBot() === true) {
+                    return false;
+                }
             }
         }
 
@@ -1391,7 +1450,7 @@ class MetricsRecorder extends Plugin
         );
 
         # if annotation data was returned by signal
-        if (count($SignalResults)) {
+        if (count($SignalResults) !== 0) {
             # for each annotation
             foreach ($SignalResults as $Annotator => $Annotation) {
                 # if annotation supplied
@@ -1450,7 +1509,7 @@ class MetricsRecorder extends Plugin
      *       dates of first and last recorded views.
      */
     private function getClickCounts(
-        $ClickType,
+        int $ClickType,
         $StartDate,
         $EndDate,
         $Offset,
@@ -1487,7 +1546,7 @@ class MetricsRecorder extends Plugin
             $EndDate = date("Y-m-d H:i:s", $EndDate);
             $QueryConditional .= " AND ED.EventDate <= '".addslashes($EndDate)."'";
         }
-        if (count($PrivsToExclude)) {
+        if (count($PrivsToExclude) !== 0) {
             $QueryConditional .= " AND (ED.UserId IS NULL OR ED.UserId NOT IN ("
                     .\ScoutLib\User::getSqlQueryForUsersWithPriv($PrivsToExclude)."))";
         }
@@ -1509,7 +1568,7 @@ class MetricsRecorder extends Plugin
 
         # sum up counts
         $Data["Total"] = 0;
-        foreach ($Data["Counts"] as $ResourceId => $Count) {
+        foreach ($Data["Counts"] as $Count) {
             $Data["Total"] += $Count;
         }
 
@@ -1563,7 +1622,7 @@ class MetricsRecorder extends Plugin
         # if event type is not already defined
         if (!isset($TypeIds[$OwnerName.$TypeName])) {
             # find next available event type ID
-            $HighestTypeId = count($TypeIds) ? max($TypeIds) : 1000;
+            $HighestTypeId = count($TypeIds) !== 0 ? max($TypeIds) : 1000;
             $TypeId = $HighestTypeId + 1;
 
             # add ID to local cache

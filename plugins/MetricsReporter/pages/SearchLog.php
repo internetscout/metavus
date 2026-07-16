@@ -45,7 +45,7 @@ define("STY_FAILED", 3);
  * @param int $UserType One of the UT_ constants describing a user type.
  * @return bool true for searches that should be filtered out.
  */
-function searchIsFiltered($SearchDataRow, $SearchType, $UserType)
+function searchIsFiltered($SearchDataRow, $SearchType, $UserType): bool
 {
     # if looking for 'successful' searches, but this one produced no results, skip it
     if ($SearchType == STY_SUCCESSFUL && $SearchDataRow["Results"] == 0) {
@@ -86,7 +86,7 @@ function searchIsFiltered($SearchDataRow, $SearchType, $UserType)
  * @param array $UserIds UserIds to convert.
  * @return array List of user names
  */
-function userIdsToUserNames(array $UserIds)
+function userIdsToUserNames(array $UserIds): array
 {
     static $UFactory;
     static $UserMap;
@@ -119,7 +119,7 @@ function userIdsToUserNames(array $UserIds)
  * @param string $SearchData Opaque SearchData string
  * @return string Search identifier.
  */
-function getSearchKey($SearchData)
+function getSearchKey($SearchData): string
 {
     return base64_encode(md5($SearchData, true));
 }
@@ -157,7 +157,7 @@ function getSearchDescription($SearchData)
  *   'new SearchParameterSet()'.
  * @return void
  */
-function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys)
+function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys): void
 {
     # iterate over all the searches, using key() and array_pop() to delete
     # each row after we are done
@@ -193,7 +193,7 @@ function groupIdenticalSearches(&$H_ListData, &$SearchData, $SearchKeys)
                 $H_ListData[$Key."_".$Index] = [
                     "Date" => $Item["Timestamp"],
                     "NumSearches" => 1,
-                    "UserId" => strlen((string)$Item["UserId"]) ? [$Item["UserId"]] : [],
+                    "UserId" => strlen((string)$Item["UserId"]) !== 0 ? [$Item["UserId"]] : [],
                     "SearchParameters" => $SearchKeys[$Key],
                     "Results" => $Item["Results"],
                 ];
@@ -216,7 +216,7 @@ function addSearchToFrequencyData(
     string $Key,
     string $Search,
     array $SearchDataRow
-) {
+): void {
     # for the search frequency, we can accumulate the data into
     # H_ListData directly
     if (!isset($H_ListData[$Key])) {
@@ -313,16 +313,16 @@ $TimeLUT = [
 
 # define a lookup table of sort functions
 $SortFns = [
-    "Date" => function ($a, $b) {
+    "Date" => function ($a, $b): int {
         return $b["Date"] <=> $a["Date"];
     },
-    "NumSearches" => function ($a, $b) {
+    "NumSearches" => function ($a, $b): int {
         return $b["NumSearches"] <=> $a["NumSearches"];
     },
-    "Results" => function ($a, $b) {
+    "Results" => function ($a, $b): int {
         return $b["Results"] <=> $a["Results"];
     },
-    "UserId" => function ($a, $b) {
+    "UserId" => function ($a, $b): int {
         # if asked to sort by user, we have to do something in the case
         # where we have a list of users.  in this case, we're comparing the
         # alphabetically first element of each list of users to determine
@@ -332,7 +332,7 @@ $SortFns = [
 
         return strcmp(reset($UsersA), reset($UsersB));
     },
-    "SearchParameters" => function ($a, $b) {
+    "SearchParameters" => function ($a, $b): int {
         return strcmp(
             getSearchDescription($a["SearchParameters"]),
             getSearchDescription($b["SearchParameters"])
@@ -347,7 +347,7 @@ $ListFields = [
             "Heading" => "Date",
             "DefaultToDescendingSort" => true,
             "DefaultSortField" => true,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return StdLib::getPrettyTimestamp($Item[$FieldId]);
             }
         ],
@@ -357,13 +357,13 @@ $ListFields = [
         ],
         "UserId" => [
             "Heading" => "Users",
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return implode(", ", userIdsToUserNames($Item["UserId"]));
             },
         ],
         "SearchParameters" => [
             "Heading" => "Parameters",
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return getSearchDescription($Item["SearchParameters"])
                     .(($Item["NumSearches"] > 1) ?
                       "<br/>(repeated ".$Item["NumSearches"]." times)" :
@@ -384,7 +384,7 @@ $ListFields = [
         ],
         "UserId" => [
             "Heading" => "Users",
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return implode(", ", userIdsToUserNames($Item["UserId"]));
             },
         ],
@@ -448,7 +448,7 @@ do {
         # if there was a search string recorded
         #  (Note that the Metrics Data is sometimes missing a search string,
         #   and the cause for that has not yet been determined.)
-        if (!strlen($Row["DataOne"])) {
+        if (strlen($Row["DataOne"]) === 0) {
             continue;
         }
 

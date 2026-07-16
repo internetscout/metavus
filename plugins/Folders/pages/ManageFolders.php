@@ -25,7 +25,7 @@ use ScoutLib\ApplicationFramework;
  * @param Folder $SelectedFolder Currently selected folder
  * @return void
  */
-function PrintFolders(int $ResourceFolderId, array $Folders, \Metavus\Folder $SelectedFolder)
+function PrintFolders(int $ResourceFolderId, array $Folders, \Metavus\Folder $SelectedFolder): void
 {
     # we want to be able to get next and previous values, so use numeric indices
     $Folders = array_values($Folders);

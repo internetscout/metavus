@@ -276,14 +276,18 @@ END;
 
             # we need to clear the post value so get the form field name
             $FormFieldName = $this->getFormFieldName($MFieldName);
-            # FormUI prefers the $_POST value so we have to update that here.
-            # This is intended as a temporary solution until we have a standard
-            # way of modifying/updating a FormUI value.
+            # if user changed a value in the form, but that value in the record
+            # has changed since the form was generated, then we want the value
+            # from the record displayed in the editing form and the user's new
+            # value to appear in the error message -- currently the only way to
+            # do that is to update the value in _POST (intended as a temporary
+            # solution pending a standard way to modify/update the value FormUI
+            # will put in the editing form)
             switch ($MDFType) {
                 case MetadataSchema::MDFTYPE_IMAGE:
                 case MetadataSchema::MDFTYPE_FILE:
                     $FileIdFieldName = $FormFieldName."_ID";
-                    $_POST[$FileIdFieldName] =  array_keys($Value);
+                    $_POST[$FileIdFieldName] = array_keys($Value);
                     break;
                 case MetadataSchema::MDFTYPE_POINT:
                     $_POST[$FormFieldName."_X"] = $Value["X"];
@@ -294,9 +298,6 @@ END;
                 case MetadataSchema::MDFTYPE_OPTION:
                 case MetadataSchema::MDFTYPE_USER:
                     $_POST[$FormFieldName] = array_keys($Value);
-                    break;
-                case MetadataSchema::MDFTYPE_DATE:
-                    $_POST[$FormFieldName] = $Value->formatted();
                     break;
                 default:
                     $_POST[$FormFieldName] = $Value;
@@ -350,7 +351,7 @@ END;
                         $DisplayValue[] = $Item->name();
                     }
                 }
-                $DisplayValue = (count($DisplayValue) ? implode(", ", $DisplayValue) : null);
+                $DisplayValue = (count($DisplayValue) !== 0 ? implode(", ", $DisplayValue) : null);
                 break;
             case MetadataSchema::MDFTYPE_DATE:
                 $DisplayValue = ($GetValue instanceof Date) ? $GetValue->formatted() : $GetValue;
@@ -518,12 +519,12 @@ END;
                     # data is in the array values if the keys are sequential from 0 to N-1 and
                     # all the array values are either numeric strings or empty
                     $DataInValues = array_keys($FormValue) === range(0, count($FormValue) - 1) &&
-                    array_reduce($FormValue, function ($Carry, $Value) {
+                    array_reduce($FormValue, function ($Carry, $Value): bool {
                         return $Carry && (empty($Value) || is_numeric((string) $Value));
                     }, true);
 
                     # filter out the empty array values
-                    $FormValue = array_filter($FormValue, function ($Value) {
+                    $FormValue = array_filter($FormValue, function ($Value): bool {
                         return (is_object($Value) || strlen((string) $Value) > 0);
                     });
 
@@ -674,7 +675,7 @@ END;
             }
 
             # if the group contained any fields visible to the user
-            if (count($GroupFields)) {
+            if (count($GroupFields) !== 0) {
                 # add a group header for explicit groups
                 if ($GroupId !== false) {
                     # groups with required fields should always be open by default
@@ -714,7 +715,7 @@ END;
      * @param array $FormFields List of form fields.
      * @return array Form values
      */
-    protected function getFormFieldValues($FormFields)
+    protected function getFormFieldValues($FormFields): array
     {
         $TypesToSkip = [
             FormUI::FTYPE_HEADING,

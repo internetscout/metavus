@@ -3,12 +3,13 @@
 #   FILE:  HtmlTable.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
+use InvalidArgumentException;
 
 /**
  * Class for building and displaying HTML tables.
@@ -111,6 +112,33 @@ class HtmlTable
     }
 
     /**
+     * Add CSS class(es) to all cells in a column.
+     * @param int $ColNum Zero-based column number.
+     * @param string $Class CSS class(es) to add.  Multiple class names should
+     *      be separated by spaces.
+     * @throws InvalidArgumentException If column number is negative.
+     */
+    public function addClassForColumn(int $ColNum, string $Class): void
+    {
+        if ($ColNum < 0) {
+            throw new InvalidArgumentException(
+                "Column number must not be negative."
+            );
+        }
+
+        # ignore empty class lists
+        $Class = trim($Class);
+        if ($Class === "") {
+            return;
+        }
+
+        # add class names to existing list while keeping whitespace tidy
+        $this->ColumnClasses[$ColNum] = trim(
+            ($this->ColumnClasses[$ColNum] ?? "")." ".$Class
+        );
+    }
+
+    /**
      * Determine if the generated HTML will use <table> tags or a CSS-based
      *     grid of <div>s for layout. (Default behavior is to use <table>
      *     tags.)
@@ -125,11 +153,12 @@ class HtmlTable
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
-    protected $RowData = [];
-    protected $HeaderRowData = [];
+    protected $ColumnClasses = [];
     protected $FooterRowData = [];
-    protected $TableClass = "";
+    protected $HeaderRowData = [];
     protected $IsPseudoTable = false;
+    protected $RowData = [];
+    protected $TableClass = "";
 
     /**
      * Get formatted HTML tag attribute string.
@@ -140,8 +169,9 @@ class HtmlTable
      */
     protected static function getAttrib(string $Attrib, string $Value): string
     {
-        return strlen($Value)
-            ? " ".$Attrib."=\"".trim($Value)."\""
+        $EscapedValue = htmlspecialchars(trim($Value), ENT_QUOTES | ENT_SUBSTITUTE);
+        return strlen($Value) !== 0
+            ? " ".$Attrib."=\"".$EscapedValue."\""
             : "";
     }
 
@@ -175,9 +205,13 @@ class HtmlTable
             foreach ($RowData as $Cells) {
                 $RowClass = $Cells[0]["Class"] ?? "";
                 $Html .= "<tr" . self::getAttrib("class", $RowClass) . ">\n";
+                $ColNum = 0;
                 foreach ($Cells as $Cell) {
                     $Tag = $Cell["IsHeader"] ? "th" : "td";
-                    $Html .= "<" . $Tag . ">" . $Cell["Content"] . "</" . $Tag . ">\n";
+                    $CellClass = $this->getColumnClass($ColNum);
+                    $Html .= "<" . $Tag . self::getAttrib("class", $CellClass)
+                            . ">" . $Cell["Content"] . "</" . $Tag . ">\n";
+                    $ColNum++;
                 }
                 $Html .= "</tr>\n";
             }
@@ -197,12 +231,17 @@ class HtmlTable
         foreach ($this->RowData as $Cells) {
             $RowClass = self::PSEUDOTABLE_ROW_CLASS." ".($Cells[0]["Class"] ?? "");
             $Html .= "<div".self::getAttrib("class", $RowClass).">\n";
+            $ColNum = 0;
             foreach ($Cells as $Cell) {
                 $CellClass = $Cell["IsHeader"] ?
                     self::PSEUDOTABLE_HEADER_COL_CLASS :
                     self::PSEUDOTABLE_COL_CLASS;
+                $CellClass = self::filterPsuedoTableClassString(
+                    $CellClass." ".$this->getColumnClass($ColNum)
+                );
                 $Html .= "<div".self::getAttrib("class", $CellClass).">"
                         .$Cell["Content"]."</div>\n";
+                $ColNum++;
             }
             $Html .= "</div>\n";
         }
@@ -216,6 +255,51 @@ class HtmlTable
     private const PSEUDOTABLE_ROW_CLASS = "row";
     private const PSEUDOTABLE_COL_CLASS = "col";
     private const PSEUDOTABLE_HEADER_COL_CLASS = "col fw-bold";
+    private const PSEUDOTABLE_SPECIFIC_COL_CLASS_PREFIX = "col-";
+
+    /**
+     * Get CSS class(es) for a table column.
+     * @param int $ColNum Zero-based column number.
+     * @return string CSS class(es) for column, or empty string if no classes
+     *      have been added for the column.
+     */
+    private function getColumnClass(int $ColNum): string
+    {
+        return $this->ColumnClasses[$ColNum] ?? "";
+    }
+
+    /**
+     * Filter CSS classes to use for a pseudo-table element.
+     * @param string $Classes CSS class(es) to filter.
+     * @return string Filtered CSS class string.
+     */
+    private static function filterPsuedoTableClassString(string $Classes): string
+    {
+        $ClassNames = preg_split("/\s+/", trim($Classes));
+        if ($ClassNames === false) {
+            return "";
+        }
+
+        # suppress default general class if caller supplied a more specific class
+        $HasSpecificColClass = false;
+        foreach ($ClassNames as $ClassName) {
+            if (strpos($ClassName, self::PSEUDOTABLE_SPECIFIC_COL_CLASS_PREFIX) === 0) {
+                $HasSpecificColClass = true;
+                break;
+            }
+        }
+
+        if ($HasSpecificColClass) {
+            $ClassNames = array_filter(
+                $ClassNames,
+                function (string $ClassName): bool {
+                    return $ClassName !== self::PSEUDOTABLE_COL_CLASS;
+                }
+            );
+        }
+
+        return implode(" ", $ClassNames);
+    }
 
     /**
      * Process array of cell data and classes, arranging them into format

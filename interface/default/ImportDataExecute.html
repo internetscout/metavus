@@ -11,55 +11,787 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\Date;
 use ScoutLib\HtmlTable;
 
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+/**
+ * Create a new controlled name for a specified field.
+ * @param MetadataField $Field Field to which the name should belong.
+ * @param string $Value Value that should be created.
+ * @return int ControlledNameId for newly created name.
+ */
+function addControlledName(MetadataField $Field, string $Value): int
+{
+    global $ControlledNameCount;
+
+    $Value = trim($Value);
+    if (empty($Value)) {
+        throw new Exception("Attempt to add empty value to controlled name.");
+    }
+
+    if (!ControlledName::controlledNameExists($Value, $Field->id())) {
+        $ControlledNameCount++;
+    }
+    $ControlledName = ControlledName::create($Value, $Field->id());
+    return $ControlledName->id();
+}
+
+/**
+ * Look up or create a classification for a given field.
+ * @param MetadataField $Field Field to which the class should belong.
+ * @param string $Value Value to look for or create.
+ * @return int ClassificationId corresponding to the given value.
+ */
+function addClassification(MetadataField $Field, string $Value): int
+{
+    static $CFactories;
+    global $ClassificationCount;
+
+    $Value = trim($Value);
+    if (empty($Value)) {
+        throw new Exception(
+            "Attempt to add empty value to classification"
+        );
+    }
+
+    # if we don't have a factory for this field, create one
+    if (!isset($CFactories[$Field->id()])) {
+        $CFactories[$Field->id()] = new ClassificationFactory(
+            $Field->id()
+        );
+    }
+
+    # attempt to look up that value in our field
+    $ClassId = $CFactories[$Field->id()]->getItemIdByName($Value);
+
+    # if the value didn't exist, create it
+    if ($ClassId === false) {
+        $Classification = Classification::create($Value, $Field->id());
+        $ClassId = $Classification->id();
+        $ClassificationCount += count(Classification::getClassificationsCreated());
+        $CFactories[$Field->id()]->clearCaches();
+    }
+
+    return $ClassId;
+}
+
+/**
+ * Process a field's value based on its type.
+ * @param MetadataField $Field Field to which the class should belong.
+ * @param string $Value Value to process.
+ * @return int|string The processed value.
+ */
+function processFieldValue(MetadataField $Field, string $Value)
+{
+    if ($Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME ||
+        $Field->type() == MetadataSchema::MDFTYPE_OPTION) {
+        # create new controlled name if needed, replace alpha value
+        return addControlledName($Field, $Value);
+    } elseif ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
+        # create new classification if needed, replace alpha value
+        return addClassification($Field, $Value);
+    }
+    return $Value;
+}
+
+/**
+ * Do initial setup of the import.
+ * @return bool TRUE on success, FALSE if an error was encountered.
+ */
+function firstTimeThrough(): bool
+{
+    global $TotalLineCount, $FSeek;
+    global $FilePointer, $NameArray;
+    global $NumberOfFields, $Debug, $DebugInfo;
+    global $ReferenceArray;
+
+    $Schema = new MetadataSchema();
+    $ReferenceArray = [];
+
+    # read in line from import file
+    $Line = fgets($FilePointer, 4096);
+
+    if ($Line === false) {
+        throw new Exception("Error reading from input file.");
+    }
+
+    $FSeek += strlen($Line);
+
+    if ($Debug) {
+        $DebugInfo .= "Line=".$Line."<br>";
+    }
+
+    # parse line from import file
+    $Vars = str_getcsv($Line, "\t", "\"", "\\");
+
+    $NumberOfFields = 0;
+    $InvalidFields = [];
+    foreach ($Vars as $Var) {
+        $Var = trim($Var);
+
+        # old style import files
+        if ($Var != "ControlledName" &&
+            $Var != "ControlledNameTypeName" &&
+            $Var != "ClassificationName" &&
+            $Var != "ClassificationTypeId") {
+            if (!$Schema->fieldExists($Var)) {
+                $InvalidFields[] = $Var;
+            }
+        }
+        $NameArray[] = $Var;
+        $NumberOfFields++;
+    }
+
+    # count the first header line
+    $TotalLineCount = 1;
+
+    if (count($InvalidFields) > 0) {
+        $_SESSION["ErrorMessage"] = "Unknown metadata fields encountered: "
+                .implode(", ", $InvalidFields)."<br/>";
+        unsetSessionVars();
+        ApplicationFramework::getInstance()->setJumpToPage("ImportData");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Process lines in the import file, creating and modifying resources as necessary.
+ * @return bool TRUE on success, FALSE if an error was encountered.
+ */
+function doWhileLoop(): bool
+{
+    global $FilePointer, $FSeek, $ImportComplete;
+    global $ResourceCount;
+    global $TotalLineCount, $UniqueField;
+    global $NumberOfFields, $Debug, $DebugInfo, $NameArray;
+    global $ReferenceArray;
+    global $Delimiter;
+
+    $Schema = new MetadataSchema();
+    $RFactory = new RecordFactory();
+    $SearchEngine = new SearchEngine();
+    $Recommender = new Recommender();
+
+    $UserMap = [];
+
+    $LineCount = 0;
+    $Resource = null;
+    $LastSqlCondition = null;
+
+    # determines whether we're importing records or new ControlledName/Option/Tree vocabulary
+    $ImportingRecords = $NumberOfFields != 1;
+
+    # user current user for AddedById, LastModifiedById
+    # current date for DateOfRecordCreation
+    $CurrentUserId = User::getCurrentUser()->get("UserId");
+    $TodaysDate = date("Y-m-d H:i:s");
+
+    while (!feof($FilePointer) && $LineCount < 250 && $ImportComplete == 0) {
+        # read in line from import file
+        $Line = fgets($FilePointer, 2000000);
+
+        # check for errors
+        if ($Line === false) {
+            # if we've just hit EOF, then that's fine and we can bail
+            if (feof($FilePointer)) {
+                $ImportComplete = 1;
+                break;
+            }
+
+            # otherwise notify the user that something went wrong
+            throw new Exception(
+                "Error reading from input file."
+            );
+        }
+
+        # update variables
+        $LineCount++;
+        $TotalLineCount++;
+
+        if ($Debug) {
+            $DebugInfo .= "Line $TotalLineCount: Line=".$Line."<br>";
+        }
+
+        $FSeek += strlen($Line);
+        $_SESSION["FSeek"] = $FSeek;
+
+        $FieldArray = [];
+        $ValueArray = [];
+
+        # look-up table for handling "old format" import files
+        $SpecialArray = [];
+
+        # parse line from import file
+        $Vars = str_getcsv($Line, "\t", "\"", "\\");
+
+        # make sure number of vars on line match number of fields in header
+        $NumberOfVars = count($Vars);
+        if ($NumberOfVars != $NumberOfFields) {
+            $_SESSION["ImportComplete"] = $ImportComplete;
+            $ErrorMessage =
+                "Error: incorrect field count on line $TotalLineCount.<br>".
+                "Expected $NumberOfFields, encountered $NumberOfVars<br>".
+                "Correct the problem and try importing again.<br>";
+            foreach ($NameArray as $Index => $Name) {
+                if ($Index < count($Vars)) {
+                    $ErrorMessage .= "[".sprintf("%02d", $Index)."] "
+                        .htmlspecialchars($Name)." = <i>"
+                        .htmlspecialchars($Vars[$Index])."</i><br>\n";
+                } else {
+                    $ErrorMessage .= "[".sprintf("%02d", $Index)."] "
+                        .htmlspecialchars($Name)." is missing\n";
+                }
+            }
+            $_SESSION["ErrorMessage"] = $ErrorMessage;
+            unsetSessionVars();
+            ApplicationFramework::getInstance()->setJumpToPage("ImportData");
+            return false;
+        }
+
+        # process each var and cache its value
+        foreach ($Vars as $Index => $Var) {
+            # translate backslashed tabs and newlines
+            $Var = str_replace(
+                ['\t', '\n'],
+                ["\t", "\n"],
+                (string)$Var
+            );
+
+            # skip values that were empty
+            if (empty($Var)) {
+                continue;
+            }
+
+            if ($Schema->fieldExists($NameArray[$Index])) {
+                $Field = $Schema->getField($NameArray[$Index]);
+
+                # if delimiter exists and multiple allowed in field
+                if (!is_null($Delimiter) && strlen($Delimiter) > 0
+                    && $Field->allowMultiple()) {
+                    $FieldVals = explode($Delimiter, $Var);
+
+                    # add each delimited value individually
+                    foreach ($FieldVals as $FieldVal) {
+                        $ValueArray[$Field->id()][] = processFieldValue($Field, $FieldVal);
+                    }
+                } else {
+                    $Var = processFieldValue($Field, $Var);
+                    $ValueArray[$Field->id()] = [$Var];
+                }
+                $FieldArray[$Index] = $Field;
+            } else {
+                $SpecialArray[$Index] = trim($Var);
+            }
+        }
+
+        # old format with ControlledName/ControlledNameTypeName pairs
+        $Key = array_search("ControlledName", $NameArray);
+        if ($Key !== false) {
+            $Value = $SpecialArray[$Key];
+            $Key = array_search("ControlledNameTypeName", $NameArray);
+            $Field = $Schema->getField($SpecialArray[$Key]);
+            $Value = addControlledName($Field, $Value);
+            $ValueArray[$Field->id()] = [$Value];
+        }
+
+        # old format with ClassificationName/ClassificationTypeId pairs
+        $Key = array_search("ClassificationName", $NameArray);
+        if ($Key !== false) {
+            $Value = $SpecialArray[$Key];
+            $Key = array_search("ClassificationTypeId", $NameArray);
+
+            # compensate for bad data (missing type id)
+            if (!is_numeric($SpecialArray[$Key])) {
+                $IntConfig = InterfaceConfiguration::getInstance();
+                $SpecialArray[$Key] = $IntConfig->getInt("BrowsingFieldId");
+            }
+
+            $Field = $Schema->getField($SpecialArray[$Key]);
+            $Value = addClassification($Field, $Value);
+            $ValueArray[$Field->id()] = [$Value];
+        }
+
+        # skip the rest if we're not importing records
+        if (!$ImportingRecords) {
+            continue;
+        }
+
+        # grab the UniqueField and Description values from the array
+        $AF = ApplicationFramework::getInstance();
+        if ($UniqueField == -1) {
+            $TitleFieldKey = array_search("Title", $NameArray);
+            if ($TitleFieldKey === false) {
+                throw new Exception(
+                    "Unable to locate Title field."
+                );
+            }
+            if (!isset($FieldArray[$TitleFieldKey])) {
+                $_SESSION["ImportComplete"] = $ImportComplete;
+                $ErrorMessage =
+                    "Error: No value for Title field on line $TotalLineCount.<br>".
+                    "Correct the problem and try importing again.<br>";
+                $_SESSION["ErrorMessage"] = $ErrorMessage;
+                unsetSessionVars();
+                $AF->setJumpToPage("ImportData");
+                return false;
+            }
+
+            $Index = $FieldArray[$TitleFieldKey]->id();
+            if (count($ValueArray[$Index]) != 1) {
+                throw new Exception(
+                    "Wrong number of values. Expected 1, found ".count($ValueArray[$Index])."."
+                );
+            }
+
+            $Title = addslashes((string)reset($ValueArray[$Index]));
+
+            $DescriptionKey = array_search("Description", $NameArray);
+            if ($DescriptionKey === false) {
+                throw new Exception(
+                    "Unable to locate Description field."
+                );
+            }
+            if (!isset($FieldArray[$DescriptionKey])) {
+                $_SESSION["ImportComplete"] = $ImportComplete;
+                $ErrorMessage =
+                    "Error: No value for Description field on line $TotalLineCount.<br>".
+                    "Correct the problem and try importing again.<br>";
+                $_SESSION["ErrorMessage"] = $ErrorMessage;
+                unsetSessionVars();
+                $AF->setJumpToPage("ImportData");
+                return false;
+            }
+
+
+            $Index = $FieldArray[$DescriptionKey]->id();
+            if (count($ValueArray[$Index]) != 1) {
+                throw new Exception(
+                    "Wrong number of values. Expected 1, found ".count($ValueArray[$Index])."."
+                );
+            }
+
+            $Description = addslashes((string)reset($ValueArray[$Index]));
+
+            $SqlCondition = "Title=\"".$Title."\" "
+                ."AND Description=\"".$Description."\"";
+        } else {
+            $UniqueFieldKey = array_search($UniqueField, $NameArray);
+            if ($UniqueFieldKey === false) {
+                throw new Exception(
+                    "Unable to locate user-specified unique field (".$UniqueField.")"
+                );
+            }
+
+            $Field = $FieldArray[$UniqueFieldKey];
+            $Index = $FieldArray[$UniqueFieldKey]->id();
+            if (count($ValueArray[$Index]) != 1) {
+                throw new Exception(
+                    "Wrong number of values. Expected 1, found ".count($ValueArray[$Index])."."
+                );
+            }
+
+            $UniqueFieldValue = addslashes((string)reset($ValueArray[$Index]));
+            $UniqueFieldDBName = $Field->dBFieldName();
+
+            $SqlCondition = $UniqueFieldDBName."=\"".$UniqueFieldValue."\"";
+        }
+
+        if ($Debug) {
+            $DebugInfo .= "SqlCondition = ".$SqlCondition."<br/>";
+        }
+
+        if ($SqlCondition != $LastSqlCondition) {
+            $Resources = $RFactory->getItemIds($SqlCondition);
+
+            if (count($Resources) == 0) {
+                # create new temporary record
+                $Resource = Record::create(MetadataSchema::SCHEMAID_DEFAULT);
+
+                # handle special fields
+                if (!in_array("Added By Id", $NameArray)) {
+                    $Resource->set("Added By Id", $CurrentUserId);
+                }
+
+                if (!in_array("Last Modified By Id", $NameArray)) {
+                    $Resource->set("Last Modified By Id", $CurrentUserId);
+                }
+
+                $Key = array_search("Date Of Record Creation", $NameArray);
+                if ($Key === false) {
+                    $Resource->set("Date Of Record Creation", $TodaysDate);
+                } else {
+                    $Field = $FieldArray[$Key];
+                    $Index = $Field->id();
+                    if (count($ValueArray[$Index]) != 1) {
+                        throw new Exception(
+                            "Wrong number of values. Expected 1, found ".
+                            count($ValueArray[$Index])."."
+                        );
+                    }
+
+                    $DateStringArray = explode(" ", (string)reset($ValueArray[$Index]));
+                    $Date = new Date($DateStringArray[0]);
+                    $DateBegin = $Date->beginDate();
+                    $Resource->set("Date Of Record Creation", $DateBegin);
+                }
+
+                $Key = array_search("Date Last Modified", $NameArray);
+                if ($Key == false) {
+                    $Resource->set("Date Last Modified", $TodaysDate);
+                } else {
+                    $Field = $FieldArray[$Key];
+                    $Index = $Field->id();
+                    if (count($ValueArray[$Index]) != 1) {
+                        throw new Exception(
+                            "Wrong number of values. Expected 1, found ".
+                            count($ValueArray[$Index])."."
+                        );
+                    }
+
+                    $DateStringArray = explode(" ", (string)reset($ValueArray[$Index]));
+                    $Date = new Date($DateStringArray[0]);
+                    $DateBegin = $Date->beginDate();
+                    $Resource->set("Date Last Modified", $DateBegin);
+                }
+
+                # convert to real resource
+                $Resource->isTempRecord(false);
+                $ResourceId = $Resource->id();
+
+                # make sure search and recommender databases are updated
+                $SearchEngine::queueUpdateForItem($ResourceId);
+                $Recommender->queueUpdateForItem($ResourceId);
+
+                if ($Debug) {
+                    $DebugInfo .= "ResourceId = $ResourceId<br>";
+                }
+
+                # keep track of number of resources added
+                $ResourceCount++;
+                $_SESSION["ResourceCount"] = $ResourceCount;
+
+                # cache the last title
+                $LastSqlCondition = $SqlCondition;
+            } elseif (count($Resources) == 1) {
+                # this resource already exists
+                # should only be one matching Resources record
+                $ResourceId = $Resources[0];
+                $Resource = new Record($ResourceId);
+            } else {
+                # otherwise duplicate resources exist!
+                $_SESSION["ImportComplete"] = $ImportComplete;
+                $ErrorMessage =
+                    "Error: Multiple Resources matching \"".$SqlCondition
+                    ."\" encountered.<br>"
+                    ."Please select Back and correct the problem on line "
+                    .$TotalLineCount.".";
+                $_SESSION["ErrorMessage"] = $ErrorMessage;
+                unsetSessionVars();
+                $AF->setJumpToPage("ImportData");
+                return false;
+            }
+        }
+
+        # now set each Resource field
+        foreach ($ValueArray as $FieldId => $Value) {
+            if (count($Value) !== 0) {
+                if (is_object($Resource)) {
+                    if (!$Schema->fieldExists($FieldId)) {
+                        continue;
+                    }
+                    $Field = $Schema->getField($FieldId);
+
+                    if ($Debug) {
+                        $DebugInfo .= "ResourceId=".$Resource->id().
+                            ": Setting FieldId $FieldId to ".
+                            implode(", ", $Value)."<br>";
+                    }
+
+                    if ($Field->type() == MetadataSchema::MDFTYPE_REFERENCE) {
+                        $ReferenceArray[$Field->id()][$Resource->id()][] =
+                            $Value;
+                    } elseif ($Field->type() == MetadataSchema::MDFTYPE_USER) {
+                        # if we don't have a User object for this one
+                        # user, create one by attempting to look them up
+                        if (count($Value) != 1) {
+                            throw new Exception(
+                                "Wrong number of values. Expected 1, found ".
+                                count($Value)."."
+                            );
+                        }
+
+                        $UserId = reset($Value);
+                        if (!isset($UserMap[$UserId])) {
+                            if (!isset($UFactory)) {
+                                $UFactory = new UserFactory();
+                            }
+                            $UserMap[$UserId] = (($UserId >= 0)
+                                && $UFactory->userExists((int)$UserId))
+                                ? new User($Value) : false;
+                        }
+
+                        # if a valid user was found for this value,
+                        # add them to the field
+                        if ($UserMap[$UserId] !== false) {
+                            $Resource->set($FieldId, $UserMap[$UserId]);
+                        }
+                    } elseif ($Field->allowMultiple()) {
+                        $Resource->set($FieldId, $Value);
+                    } else {
+                        $Resource->set($FieldId, $Value[0]);
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Used to unset session vars when reporting an error or in the post-processing call.
+ */
+function unsetSessionVars(): void
+{
+    foreach ([
+        "FSeek", "ImportComplete", "ResourceCount", "ControlledNameCount",
+        "ClassificationCount", "TotalLineCount", "NameArray", "TempFile", "NumberOfFields",
+        "UniqueField", "Debug", "ReferenceArray"
+    ] as $Var) {
+        unset($_SESSION[$Var]);
+    }
+}
+
+/**
+ * Post-processing tasks: if import is complete, delete import file and
+ * clean import status vars out of $_SESSION.
+ * @param resource $FilePointer File descriptor for import file.
+ * @param int $ImportComplete One if the import has completed, zero otherwise.
+ */
+function postProcessingFn($FilePointer, $ImportComplete): void
+{
+    if ($ImportComplete == 1) {
+        # close file
+        fclose($FilePointer);
+        unsetSessionVars();
+    }
+}
+
 # ----- SETUP ----------------------------------------------------------------
+
+global $ClassificationCount;
+global $ControlledNameCount;
+global $Debug;
+global $DebugInfo;
+global $Delimiter;
+global $FilePointer;
+global $FSeek;
+global $ImportComplete;
+global $NameArray;
+global $NumberOfFields;
+global $ReferenceArray;
 global $ReferenceMessages;
+global $ResourceCount;
+global $TotalLineCount;
+global $UniqueField;
 
-if (!isset($H_ClassificationCount)) {
-    throw new Exception("H_ClassificationCount not defined.");
-}
-if (!isset($H_ControlledNameCount)) {
-    throw new Exception("H_ControlledNameCount not defined.");
-}
-if (!isset($H_DebugInfo)) {
-    throw new Exception("H_DebugInfo not defined.");
-}
-if (!isset($H_ImportComplete)) {
-    throw new Exception("H_ImportComplete not defined.");
-}
-if (!isset($H_ResourceCount)) {
-    throw new Exception("H_ResourceCount not defined.");
-}
-if (!isset($H_TotalLineCount)) {
-    throw new Exception("H_TotalLineCount not defined.");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
 
-$Header = ($H_ImportComplete) ? "Import Completed Successfully" : "Importing Data";
-
-$InfoTable = new HtmlTable();
-$InfoTable->setTableClass("table table-striped");
-$InfoTable->addRowsWithHeaders([
-    ["Lines Read", $H_TotalLineCount - 1],
-    ["Resources Added", $H_ResourceCount],
-    ["Controlled Names Added", $H_ControlledNameCount],
-    ["Classifications Added", $H_ClassificationCount]
-]);
+$AF = ApplicationFramework::getInstance();
 
 $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setIcon("Cross.svg");
 $CancelButton->addSemanticClass("btn-danger");
 
+# ----- PROCESSING -----------------------------------------------------------
+
+$DebugInfo = "";
+
+# be sure we're able to gracefully deal with screwy line endings
+@ini_set("auto_detect_line_endings", "1");
+
+# load up passed through vars
+foreach ([
+    "FSeek", "ImportComplete", "ResourceCount", "ControlledNameCount",
+    "ClassificationCount", "TotalLineCount", "NameArray", "TempFile",
+    "NumberOfFields", "UniqueField", "ReferenceArray", "Delimiter"
+] as $Var) {
+    if (isset($_SESSION[$Var])) {
+        $$Var = $_SESSION[$Var];
+    }
+}
+
+$UniqueField = $_SESSION["UniqueField"];
+$Debug = $_SESSION["Debug"];
+$TempFile = $_SESSION["Path"];
+$FilePointer = fopen($TempFile, 'r');
+
+if ($FilePointer === false) {
+    throw new Exception("Unable to open import file");
+}
+
+# initialize import variables (they'll be null the first time through)
+foreach ([
+    "ImportComplete", "FSeek", "ResourceCount", "ControlledNameCount", "ClassificationCount"
+] as $Var) {
+    if (is_null($$Var)) {
+        $$Var = 0;
+    }
+}
+
+# first time through
+if ($FSeek == 0) {
+    $Result = firstTimeThrough();
+
+    # stop if we hit an error
+    if ($Result === false) {
+        return;
+    }
+}
+
+# seek to the next line
+if ($FSeek > 0) {
+    fseek($FilePointer, $FSeek);
+}
+
+# the main work happens here
+$Result = doWhileLoop();
+
+# stop if we hit an error
+if ($Result === false) {
+    return;
+}
+
+# end of file reached?
+if (feof($FilePointer)) {
+    $ImportComplete = 1;
+}
+
+# register some key variables for other html code
+foreach ([
+    "ImportComplete", "ResourceCount", "ControlledNameCount",
+    "ClassificationCount", "TotalLineCount", "NameArray", "FSeek",
+    "TempFile", "NumberOfFields", "ReferenceArray", "UniqueField", "Debug"
+] as $Var) {
+    # the $$ syntax gets the value of a variable named by a variable
+    $_SESSION[$Var] = $$Var;
+}
+
+# time to auto-refresh?
+if ($ImportComplete == 0) {
+    ApplicationFramework::getInstance()->setJumpToPage("index.php?P=ImportDataExecute", 1);
+} else {
+    $ReferenceMessages = [];
+
+    # if we're done with our import, then try to resolve any references it contained
+
+    # first, pull out factories for each schema we wish to consider
+    $RFactories = [];
+    $Schemas = MetadataSchema::getAllSchemas();
+    ksort($Schemas);
+
+    foreach ($Schemas as $SchemaId => $Schema) {
+        if ($SchemaId != MetadataSchema::SCHEMAID_USER) {
+            $RFactories[$SchemaId] = new RecordFactory($SchemaId);
+        }
+    }
+    # for each reference field
+    foreach ($ReferenceArray as $FieldId => $ResourceReferences) {
+        # Foreach resource having a value for that field:
+        foreach ($ResourceReferences as $ResourceId => $RefTargets) {
+            $ThisResource = new Record($ResourceId);
+
+            # for each value that it has
+            foreach ($RefTargets as $RefTarget) {
+                # iterate through the schemas, looking for resources that
+                # match the Title or Url of our resource and stopping
+                # after the first match is found
+
+                $Candidates = [];
+                foreach ($RFactories as $SchemaId => $RFactory) {
+                    # construct an array of values that we're potentially looking for
+                    $ValuesToMatch = [];
+                    foreach (["Title", "Url"] as $TgtFieldName) {
+                        $TgtField = $Schemas[$SchemaId]->getFieldByMappedName(
+                            $TgtFieldName
+                        );
+                        if ($TgtField !== null) {
+                            $ValuesToMatch[$TgtField->id()] = $RefTarget;
+                        }
+                    }
+
+                    # if this schema had at least one field we can  search, look for matches
+                    if (count($ValuesToMatch) !== 0) {
+                        $Candidates = $RFactory->getIdsOfMatchingRecords(
+                            $ValuesToMatch,
+                            false
+                        );
+                    }
+                    # if we found any matches, then we're done
+                    if (count($Candidates) !== 0) {
+                        break;
+                    }
+                }
+
+                # complain if there was no match at all
+                if (count($Candidates) == 0) {
+                    $ReferenceMessages[] =
+                        "Unable to resolve reference from '".
+                        $ThisResource->get("Title")."' to '".$RefTarget."'";
+                } elseif (count($Candidates) == 1) {
+                    # if there was just one match, add the reference to the field
+                    $Value = $ThisResource->get($FieldId);
+                    $Value[] = $Candidates[0];
+                    $ThisResource->set($FieldId, $Value);
+                } else {
+                    # if somehow there were a pile of matches,  complain about that too
+                    $ReferenceMessages[] =
+                        "Reference from '".$ThisResource->get("Title")."' ".
+                        "to '".$RefTarget."' is not unique";
+                }
+            }
+        }
+    }
+    # remove file from database
+    $ToDelete = new File($_SESSION["FileId"]);
+    $ToDelete->destroy();
+}
+
+# register post-processing function with the application framework
+$AF->addPostProcessingCall(
+    __NAMESPACE__."\\postProcessingFn",
+    $FilePointer,
+    $ImportComplete
+);
+
+$Header = ($ImportComplete) ? "Import Completed Successfully" : "Importing Data";
+
+$InfoTable = new HtmlTable();
+$InfoTable->setTableClass("table table-striped");
+$InfoTable->addRowsWithHeaders([
+    ["Lines Read", $TotalLineCount - 1],
+    ["Resources Added", $ResourceCount],
+    ["Controlled Names Added", $ControlledNameCount],
+    ["Classifications Added", $ClassificationCount]
+]);
+
 # ----- DISPLAY --------------------------------------------------------------
+$AF->setPageTitle("Import Data");
 ?>
 
 <h1><?= $Header; ?></h1>
 
-<?= $H_DebugInfo; ?>
+<?= $DebugInfo; ?>
 
 <?= $InfoTable->getHtml(); ?>
 
-<?PHP if ($H_ImportComplete) { ?>
+<?PHP if ($ImportComplete) { ?>
 <p>Both the search and recommender databases must be rebuilt so that searching
 and the recommender system will work correctly with the new resources.</p>
 
@@ -71,9 +803,10 @@ and the recommender system will work correctly with the new resources.</p>
 <p>There were some problems with references in your data:</p>
 <ul>
         <?PHP foreach ($ReferenceMessages as $ReferenceMessage) { ?>
-<li><?= $ReferenceMessage; ?> </li>
+<li><?= $ReferenceMessage; ?></li>
         <?PHP } ?>
     <?PHP } ?>
+</ul>
 <?PHP } else { ?>
     <form name="importdata" method="post" action="index.php?P=ImportDataExecute">
         <?= $CancelButton->getHtml(); ?>

@@ -3,18 +3,19 @@
 #   FILE:  BotDetector.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-use Metavus\User;
 use Metavus\Plugins\MetricsRecorder;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
 use ScoutLib\Plugin;
 use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
 
 /**
  * Provides support for detecting whether a page was loaded by a person or by an
@@ -29,7 +30,7 @@ class BotDetector extends Plugin
     public function register(): void
     {
         $this->Name = "Bot Detector";
-        $this->Version = "1.4.0";
+        $this->Version = "1.4.2";
         $this->Description = "Provides support for detecting whether the"
                 ." current page load is by an actual person or by an automated"
                 ." <a href=\"http://en.wikipedia.org/wiki/Web_crawler\""
@@ -50,16 +51,6 @@ class BotDetector extends Plugin
             "Size" => 16
         ];
 
-        $this->CfgSetup["BotPruning"] = [
-            "Type" => "Flag",
-            "Label" => "Bot Pruning",
-            "Help" => "When a bot is detected, should all data for that bot's IP "
-            ."be pruned from data collected by MetricsRecorder?",
-            "OnLabel" => "Yes",
-            "OffLabel" => "No",
-            "Default" => true
-        ];
-
         $this->CfgSetup["BotDomainPatterns"] = [
             "Type" => "Paragraph",
             "Label" => "Bot Domain Patterns",
@@ -67,6 +58,7 @@ class BotDetector extends Plugin
                 ."hostnames of known bots. Patterns should "
                 ."be specified one per line, and use the syntax "
                 ."expected by the PHP function preg_match().",
+            "ValidateFunction" => [$this, "validateBotDomainPatterns"],
             "Default" => "%\\.bc\\.googleusercontent\\.com$%\n"
                 ."%\\.compute(-[0-9]+)?\\.amazonaws\\.com$%"
         ];
@@ -124,15 +116,6 @@ class BotDetector extends Plugin
     }
 
     /**
-     * Declare the events this plugin provides to the application framework.
-     * @return array Returns an array of events this plugin provides.
-     */
-    public function declareEvents(): array
-    {
-        return ["BotDetector_EVENT_CHECK_FOR_BOT" => ApplicationFramework::EVENTTYPE_FIRST];
-    }
-
-    /**
      * Hook the events into the application framework.
      * @return array Returns an array of events to be hooked into the
      *      application framework.
@@ -140,9 +123,8 @@ class BotDetector extends Plugin
     public function hookEvents(): array
     {
         return [
-            "BotDetector_EVENT_CHECK_FOR_BOT" => "CheckForBot",
-            "EVENT_IN_HTML_HEADER" => "GenerateHTMLForCanary",
-            "EVENT_HOURLY" => "CleanCacheData"
+            "EVENT_IN_HTML_HEADER" => "generateHTMLForCanary",
+            "EVENT_HOURLY" => "cleanCacheData"
         ];
     }
 
@@ -243,12 +225,6 @@ class BotDetector extends Plugin
         $AF = ApplicationFramework::getInstance();
         $DB = new Database();
 
-        # clean out Hostname cache data that was last fetched > 48 hours ago
-        $DB->query(
-            "DELETE FROM BotDetector_HostnameCache "
-            ."WHERE RetrievalDate < (NOW() - INTERVAL 48 HOUR)"
-        );
-
         # clean out DNS cache data that was last used > 2 hours ago
         $DB->query(
             "DELETE FROM BotDetector_HttpBLCache "
@@ -272,11 +248,10 @@ class BotDetector extends Plugin
         }
 
         # if we're recording metrics, we'll want to clean out metrics data
-        #  recorded in the 1 hour window between showing the canary and deciding
-        #  that a particular IP is likely a bot because they didn't load it
+        # for IPs that never loaded the canary
         if (PluginManager::getInstance()->pluginEnabled("MetricsRecorder")) {
             $DB->query(
-                "SELECT CanaryLastShown, INET_NTOA(IPAddress) AS IP "
+                "SELECT INET_NTOA(IPAddress) AS IP "
                 ." FROM BotDetector_CanaryData"
                 ." WHERE CanaryLastShown < (NOW() - INTERVAL 1 HOUR) "
                 ." AND CanaryLastLoaded IS NULL"
@@ -286,7 +261,7 @@ class BotDetector extends Plugin
             foreach ($BadIps as $Row) {
                 $AF->queueUniqueTask(
                     [__CLASS__, "cleanBotFromMetrics"],
-                    [ $Row["IP"], $Row["CanaryLastShown"] ],
+                    [ $Row["IP"] ],
                     ApplicationFramework::PRIORITY_LOW,
                     "Clean out metrics data for a bot at ".$Row["IP"]
                 );
@@ -305,20 +280,46 @@ class BotDetector extends Plugin
     }
 
     /**
-     * Clean out MetricsRecorder logs for a Bot.
-     * @param string $TargetIP IP address to clean up.
-     * @param string $StartTime Oldest date/time to remove.
+     * Validate BotDomainPatterns setting.
+     * @param string $FieldName Name of setting being validated.
+     * @param string $NewValue Value to check.
+     * @return string|null Error message or NULL on success.
      */
-    public static function cleanBotFromMetrics($TargetIP, $StartTime): void
+    public function validateBotDomainPatterns(
+        string $FieldName,
+        string $NewValue
+    ) : ?string {
+        $Patterns = preg_split('/\R+/', trim($NewValue), -1, PREG_SPLIT_NO_EMPTY);
+
+        if ($Patterns === false) {
+            return "Error validating ".$FieldName.", preg_split() failed.";
+        }
+
+        foreach ($Patterns as $Pattern) {
+            $Result = @preg_match($Pattern."i", "text.example.com");
+            if ($Result === false) {
+                return "Error in pattern '".$Pattern."'";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Clean out MetricsRecorder logs for a bot.
+     * @param string $TargetIP IP address to clean up.
+     */
+    public static function cleanBotFromMetrics($TargetIP): void
     {
         $PluginMgr = PluginManager::getInstance();
-        if ($PluginMgr->pluginReady("MetricsRecorder")) {
-            $MetricsRecorderPlugin = MetricsRecorder::getInstance();
-            $MetricsRecorderPlugin->removeEventsForIPAddress(
-                $TargetIP,
-                $StartTime
-            );
+        if (!$PluginMgr->pluginReady("MetricsRecorder")) {
+            return;
         }
+
+        MetricsRecorder::getInstance()
+            ->removeEventsForIPAddress(
+                $TargetIP
+            );
     }
 
     /**
@@ -346,21 +347,31 @@ class BotDetector extends Plugin
     }
 
     /**
-     * Perform background update of cached hostname for a given IP address.
-     * @param string $IP IP address to look up.
+     * Look up the host name for a given IP address. If it matches a
+     *     configured bot pattern, clean out metrics data for that
+     *     IP. Intended to be called in a background task because
+     *     getHostName() can be slow on a cache miss if remote DNS is
+     *     misconfigured.
+     * @param string $IP Address to look up.
      */
-    public static function updateHostnameCacheForIP(string $IP): void
+    public static function lookUpHostnameAndCleanMetrics(string $IP): void
     {
-        $Hostname = gethostbyaddr($IP);
-        $Result = (($Hostname !== false) && ($Hostname != $IP)) ? $Hostname : "";
+        $Hostname = StdLib::getHostName($IP); # (doing a lookup populates the cache)
 
-        $DB = new Database();
-        $DB->query(
-            "INSERT INTO BotDetector_HostnameCache (IPAddress, Hostname)"
-            ." VALUES (INET_ATON('".addslashes($IP)."'),'".addslashes($Result)."') "
-            ." ON DUPLICATE KEY UPDATE "
-            ."Hostname='".addslashes($Result)."', RetrievalDate=NOW()"
-        );
+        # if no hostname available, nothing to do
+        if ($Hostname == $IP) {
+            return;
+        }
+
+        # if hostname matches pattern for known bot domain, clean any metrics
+        # recorded for that IP
+        $Patterns = BotDetector::getBotDomainPatterns();
+        foreach ($Patterns as $Pattern) {
+            if (preg_match($Pattern, $Hostname)) {
+                BotDetector::cleanBotFromMetrics($IP);
+                return;
+            }
+        }
     }
 
     # ---- PRIVATE INTERFACE ---------------------------------------------------
@@ -370,17 +381,35 @@ class BotDetector extends Plugin
      * @param array $CheckMethods List of check methods to call.
      * @return bool TRUE if any of the methods detected a bot, FALSE otherwise.
      */
-    private function performChecks($CheckMethods) : bool
+    private function performChecks(array $CheckMethods) : bool
     {
         foreach ($CheckMethods as $Method) {
-            # if any of them locate a bot, we can stop checking
+            # run the check
             $Result = $this->$Method();
-            if ($Result !== null) {
-                $this->pruneMetricsIfNecessary($Result);
-                return $Result;
+
+            # if result was unsure, move on to the next check
+            if ($Result === null) {
+                continue;
             }
+
+            # if a bot was detected and we have a remote IP,
+            # delete metrics for this IP
+            if ($Result === true && isset($_SERVER["REMOTE_ADDR"])) {
+                $IP = $_SERVER["REMOTE_ADDR"];
+                ApplicationFramework::getInstance()
+                    ->queueUniqueTask(
+                        [__CLASS__, "cleanBotFromMetrics"],
+                        [ $IP ],
+                        ApplicationFramework::PRIORITY_LOW,
+                        "Clean out metrics data for a bot at ".$IP
+                    );
+            }
+
+            # and return the result
+            return $Result;
         }
 
+        # if everything was unsure, report not a bot
         return false;
     }
 
@@ -388,7 +417,7 @@ class BotDetector extends Plugin
      * Check if a user is logged in, assuming that the client is not a bot if so.
      * @return bool|null TRUE for bots, NULL (indicating 'unsure') otherwise
      */
-    private function checkIfUserLoggedIn()
+    private function checkIfUserLoggedIn(): ?bool
     {
         if (User::getCurrentUser()->isLoggedIn()) {
             return false;
@@ -399,7 +428,8 @@ class BotDetector extends Plugin
 
     /**
      * Check if the hostname of the client matches any of our configured bot
-     * domain patterns.
+     * domain patterns. Use StdLib::getHostNameFromCache() and on cache misses
+     * queues BotDetector::lookUpHostnameAndCleanMetrics() to run in the background.
      * @return bool|null TRUE for bots, NULL (indicating 'unsure') otherwise
      */
     private function checkHostname(): ?bool
@@ -409,41 +439,34 @@ class BotDetector extends Plugin
             return null;
         }
 
-        # if we have no bot domain patterns, nothing to do
-        $PatternSetting = $this->getConfigSetting("BotDomainPatterns");
-        if (strlen(trim($PatternSetting)) == 0) {
+        $Patterns = BotDetector::getBotDomainPatterns();
+        if (count($Patterns) == 0) {
             return null;
         }
 
+        # extract IP, look up hostname
         $IP = $_SERVER["REMOTE_ADDR"];
+        $Hostname = StdLib::getHostNameFromCache($IP);
 
-        # check to see if we have a cached hostname for this IP
-        $DB = new Database();
-        $DB->query(
-            "SELECT Hostname, RetrievalDate FROM BotDetector_HostnameCache "
-            ."WHERE IPAddress=INET_ATON('".addslashes($IP)."')"
-        );
-        $Row = $DB->fetchRow();
-
-        # if we have no data or if what we have is older than a day, refresh it
-        if (($Row === false) || ((time() - strtotime($Row["RetrievalDate"])) > 86400)) {
+        # if nothing in hostname cache, queue background task to populate it
+        # and return unsure
+        if ($Hostname === null) {
             ApplicationFramework::getInstance()
                 ->queueUniqueTask(
-                    [get_class($this), "updateHostnameCacheForIP"],
+                    [__CLASS__, "lookUpHostnameAndCleanMetrics"],
                     [$IP],
                     ApplicationFramework::PRIORITY_BACKGROUND,
-                    "Update hostname cache data for ".$IP
+                    "Look up host name for ".$IP." and check if it is a bot."
                 );
+            return null;
         }
 
-        # if no data, return unsure
-        if ($Row === false || $Row["Hostname"] == "") {
+        # if no hostname available, return unsure
+        if ($Hostname == $IP) {
             return null;
         }
 
         # if hostname matches pattern for known bot domain, report a bot
-        $Hostname = $Row["Hostname"];
-        $Patterns = explode("\n", trim($PatternSetting));
         foreach ($Patterns as $Pattern) {
             if (preg_match($Pattern, $Hostname)) {
                 return true;
@@ -483,7 +506,7 @@ class BotDetector extends Plugin
     private function checkHttpBLForBot(): ?bool
     {
         return $this->checkHttpBLWithCallback(
-            function ($BLValue) {
+            function ($BLValue): ?bool {
                 # if HttpBL has a record, but it's only marked as "suspicious" with no
                 # other annotations, then we're unsure
                 if ($BLValue["BotType"] == self::BT_SUSPICIOUS) {
@@ -504,7 +527,7 @@ class BotDetector extends Plugin
     private function checkHttpBLForSpamBot(): ?bool
     {
         return $this->checkHttpBLWithCallback(
-            function ($BLValue) {
+            function ($BLValue): ?bool {
                 # it httpBL has a listing for this IP, but it does not have
                 # the "comment spammer" flag set, then this is not a spam bot
                 if (($BLValue["BotType"] & self::BT_COMMENTSPAMMER) == 0) {
@@ -528,7 +551,7 @@ class BotDetector extends Plugin
      * @return bool|null TRUE for bots, FALSE for humans, NULL when unsure
      * @see getHttpBLRecordForClient
      */
-    private function checkHttpBLWithCallback($Callback): ?bool
+    private function checkHttpBLWithCallback(callable $Callback): ?bool
     {
         $BLValue = $this->getHttpBLRecordForClient();
 
@@ -650,7 +673,7 @@ class BotDetector extends Plugin
     /**
      * Check if the client viewing this page failed to load loaded the
      * BotDetector CSS/JS canary, indicating that they are probably a bot.
-     * @return bool TRUE for IPs that failed to load the canary, FALSE otherwise
+     * @return bool|null TRUE for IPs that failed to load the canary, NULL otherwise
      */
     private function checkIfCanaryWasLoaded(): ?bool
     {
@@ -668,25 +691,25 @@ class BotDetector extends Plugin
         $Data = $DB->fetchRow();
         if ($Data === false
             || $Data["CanaryLastLoaded"] !== null
-            || (time() - strtotime($Data["CanaryLastShown"])  < 3600 )) {
-            # presume not a bot when
+            || (time() - strtotime($Data["CanaryLastShown"])  < 2 * self::CANARY_TTL)) {
+            # return unsure when
             #  - We've never shown them the canary
             #  - When they've loaded the canary
             #  - Or when it's been less than 3600s since they
             #    were last shown the canary
-            return false;
+            return null;
         }
 
         # but if we *have* shown them the canary
-        # and it's been more than 3600s, presume a bot
+        # and it's been more than 3600s, then this is a bot
         return true;
     }
 
     /**
      * Check if the current pageload is an SQL injection scan.
-     * @return mixed TRUE for SQL injections, NULL otherwise.
+     * @return ?bool TRUE for SQL injections, NULL otherwise.
      */
-    private function checkForSqlInjection()
+    private function checkForSqlInjection(): ?bool
     {
         foreach ($this->SqlInjectionRegexes as $Injection) {
             if (preg_match('/'.$Injection.'/i', $_SERVER['REQUEST_URI'])) {
@@ -695,24 +718,6 @@ class BotDetector extends Plugin
         }
 
         return null;
-    }
-
-    /**
-     * Prune metrics if configured to do so.
-     * @param mixed $IsBot TRUE for bots, FALSE for humans, NULL if unsure.
-     */
-    private function pruneMetricsIfNecessary($IsBot): void
-    {
-        # if we don't know the remote hostname, nothing to do
-        if (!isset($_SERVER["REMOTE_ADDR"])) {
-            return;
-        }
-
-        $PluginMgr = PluginManager::getInstance();
-        if ($IsBot === true && $this->getConfigSetting("BotPruning") &&
-            $PluginMgr->pluginReady("MetricsRecorder")) {
-            MetricsRecorder::getInstance()->removeEventsForIPAddress($_SERVER["REMOTE_ADDR"]);
-        }
     }
 
     /**
@@ -738,6 +743,53 @@ class BotDetector extends Plugin
         return $Result;
     }
 
+
+    /**
+     * Get the list of bot domain patterns. Returns an empty array when
+     * BotDetector is not ready or when no bot domain patterns were
+     * configured.
+     * @return array Bot domain patterns.
+     */
+    private static function getBotDomainPatterns(): array
+    {
+        static $Patterns = null;
+
+        # if we weren't ready yet, return an empty list
+        $PluginMgr = PluginManager::getInstance();
+        if (!$PluginMgr->pluginReady("BotDetector")) {
+            return [];
+        }
+
+        # if we have a cached list, return it
+        if ($Patterns !== null) {
+            return $Patterns;
+        }
+
+        $Patterns = [];
+
+        $BotDetector = BotDetector::getInstance();
+        $PatternSetting = $BotDetector->getConfigSetting("BotDomainPatterns");
+        if ($PatternSetting === null) {
+            return $Patterns;
+        }
+
+        $PatternSetting = trim($PatternSetting);
+        if (strlen($PatternSetting) == 0) {
+            return $Patterns;
+        }
+
+        $PatternSetting = preg_split('/\R+/', $PatternSetting, -1, PREG_SPLIT_NO_EMPTY);
+        if ($PatternSetting === false) {
+            return $Patterns;
+        }
+
+        foreach ($PatternSetting as $Pattern) {
+            $Patterns[] = $Pattern."i";
+        }
+
+        return $Patterns;
+    }
+
     /**
      * Determine if the configured HttpBL access key is in the correct format.
      * @param ?string $AccessKey Access key value to test.
@@ -750,6 +802,8 @@ class BotDetector extends Plugin
         }
         return (bool)preg_match('/[a-z]{12}/', $AccessKey);
     }
+
+    const CANARY_TTL = 1800; # seconds
 
     # constants describing BotType bitset returned by Http:BL
     const BT_SEARCHENGINE   = 0;
@@ -964,12 +1018,6 @@ class BotDetector extends Plugin
                INDEX (IPAddress),
                INDEX (LastUsed),
                INDEX (Retrieved) )",
-        "HostnameCache" => "CREATE TABLE BotDetector_HostnameCache (
-               IPAddress INT UNSIGNED,
-               Hostname TEXT,
-               RetrievalDate TIMESTAMP DEFAULT NOW(),
-               PRIMARY KEY (IPAddress),
-               INDEX (RetrievalDate) )",
         "CanaryData" => "CREATE TABLE BotDetector_CanaryData (
                IPAddress INT UNSIGNED,
                CanaryLastShown TIMESTAMP NULL DEFAULT NULL,

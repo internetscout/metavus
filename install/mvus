@@ -4,7 +4,7 @@
 #   FILE:  mvus (Metavus command line utility)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -14,6 +14,7 @@ use Exception;
 use ReflectionClass;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
+use ScoutLib\DatabaseQueryException;
 use ScoutLib\Plugin;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
@@ -31,6 +32,32 @@ class CommandLineUtility
     const BOOTSTRAP_FILE = "objects/Bootloader.php";
     const CLU_VERSION = "2.0.25";
     const REQUIRED_SOFTWARE_VERSION = "1.2.0";
+
+    # SQL errors we can ignore when doing upgrades
+    # (IMPORTANT: keep this list in sync with the lists in installmv.php
+    #       and in plugins/Developer/Developer.php)
+    private $SqlErrorsWeCanIgnore = [
+        "/ALTER TABLE /i" => "/Table '[a-z0-9_.]+' already exists/i",
+        "/ALTER TABLE [a-z0-9_]+ (CHANGE|MODIFY) COLUMN/i" => "/Unknown column/i",
+        "/ALTER TABLE [a-z0-9_]+ ADD /i" => "/Duplicate column name/i",
+        "/ALTER TABLE [a-z0-9_]+ ADD INDEX/i" => "/Duplicate key name/i",
+        "/ALTER TABLE [a-z0-9_]+ ADD PRIMARY KEY/i" => "/Multiple primary key/i",
+        "/ALTER TABLE [a-z0-9_]+ DROP COLUMN/i" => "/Check that column/i",
+        "/ALTER TABLE [a-z0-9_]+ RENAME/i" =>
+                "/Table '[a-z0-9_.]+' doesn't exist/i",
+        "/CREATE (UNIQUE )?INDEX [a-z0-9_]+ ON [a-z0-9_]+/i" =>
+                "/Duplicate key name/i",
+        "/CREATE TABLE /i" => "/Table '[a-z0-9_.]+' already exists/i",
+        "/DROP INDEX /i" => "/check that column\/key exists/i",
+        "/DROP TABLE /i" => "/Unknown table '[a-z0-9_.]+'/i",
+        # (situation-specific patterns, that should eventually be removed)
+        "/CREATE TABLE [a-z0-9_]+_old AS SELECT/i" =>
+                "/Table '[a-z0-9_.]+' doesn't exist/i",
+        "/INSERT INTO [a-z]+ SELECT \* FROM [a-z0-9_]+_old/i" =>
+                "/Table '[a-z0-9_.]+' doesn't exist/i",
+        "/ALTER TABLE RecordImageInts/i" =>
+                "/Table '[a-z0-9_.]+' doesn't exist/i",
+    ];
 
     private $TablesToExcludeFromSparseDatabaseDump = [
         "AF_CachedPageCallbacks",
@@ -338,6 +365,7 @@ class CommandLineUtility
             "Description" => "run any needed system or database upgrades",
             "Usage" => "",
             "Function" => "runUpgrades",
+            "NoBootstrap" => true,
             ],
         "user" => [
             "SubCommands" => [
@@ -553,7 +581,14 @@ class CommandLineUtility
 
         # set up operating environment
         require_once(self::BOOTSTRAP_FILE);
-        (\Metavus\Bootloader::getInstance())->boot();
+        try {
+            (\Metavus\Bootloader::getInstance())->boot();
+        } catch (Exception $Ex) {
+            $Location = basename($Ex->getFile()).":".$Ex->getLine();
+            print "Error encountered at ".$Location." during startup:\n    "
+                    .$Ex->getMessage()."\n";
+            exit(1);
+        }
 
         # check to make sure we have at least the minimum required Metavus version
         if (!version_compare(METAVUS_VERSION, self::REQUIRED_SOFTWARE_VERSION, ">=")) {
@@ -1054,15 +1089,30 @@ class CommandLineUtility
         if (is_writable($FileName) && is_dir($FileName)) {
             # load environment so portal name is available
             require_once(self::BOOTSTRAP_FILE);
-            (\Metavus\Bootloader::getInstance())->boot();
+            try {
+                (\Metavus\Bootloader::getInstance())->boot();
+            } catch (Exception $Ex) {
+                $Location = basename($Ex->getFile()).":".$Ex->getLine();
+                print "Error encountered at ".$Location." during startup:\n    "
+                        .$Ex->getMessage()."\n";
+                exit(1);
+            }
 
             # normalize portal name for use in file name
             $IntConfig = InterfaceConfiguration::getInstance();
             $PortalName = $IntConfig->getString("PortalName");
             $PortalName = preg_replace('/[^A-Za-z0-9 ]/', '', $PortalName);
+            if (!is_string($PortalName)) {
+                throw new Exception("Error normalizing portal name. [1]");
+            }
             $PortalName = preg_replace('/\s+/', '_', $PortalName);
             if (!is_string($PortalName)) {
-                throw new Exception("Error normalizing portal name.");
+                throw new Exception("Error normalizing portal name. [2]");
+            }
+
+            # if portal name was empty use name of current directory
+            if (strlen($PortalName) == 0) {
+                $PortalName = basename((string)getcwd());
             }
 
             # if we are currently in a home directory
@@ -1097,8 +1147,13 @@ class CommandLineUtility
         # build base dump command
         $DbAuth = $this->getAuthArgsForMysqlCommands();
         $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
-        $BaseDumpCmd = "mysqldump ".$DbAuth." --no-tablespaces --skip-lock-tables"
-                ." --single-transaction ".$DbName;
+        $DbNameArg = escapeshellarg($DbName);
+        $FileNameArg = escapeshellarg($FileName);
+        $BaseDumpCmd = "mysqldump ".$DbAuth
+                ." --no-tablespaces"
+                ." --skip-lock-tables"
+                ." --single-transaction"
+                ." ".$DbNameArg;
 
         # add charset workaround option to command to avoid double-encoded UTF-8
         #    https://www.inforbiro.com/blog/mysqldump-and-utf-8-problem
@@ -1112,12 +1167,12 @@ class CommandLineUtility
         }
 
         # build beginning of dump command
-        $Cmd = "( ".$BaseDumpCmd." --no-data ; ".$BaseDumpCmd." --no-create-info";
+        $Cmd = "( ".$BaseDumpCmd." --no-data && ".$BaseDumpCmd." --no-create-info";
 
         # add tables to exclude if sparse dump requested
         if ($Sparse) {
             foreach ($this->TablesToExcludeFromSparseDatabaseDump as $Table) {
-                $Cmd .= " --ignore-table=".$DbName.".".$Table;
+                $Cmd .= " --ignore-table=".escapeshellarg($DbName.".".$Table);
             }
         }
 
@@ -1132,12 +1187,12 @@ class CommandLineUtility
         }
 
         # complete dump command
-        $Cmd .= " > ".$FileName;
+        $Cmd .= " > ".$FileNameArg;
 
         # dump database to file
         print $MessagePrefix." database".($Sparse ? " (sparse version)" : "")
                 ." to ".$FileName."\n";
-        exec($Cmd);
+        $this->executeCheckedShellCommand($Cmd, "database dump");
     }
 
     /**
@@ -1240,14 +1295,16 @@ class CommandLineUtility
 
         $DbAuth = $this->getAuthArgsForMysqlCommands();
         $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
+        $DbNameArg = escapeshellarg($DbName);
+        $FileNameArg = escapeshellarg($FileName);
 
         print "Reloading database from ".$FileName."\n";
 
-        $Cmd = "mysqladmin ".$DbAuth." -f drop ".$DbName;
-        exec($Cmd);
+        $Cmd = "mysqladmin ".$DbAuth." -f drop ".$DbNameArg;
+        $this->executeCheckedShellCommand($Cmd, "database drop");
 
-        $Cmd = "mysqladmin ".$DbAuth." create ".$DbName;
-        exec($Cmd);
+        $Cmd = "mysqladmin ".$DbAuth." create ".$DbNameArg;
+        $this->executeCheckedShellCommand($Cmd, "database create");
 
         if (preg_match("%.gz$%", $FileName)) {
             $CatCmd = "gzcat";
@@ -1257,8 +1314,8 @@ class CommandLineUtility
             $CatCmd = "cat";
         }
 
-        $Cmd = $CatCmd." ".$FileName
-                ." | mysql ".$DbAuth." --max_allowed_packet=512M ".$DbName;
+        $Cmd = $CatCmd." ".$FileNameArg
+                ." | mysql ".$DbAuth." --max_allowed_packet=512M ".$DbNameArg;
 
         # set charset if needed
         $MysqlVersion = exec("mysql --version");
@@ -1269,7 +1326,7 @@ class CommandLineUtility
             $Cmd .=" --default-character-set=latin1";
         }
 
-        exec($Cmd);
+        $this->executeCheckedShellCommand($Cmd, "database import");
     }
 
     /**
@@ -1368,7 +1425,7 @@ class CommandLineUtility
     {
         $AllSchemas = MetadataSchema::getAllSchemas();
         uasort($AllSchemas, function ($A, $B) {
-                    return $A->Id() <=> $B->Id();
+                    return $A->id() <=> $B->id();
         });
 
         if (isset($Args[0])) {
@@ -1412,7 +1469,15 @@ class CommandLineUtility
                         {  return $A->name() <=> $B->name();  });
                 $Fields = array_merge($Fields, $SchemaFields);
             }
-            print "FIELD TYPE: ".reset($Fields)->typeAsName()."\n";
+            # report empty field lists without trying to read a field instance
+            if (count($Fields) === 0) {
+                print "No fields found for type ".$Args[0].".\n";
+                return;
+            }
+            $Field = reset($Fields);
+            if ($Field !== false) {
+                print "FIELD TYPE: ".$Field->typeAsName()."\n";
+            }
             printf($RowFormat, "NAME", "SCHEMA", "ID", "ENA");
             foreach ($Fields as $Field) {
                 printf(
@@ -1456,11 +1521,11 @@ class CommandLineUtility
     {
         $Schemas = MetadataSchema::getAllSchemas();
         usort($Schemas, function ($A, $B) {
-                    return $A->Id() <=> $B->Id();
+                    return $A->id() <=> $B->id();
         });
         printf("%2s %-30s\n", "ID", "SCHEMA NAME");
         foreach ($Schemas as $Schema) {
-            printf("%2d %-30s\n", $Schema->Id(), $Schema->Name());
+            printf("%2d %-30s\n", $Schema->id(), $Schema->name());
         }
     }
 
@@ -1535,19 +1600,38 @@ class CommandLineUtility
      */
     private function runUpgrades(array $Args): void
     {
+        $this->bootstrapForUpgradeCommand();
+
+        # check whether Developer plugin is available to run upgrade
+        $DPlugin = \Metavus\Plugins\Developer::getInstance(true);
         $PluginMgr = PluginManager::getInstance();
         if (!$PluginMgr->pluginReady("Developer")) {
-            print "Developer plugin (required to run upgrades) is not available.\n";
-            exit(1);
+            # temporarily enable Developer plugin
+            $DPlugin->isEnabled(true, false);
+
+            # bail out if Developer plugin is still not available
+            // @phpstan-ignore-next-line booleanNot.alwaysTrue
+            if (!$PluginMgr->pluginReady("Developer")) {
+                print "Developer plugin (required to run upgrades) is not available.\n";
+                exit(1);
+            }
         }
-        $DPlugin = $PluginMgr->getPlugin("Developer");
-        $DPlugin = \Metavus\Plugins\Developer::getInstance();
+
         $UpgradeMethod = [$DPlugin, "commandUpgrade"];
         if (!is_callable($UpgradeMethod)) {
             print "Developer::commandUpgrade() method not found in Developer plugin.\n";
             exit(1);
         }
-        call_user_func($UpgradeMethod);
+
+        # run upgrade and return an error status if it fails
+        try {
+            call_user_func($UpgradeMethod);
+        } catch (Exception $Ex) {
+            $Location = basename($Ex->getFile()).":".$Ex->getLine();
+            print "Error encountered at ".$Location." during upgrade:\n    "
+                    .$Ex->getMessage()."\n";
+            exit(1);
+        }
     }
 
     /**
@@ -1813,7 +1897,7 @@ class CommandLineUtility
         print "Current privileges for user ".$User->name().":\n";
         $UserPrivs = $User->getPrivList();
         foreach ($this->getAvailablePrivileges() as $PrivId => $PrivName) {
-            if (array_search($PrivId, $UserPrivs)) {
+            if (array_search($PrivId, $UserPrivs) !== false) {
                 print "    ".$PrivName." (".$PrivId.")\n";
             }
         }
@@ -2068,6 +2152,42 @@ class CommandLineUtility
     # ---- Utility Methods -- (in alphabetical order) ----------------------------
 
     /**
+     * Bootstrap the operating environment for the upgrade command, attempting to
+     * recover from database query failures by running a matching DB upgrade file.
+     */
+    private function bootstrapForUpgradeCommand(): void
+    {
+        require_once(self::BOOTSTRAP_FILE);
+
+        # try to boot normally before falling back to a targeted database upgrade
+        $Bootloader = Bootloader::getInstance();
+        try {
+            $Bootloader->boot();
+        } catch (DatabaseQueryException $Ex) {
+            $this->recoverFromUpgradeBootstrapFailure($Ex);
+            try {
+                # (turn off warnings while retrying boot)
+                $OldReportingSetting = error_reporting();
+                error_reporting($OldReportingSetting & ~E_WARNING);
+                $Bootloader->boot();
+                error_reporting($OldReportingSetting);
+            } catch (Exception $RetryEx) {
+                error_reporting($OldReportingSetting);
+                $this->reportExceptionAndExit($RetryEx, "startup");
+            }
+        } catch (Exception $Ex) {
+            $this->reportExceptionAndExit($Ex, "startup");
+        }
+
+        # check to make sure we have at least the minimum required Metavus version
+        if (!version_compare(METAVUS_VERSION, self::REQUIRED_SOFTWARE_VERSION, ">=")) {
+            print "Metavus version ".self::REQUIRED_SOFTWARE_VERSION
+                    ." or later is required.\n";
+            exit(1);
+        }
+    }
+
+    /**
      * Build command to grep through source code files.
      * @param array $GrepArgs Arguments for grep command.
      * @return string Command.
@@ -2167,7 +2287,7 @@ class CommandLineUtility
         if (count($Matches) == 0) {
             print "Unknown ".$CmdType.": ".$Arg."\n";
             $this->$ErrFn();
-            exit(0);
+            exit(1);
         }
 
         # if single match, return that
@@ -2184,7 +2304,36 @@ class CommandLineUtility
         print "Ambiguous ".$CmdType.": ".$Arg."\n";
         print "Could be one of: ".join(", ", $Matches)."\n";
         $this->$ErrFn();
-        exit(0);
+        exit(1);
+    }
+
+    /**
+     * Execute a shell command and exit with an error if it fails.
+     * Pipeline commands are run with bash pipefail enabled when bash is available.
+     * @param string $Command Shell command to run.
+     * @param string $Description Description of operation for error messages.
+     */
+    private function executeCheckedShellCommand(
+        string $Command,
+        string $Description
+    ): void {
+        $ExecCommand = $Command." 2>&1";
+        if ((strpos($Command, "|") !== false)
+                && self::shellCommandAvailable("bash")) {
+            $ExecCommand = "bash -o pipefail -c ".escapeshellarg($Command)." 2>&1";
+        }
+
+        # run command and capture output so errors can be reported to the user
+        $Output = [];
+        $ReturnCode = 0;
+        exec($ExecCommand, $Output, $ReturnCode);
+        if ($ReturnCode !== 0) {
+            print "Error during ".$Description." (exit code ".$ReturnCode.").\n";
+            if (count($Output) !== 0) {
+                print implode("\n", $Output)."\n";
+            }
+            exit(1);
+        }
     }
 
     /**
@@ -2253,6 +2402,44 @@ class CommandLineUtility
     }
 
     /**
+     * Get the current Metavus version from the VERSION file.
+     * @return string Current Metavus version.
+     * @throws Exception If VERSION cannot be read.
+     */
+    private function getCurrentMetavusVersion(): string
+    {
+        $Version = file_get_contents("VERSION");
+        if ($Version === false) {
+            throw new Exception("Unable to read VERSION file.");
+        }
+        return trim($Version);
+    }
+
+    /**
+     * Get DBUpgrade files that match the current Metavus version.
+     * @return array Matching DBUpgrade file paths.
+     * @throws Exception If VERSION cannot be read.
+     */
+    private function getDatabaseUpgradeFilesForCurrentVersion(): array
+    {
+        # include core files in list before local
+        $Version = $this->getCurrentMetavusVersion();
+        $FileNames = [
+            "install/DBUpgrades/DBUpgrade--".$Version.".sql",
+            "local/install/DBUpgrades/DBUpgrade--".$Version.".sql",
+        ];
+
+        # build list of readable matching upgrade files
+        $UpgradeFiles = [];
+        foreach ($FileNames as $FileName) {
+            if (is_readable($FileName)) {
+                $UpgradeFiles[] = $FileName;
+            }
+        }
+        return $UpgradeFiles;
+    }
+
+    /**
      * Get metadata field type.
      * @param string $Name Plugin name.
      * @return int|null Metadata field type (constant) or NULL if no matching type found.
@@ -2317,7 +2504,7 @@ class CommandLineUtility
         }
         file_put_contents($FileName, $LoginInfo);
         register_shutdown_function("unlink", $FileName);
-        $AuthArgs = " --defaults-extra-file=".$FileName." ";
+        $AuthArgs = " --defaults-extra-file=".escapeshellarg($FileName)." ";
         return $AuthArgs;
     }
 
@@ -2593,5 +2780,106 @@ class CommandLineUtility
             }
             print "    ".$InterfaceName.$InterfaceLabel."\n";
         }
+    }
+
+    /**
+     * Attempt to recover from upgrade command bootstrap failure caused by a
+     * database query exception.
+     * @param DatabaseQueryException $BootException Exception thrown during boot.
+     */
+    private function recoverFromUpgradeBootstrapFailure(
+        DatabaseQueryException $BootException
+    ): void {
+        try {
+            $UpgradeFiles = $this->getDatabaseUpgradeFilesForCurrentVersion();
+        } catch (Exception $Ex) {
+            $this->reportExceptionAndExit($Ex, "database upgrade recovery");
+        }
+
+        if (count($UpgradeFiles) === 0) {
+            print "No matching DBUpgrade file found for current Metavus version.\n";
+            $this->reportExceptionAndExit($BootException, "startup");
+        }
+
+        $this->setUpDatabaseAccessFromConfig();
+
+        # run upgrade file queries with normal query error display disabled
+        $DbErrorDisplayState = Database::displayQueryErrors();
+        Database::displayQueryErrors(false);
+        try {
+            foreach ($UpgradeFiles as $UpgradeFile) {
+                print "Running database upgrade (".basename($UpgradeFile).").\n";
+                $DB = new Database();
+                $DB->setQueryErrorsToIgnore($this->SqlErrorsWeCanIgnore);
+                try {
+                    $Result = $DB->executeQueriesFromFile($UpgradeFile);
+                } catch (Exception $Ex) {
+                    $this->reportExceptionAndExit($Ex, "database upgrade");
+                }
+                if ($Result === null) {
+                    print "Database upgrade SQL error from file ".$UpgradeFile
+                            .": ".$DB->queryErrMsg()."\n";
+                    exit(1);
+                }
+            }
+        } finally {
+            Database::displayQueryErrors($DbErrorDisplayState);
+        }
+    }
+
+    /**
+     * Print exception information and exit with an error status.
+     * @param Exception $Ex Exception that was encountered.
+     * @param string $Activity Activity being performed when exception was thrown.
+     * @return never
+     */
+    private function reportExceptionAndExit(Exception $Ex, string $Activity): void
+    {
+        $Location = basename($Ex->getFile()).":".$Ex->getLine();
+        print "Error encountered at ".$Location." during ".$Activity.":\n    "
+                .$Ex->getMessage()."\n";
+        exit(1);
+    }
+
+    /**
+     * Check whether a shell command is available for command execution.
+     * @param string $CommandName Command to look for.
+     * @return bool TRUE if command appears to be available, otherwise FALSE.
+     */
+    private static function shellCommandAvailable(string $CommandName): bool
+    {
+        static $CommandAvailable = [];
+
+        if (isset($CommandAvailable[$CommandName])) {
+            return $CommandAvailable[$CommandName];
+        }
+
+        # ask the shell to locate the command and cache the result
+        $Output = [];
+        $ReturnCode = 0;
+        exec(
+            "command -v ".escapeshellarg($CommandName)." 2>/dev/null",
+            $Output,
+            $ReturnCode
+        );
+        $CommandAvailable[$CommandName] = (
+            ($ReturnCode === 0) && (count($Output) !== 0)
+        );
+        return $CommandAvailable[$CommandName];
+    }
+
+    /**
+     * Set up database access from the software configuration file.
+     */
+    private function setUpDatabaseAccessFromConfig(): void
+    {
+        $this->loadConfigFile();
+        $DBInfo = $GLOBALS["G_Config"]["Database"];
+        Database::setGlobalServerInfo(
+            $DBInfo["UserName"],
+            $DBInfo["Password"],
+            $DBInfo["Host"]
+        );
+        Database::setGlobalDatabaseName($DBInfo["DatabaseName"]);
     }
 }

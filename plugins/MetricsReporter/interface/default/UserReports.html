@@ -3,11 +3,13 @@
 #   FILE:  UserReports.html (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Graph;
+namespace Metavus;
+use Exception;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -34,37 +36,37 @@ $GraphItems = [
 ];
 foreach ($GraphItems as $GraphItem) {
     foreach ($$GraphItem as $Key => $Val) {
-        $$GraphItem[$Key] = [$Val];
+        ${$GraphItem}[$Key] = [$Val];
     }
 }
 
-$UserCountGraph = new Graph(Graph::TYPE_DATE, $H_RegUserCount);
-$UserCountGraph->XLabel("Date");
-$UserCountGraph->YLabel("Number of Registered Users");
-$UserCountGraph->Title("<h2>Registered Users</h2>");
+$UserCountGraph = new LineChart();
+$UserCountGraph->data($H_RegUserCount);
+$UserCountGraph->axisType(LineChart::AXIS_DATE);
+$UserCountGraph->yLabel("Number of Registered Users");
 
-$PrivUserCountGraph = new Graph(Graph::TYPE_DATE, $H_PrivUserCount);
-$PrivUserCountGraph->XLabel("Date");
-$PrivUserCountGraph->YLabel("Number of Privileged Users");
-$PrivUserCountGraph->Title("<h2>Registered Privileged Users</h2>");
+$PrivUserCountGraph = new LineChart();
+$PrivUserCountGraph->data($H_PrivUserCount);
+$PrivUserCountGraph->axisType(LineChart::AXIS_DATE);
 
-$NewUsersDay = new Graph(Graph::TYPE_DATE_BAR, $H_NewUsersPerDay);
-$NewUsersDay->XLabel("Date");
-$NewUsersDay->YLabel("New User Registrations");
-$NewUsersDay->Title("<h2>New Users Registrations</h2>");
-$NewUsersDay->Scale(Graph::WEEKLY);
+$NewUsersDay = new BarChart();
+$NewUsersDay->data($H_NewUsersPerDay);
+$NewUsersDay->axisType(BarChart::AXIS_TIME_WEEKLY);
 
-$LoginsDay = new Graph(Graph::TYPE_DATE_BAR, $H_LoginsPerDay);
-$LoginsDay->XLabel("Date");
-$LoginsDay->YLabel("User Logins");
-$LoginsDay->Title("<h2>User Logins</h2>");
-$LoginsDay->Scale(Graph::WEEKLY);
+$LoginsDay = new BarChart();
+$LoginsDay->data($H_LoginsPerDay);
+$LoginsDay->axisType(BarChart::AXIS_TIME_WEEKLY);
+
 ?>
 <h1>User Metrics</h1>
-<?PHP $UserCountGraph->Display(); ?>
+<h2>Registered Users</h2>
+<?PHP $UserCountGraph->display("user-count"); ?>
 
-<?PHP $PrivUserCountGraph->Display(); ?>
+<h2>Registered Privileged Users</h2>
+<?PHP $PrivUserCountGraph->display("priv-users"); ?>
 
-<?PHP $NewUsersDay->Display(); ?>
+<h2>New Users Registrations</h2>
+<?PHP $NewUsersDay->display("registrations"); ?>
 
-<?PHP $LoginsDay->Display(); ?>
+<h2>User Logins</h2>
+<?PHP $LoginsDay->display("logins"); ?>

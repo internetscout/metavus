@@ -31,7 +31,7 @@ class PluginUpgrade_1_2_5 extends PluginUpgrade
         $Schema = new MetadataSchema();
         if ($Schema->fieldExists("Full Record View Count")) {
             $Field = $Schema->getField("Full Record View Count");
-            $Field->owner("MetricsRecorder");
+            $Field->setOwner("MetricsRecorder");
             $Field->description(str_replace(
                 "Reporter",
                 "Recorder",
@@ -40,7 +40,7 @@ class PluginUpgrade_1_2_5 extends PluginUpgrade
         }
         if ($Schema->fieldExists("URL Field Click Count")) {
             $Field = $Schema->getField("URL Field Click Count");
-            $Field->owner("MetricsRecorder");
+            $Field->setOwner("MetricsRecorder");
             $Field->description(str_replace(
                 "Reporter",
                 "Recorder",

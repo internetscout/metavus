@@ -3,18 +3,16 @@
 #   FILE:  EditPage.html (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
 use Exception;
-use Metavus\Plugins\Pages;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\StdLib;
 
-# ----- SETUP ----------------------------------------------------------------
+# ----- SETUP I --------------------------------------------------------------
 
 $AF = ApplicationFramework::getInstance();
 
@@ -22,315 +20,88 @@ $AF = ApplicationFramework::getInstance();
 if (!isset($H_DisplayMode)) {
     throw new Exception("Variable \$H_DisplayMode not set.");
 }
-if (!isset($H_Page)) {
-    throw new Exception("Variable \$H_Page not set.");
-}
-if (!isset($H_ReturnTo)) {
-    $H_ReturnTo = null;
-}
-if (!isset($H_Content)) {
-    throw new Exception("Variable \$H_Content not set.");
-}
-if (!isset($H_Summary)) {
-    throw new Exception("Variable \$H_Summary not set.");
-}
-if (!isset($H_Keywords)) {
-    throw new Exception("Variable \$H_Keywords not set.");
-}
-if (!isset($H_SchemaId)) {
-    throw new Exception("Variable \$H_SchemaId not set.");
-}
-if (!isset($H_Privileges)) {
-    throw new Exception("Variable \$H_Privileges not set.");
-}
-
-# CKEditor setup
-require_once($AF->gUIFile("CKEditorSetup.php"));
 
 # HTML page setup
 $Heading = ($H_DisplayMode == "Adding") ? "Add New Page" : "Edit Page";
 $AF->setPageTitle($Heading);
 
-$AllowedKeywords = Pages::getInstance()->getAllowedInsertionKeywords();
-
-$InsertLeftButton = new HtmlButton("← Insert-L");
-
-$InsertRightButton = new HtmlButton("Insert-R →");
-
-$DeleteImageButton = new HtmlButton("Delete");
-$DeleteImageButton->setIcon("Delete.svg");
-$DeleteImageButton->addSemanticClass("btn-danger");
-$DeleteImageButton->makeSubmitButton();
-
-$UploadImageButton = new HtmlButton("Upload");
-$UploadImageButton->setIcon("Upload.svg");
-
-$LinkFileButton = new HtmlButton("Link");
-$LinkFileButton->setIcon("Check.svg");
-
-$DeleteFileButton = new HtmlButton("Delete");
-$DeleteFileButton->setIcon("Delete.svg");
-$DeleteFileButton->addSemanticClass("btn-danger");
-$DeleteFileButton->makeSubmitButton();
-
-$UploadFileButton = new HtmlButton("Upload");
-$UploadFileButton->setIcon("Upload.svg");
-
-$SubmitChangesButton = new HtmlButton($H_DisplayMode == "Adding" ? "Add" : "Save");
-$SubmitChangesButton->setIcon($H_DisplayMode == "Adding" ? "Check.svg" : "Disk.svg");
-
-$CancelButton = new HtmlButton("Cancel");
-$CancelButton->setIcon("Cross.svg");
-
-# ----- DISPLAY --------------------------------------------------------------
+# ----- DISPLAY (errors) -----------------------------------------------------
 
 print "<h1>".$Heading."</h1>\n";
 
 # display any error messages
 if (isset($H_ErrorMsgs)) {
-    ?><ul class="mv-form-error"><?PHP
-foreach ($H_ErrorMsgs as $Msg) {
-    print "<li>".$Msg."</li>\n";
+    foreach ($H_ErrorMsgs as $Msg) {
+        print "<p class='alert alert-danger'>".$Msg."</p>";
+    }
+    return;
 }
-?></ul><?PHP
+
+# ----- SETUP II -------------------------------------------------------------
+
+# verify that required incoming variables are set
+if (!isset($H_FormUI)) {
+    throw new Exception("Variable \$H_FormUI not set.");
 }
 
-if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
-    # make sure that we have some required values
-    # (interim fix until page can be refactored to use FormUI)
-    $H_Title = $H_Title ?? "";
-    $H_CleanUrl = $H_CleanUrl ?? "";
 
-    ?>
+$SubmitButtonHtml = $H_FormUI->getSubmitButtonHtml(
+    $H_DisplayMode == "Adding" ? "Add" : "Save",
+    $H_DisplayMode == "Adding" ? "Check.svg" : "Disk.svg"
+);
 
-    <form method="POST" action="?P=P_Pages_EditPage" enctype="multipart/form-data"
-        novalidate="novalidate" class="priv-form">
-    <input type="hidden" name="F_Id" value="<?= $H_Page->id();  ?>">
-    <input type="hidden" name="F_ReturnTo" value="<?= htmlspecialchars((string)$H_ReturnTo) ?>">
-    <input type="hidden" name="F_DisplayMode" value="<?= htmlspecialchars($H_DisplayMode) ?>">
-    <input type="hidden" name="F_ImageToDelete" id="ImageToDelete" value="">
-    <input type="hidden" name="F_FileToDelete" id="FileToDelete" value="">
-    <table class="table table-striped">
-        <tbody>
-        <tr>
-            <th><label for="F_Title">Title</label></th>
-            <td>
-                <input type="text" size="60" maxlength="120" name="F_Title"
-                    value="<?= htmlspecialchars((string)$H_Title)  ?>" id="F_Title">
-            </td>
-            <td><i>Displayed in the browser title bar, and also
-            used by search engines who index the page.</i></td>
-        </tr>
-        <tr class="cw-content-tallrow">
-            <th><label for="F_Content">Page<br/>Content</label></th>
-            <td colspan="2">
-                <textarea rows="20" cols="80" class="ckeditor"
-                    name="F_Content" id="F_Content"><?=
-                    htmlspecialchars($AF->escapeInsertionKeywords(
-                        $H_Content,
-                        $AllowedKeywords
-                    )) ?></textarea>
-            </td>
-        </tr>
-        <tr>
-            <th><label for="F_Summary">Summary</label></th>
-            <td><textarea rows="5" cols="60" name="F_Summary" id="F_Summary"><?=
-                    htmlspecialchars($AF->escapeInsertionKeywords(
-                        $H_Summary,
-                        $AllowedKeywords
-                    )) ?></textarea>
-            </td>
-            <td><i>Displayed in search results, both on the site and by
-                    external search engines like Google.  If left blank, this
-                    will be auto-generated from the page content.</i></td>
-        </tr>
-        <tr>
-            <th><label for="F_Keywords">Keywords</label></th>
-            <td>
-                <input type="text" size="60" maxlength="120" name="F_Keywords" value="<?=
-                        htmlspecialchars($H_Keywords)  ?>" id="F_Keywords">
-            </td>
-            <td><i>Additional keywords that might be used to search
-            for this page.  (OPTIONAL)</i></td>
-        </tr>
-        <tr>
-            <th><label for="F_CleanUrl">Clean URL Path</label></th>
-            <td><input type="text" size="60" maxlength="120" name="F_CleanUrl"
-                    value="<?= htmlspecialchars((string)$H_CleanUrl) ?>" id="F_CleanUrl">
-            </td>
-            <td><i>If a &quot;clean URL&quot; path (e.g. </i>my/new/page<i>) is set,
-                    the page will be reachable at that address.</i></td>
-        </tr>
-        <tr>
-            <th><label for="F_Image">Images</label></th>
-            <td colspan="2">
-                <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                <?PHP
-                $Images = $H_Page->get("Images", true);
-                foreach ($Images as $Image) {
-                    $Id = $Image->id();
-                    $ImageUrl = $Image->url("mv-image-preview");
-                    $SafeAltText = htmlspecialchars($Image->AltText(), ENT_QUOTES |  ENT_HTML5);
-                    $InsertLeftCommand = defaulthtmlentities(
-                        "mv_insertImage("
-                        ."CKEDITOR.instances['F_Content'],"
-                        ."'left',"
-                        ."'".$ImageUrl."',"
-                        ."'".$SafeAltText."',"
-                        ."false"
-                        .");"
-                    );
-                    $InsertRightCommand = defaulthtmlentities(
-                        "mv_insertImage("
-                        ."CKEDITOR.instances['F_Content'],"
-                        ."'right',"
-                        ."'".$ImageUrl."',"
-                        ."'".$SafeAltText."',"
-                        ."false"
-                        .");"
-                    );
-                    $InsertLeftButton->setOnclick($InsertLeftCommand);
-                    $InsertRightButton->setOnclick($InsertRightCommand);
-                    $DeleteImageButton->setOnclick("$('#ImageToDelete').val('" . $Id . "')");
-                    ?><tr>
-                        <td><img src="<?=
-                                defaulthtmlentities($Image->url("mv-image-thumbnail"))
-                        ?>"></td>
-                        <td>Alt&nbsp;Text:&nbsp;<input type="text" size="30"
-                                maxlength="120" name="F_ImageAltText_<?= $Id
-                                ?>" value="<?= $SafeAltText ?>"></td>
-                        <td>
-                            <?= $InsertLeftButton->getHtml(); ?>
-                            <?= $InsertRightButton->getHtml(); ?>
-                            <?= $DeleteImageButton->getHtml(); ?>
-                        </td>
-                    </tr><?PHP
-                }
-                ?>
-                <tr>
-                    <td><input type="file" name="F_Image"/></td>
-                    <td>Alt&nbsp;Text:&nbsp;<input type="text" size="30" maxlength="120"
-                                name="F_ImageAltText"></td>
-                    <td><?= $UploadImageButton->getHtml(); ?></td>
-                </tr>
-                </table>
-            </td>
-        </tr>
-        <tr>
-            <th><label for="F_File">Files</label></th>
-            <td colspan="2">
-                <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                <?PHP
-                $Files = $H_Page->get("Files", true);
-                foreach ($Files as $File) {
-                    $Id = $File->id();
-                    $LinkCmd = defaulthtmlentities(
-                        "CKEDITOR.instances['F_Content'].mode != 'wysiwyg'"
-                        ."? alert('Link button only works in rich text mode')"
-                        .": CKEDITOR.instances['F_Content'].insertHtml("
-                            ."'<a href=\"".$File->getLink()."\">'"
-                            ."+CKEDITOR.instances['F_Content'].getSelection()"
-                        .".getSelectedText()+'</a>');"
-                    );
-                    $LinkFileButton->setOnclick("$LinkCmd");
-                    $DeleteFileButton->setOnclick("$('#FileToDelete').val('" . $Id . "');");
-                    ?><tr>
-                        <td>
-                            <a src="<?= defaulthtmlentities($File->getLink()); ?>">
-                                <?= defaulthtmlentities($File->name()); ?>
-                            </a>
-                        </td>
-                        <td>
-                            <?= $LinkFileButton->getHtml(); ?>
-                            <?= $DeleteFileButton->getHtml(); ?>
-                        </td>
-                    </tr><?PHP
-                }
-                ?>
-                <tr>
-                    <td><input type="file" name="F_File" /></td>
-                    <td><?= $UploadFileButton->getHtml(); ?></td>
-                </tr>
-                </table>
-            </td>
-        </tr>
-        <tr>
-            <th>Privileges Required<br/>for Viewing Page:</th>
-            <td colspan="2">
-            <?PHP
-                $PrivUI = new PrivilegeEditingUI($H_SchemaId);
-                $PrivUI->displaySet("ViewingPrivs", $H_Privileges);
-            ?>
-            </td>
-        </tr>
-        <?PHP  if ($H_DisplayMode !== "Adding") {  ?>
-        <tr>
-            <th>Created:</th>
-            <td colspan="2">
-                <?PHP
-                $User = current($H_Page->get("Added By Id", true));
-                $Created = StdLib::getPrettyTimestamp($H_Page->get("Creation Date"), true)
-                        ." by <i>".(($User instanceof User)
-                        ? $User->name() : "(unknown)")."</i>";
-                $Created = str_replace(" ", "&nbsp;", $Created);
-                print $Created;
-                ?>
-            </td>
-        </tr>
-        <tr>
-            <th>Last Modified:</th>
-            <td colspan="2">
-                <?PHP
-                $User = current($H_Page->get("Last Modified By Id", true));
-                $Modified = StdLib::getPrettyTimestamp($H_Page->get("Date Last Modified"), true)
-                        ." by <i>".(($User instanceof User)
-                        ? $User->name() : "(unknown)")."</i>";
-                $Modified = str_replace(" ", "&nbsp;", $Modified);
-                print $Modified;
-                ?>
-            </td>
-        </tr>
-        <?PHP } ?>
-        <tr>
-            <td></td>
-            <td colspan="2">
-                <?= $SubmitChangesButton->getHtml(); ?>
-                <?= $CancelButton->getHtml(); ?>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-    </form>
-    <script type="text/javascript">
-      // use the full toolbar
-      $(document).ready(function(){
-        // use the full toolbar
-        CKEDITOR.config.toolbar = "CwisFull";
+$PageControlCss = $AF->gUIFile("Pages_Controls.css");
+$ThemeCss = $AF->gUIFile("MV-Theme-CKEditor.css");
 
-        // set the dimensions of the editor
-        CKEDITOR.config.height = 600;
-        CKEDITOR.config.width = 712;
+# ----- DISPLAY (success) ----------------------------------------------------
 
-        // allow classes for images
-        CKEDITOR.config.extraAllowedContent = 'img(*)';
+# CKEditor setup
+require_once($AF->gUIFile("CKEditorSetup.php"));
 
-        // add in our style sheet so edited text will display properly
-        CKEDITOR.config.contentsCss.push('<?PHP
-                $AF->pUIFile("Pages_Controls.css");  ?>');
+?>
+<form method="POST" action="index.php?P=P_Pages_EditPage"
+      enctype="multipart/form-data" class="priv-form">
+  <?PHP FormUI::displayErrorBlock(); ?>
+  <?PHP $H_FormUI->displayFormTable(); ?>
+  <?= $SubmitButtonHtml ?>
+  <?= $H_FormUI->getSubmitButtonHtml("Cancel", "Cross.svg"); ?>
+</form>
 
-        // add H1 to list of available styles
-        CKEDITOR.config.stylesSet.shift();
-        CKEDITOR.config.stylesSet.unshift( {"name": 'Heading 1', 'element': 'h1' } );
-        CKEDITOR.config.stylesSet.unshift( {"name": 'Paragraph', 'element': 'p' } );
+<script type="text/javascript">
+$(document).ready(function(){
+    // use the full toolbar
+    CKEDITOR.config.toolbar = "CwisFull";
 
-        // add tab header and tab end to list of available styles
-        CKEDITOR.config.stylesSet.push(
-           {"name": 'Tab Header', 'element': 'h2', 'attributes' : {'class' : 'mv-tab-start'} } );
-        CKEDITOR.config.stylesSet.push(
-           {"name": 'End Tab Marker', 'element': 'h4', 'attributes' : {'class' : 'mv-tab-end'} } );
+    // set the dimensions of the editor
+    CKEDITOR.config.height = 600;
+    CKEDITOR.config.width = 712;
 
-        CKEDITOR.config.contentsCss.push('<?= $AF->gUIFile("MV-Theme-CKEditor.css")  ?>');
-      });
-    </script>
-    <?PHP
-}
+    // allow classes for images
+    CKEDITOR.config.extraAllowedContent = 'img(*)';
+
+    // add in our style sheets
+    CKEDITOR.config.contentsCss.push('<?= $PageControlCss ?>');
+    CKEDITOR.config.contentsCss.push('<?= $ThemeCss ?>');
+
+    // add H1 to list of available styles
+    CKEDITOR.config.stylesSet.shift();
+    CKEDITOR.config.stylesSet.unshift( {"name": 'Heading 1', 'element': 'h1' } );
+    CKEDITOR.config.stylesSet.unshift( {"name": 'Paragraph', 'element': 'p' } );
+
+    // add tab header and tab end to list of available styles
+    CKEDITOR.config.stylesSet.push(
+        {
+            "name": 'Tab Header',
+            'element': 'h2',
+            'attributes' : {'class' : 'mv-tab-start'}
+        }
+    );
+    CKEDITOR.config.stylesSet.push(
+        {
+            "name": 'End Tab Marker',
+            'element': 'h4',
+            'attributes' : {'class' : 'mv-tab-end'}
+        }
+    );
+});
+</script>

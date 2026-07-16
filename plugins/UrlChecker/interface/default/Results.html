@@ -384,7 +384,7 @@ $NumCols = $H_NumUrlFields > 1 ? 7 : 6;
       <tr><td colspan="<?= $NumCols ?>"><?PHP $H_TransportUI->display() ?></td></tr>
     </tfoot>
     <tbody>
-        <?PHP if (count($H_InvalidUrls)) { ?>
+        <?PHP if (count($H_InvalidUrls) !== 0) { ?>
             <?PHP foreach ($H_InvalidUrls as $Url) { ?>
                 <?PHP printInvalidResourceUrl($Url, $H_NumUrlFields, $H_StatusCode);  ?>
             <?PHP } ?>

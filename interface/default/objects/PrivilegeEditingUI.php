@@ -76,7 +76,7 @@ class PrivilegeEditingUI
         ];
 
         # add all requested Schemas
-        foreach ($Schemas as $SchemaId => $Schema) {
+        foreach ($Schemas as $Schema) {
             # iterate over the supported types so that fields are
             # returned grouped by type
             foreach ($SupportedFieldTypesInOrder as $Type) {
@@ -243,7 +243,7 @@ class PrivilegeEditingUI
     * Construct new privilege sets from available form ($_POST) data.
     * @return array Returns an array of PrivilegeSet objects.
     */
-    public function getPrivilegeSetsFromForm()
+    public function getPrivilegeSetsFromForm(): array
     {
         # for each form field
         $Sets = [];
@@ -306,7 +306,7 @@ class PrivilegeEditingUI
     * @param string $FFPrefix Prefix to use for form fields.
     * @param mixed $Selected The value to select. (OPTIONAL)
     */
-    private function displaySubjectField($FFPrefix, $Selected = null): void
+    private function displaySubjectField(string $FFPrefix, $Selected = null): void
     {
         # construct the list of options to present for this field
         # present all the metadata fields using their FieldIds
@@ -334,13 +334,13 @@ class PrivilegeEditingUI
             $FieldOptions = [];
             foreach ($ScFields as $Id => $Field) {
                 $SafeClassType = strtolower($Field->TypeAsName());
-                $FieldOptions[$Id] = "[".$AllSchemas[$ScId]->AbbreviatedName()."] "
+                $FieldOptions[$Id] = "[".$AllSchemas[$ScId]->abbreviatedName()."] "
                         .$Field->GetDisplayName();
                 $OptionCSS[$Id] = "priv priv-option priv-field-subject "
                         ."priv-type-".$SafeClassType."_field";
             }
 
-            $OptLabel = $AllSchemas[$ScId]->Name();
+            $OptLabel = $AllSchemas[$ScId]->name();
             $Options[$OptLabel] = $FieldOptions;
         }
 
@@ -385,7 +385,7 @@ class PrivilegeEditingUI
     * @param string $FFPrefix Prefix to use for form fields.
     * @param mixed $Selected The value to select. (OPTIONAL)
     */
-    private function displayOperatorField($FFPrefix, $Selected = null): void
+    private function displayOperatorField(string $FFPrefix, $Selected = null): void
     {
         $Options = [];
         $OptionCSS = [];
@@ -424,7 +424,7 @@ class PrivilegeEditingUI
     * @param mixed $Selected The value to select for the select box. (OPTIONAL)
     * @param mixed $Value The existing value for the input box. (OPTIONAL)
     */
-    private function displayValueField($FFPrefix, $Selected = null, $Value = null): void
+    private function displayValueField(string $FFPrefix, $Selected = null, $Value = null): void
     {
         $this->printPrivilegeValueSelectorField($FFPrefix, $Selected);
         $this->printPrivilegeValueInputField($FFPrefix, $Value);
@@ -441,7 +441,7 @@ class PrivilegeEditingUI
     * @return PrivilegeSet Returns a PrivilegeSet object.
     * @throws Exception If invalid data is given.
     */
-    private function extractPrivilegeSetFromFormData(array &$FormData)
+    private function extractPrivilegeSetFromFormData(array &$FormData): \Metavus\PrivilegeSet
     {
         $NewPrivilegeSet = new PrivilegeSet();
         $Privileges = $this->getPrivileges();
@@ -612,7 +612,7 @@ class PrivilegeEditingUI
         if (!isset($this->OptionValues)) {
             $this->OptionValues = [];
 
-            foreach ($this->Fields as $FieldId => $Field) {
+            foreach ($this->Fields as $Field) {
                 if ($Field->Type() == MetadataSchema::MDFTYPE_OPTION) {
                     $this->OptionValues[$Field->Id()] = $Field->GetPossibleValues();
                 }

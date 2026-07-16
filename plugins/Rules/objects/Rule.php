@@ -109,7 +109,7 @@ class Rule extends Item
                 : $NewValue->data();
         $StoredValue = $this->DB->updateValue("SearchParams", $NewStoredValue);
         return new SearchParameterSet(
-            strlen($StoredValue) ? $StoredValue : null
+            strlen($StoredValue) !== 0 ? $StoredValue : null
         );
     }
 
@@ -193,7 +193,7 @@ class Rule extends Item
             );
 
             # perform action with target record list (if we have records)
-            if (count($TargetRecordIds)) {
+            if (count($TargetRecordIds) !== 0) {
                 $this->performAction($UserId, $TargetRecordIds);
             }
         }
@@ -377,6 +377,10 @@ class Rule extends Item
                         $UFactory->findUsersThatMeetRequirements($PrivSet)
                     );
                 }
+                $AllDisabledUserIds = array_keys(
+                    $UFactory->getUsersWithPrivileges(PRIV_USERDISABLED)
+                );
+                $UserIds = array_diff($UserIds, $AllDisabledUserIds);
                 break;
 
             default:
@@ -403,7 +407,7 @@ class Rule extends Item
         switch ($this->action()) {
             case self::ACTION_SENDEMAIL:
                 $PrivSet = $this->userSelectionCriteria();
-                return count($PrivSet->getAllConditions()) ? true : false;
+                return count($PrivSet->getAllConditions()) !== 0 ? true : false;
         }
         return false;
     }
@@ -477,7 +481,7 @@ class Rule extends Item
         }
 
         # filter records for user down to those viewable by user (if we have records)
-        if (count($UserRecordIds)) {
+        if (count($UserRecordIds) !== 0) {
             $User = new User($UserId);
             $UserRecordIds = RecordFactory::multiSchemaFilterNonViewableRecords(
                 $UserRecordIds,
@@ -498,7 +502,7 @@ class Rule extends Item
     {
         $NewStoredValue = ($NewValue === null) ? null : serialize($NewValue);
         $StoredValue = $this->DB->updateValue("LastMatchingIds", $NewStoredValue);
-        $Value = strlen(trim($StoredValue)) ? unserialize($StoredValue) : [];
+        $Value = strlen(trim($StoredValue)) !== 0 ? unserialize($StoredValue) : [];
         return $Value;
     }
 

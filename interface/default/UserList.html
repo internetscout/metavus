@@ -10,12 +10,137 @@
 
 namespace Metavus;
 
-use Exception;
+use ScoutLib\Database;
+use ScoutLib\Date;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$ItemsPerPage = 25;
+
+# determine result ordering SQL clause
+$SortField = StdLib::getFormValue("SF", "UserName");
+$ReverseSort = intval(StdLib::getFormValue("RS", 0));
+$SortClause = " ORDER BY `".addslashes($SortField)."` "
+        .($ReverseSort !== 0 ? "DESC" : "ASC")
+        .", UserId "
+        .($ReverseSort !== 0 ? "DESC" : "ASC");
+
+# load IDs of users with specified privilege
+$DB = new Database();
+$Privilege = (isset($_POST["F_Privilege"]) && ($_POST["F_Privilege"] != -1))
+        ? $_POST["F_Privilege"]
+        : ((isset($_GET["F_Privilege"]) && ($_GET["F_Privilege"] != -1))
+            ? $_GET["F_Privilege"]
+            : null);
+if ($Privilege !== null) {
+    $PrivilegeObj = (new PrivilegeFactory())->getPrivilegeWithValue($Privilege);
+    if (($PrivilegeObj !== null) && $PrivilegeObj->name() === "Is Logged In") {
+        $Query = "SELECT DISTINCT UserId, `".addslashes($SortField)."`"
+                ." FROM APUsers WHERE LoggedIn=1";
+    } else {
+        $Query = "SELECT DISTINCT AU.UserId, AU.`".addslashes($SortField)."`"
+                ." FROM APUsers AS AU, APUserPrivileges AS AP"
+                ." WHERE AP.Privilege = '".addslashes($Privilege)."'"
+                ." AND AU.UserId = AP.UserId";
+    }
+} else {
+    $Query = "SELECT DISTINCT UserId, `".addslashes($SortField)."`"
+            ." FROM APUsers";
+}
+$DB->query($Query.$SortClause);
+$PrivUserIds = $DB->fetchColumn("UserId");
+$ExtraParams = (!is_null($Privilege) && strlen($Privilege))
+        ? "&F_Privilege=".$Privilege : "";
+# load IDs of users that meet specified search criteria
+if (StdLib::getFormValue("F_Field") && StdLib::getFormValue("F_Condition")
+    && strlen(StdLib::getFormValue("F_SearchText"))) {
+    $ConditionMap = [
+        "contains" => "contains",
+        "equals" => "=",
+        "is before" => "<",
+        "is after" => ">",
+    ];
+    $Condition = $ConditionMap[StdLib::getFormValue("F_Condition")];
+    $ExtraParams .= "&F_Condition=".$Condition;
+    $SearchText = StdLib::getFormValue("F_SearchText");
+    $ExtraParams .= "&F_SearchText=".$SearchText;
+    if ($Condition == "contains") {
+        $Target = "LIKE '%".addslashes($SearchText)."%'";
+    } else {
+        $Target = $Condition." '".addslashes($SearchText)."'";
+    }
+    $ExtraParams .= "&F_Field=".StdLib::getFormValue("F_Field");
+    if (StdLib::getFormValue("F_Field") == "ALL") {
+        $AllFields = [
+            "UserName",
+            "EMail",
+            "RealName",
+            "AddressLineOne",
+            "AddressLineTwo",
+            "State",
+            "ZipCode",
+            "Country",
+            "LastLoginDate",
+            "CreationDate",
+        ];
+        foreach ($AllFields as $Field) {
+            if (($Condition == "contains") && preg_match("/Date/", $Field)) {
+                $Field = "DATE_FORMAT(".$Field.", '%M %D %Y %l:%i%p')";
+            }
+            if (isset($WhereClause)) {
+                $WhereClause .= " OR ".$Field." ".$Target;
+            } else {
+                $WhereClause = " ".$Field." ".$Target;
+            }
+        }
+    } elseif (StdLib::getFormValue("F_Field") == "Address") {
+        $WhereClause = " AddressLineOne ".$Target." OR AddressLineTwo ".$Target;
+    } elseif ((StdLib::getFormValue("F_Field") == "LastLoginDate")
+        || (StdLib::getFormValue("F_Field") == "CreationDate")) {
+        if ($Condition == "contains") {
+            $WhereClause = "DATE_FORMAT(`".addslashes(StdLib::getFormValue("F_Field"))
+                    ."`, '%M %D %Y %l:%i%p') ".$Target;
+        } else {
+            $SearchDate = new Date($SearchText);
+            if (strlen($SearchDate->formatted()) !== 0) {
+                $WhereClause = $SearchDate->sqlCondition(
+                    StdLib::getFormValue("F_Field"),
+                    null,
+                    $Condition
+                );
+            } else {
+                $WhereClause = "1 = 0";
+            }
+        }
+    } else {
+        $WhereClause = "`".addslashes(StdLib::getFormValue("F_Field"))."` ".$Target;
+    }
+    $DB->query("SELECT UserId FROM APUsers WHERE ".$WhereClause.$SortClause);
+    $SearchUserIds = $DB->fetchColumn("UserId");
+} else {
+    $SearchUserIds = $PrivUserIds;
+}
+
+# combine user ID lists to those that met all criteria
+$UserIds = array_intersect($PrivUserIds, $SearchUserIds);
+
+# if ConfirmRemoveUser page was accessed previously but then user clicked
+# elsewhere instead of continuing the removal, these won't be cleared
+foreach (["UserRemoveArray", "OkayToRemoveUsers"] as $Val) {
+    if (isset($_SESSION[$Val])) {
+        unset($_SESSION[$Val]);
+    }
+}
+
 $RemoveButton = new HtmlButton("Remove Selected Users");
 $RemoveButton->setIcon("Delete.svg");
 $RemoveButton->makeSubmitButton();
@@ -28,38 +153,93 @@ $EditButton = new HtmlButton("Edit");
 $EditButton->setIcon("Pencil.svg");
 $EditButton->addSemanticClass("btn-primary");
 
-# checks to see if required incoming variables are set
-if (!isset($H_StartingIndex)) {
-    throw new Exception("Required variable \$H_StartingIndex is not initialized");
-}
-if (!isset($G_SortField)) {
-    throw new Exception("Required variable \$G_SortField is not initialized");
-}
-if (!isset($G_SortAscending)) {
-    throw new Exception("Required variable \$G_SortAscending is not initialized");
-}
-if (!isset($G_UserIdChecksum)) {
-    throw new Exception("Required variable \$G_UserIdChecksum is not initialized");
-}
-if (!isset($G_Users)) {
-    throw new Exception("Required variable \$G_Users is not initialized");
-}
-if (!isset($H_ExtraParams)) {
-    throw new Exception("Required variable \$H_ExtraParams is not initialized");
-}
-if (!isset($H_TransportUI)) {
-    throw new Exception("Required variable \$H_TransportUI is not initialized");
-}
-if (!isset($G_TotalItems)) {
-    throw new Exception("Required variable \$G_TotalItems is not initialized");
-}
-if (!isset($H_ItemsPerPage)) {
-    throw new Exception("Required variable \$H_ItemsPerPage is not initialized");
+$Fields = [
+    "Select" => [
+        "Heading" => '<span id="select-all" class="mv-form-nonessential">Select</span>',
+        "Sortable" => false,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($User): string {
+            $SafeUserId = defaulthtmlentities($User->Id());
+            return '<input type="checkbox" id="userid_'.$SafeUserId.'"'
+                .' name="userid_'.$SafeUserId.'" value="'.$SafeUserId.'"'
+                .(($User->Id() == User::getCurrentUser()->id()) ? ' disabled="disabled"' : "")
+                .'/>';
+        }
+    ],
+    "UserName" => [
+        "Heading" => "User",
+        "ValueFunction" => function ($User): string {
+            $SafeUserId = defaulthtmlentities($User->Id());
+            return '<label for="userid_'.$SafeUserId.'">'.$User->get("UserName").'</label>';
+        },
+        "DefaultSortField" => true
+    ],
+    "EMail" => [
+        "Heading" => "Email"
+    ],
+    "CreationDate" => [
+        "Heading" => "Signup Date",
+        "ValueFunction" => function ($User): string {
+            return StdLib::getPrettyTimestamp(
+                $User->Get("CreationDate"),
+                true,
+                "(unknown)",
+                false
+            );
+        }
+    ],
+    "LastLoginDate" => [
+        "Heading" => "Last Login",
+        "ValueFunction" => function ($User): string {
+            return StdLib::getPrettyTimestamp(
+                $User->Get("LastLoginDate"),
+                true,
+                "(never logged in)",
+                false
+            );
+        }
+    ],
+    "Edit" => [
+        "Heading" => "",
+        "Sortable" => false,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($User) use ($EditButton): string {
+            $EditButton->setLink(
+                "index.php?P=EditUser&ID=".$User->Id()
+            );
+            return $EditButton->getHtml();
+        },
+        "AlignRight" => true
+    ],
+];
+$UserList = new ItemListUI($Fields);
+$UserList->setNoItemsMessage("<i>(no users were found that met the specified criteria)</i>");
+$UserList->setTotalItemCount(count($UserIds));
+$UserList->setItemsPerPage($ItemsPerPage);
+$UserList->sort();
+
+# calculate user ID list checksum to use to know when to reset paging
+$UserIdChecksum = md5(serialize($UserIds));
+if ($UserIdChecksum != StdLib::getFormValue("F_UserIdChecksum")) {
+    $UserList->setStartingIndex(0);
 }
 
-$AF = ApplicationFramework::getInstance();
+# pare list of user IDs down to segment to be displayed
+$StartingIndex = $UserList->getStartingIndex();
+$UserIds = array_slice($UserIds, $StartingIndex ?? 0, $ItemsPerPage);
+
+# load users
+$Users = [];
+foreach ($UserIds as $Id) {
+    $Users[$Id] = new User($Id);
+}
+$UserList->setItems($Users);
+
+$ExtraParams .= "&F_UserIdChecksum=".$UserIdChecksum;
+$UserList->setBaseLink("index.php?P=UserList".$ExtraParams);
 
 # ----- DISPLAY --------------------------------------------------------------
+
 $AF->setPageTitle("User List");
 ?>
 
@@ -71,18 +251,17 @@ $AF->setPageTitle("User List");
     </div>
     <div class="row">
       <div class="col">
-        <form name="UserList" action="index.php?P=UserList&amp;&amp;SI=<?PHP
-              print $H_StartingIndex;  ?>">
+        <form name="UserList" action="index.php?P=UserList&amp;SI=<?= $StartingIndex; ?>">
         <input type="hidden" name="P" value="UserList">
-        <input type="hidden" name="SF" value="<?= $G_SortField ?>">
-        <input type="hidden" name="SA" value="<?= $G_SortAscending ?>">
-        <input type="hidden" name="F_UserIdChecksum" value="<?= $G_UserIdChecksum;  ?>">
+        <input type="hidden" name="SF" value="<?= $SortField ?>">
+        <input type="hidden" name="RS" value="<?= $ReverseSort ?>">
+        <input type="hidden" name="F_UserIdChecksum" value="<?= $UserIdChecksum; ?>">
         <b>Privilege:</b>
         <?PHP
         $PFactory = new PrivilegeFactory();
-        $PrivList = $PFactory->GetPrivileges(true, false);
+        $PrivList = $PFactory->getPrivileges(true, false);
         foreach ($PrivList as $Id => $PrivName) {
-            $PrivList[$Id] = preg_replace("/ Administrator/", " Admin", $PrivList[$Id]);
+            $PrivList[$Id] = preg_replace("/ Administrator/", " Admin", $PrivName);
             $PrivList[$Id] = preg_replace(
                 "/Can Post Resource Comments/",
                 "Can Post Comments",
@@ -95,8 +274,8 @@ $AF->setPageTitle("User List");
             $PrivList,
             StdLib::getFormValue("F_Privilege")
         );
-        $OptList->SubmitOnChange(true);
-        $OptList->PrintHtml();
+        $OptList->submitOnChange(true);
+        $OptList->printHtml();
         ?>
         &nbsp;&nbsp;&nbsp;&nbsp;
         <b>Search:</b>
@@ -114,7 +293,7 @@ $AF->setPageTitle("User List");
             "CreationDate" => "Signup Date",
         ];
         $OptList = new HtmlOptionList("F_Field", $FieldList, StdLib::getFormValue("F_Field"));
-        $OptList->PrintHtml();
+        $OptList->printHtml();
         print "\n";
         $ConditionList = [
             "contains" => "contains",
@@ -127,10 +306,10 @@ $AF->setPageTitle("User List");
             $ConditionList,
             StdLib::getFormValue("F_Condition")
         );
-        $OptList->PrintHtml();
+        $OptList->printHtml();
         ?>
         <input type="text" name="F_SearchText" id="SearchText" size="15" value="<?PHP
-              print StdLib::getFormValue("F_SearchText");  ?>"/>
+              print StdLib::getFormValue("F_SearchText"); ?>"/>
               <?= $SearchButton->getHtml() ?>
         </form>
       </div>
@@ -138,61 +317,28 @@ $AF->setPageTitle("User List");
 </div>
 
 <form method="post" action="index.php?P=SelectEditUserListComplete">
+    <div class="mv-content-user_list">
+        <?= $UserList->getHtml(); ?>
+    </div>
 
-<?PHP
-$HeaderLink = "index.php?P=UserList&amp;F_UserIdChecksum=".$G_UserIdChecksum;
-$FieldsToAddToLink = [
-    "F_Privilege",
-    "F_Field",
-    "F_Condition",
-    "F_SearchText",
-];
-foreach ($FieldsToAddToLink as $Field) {
-    if (StdLib::getFormValue($Field)) {
-        $HeaderLink .= "&amp;".$Field."=".urlencode(StdLib::getFormValue($Field));
-    }
-}
-$UserHeaderLink = $HeaderLink."&amp;SF=UserName&amp;SA="
-        .(($G_SortField != "UserName") ? 1 : ($G_SortAscending ? 0 : 1));
-$UserHeaderChar = ($G_SortField != "UserName") ? ""
-        : ($G_SortAscending ? "&uarr;" : "&darr;");
-$EmailHeaderLink = $HeaderLink."&amp;SF=EMail&amp;SA="
-        .(($G_SortField != "EMail") ? 1 : ($G_SortAscending ? 0 : 1));
-$EmailHeaderChar = ($G_SortField != "EMail") ? ""
-        : ($G_SortAscending ? "&uarr;" : "&darr;");
-$SignupHeaderLink = $HeaderLink."&amp;SF=CreationDate&amp;SA="
-        .(($G_SortField != "CreationDate") ? 0 : ($G_SortAscending ? 0 : 1));
-$SignupHeaderChar = ($G_SortField != "CreationDate") ? ""
-        : ($G_SortAscending ? "&uarr;" : "&darr;");
-$LoginHeaderLink = $HeaderLink."&amp;SF=LastLoginDate&amp;SA="
-        .(($G_SortField != "LastLoginDate") ? 0 : ($G_SortAscending ? 0 : 1));
-$LoginHeaderChar = ($G_SortField != "LastLoginDate") ? ""
-        : ($G_SortAscending ? "&uarr;" : "&darr;");
-?>
-
-<table class="table table-striped mv-content-user_list">
-  <thead>
-    <tr>
-      <th>
-        <span id="select-all" class="mv-form-nonessential">Select</span>
-        <?PHP if (count($G_Users)) { ?>
+        <?PHP if (count($Users) !== 0) { ?>
           <script type="text/javascript">
             (function($){
-              var $checkbox = $("<img>");
+              var $checkbox = $('<img alt="Select All">');
               $checkbox.prop({
-                "src": "<?PHP ApplicationFramework::getInstance()->PUIFile('checkbox.png'); ?>",
+                "src": "<?PHP ApplicationFramework::getInstance()->pUIFile('checkbox.png'); ?>",
                 "title": "Select all of the user accounts on this page."});
               $checkbox.css({"cursor": "pointer"});
               $checkbox.insertAfter("#select-all");
               $checkbox.click(function(){
                 var $table = $(this).parentsUntil("table").parent(),
-                    $checkboxes = $("input[type='checkbox']", $table),
+                    $checkboxes = $("input[type='checkbox'][disabled!='disabled']", $table),
                     numCheckboxes = $checkboxes.length,
                     numCheckedBoxes = $checkboxes.filter(":checked").length;
 
                 // select all the checkboxes unless they are all checked, in
                 // which case they should be deselected
-                if (numCheckboxes != numCheckedBoxes) {
+                if (numCheckboxes !== numCheckedBoxes) {
                   $checkboxes.prop("checked", true);
                 } else {
                   $checkboxes.prop("checked", false);
@@ -201,83 +347,8 @@ $LoginHeaderChar = ($G_SortField != "LastLoginDate") ? ""
             }(jQuery));
           </script>
         <?PHP } ?>
-      </th>
-      <th><a href="<?= $UserHeaderLink; ?>">User</a> <?PHP
-            print $UserHeaderChar;  ?></th>
-      <th><a href="<?= $EmailHeaderLink; ?>">Email</a> <?PHP
-            print $EmailHeaderChar;  ?></th>
-      <th><a href="<?= $SignupHeaderLink; ?>">Signup Date</a> <?PHP
-            print $SignupHeaderChar;  ?></th>
-      <th><a href="<?= $LoginHeaderLink; ?>">Last Login</a> <?PHP
-            print $LoginHeaderChar;  ?></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-<?PHP
-if (count($G_Users)) {
-    foreach ($G_Users as $Id => $UserObj) {
-        $SignupDate = StdLib::getPrettyTimestamp(
-            $UserObj->Get("CreationDate"),
-            true,
-            "(unknown)",
-            false
-        );
-        $LastLogin = StdLib::getPrettyTimestamp(
-            $UserObj->Get("LastLoginDate"),
-            true,
-            "(never logged in)",
-            false
-        );
-        $SafeUserId = defaulthtmlentities($UserObj->Id());
-        $EditButton->setLink(
-            "index.php?P=EditUser&ID=".$UserObj->Id()
-        );
-        ?>
-        <tr>
-          <td>
-            <input
-               type="checkbox"
-               id="userid_<?= $SafeUserId; ?>"
-               name="userid_<?= $SafeUserId; ?>"
-               value="<?= $SafeUserId; ?>"
-               <?PHP if ($Id == User::getCurrentUser()->Id()) {
-                    print 'disabled="disabled"';
-               } ?> />
-          </td>
-          <td><label for="userid_<?= $SafeUserId; ?>"><?PHP
-              print $UserObj->Get("UserName");  ?></label></td>
-          <td><?= $UserObj->Get("EMail"); ?></td>
-          <td><?= $SignupDate; ?></td>
-          <td><?= $LastLogin; ?></td>
-          <td align="right"><?= $EditButton->getHtml() ?></td>
-        </tr>
-        <?PHP
-    }
-} else {
-    ?><tr><td colspan="6" align="center">
-            <i>(no users were found that met the specified criteria)</i></td></tr><?PHP
-}
-?>
-  </tbody>
-</table>
 
-<?PHP
-$BaseLinkWithSearchParams = "index.php?P=UserList".$H_ExtraParams;
-$H_TransportUI->baseLink($BaseLinkWithSearchParams);
-$H_TransportUI->message("Users <b>"
-    .number_format(min(
-        ($H_TransportUI->StartingIndex() + 1),
-        $G_TotalItems
-    ))
-    ."</b> - <b>"
-    .number_format(min(
-        ($H_TransportUI->StartingIndex() + $H_ItemsPerPage),
-        $G_TotalItems
-    ))
-    ."</b> of <b>".number_format($G_TotalItems)."</b>");
-$H_TransportUI->display();
-?>
+
 <?= $RemoveButton->getHtml() ?>
 
 </form>

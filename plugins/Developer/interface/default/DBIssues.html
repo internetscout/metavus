@@ -31,7 +31,7 @@ foreach ($H_StatusMsgs as $Msg) {
 
 foreach ($H_Issues as $IssueName => $IssueInfo) {
     ?><h2><?= $IssueName ?></h2><?PHP
-if (count($IssueInfo)) {
+if (count($IssueInfo) !== 0) {
     $List = new ItemListUI($IssueListFields[$IssueName]);
     $List->fieldsSortableByDefault(false);
     $List->Display($IssueInfo);

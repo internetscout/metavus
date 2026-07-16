@@ -10,25 +10,55 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_Form)) {
-    throw new Exception("H_Form not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
 
 $AF = ApplicationFramework::getInstance();
+$SysCfg = SystemConfiguration::getInstance();
+
+# set up form
+$FormParams = $SysCfg->getFormParameters();
+$Form = new FormUI($FormParams);
+
+# ----- PROCESSING -----------------------------------------------------------
+# act on any button push
+switch ($Form->getSubmitButtonValue()) {
+    case "Save":
+        # check values and bail out if any are invalid
+        if ($Form->validateFieldInput() !== 0) {
+            break;
+        }
+
+        # retrieve submitted values from form
+        $NewValues = $Form->getNewValuesFromForm();
+
+        # save updated values
+        $SysCfg->updateValues($NewValues);
+
+        # return to admin menu page
+        $AF->setJumpToPage("SysAdmin");
+        return;
+
+    case "Cancel":
+        # return to admin menu page without saving anything
+        $AF->setJumpToPage("SysAdmin");
+        return;
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 $AF->setPageTitle("System Configuration");
 
 ?>
 <h1>System Configuration</h1>
-<?PHP  FormUI::DisplayErrorBlock();  ?>
+<?PHP FormUI::displayErrorBlock(); ?>
 <form method="POST" action="?P=EditSystemConfig" class="priv-form">
-<?PHP  $H_Form->DisplayFormTable();  ?>
-<?= $H_Form->getSubmitButtonHtml("Save") ?>
- <?= $H_Form->getSubmitButtonHtml("Cancel") ?>
+    <?PHP $Form->displayFormTable(); ?>
+    <?= $Form->getSubmitButtonHtml("Save") ?>
+    <?= $Form->getSubmitButtonHtml("Cancel") ?>
 </form>
 

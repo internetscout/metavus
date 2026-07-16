@@ -48,10 +48,16 @@ if (isset($StdValues["File"])) {
 # get value (if any) for screenshot
 if (isset($StdValues["Screenshot"]) && count($StdValues["Screenshot"])) {
     $Screenshot = reset($StdValues["Screenshot"]);
-    $ScreenshotFullImageLink = $FRHelper->getImageViewLink(
-        $StdFields["Screenshot"],
-        $Screenshot
-    );
+    $IntConfig = InterfaceConfiguration::getInstance();
+    $ScreenshotsLinkTo = $IntConfig->getString("ScreenshotsLinkTo");
+    if ($ScreenshotsLinkTo === "PREFERRED" && count($Urls) > 0) {
+        $ScreenshotFullImageLink = reset($Urls);
+    } else {
+        $ScreenshotFullImageLink = $FRHelper->getImageViewLink(
+            $StdFields["Screenshot"],
+            $Screenshot
+        );
+    }
 }
 
 # get field values and qualifiers
@@ -60,7 +66,7 @@ $FieldValues = $FRHelper->getFieldValues();
 $FieldQualifiers = $FRHelper->getFieldQualifiers();
 
 # build and set page title
-$PageTitle = strlen($Title) ? strip_tags($Title) : "Full Record";
+$PageTitle = strlen($Title) !== 0 ? strip_tags($Title) : "Full Record";
 $AF->setPageTitle($PageTitle);
 
 # set up for record edit button
@@ -104,8 +110,8 @@ $Comments = $H_Record->comments();
         <div class="col mv-stdurl">
             <ul class="list-group list-group-flush">
                 <?PHP  foreach ($Urls as $Url => $Label) {  ?>
-                <li class="list-group-item"><a href="<?= $Url ?>"><?=
-                        htmlspecialchars($Label) ?></a></li>
+                <li class="list-group-item"><a href="<?= $Url ?>"
+                    ><?= $Label ?></a></li>
                 <?PHP  }  ?>
             </ul>
         </div>
@@ -148,8 +154,7 @@ $Comments = $H_Record->comments();
                 $GroupHtml = ob_get_clean();
 
                 # if any fields were displayed, show the group
-                // @phpstan-ignore-next-line
-                if (($GroupHtml != false) && (strlen($GroupHtml) > 0)) {
+                if (($GroupHtml !== false) && (strlen($GroupHtml) > 0)) {
                     ?><div class="row container mv-mfield-group">
                     <div class="col">
                         <h3><?= $GroupName ?></h3>

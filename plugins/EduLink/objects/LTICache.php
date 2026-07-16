@@ -3,7 +3,7 @@
 #   FILE:  LTICache.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -15,7 +15,7 @@ use Exception;
 use ScoutLib\Database;
 
 /**
- * Provide an implementation of an LTI cache that stores cached lonch data in
+ * Provide an implementation of an LTI cache that stores cached launch data in
  * our database.
  */
 class LTICache extends \IMSGlobal\LTI\Cache
@@ -57,26 +57,35 @@ class LTICache extends \IMSGlobal\LTI\Cache
         return $this;
     }
 
-    // @phpstan-ignore-next-line (suppress 'no type specified') complaint
+    /**
+     * Store a nonce for later validation.
+     * @param string $nonce Nonce to store.
+     * @see https://en.wikipedia.org/wiki/Cryptographic_nonce
+     * @see https://www.imsglobal.org/spec/security/v1p0/#id-token
+     */
     public function cache_nonce($nonce): self
     {
         $this->DB->query(
-            "INSERT INTO EduLink_Nonces (Nonce, SeenAt)"
-            ." VALUES ('".$this->DB->escapeString($nonce)."', NOW())"
+            "INSERT INTO EduLink_Nonces (Nonce, CreatedAt, SeenAt)"
+            ." VALUES ('".$this->DB->escapeString($nonce)."', NOW(), NULL)"
         );
+
         return $this;
     }
 
-    // @phpstan-ignore-next-line (suppress 'no type specified') complaint
+    /**
+     * Check that a provided nonce is valid (i.e. it's a nonce that we've
+     *         previously cached but that has not yet been used).
+     * @param string $nonce Nonce to validate.
+     * @return bool TRUE for valid nonces, FALSE otherwise.
+     */
     public function check_nonce($nonce): bool
     {
-        $N = $this->DB->queryValue(
-            "SELECT COUNT(*) AS N FROM EduLink_Nonces"
-            ." WHERE Nonce='".$this->DB->escapeString($nonce)."'",
-            "N"
+        $this->DB->query(
+            "UPDATE EduLink_Nonces SET SeenAt=NOW()"
+                ." WHERE Nonce='".$this->DB->escapeString($nonce)."' AND SeenAt IS NULL"
         );
-
-        return ($N > 0);
+        return ($this->DB->numRowsAffected() == 1) ? true : false;
     }
 
     private $DB;

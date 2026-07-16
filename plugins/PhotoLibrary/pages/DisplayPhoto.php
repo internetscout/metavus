@@ -3,7 +3,7 @@
 #   FILE:  DisplayPhoto.php (PhotoLibrary plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (OPTIONAL):
@@ -16,7 +16,6 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use Metavus\Plugins\PhotoLibrary;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
@@ -55,11 +54,20 @@ if (($Photos === null) || (count($Photos) == 0)) {
 }
 
 # retrieve photo
-$H_Photo = array_pop($Photos);
+$H_Photo = $Plugin->getOriginalDownloadImageForRecord($H_Record);
+if ($H_Photo === null) {
+    $H_ErrMsg = "Photo is unavailable.";
+    return;
+}
 
 # if download requested
 if ($_GET["DL"] ?? 0) {
     # trigger download of original image file
-    $FullPathToFile = $H_Photo->getFullPathForOriginalImage();
-    $AF->downloadFile($FullPathToFile, null, null, true);
+    if (!$Plugin->downloadOriginalImage($H_Record, $H_Photo)) {
+        $H_ErrMsg = "Unable to download original image.";
+    }
+    return;
+} else {
+    # signal full record page view
+    $AF->signalEvent("EVENT_FULL_RECORD_VIEW", ["ResourceId" => $H_Record->id()]);
 }

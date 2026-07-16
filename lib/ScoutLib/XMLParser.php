@@ -266,7 +266,7 @@ class XMLParser
         $Data = null;
 
         # if arguments were supplied
-        if (func_num_args()) {
+        if (func_num_args() !== 0) {
             # retrieve index for specified point
             $Index = $this->PerformSeek(func_get_args(), false);
 
@@ -286,7 +286,7 @@ class XMLParser
         # return data to caller
         if ($this->DebugLevel > 0) {
             print("XMLParser->GetData(");
-            if (func_num_args()) {
+            if (func_num_args() !== 0) {
                 $ArgString = "";
                 foreach (func_get_args() as $Arg) {
                     $ArgString .= "\"" . $Arg . "\", ";
@@ -414,7 +414,7 @@ class XMLParser
      * @param bool $MoveSeekPointer If TRUE, seek pointer will be updated.
      * @return int New index or NULL on failure.
      */
-    private function performSeek($SeekArgs, $MoveSeekPointer)
+    private function performSeek($SeekArgs, bool $MoveSeekPointer)
     {
         # for each tag name or index in argument list
         $NewSeekIndex = $this->CurrentSeekIndex;
@@ -493,7 +493,7 @@ class XMLParser
      *       multiple attributes.
      * @return string Attributes or NULL if retrieval fails.
      */
-    private function performGetAttribute($Args, $GetMultiple)
+    private function performGetAttribute($Args, bool $GetMultiple)
     {
         # assume that we will not be able to retrieve attribute
         $ReturnVal = null;
@@ -504,7 +504,7 @@ class XMLParser
         }
 
         # if arguments were supplied
-        if (count($Args)) {
+        if (count($Args) !== 0) {
             # retrieve index for specified point
             $Index = $this->PerformSeek($Args, false);
 

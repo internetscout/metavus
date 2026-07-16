@@ -44,7 +44,7 @@ $Fields = [
         "DefaultSortField" => true,
     ],
     "Count" => [
-        "ValueFunction" => function ($Value, $Field) {
+        "ValueFunction" => function ($Value, $Field): string {
             return number_format($Value[$Field]);
         },
         "DefaultToDescendingSort" => true,
@@ -52,7 +52,7 @@ $Fields = [
     ],
     "AverageSize" => [
         "Heading" => "Average Size",
-        "ValueFunction" => function ($Value, $Field) {
+        "ValueFunction" => function ($Value, $Field): string {
             return sprintf("%.1f KB", $Value[$Field] / 1024);
         },
         "DefaultToDescendingSort" => true,
@@ -60,13 +60,13 @@ $Fields = [
     ],
     "OldestTimestamp" => [
         "Heading" => "Oldest Entry",
-        "ValueFunction" => function ($Value, $Field) {
+        "ValueFunction" => function ($Value, $Field): string {
             return date(DATE_FORMAT, $Value[$Field]);
         },
     ],
     "NewestTimestamp" => [
         "Heading" => "Newest Entry",
-        "ValueFunction" => function ($Value, $Field) {
+        "ValueFunction" => function ($Value, $Field): string {
             return date(DATE_FORMAT, $Value[$Field]);
         },
     ],

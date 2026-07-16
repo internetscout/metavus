@@ -131,7 +131,7 @@ class iCalendarEvent
     public function addURL(string $Value): void
     {
         # don't add a blank URL
-        if (!strlen($Value)) {
+        if (strlen($Value) === 0) {
             return;
         }
 
@@ -174,7 +174,7 @@ class iCalendarEvent
         $Document = "";
         foreach ($this->Properties as $Component => $Properties) {
             # don't add empty components
-            if (!count($Properties)) {
+            if (count($Properties) === 0) {
                 continue;
             }
 
@@ -182,7 +182,7 @@ class iCalendarEvent
             $Document .= "BEGIN:" . $Component . "\r\n";
 
             # add each property line
-            foreach ($Properties as $Property => $PropertyLine) {
+            foreach ($Properties as $PropertyLine) {
                 $Document .= $PropertyLine;
             }
 
@@ -326,7 +326,7 @@ class iCalendarEvent
     ): void {
 
         # don't add empty properties
-        if (!strlen($Value)) {
+        if (strlen($Value) === 0) {
             return;
         }
 

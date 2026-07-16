@@ -3,7 +3,7 @@
 #   FILE:  installmv.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -95,7 +95,8 @@ class Installer
     ];
 
     # SQL errors we can ignore (index = SQL command, value = error message)
-    # (IMPORTANT:  this list MUST match the list in the Developer plugin)
+    # (IMPORTANT: keep this list in sync with the lists in install/mvus
+    #       and in plugins/Developer/Developer.php)
     public $SqlErrorsWeCanIgnore = [
         "/ALTER TABLE /i" => "/Table '[a-z0-9_.]+' already exists/i",
         "/ALTER TABLE [a-z0-9_]+ (CHANGE|MODIFY) COLUMN/i" => "/Unknown column/i",
@@ -1204,7 +1205,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
         require_once("lib/ScoutLib/AFTaskManagerTrait.php");
         require_once("lib/ScoutLib/ApplicationFramework.php");
         ApplicationFramework::suppressSessionInitialization(true);
-        $GLOBALS["StartUpOpt_CLEAR_AF_CACHES"] = true;
+        $GLOBALS["StartUpOpt_CLEAR_BOOT_CACHES"] = true;
         require_once("objects/Bootloader.php");
         (\Metavus\Bootloader::getInstance())->boot();
     }
@@ -1868,7 +1869,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
     {
         $VerExtractFunc = function (string $FileName) {
             $FileName = pathinfo($FileName, PATHINFO_FILENAME);
-            $Version = preg_replace("/[A-Z]+--/i", "", $FileName);
+            $Version = (string)preg_replace("/[A-Z]+--/i", "", $FileName);
             return $Version;
         };
         $SortFunc = function ($AFileName, $BFileName) use ($VerExtractFunc) {

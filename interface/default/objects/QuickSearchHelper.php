@@ -37,7 +37,7 @@ class QuickSearchHelper
         $SearchString,
         array $IdExclusions = [],
         array $ValueExclusions = []
-    ) {
+    ): array {
         $MaxResults = $Field->numAjaxResults();
 
         switch ($Field->type()) {
@@ -51,7 +51,7 @@ class QuickSearchHelper
                 );
 
             case MetadataSchema::MDFTYPE_REFERENCE:
-                if (count($ValueExclusions)) {
+                if (count($ValueExclusions) !== 0) {
                     throw new Exception(
                         "Cannot exclude resource by value."
                         ."Did you want IdExclusions instead?"
@@ -242,7 +242,7 @@ class QuickSearchHelper
         array $IdExclusions = [],
         array $ValueExclusions = [],
         array $RequiredPrivs = []
-    ) {
+    ): array {
         # the factory used for searching
         $UserFactory = new UserFactory();
 
@@ -287,7 +287,7 @@ class QuickSearchHelper
         }
 
         # if there were required privs, limit results to users that have them
-        if (count($RequiredPrivs)) {
+        if (count($RequiredPrivs) !== 0) {
             $UserFactory = new UserFactory();
             $PossibleValues = $UserFactory->getUsersWithPrivileges(
                 $RequiredPrivs
@@ -320,7 +320,7 @@ class QuickSearchHelper
     * @see ItemFactory::searchForItemNames()
     * @see ClassificationFactory::findMatchingRecentlyUsedValues()
     */
-    public static function prepareSearchString($SearchString)
+    public static function prepareSearchString($SearchString): string
     {
         # remove "--", which causes searches to fail and is often in classifications
         #  Also remove unwanted punctuation
@@ -349,7 +349,7 @@ class QuickSearchHelper
         foreach ($Words as $Word) {
             # include quoted strings directly
             $InQuotedString |= preg_match('/^[+-]?"/', $Word);
-            if ($InQuotedString) {
+            if ($InQuotedString !== 0) {
                 $PreparedSearchString .= $Word." ";
                 $InQuotedString &= (substr($Word, -1) != '"');
             # append a * to every word outside a quoted string
@@ -391,7 +391,7 @@ class QuickSearchHelper
     * @param Integer $MaxResults To return
     * @return array Array of Results
     */
-    private static function sortSearchResults($Results, $SearchString, $MaxResults)
+    private static function sortSearchResults($Results, $SearchString, $MaxResults): array
     {
         $Matches = [
             "Exact" => [],
@@ -481,11 +481,11 @@ class QuickSearchHelper
     *       the number of additional results available, and the search results
     */
     private static function searchForResources(
-        $DstField,
+        \Metavus\MetadataField $DstField,
         $SearchString,
-        $MaxResults,
+        int $MaxResults,
         array $IdExclusions = []
-    ) {
+    ): array {
         # construct search groups based on the keyword
         $SearchParams = new SearchParameterSet();
         $SearchParams->addParameter($SearchString);
@@ -521,7 +521,7 @@ class QuickSearchHelper
         $SearchResults = $SearchResultsNew;
 
         # filter out excluded resource IDs if necessary
-        if (count($IdExclusions)) {
+        if (count($IdExclusions) !== 0) {
             $SearchResults = array_diff_key(
                 $SearchResults,
                 array_flip($IdExclusions)
@@ -530,7 +530,7 @@ class QuickSearchHelper
 
         # pull out mapped titles for all resources
         $ResourceData = [];
-        foreach ($SearchResults as $ResourceId => $Score) {
+        foreach (array_keys($SearchResults) as $ResourceId) {
             $Resource = new Record($ResourceId);
             $ResourceData[$ResourceId] = (string)$Resource->getForDisplay(
                 $Resource->getSchema()->getFieldByMappedName("Title")
@@ -572,10 +572,10 @@ class QuickSearchHelper
     private static function searchForValues(
         MetadataField $Field,
         $SearchString,
-        $MaxResults,
+        int $MaxResults,
         array $IdExclusions,
         array $ValueExclusions
-    ) {
+    ): array {
         $Factory = $Field->getFactory();
         if ($Factory === null) {
             throw new InvalidArgumentException("Attempt to call searchForValues()"

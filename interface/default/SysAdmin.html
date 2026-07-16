@@ -12,6 +12,7 @@ namespace Metavus;
 
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
+use ScoutLib\HtmlTable;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
@@ -41,7 +42,6 @@ $SystemAdminMenuEntries = [
     "index.php?P=Plugins" => "Plugins",
     "index.php?P=TaskQueue" => "Task Queue",
 ];
-
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -82,72 +82,55 @@ function displayMenu(array $MenuEntries): void
 }
 
 /**
-* Print HTML table with list of users, including login and idle times, what
-* page they last loaded, and what host name they are coming from.
-* @param array $Users Array of users (CWUser objects).
-*/
-function PrintUserListTable(array $Users): void
+ * Print HTML table with list of users, including login and idle times, what
+ * page they last loaded, and what host name they are coming from.
+ * @param array $Users Array of users (CWUser objects).
+ */
+function printUserListTable(array $Users): void
 {
-    ?>
-    <table class="table table-striped">
-        <thead>
-            <tr class="table-dark">
-                <th>User</th>
-                <th>Login</th>
-                <th>Idle</th>
-                <th>Where</th>
-                <th>From</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?PHP
-            foreach ($Users as $User) {
-                $UserName = $User->Get("UserName");
+    $UsersTable = new HtmlTable();
+    $UsersTable->setTableClass("table table-striped");
+    $UsersTable->addHeaderRow(
+        ["User", "Login", "Idle", "Where", "From"],
+        "table-dark"
+    );
 
-                $LoginTime = StdLib::getPrettyTimestamp($User->Get("LastLoginDate"));
+    foreach ($Users as $User) {
+        $UserName = $User->Get("UserName");
 
-                $IdleTime = time() - strtotime($User->LastActiveDate());
-                $IdleTime = sprintf(
-                    "%d:%02d:%02d",
-                    $IdleTime / 3600,
-                    ($IdleTime % 3600) / 60,
-                    $IdleTime % 60
-                );
+        $LoginTime = StdLib::getPrettyTimestamp($User->Get("LastLoginDate"));
 
-                $Location = $User->lastLocation();
-                $Location = preg_replace("/P_([A-Za-z0-9]+)_/", "\\1:", $Location);
-                if (!is_string($Location)) {
-                    $Location = "(unknown)";
-                }
+        $IdleTime = time() - strtotime($User->LastActiveDate());
+        $IdleTime = sprintf(
+            "%d:%02d:%02d",
+            $IdleTime / 3600,
+            ($IdleTime % 3600) / 60,
+            $IdleTime % 60
+        );
 
-                $From = StdLib::getHostName($User->LastIPAddress());
+        $Location = $User->lastLocation();
+        $Location = preg_replace("/P_([A-Za-z0-9]+)_/", "\\1:", $Location);
+        if (!is_string($Location)) {
+            $Location = "(unknown)";
+        }
 
-                ?>
-                <tr>
-                    <td><?= $UserName ?></td>
-                    <td><?= $LoginTime ?></td>
-                    <td><?= $IdleTime ?></td>
-                    <td><?= $Location ?></td>
-                    <td><?= $From ?></td>
-                </tr>
-                <?PHP
-            }
-            ?>
-        </tbody>
-    </table>
-    <?PHP
+        $From = StdLib::getHostName($User->LastIPAddress());
+
+        $UsersTable->addRow([$UserName, $LoginTime, $IdleTime, $Location, $From]);
+    }
+    print $UsersTable->getHtml();
 }
 
 /**
-* If there are plugin errors, print list with error messages.
-*/
-function DisplayPluginErrorMessages(): void
+ * If there are plugin errors, print list with error messages.
+ */
+function displayPluginErrorMessages(): void
 {
     $ErrMsgs = $GLOBALS["G_PluginManager"]->GetErrorMessages();
-    if (count($ErrMsgs)) {
+    if (count($ErrMsgs) !== 0) {
         $Output = '<ul class="alert alert-danger"><h3>Plugin Errors</h3>';
         foreach ($ErrMsgs as $PluginName => $Msgs) {
-            if (PluginManager::getInstance()->PluginEnabled($PluginName)) {
+            if (PluginManager::getInstance()->pluginEnabled($PluginName)) {
                 foreach ($Msgs as $Msg) {
                     $Output .= "<li><b>".$PluginName.":</b> ".$Msg."</li>";
                     $ErrMsgDisplayed = true;
@@ -163,8 +146,15 @@ function DisplayPluginErrorMessages(): void
 
 # ----- SETUP ----------------------------------------------------------------
 
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
+    return;
+}
+
 $AF = ApplicationFramework::getInstance();
 $PluginMgr = PluginManager::getInstance();
+
+# make sure information for current user is up-to-date
+User::getCurrentUser()->lastLocation($AF->getPageName());
 
 # retrieve data for administration menus
 $PluginMenus = Plugin::getAdminMenuEntries();
@@ -187,87 +177,19 @@ if (function_exists("sys_getloadavg")) {
 
 # clear caches if requested
 if (isset($_GET["AC"]) && ($_GET["AC"] == "ClearPageCache")) {
-    $AF->ClearPageCache();
-    $AF->ClearTemplateLocationCache();
-    $AF->ClearObjectLocationCache();
+    $AF->clearPageCache();
+    $AF->clearTemplateLocationCache();
+    $AF->clearObjectLocationCache();
 }
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
 
-$ClearButton = new HtmlButton("CLEAR");
-$ClearButton->setSize(HtmlButton::SIZE_SMALL);
-$ClearButton->setLink("?P=SysAdmin&AC=ClearPageCache");
-
-$AF->setPageTitle("System Administration");
-
-# ----- DISPLAY --------------------------------------------------------------
-
-?><div class="mv-content-sectioned"><?PHP
-
-if ($User->HasPriv(PRIV_SYSADMIN)) {
-    if ($AF->GetOrphanedTaskCount()) {
-        ?><ul class="alert alert-danger"><li>
-        <b>WARNING:</b>  There are currently orphaned tasks. Please visit the
-        <a href="index.php?P=TaskQueue">Task Queue</a> page and re-queue or
-        delete the tasks as appropriate.
-        </li></ul><?PHP
-    }
-    if (!$AF->TaskExecutionEnabled()) {
-        ?><ul class="alert alert-danger"><li>
-        <b>PLEASE NOTE:</b>  Automatic task execution is currently disabled,
-        which means that background tasks like search database updates and
-        periodic mailings will not run.Visit the
-        <a href="index.php?P=TaskQueue">Task Queue</a> page to re-enable task
-        execution.
-        </li></ul><?PHP
-    }
-    DisplayPluginErrorMessages();
-}
-
-if ($User->HasPriv(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
-    ?><h1>Collection Administration</h1><?PHP
-    displayMenu($CollectionAdminMenuEntries);
-}
-if ($User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) {
-    ?><h1>User Administration</h1><?PHP
-    displayMenu($UserAdminMenuEntries);
-}
-if ($User->HasPriv(PRIV_SYSADMIN)) {
-    ?><h1>System Administration</h1><?PHP
-    displayMenu($SystemAdminMenuEntries);
-}
-
-if (count($PluginMenus)) {
-    ?><h1>Plugin Administration</h1>
-    <?PHP
-    foreach ($PluginMenus as $BaseName => $MenuEntries) {
-        $Plugin = $PluginMgr->getPlugin($BaseName);
-        if (!$Plugin->isReady()) {
-            continue;
-        }
-        ?><h2><?= $Plugin->getName() ?></h2><?PHP
-        displayMenu($MenuEntries);
-    }
-}
-
-if ($User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) {
-    ?><h1>Users Currently Logged In</h1>
-    <?PHP
-    PrintUserListTable($LoggedInUsers);
-    if (count($RecentlyLoggedInUsers)) {
-        ?><h1>Users Recently Logged In</h1><?PHP
-        PrintUserListTable($RecentlyLoggedInUsers);
-    }
-}
-
-if ($User->HasPriv(PRIV_SYSADMIN)) {  ?>
-<h1>Recent Log Messages</h1>
-
-<table class="table table-striped">
-    <?PHP
-    $SysLogEntries = ApplicationFramework::getInstance()->GetLogEntries(10);
-    if (count($SysLogEntries)) {
+if ($User->hasPriv(PRIV_SYSADMIN)) {
+    $SysLogEntries = ApplicationFramework::getInstance()->getLogEntries(10);
+    $LogTable = new HtmlTable();
+    $LogTable->setTableClass("table table-striped");
+    if (count($SysLogEntries) !== 0) {
         $LevelStrings = [
             ApplicationFramework::LOGLVL_FATAL => "Fatal",
             ApplicationFramework::LOGLVL_ERROR => "Error",
@@ -282,107 +204,140 @@ if ($User->HasPriv(PRIV_SYSADMIN)) {  ?>
             $MaxDisplayedUrlLen = 50;
             $Msg = preg_replace(
                 "~([[:alpha:]]+://[^<>[:space:]]{1,"
-                            .$MaxDisplayedUrlLen."})([^<>[:space:]]*)~",
+                .$MaxDisplayedUrlLen."})([^<>[:space:]]*)~",
                 "<a href=\"\\1\\2\">\\1</a>",
                 $Msg
             );
 
             $RowClasses = "mv-content-sysadmin-logmsgs-row"
-                    ." mv-content-sysadmin-logmsgs-row-"
-                    .strtolower($LevelStrings[$Entry["Level"]]);
-            ?><tr class="<?= $RowClasses;  ?>">
-                <td class="mv-logmsgs-timestamp">
-                    <?= StdLib::getPrettyTimestamp($Entry["Time"]);  ?>
-                </td>
-                <td class="mv-logmsgs-level"><?= $LevelStrings[$Entry["Level"]];  ?></td>
-                <td class="mv-logmsgs-message"><?= $Msg;  ?></td>
-                <td class="mv-logmsgs-context"><?= $Entry["Background"] ? "(B)" : "" ?></td>
-            </tr><?PHP
+                ." mv-content-sysadmin-logmsgs-row-"
+                .strtolower($LevelStrings[$Entry["Level"]]);
+
+            $LogTable->addRow(
+                [
+                    StdLib::getPrettyTimestamp($Entry["Time"]),
+                    $LevelStrings[$Entry["Level"]],
+                    $Msg,
+                    ($Entry["Background"] ? "(B)" : "")
+                ],
+                $RowClasses
+            );
         }
     } else {
-        ?><tr><td>(no log messages found)</td></tr><?PHP
+        $LogTable->addRow(["(no log messages found)"]);
     }
-    ?>
-</table>
+}
+
+if ($AF->pageCacheEnabled()) {
+    $CacheInfo = $AF->getPageCacheInfo();
+    $PageCacheMessage = number_format($CacheInfo["NumberOfEntries"])." entries";
+    if ($CacheInfo["NumberOfEntries"]) {
+        $ClearButton = new HtmlButton("CLEAR");
+        $ClearButton->setSize(HtmlButton::SIZE_SMALL);
+        $ClearButton->setLink("?P=SysAdmin&AC=ClearPageCache");
+        $PageCacheMessage .= ", oldest from "
+            .StdLib::getPrettyTimestamp($CacheInfo["OldestTimestamp"])
+            ."&nbsp;&nbsp;&nbsp;&nbsp;"
+            .$ClearButton->getHtml();
+    }
+} else {
+    $PageCacheMessage = "(disabled)";
+}
+$SystemInfoTable = new HtmlTable();
+$SystemInfoTable->setTableClass("table table-striped");
+$SystemInfoTable->addRowsWithHeaders([
+    ["Metavus Version", METAVUS_VERSION],
+    ["PHP Version", PHP_VERSION],
+    ["MySQL Version", $DatabaseServerVersion],
+    ["Database Name", (new Database())->DBName()],
+    ["Supported Image Formats", $SupportedImageFormats],
+    ["PHP Configuration Summary", "<a href=\"index.php?P=PhpInfo\">phpinfo()</a>"],
+    ["Server Time", date("g:i:sa")."&nbsp;&nbsp;&nbsp;&nbsp;".date("F j, Y")],
+    ["Server Load Average", $LoadAverageString."&nbsp;&nbsp;&nbsp;&nbsp;(1/5/15 minutes)"],
+    ["Page Cache", $PageCacheMessage]
+]);
+# display any added info items
+$SignalResult = $AF->signalEvent("EVENT_SYSTEM_INFO_LIST");
+if (count($SignalResult) !== 0) {
+    foreach ($SignalResult as $Items) {
+        foreach ($Items as $Label => $Content) {
+            $SystemInfoTable->addRowWithHeader([$Label, $Content]);
+        }
+    }
+}
+
+$AF->setPageTitle("System Administration");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+?><div class="mv-content-sectioned"><?PHP
+
+if ($User->hasPriv(PRIV_SYSADMIN)) {
+    if ($AF->getOrphanedTaskCount()) {
+        ?><ul class="alert alert-danger"><li>
+        <b>WARNING:</b>  There are currently orphaned tasks. Please visit the
+        <a href="index.php?P=TaskQueue">Task Queue</a> page and re-queue or
+        delete the tasks as appropriate.
+        </li></ul><?PHP
+    }
+    if (!$AF->taskExecutionEnabled()) {
+        ?><ul class="alert alert-danger"><li>
+        <b>PLEASE NOTE:</b>  Automatic task execution is currently disabled,
+        which means that background tasks like search database updates and
+        periodic mailings will not run.Visit the
+        <a href="index.php?P=TaskQueue">Task Queue</a> page to re-enable task
+        execution.
+        </li></ul><?PHP
+    }
+    displayPluginErrorMessages();
+}
+
+if ($User->hasPriv(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    ?><h1>Collection Administration</h1><?PHP
+    displayMenu($CollectionAdminMenuEntries);
+}
+if ($User->hasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+    ?><h1>User Administration</h1><?PHP
+    displayMenu($UserAdminMenuEntries);
+}
+if ($User->hasPriv(PRIV_SYSADMIN)) {
+    ?><h1>System Administration</h1><?PHP
+    displayMenu($SystemAdminMenuEntries);
+}
+
+if (count($PluginMenus) !== 0) {
+    ?><h1>Plugin Administration</h1>
+    <?PHP
+    foreach ($PluginMenus as $BaseName => $MenuEntries) {
+        $Plugin = $PluginMgr->getPlugin($BaseName);
+        if (!$Plugin->isReady()) {
+            continue;
+        }
+        ?><h2><?= $Plugin->getName() ?></h2><?PHP
+        displayMenu($MenuEntries);
+    }
+}
+
+if ($User->hasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+    ?><h1>Users Currently Logged In</h1>
+    <?PHP
+    printUserListTable($LoggedInUsers);
+    if (count($RecentlyLoggedInUsers) !== 0) {
+        ?><h1>Users Recently Logged In</h1><?PHP
+        printUserListTable($RecentlyLoggedInUsers);
+    }
+}
+
+if ($User->hasPriv(PRIV_SYSADMIN)) {  ?>
+<h1>Recent Log Messages</h1>
+
+    <?= $LogTable->getHtml(); ?>
 
 <?PHP  }  ?>
 
 <h1>System Information</h1>
 
-<table class="table table-striped">
-    <tbody>
-        <tr>
-            <th>Metavus Version</th>
-            <td><?= METAVUS_VERSION; ?></td>
-        </tr>
-        <tr>
-            <th>PHP Version</th>
-            <td><?= PHP_VERSION; ?></td>
-        </tr>
-        <tr>
-            <th>MySQL Version</th>
-            <td><?= $DatabaseServerVersion ?></td>
-        </tr>
-        <tr>
-            <th>Database Name</th>
-            <td><?PHP
-            $DB = new Database();
-            print $DB->DBName();
-            ?></td>
-        </tr>
-        <tr>
-            <th>Supported Image Formats</th>
-            <td><?= $SupportedImageFormats ?></td>
-        </tr>
-        <tr>
-            <th>PHP Configuration Summary</th>
-            <td><a href="index.php?P=PhpInfo">phpinfo()</a></td>
-        </tr>
-        <tr>
-            <th>Server Time</th>
-            <td><?= date("g:i:sa")."&nbsp;&nbsp;&nbsp;&nbsp;"
-                    .date("F j, Y");  ?></td>
-        </tr>
-        <?PHP  if (function_exists("sys_getloadavg")) {  ?>
-        <tr>
-            <th>Server Load Average</th>
-            <td><?= $LoadAverageString ?>&nbsp;&nbsp;&nbsp;&nbsp;(1/5/15 minutes)</td>
-        </tr>
-        <?PHP  }  ?>
-        <tr>
-            <th>Page Cache</th>
-            <td><?PHP
-            if ($AF->PageCacheEnabled()) {
-                $CacheInfo = $AF->GetPageCacheInfo();
-                print number_format($CacheInfo["NumberOfEntries"])." entries";
-                if ($CacheInfo["NumberOfEntries"]) {
-                    print ", oldest from "
-                        . StdLib::getPrettyTimestamp($CacheInfo["OldestTimestamp"])
-                        . "&nbsp;&nbsp;&nbsp;&nbsp;"
-                        . $ClearButton->getHtml();
-                }
-            } else {
-                print "(disabled)";
-            }
-            ?></td>
-        </tr>
-        <?PHP
-
-        # display any added info items
-        $SignalResult = $AF->SignalEvent("EVENT_SYSTEM_INFO_LIST");
-        if (count($SignalResult)) {
-            foreach ($SignalResult as $HandlerName => $Items) {
-                foreach ($Items as $Label => $Content) {
-                    ?><tr>
-                        <th><?= $Label; ?></th>
-                        <td><?= $Content; ?></td>
-                    </tr><?PHP
-                }
-            }
-        }
-        ?>
-    </tbody>
-</table>
+<?= $SystemInfoTable-> getHtml();?>
 
 </div>
 

@@ -3,21 +3,20 @@
 #   FILE:  Folders.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
-use Exception;
 use Metavus\FormUI;
 use Metavus\FullRecordHelper;
 use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderDisplayUI;
 use Metavus\Plugins\Folders\FolderFactory;
-use Metavus\PrivilegeSet;
 use Metavus\Record;
+use Metavus\SearchParameterSet;
 use Metavus\User;
 use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
@@ -131,9 +130,7 @@ class Folders extends Plugin
         # if the user is logged in and may need the Folders javascript interface,
         # require the necessary files
         if (User::getCurrentUser()->isLoggedIn()) {
-            $Files = ["Folders_Main.css", "jquery-ui.js", "Folders_Support.js",
-                "Folders_Main.js"
-            ];
+            $Files = ["Folders_Main.css", "jquery-ui.js", "Folders.js"];
             foreach ($Files as $File) {
                 $AF->requireUIFile($File);
             }
@@ -181,7 +178,64 @@ class Folders extends Plugin
      */
     public function declareEvents(): array
     {
-        return ["Folders_EVENT_INSERT_BUTTON_CHECK" => ApplicationFramework::EVENTTYPE_CHAIN];
+        return [
+            "Folders_EVENT_INSERT_BUTTON_CHECK" => ApplicationFramework::EVENTTYPE_CHAIN,
+        ];
+    }
+
+    /**
+     * Register a function to filter bulk search-action results before a folder
+     * is modified.
+     * @param callable $Function Function that accepts search results, search
+     *      parameters, the action, user, and request parameters, and returns
+     *      filtered search results.
+     * @return void
+     */
+    public function registerSearchActionResultsFilterFunction(callable $Function): void
+    {
+        $this->SearchActionResultsFilterFunctions[] = $Function;
+    }
+
+    /**
+     * Apply registered filters to bulk search-action results.
+     * @param array $SearchResults Search results keyed by schema ID, then item ID.
+     * @param SearchParameterSet $SearchParams Search parameters used for the action.
+     * @param string $Action Action being performed, either "add" or "remove".
+     * @param User $User User performing the action.
+     * @param array $RequestParameters Request parameters for the action.
+     * @return array Filtered search results.
+     */
+    public function filterSearchActionResults(
+        array $SearchResults,
+        SearchParameterSet $SearchParams,
+        string $Action,
+        User $User,
+        array $RequestParameters
+    ): array {
+        $FilteredSearchResults = $SearchResults;
+
+        foreach ($this->SearchActionResultsFilterFunctions as $Function) {
+            $NewSearchResults = call_user_func(
+                $Function,
+                $FilteredSearchResults,
+                $SearchParams,
+                $Action,
+                $User,
+                $RequestParameters
+            );
+
+            if ($this->searchActionResultsAreValid($NewSearchResults)) {
+                $FilteredSearchResults = $NewSearchResults;
+            } else {
+                $AF = ApplicationFramework::getInstance();
+                $AF->logMessage(
+                    ApplicationFramework::LOGLVL_ERROR,
+                    "Search action results filter returned unexpected data."
+                );
+            }
+        }
+
+        return $FilteredSearchResults;
     }
 
     /**
@@ -371,7 +425,7 @@ class Folders extends Plugin
     }
 
     /**
-     * Insert the button "Remove All From Folder" to HTML
+     * Insert the button "Remove All from Folder" to HTML
      * @param string $PageName Name of page that signaled the event
      * @param string $Location Location on page where insertion point occurs
      * @param array $Context Specific info needed to generate HTML.
@@ -492,7 +546,7 @@ class Folders extends Plugin
             }
 
             # get the URL for the folder
-            $Url = Common::getShareUrl(new Folder($FolderId));
+            $Url = Folder::getShareUrl(new Folder($FolderId));
 
             return "href=\"".defaulthtmlentities($Url)."\"";
         }
@@ -581,13 +635,17 @@ class Folders extends Plugin
             $PublicFolder = $Folder->isShared();
         }
 
-        # if no user is logged in and this folder is not public, bail
-        if (!User::getCurrentUser()->isLoggedIn() && !$PublicFolder) {
+        $User = User::getCurrentUser();
+        if (!$User->isLoggedIn()) {
             return;
         }
 
         $ResourceId = $Context["ResourceId"];
         $Folder = isset($Folder) ? $Folder : $this->getSelectedFolder();
+
+        if ($Folder->ownerId() != $User->id()) {
+            return;
+        }
 
         # if the resource given in our context is not in our folder, bail
         if (!$Folder->containsItem($ResourceId)) {
@@ -716,6 +774,28 @@ class Folders extends Plugin
         );
         return null;
     }
+
+    /**
+     * Check whether data appears to be valid search-action result data.
+     * @param mixed $SearchResults Data to check.
+     * @return bool TRUE if data appears valid, otherwise FALSE.
+     */
+    private function searchActionResultsAreValid($SearchResults): bool
+    {
+        if (!is_array($SearchResults)) {
+            return false;
+        }
+
+        foreach ($SearchResults as $ResultsForSchema) {
+            if (!is_array($ResultsForSchema)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private $SearchActionResultsFilterFunctions = [];
 
     private static $SelectedFolders = [];
 

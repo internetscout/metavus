@@ -19,7 +19,7 @@ use ScoutLib\StdLib;
  * @param string $Hex Color information
  * @return array Array with R, G, and B members.
  */
-function hexToRgb($Hex)
+function hexToRgb($Hex): array
 {
     return [
         "R" => hexdec($Hex[0].$Hex[1]),
@@ -28,18 +28,23 @@ function hexToRgb($Hex)
     ];
 }
 
-$FgHex = strtolower(StdLib::getArrayValue($_GET, "FG", "ffffff"));
-$BgHex = strtolower(StdLib::getArrayValue($_GET, "BG", "000000"));
-$Text = StdLib::getArrayValue($_GET, "T", "");
+$FgHex = strtolower($_GET["FG"] ?? "ffffff");
+$BgHex = strtolower($_GET["BG"] ?? "000000");
+$Text = $_GET["T"] ?? "";
+$Shape = $_GET["S"] ?? GoogleMaps::DEFAULT_MARKER_SHAPE;
 
 $AF = ApplicationFramework::getInstance();
 $Plugin = GoogleMaps::getInstance();
 
 # if we have a cached copy of this marker, serve the request from cache
-$CachedFile = $Plugin->getMarkerFilePath($Text, $BgHex, $FgHex);
+$CachedFile = $Plugin->getMarkerFilePath($Text, $BgHex, $FgHex, $Shape);
 
 header('Content-type: image/png');
 $AF->suppressHtmlOutput();
+
+# if the cache file exists but we have not opened or read it yet, set up an
+# unbuffered `readfile()` callback to directly output its contents without the
+# overhead of opening, loading, and then buffering the file data
 if (file_exists($CachedFile)) {
     $AF->addUnbufferedCallback("readfile", [$CachedFile]);
     return;
@@ -53,24 +58,20 @@ $BG = hexToRgb($BgHex);
 $AF->urlFingerprintingEnabled(false);
 
 # load the shadow background
-$Canvas = imagecreatefrompng(
-    getcwd()."/".$AF->gUIFile("marker-shadow.png")
-);
+$Canvas = imagecreatefrompng($AF->gUIFile($Shape."-shadow.png"));
 if ($Canvas === false) {
     throw new Exception(
-        "Failed to retrieve an image resource identifier for the file marker-shadow.png"
+        "Failed to retrieve an image resource identifier for the file ".$Shape."-shadow.png"
     );
 }
 
 imagesavealpha($Canvas, true);
 
 # load the the template marker
-$Img = imagecreatefrompng(
-    getcwd()."/".$AF->gUIFile("marker-black.png")
-);
+$Img = imagecreatefrompng($AF->gUIFile($Shape."-black.png"));
 if ($Img === false) {
     throw new Exception(
-        "Failed to retrieve an image resource identifier for the file marker-black.png"
+        "Failed to retrieve an image resource identifier for the file ".$Shape."-black.png"
     );
 }
 
@@ -80,7 +81,7 @@ imagefilter($Img, IMG_FILTER_COLORIZE, $BG["R"], $BG["G"], $BG["B"]);
 # add the text overlay
 $FgColor = imagecolorallocatealpha($Img, $FG["R"], $FG["G"], $FG["B"], 0);
 if ($FgColor === false) {
-    throw new Exception("Failed to retrieve a color identifier for the image marker-black.png");
+    throw new Exception("Failed to retrieve a color identifier for the image ".$Shape."-black.png");
 }
 
 imagestring($Img, 3, 5, 0, $Text, $FgColor);
@@ -98,13 +99,11 @@ imagecopy(
 );
 
 # load the marker outline
-$Outline = imagecreatefrompng(
-    getcwd()."/".$AF->gUIFile("marker-outline.png")
-);
+$Outline = imagecreatefrompng($AF->gUIFile($Shape."-outline.png"));
 
 if (!$Outline) {
     throw new Exception(
-        "Failed to retrieve an image resource identifier for the file marker-outline.png"
+        "Failed to retrieve an image resource identifier for the file ".$Shape."-outline.png"
     );
 }
 
@@ -123,9 +122,11 @@ imagecopy(
 # generate the png
 ob_start();
 imagepng($Canvas);
-$Data = ob_get_contents();
-ob_end_clean();
+$Data = ob_get_clean();
 
-# save and then output the generated image
+# save the generated image
 file_put_contents($CachedFile, $Data);
+
+# (since we already have the image data in memory, just output it rather than
+# punting to `readfile()` as above)
 print $Data;

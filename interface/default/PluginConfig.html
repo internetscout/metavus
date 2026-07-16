@@ -10,24 +10,42 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_CfgUI)) {
-    throw new Exception("H_CfgUI not defined.");
-}
-if (!isset($H_Plugin)) {
-    $H_Plugin = null;
-}
-if (!isset($H_PluginCssClass)) {
-    throw new Exception("H_PluginCssClass not defined.");
-}
 
-$BaseName = (isset($_GET["PN"])) ? $_GET["PN"] : null;
-$Attribs = $H_Plugin->GetAttributes();
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
+}
 
 $AF = ApplicationFramework::getInstance();
+
+if (!isset($_GET["PN"])) {
+    print "<h1>Plugin Error</h1>";
+    print "<p>No plugin name provided.</p>";
+    return;
+}
+
+$PluginName = $_GET["PN"];
+/** @var Plugin $Plugin */
+$Plugin = $GLOBALS["G_PluginManager"]->getPlugin($PluginName, true);
+
+if (is_null($Plugin)) {
+    print "<h1>Plugin Error</h1>";
+    print "<p>No plugin found with a base name of <i>".$PluginName."</i>.</p>";
+    return;
+}
+
+$PluginCssClass = "cw-plugin-".strtolower(str_replace(' ', '-', $Plugin->getName()));
+$Attribs = $Plugin->getAttributes();
+$CfgValues = [];
+foreach ($Attribs["CfgSetup"] as $Name => $Params) {
+    $CfgValues[$Name] = $Plugin->getSavedConfigSetting($Name);
+}
+
+FormUI::ignoreFieldParameter("SettingFilter");
+$CfgUI = new FormUI($Attribs["CfgSetup"], $CfgValues);
 
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
@@ -36,31 +54,59 @@ $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setIcon("Cross.svg");
 $CancelButton->addSemanticClass("btn-danger");
 
+# ----- PROCESSING -----------------------------------------------------------
+
+switch (StdLib::getFormValue("Submit")) {
+    case "Save Changes":
+        # if errors were found, redisplay editing page
+        if ($CfgUI->validateFieldInput() !== 0) {
+            break;
+        }
+
+        # retrieve form values
+        $CfgUI->setEventToSignalOnChange(
+            "EVENT_PLUGIN_CONFIG_CHANGE",
+            [
+                "PluginName" => $Attribs["Name"],
+                "SettingName" => null,
+                "OldValue" => null,
+                "NewValue" => null
+            ]
+        );
+        $NewValues = $CfgUI->getNewValuesFromForm();
+
+        # save new values
+        foreach ($NewValues as $Name => $NewValue) {
+            $Plugin::setConfigSetting($Name, $NewValue);
+        }
+
+        $AF->setJumpToPage("Plugins");
+        return;
+    case "Cancel":
+        $AF->setJumpToPage("Plugins");
+        return;
+}
+
+# check form fields for problems with their values when the form is initially loaded
+$CfgUI->validateInitialValues();
+
 # ----- DISPLAY --------------------------------------------------------------
 $AF->setPageTitle("Plugin Configuration");
 ?>
 
-<?PHP if (is_null($H_Plugin)) { ?>
-<h1>Plugin Error</h1>
-
-<p>No plugin found with a base name of <i><?= $BaseName; ?></i>.</p>
-
-<?PHP } else { ?>
 <h1>Configure Plugin: <i><?= $Attribs["Name"]; ?></i></h1>
 
-    <?PHP if (!isset($Attribs["CfgSetup"]) || !count($Attribs["CfgSetup"])) { ?>
-<p>This plugin has no configuration settings.</p>
-    <?PHP } else { ?>
-        <?PHP  FormUI::DisplayErrorBlock();  ?>
-        <?PHP  if ($Attribs["Instructions"]) {
-            print("<p>".$Attribs["Instructions"]."</p><br/>");
-        }  ?>
-<form method="post" class="priv-form <?= $H_PluginCssClass ?>"
-    action="index.php?P=PluginConfig&amp;PN=<?= $H_Plugin->getBaseName() ?>">
-        <?PHP  $H_CfgUI->DisplayFormTable();  ?>
+<?PHP if (!isset($Attribs["CfgSetup"]) || !count($Attribs["CfgSetup"])) { ?>
+    <p>This plugin has no configuration settings.</p>
+<?PHP } else {
+    FormUI::displayErrorBlock();
+    if ($Attribs["Instructions"]) {
+        print("<p>".$Attribs["Instructions"]."</p><br/>");
+    } ?>
+    <form method="post" class="priv-form <?= $PluginCssClass ?>"
+        action="index.php?P=PluginConfig&amp;PN=<?= $Plugin::getBaseName() ?>">
+        <?PHP $CfgUI->displayFormTable(); ?>
         <?= $SaveButton->getHtml(); ?>
         <?= $CancelButton->getHtml(); ?>
-</form>
-    <?PHP } ?>
-
+    </form>
 <?PHP } ?>

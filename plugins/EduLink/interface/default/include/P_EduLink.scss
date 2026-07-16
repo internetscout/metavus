@@ -264,6 +264,8 @@ div.mv-search-facets + ul.mv-search-facets {
 
     .col.text-end {
         a {
+            color: #585858;
+
             svg {
                 height: 1em;
                 margin-right: 5px;
@@ -431,10 +433,13 @@ div.mv-search-facets + ul.mv-search-facets {
 #mv-p-edulink-login-button,
 #mv-p-edulink-logout-button,
 #mv-p-edulink-records-button {
-    color: var(--heading-color);
     cursor: pointer;
     position: relative;
     top: 2px;
+}
+
+#mv-p-edulink-records-button {
+    color: var(--heading-color);
 }
 
 #mv-p-edulink-folder-button + #mv-p-edulink-login-button,

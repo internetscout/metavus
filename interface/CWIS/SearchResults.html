@@ -56,6 +56,10 @@ $AF->setPageTitle("Search Results - ".StdLib::NeatlyTruncateString(
     120
 ));
 
+# include JS required for facets (JS in SearchFacetUI is used by the
+# HTML we fetch via htmx)
+$AF->requireUIFile("htmx.js");
+$AF->requireUIFile("SearchFacetUI.js");
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -78,7 +82,7 @@ function getSortFieldHiddenTags(int $ItemType, $SortField, string $UrlParameterS
 
     # for each URL parameter
     foreach ($UrlParameters as $Param => $Values) {
-        $VarNameSuffix = $ItemType ? $ItemType : "";
+        $VarNameSuffix = $ItemType !== 0 ? $ItemType : "";
 
         # if multiple values were (or may be) provided
         if (is_array($Values)) {
@@ -169,7 +173,7 @@ function GetSortControls(
         $SortField->Type() == MetadataSchema::MDFTYPE_TIMESTAMP
     ) ? 1 : 0;
 
-    $VarNameSuffix = $ItemType ? $ItemType : "";
+    $VarNameSuffix = $ItemType !== 0 ? $ItemType : "";
     $SortFieldVarName = TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix;
     $ReverseSortVarName = TransportControlsUI::PNAME_REVERSESORT.$VarNameSuffix;
 
@@ -382,7 +386,7 @@ function printSearchResults(
     $UseTabs,
     $TransportUI,
     $ListChecksums
-) {
+): void {
     $PluginMgr = PluginManager::getInstance();
     # ----- SETUP (STRING BUILDING) ----------------------------------------------
 
@@ -400,7 +404,7 @@ function printSearchResults(
             ."</strong>";
 
     # build blurb for footer
-    if ((rand(0, 100) > 50) || !$PluginMgr->PluginReady("RSSExport") ||
+    if ((random_int(0, 100) > 50) || !$PluginMgr->PluginReady("RSSExport") ||
         !$PluginMgr->GetPlugin("RSSExport")->ConfigSetting("SearchFeed")) {
         $RefineLink = "index.php?P=AdvancedSearch&amp;RF=1&amp;"
             .$SearchParams->UrlParameterString();
@@ -448,17 +452,14 @@ function printSearchResults(
     $BaseLink = "index.php?P=SearchResults";
     # if a sort field was set, preserve it
     if ($SortField !== null) {
-        $VarNameSuffix = $Schema->id() ? $Schema->id() : "";
+        $VarNameSuffix = $Schema->id() !== 0 ? $Schema->id() : "";
         $BaseLink .= "&amp;".TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix
             ."=".$SortField->Id();
     }
 
-    $FacetUI = new SearchFacetUI(
-        $SearchParams,
-        $SearchResults
-    );
-
-    $FacetUI->setBaseLink($BaseLink);
+    $FacetUrl = "index.php?P=GenerateFacetHtml&amp;"
+        .http_build_query($SearchParams->urlParameters(), "", "&amp;")
+        ."&amp;SC=".$ItemType;
 
     # load resources to be displayed
     $ResultsToDisplay = [];
@@ -481,7 +482,7 @@ function printSearchResults(
 
     # ----- RESULT HEADER ---------------------------------------------------
     $BaseLinkWithSearchParams = "index.php?P=SearchResults&amp;"
-            .http_build_query($SearchParams->UrlParameters(), "&amp;");
+        .http_build_query($SearchParams->UrlParameters(), "", "&amp;");
     foreach ($ListChecksums as $Index => $Checksum) {
         $BaseLinkWithSearchParams .= "&amp;" . $Index . "=" . $Checksum;
     }
@@ -510,7 +511,8 @@ function printSearchResults(
             <?PHP # ----- FACETED SEARCH BLOCK ---------------------------- ?>
             <div class="col-3 mv-narrow-your-search bg-light border rounded">
                 <p><strong>Narrow&nbsp;Your&nbsp;Search</strong></p>
-                <?= $FacetUI->getHtml(); ?>
+                <div id="mv-facet-container-<?= $ItemType ?>"
+                     hx-get="<?= $FacetUrl ?>" hx-trigger="intersect once"></div>
             </div>
             <div class="col">
                 <?PHP

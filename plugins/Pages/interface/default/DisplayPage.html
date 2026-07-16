@@ -84,12 +84,17 @@ if ($Page->userCanEdit($User)) {
     print '<span class="cw-pages-controls cw-pages-'
     .($Page->containsTabs() ? '' : 'no').'tab-controls">';
 
-    $DeleteButton = new HtmlButton("Delete");
-    $DeleteButton->setIcon("Delete.svg");
-    $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
-    $DeleteButton->addClass("float-end cw-pages-delete");
-    $DeleteButton->addSemanticClass("btn-danger");
-    $DeleteButton->setLink("index.php?P=P_Pages_DeletePage&ID=" . $Id);
+
+    if ($Page->userCanDelete($User)) {
+        $DeleteButton = new HtmlButton("Delete");
+        $DeleteButton->setIcon("Delete.svg");
+        $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
+        $DeleteButton->addClass("float-end cw-pages-delete");
+        $DeleteButton->addSemanticClass("btn-danger");
+        $DeleteButton->setLink("index.php?P=P_Pages_DeletePage&ID=" . $Id);
+
+        print $DeleteButton->getHtml();
+    }
 
     $FullEditorButton = new HtmlButton("Full Editor");
     $FullEditorButton->setIcon("Pencil.svg");
@@ -97,7 +102,6 @@ if ($Page->userCanEdit($User)) {
     $FullEditorButton->addClass("float-end cw-pages-edit");
     $FullEditorButton->setLink("index.php?P=P_Pages_EditPage&ID=" . $Id);
 
-    print $DeleteButton->getHtml();
     print $FullEditorButton->getHtml();
 
     $AF->signalEvent(

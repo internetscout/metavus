@@ -39,7 +39,8 @@ class PageFactory extends RecordFactory
     }
 
     /**
-     * Retrieve list of clean URLs for all pages.
+     * Retrieve list of clean URLs for all pages, including clean URLs for
+     * tabs, if the page contains tabbed content.
      * @return array with page indexes for index and an array of clean URLs for values.
      *   The first element in the array is the URL of the page itself, subsequent
      *   elements give the URLs for tabs within the page.
@@ -57,9 +58,6 @@ class PageFactory extends RecordFactory
             # add to list if non-empty, including tabs
             if (strlen($Url) > 0) {
                 $CleanUrls[$Id] = [$Url];
-                foreach ($Page->getTabNames() as $Tab) {
-                    $CleanUrls[$Id][] = $Url."/".$Tab;
-                }
             }
         }
 

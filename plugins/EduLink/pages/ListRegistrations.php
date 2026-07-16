@@ -22,11 +22,31 @@ use Metavus\Plugins\EduLink\LMSRegistrationFactory;
 
 # ----- MAIN -----------------------------------------------------------------
 
-User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+$H_Plugin = EduLink::getInstance();
+User::requirePrivilege(
+    ...array_merge([PRIV_SYSADMIN], $H_Plugin->getViewMetricsPrivs())
+);
+
+$ShowAll = $_GET["ALL"] ?? false;
 
 $ItemsPerPage = 50;
+$RegistrationFields = [];
 
-$RegistrationFields = [
+if ($ShowAll) {
+    $RegistrationFields += [
+        "Internal" => [
+            "Heading" => "Internal",
+            "ValueFunction" => function ($Item, $FieldId): string {
+                return $Item->getIsInternal() ? "&check;" : "";
+            }
+        ]
+    ];
+}
+
+$RegistrationFields += [
+    "InstitutionName" => [
+        "Heading" => "Institution",
+    ],
     "Issuer" => [
         "Heading" => "Issuer",
     ],
@@ -38,7 +58,7 @@ $RegistrationFields = [
     ],
     "ContactEmail" => [
         "Heading" => "Contact Email",
-        "ValueFunction" => function ($Item, $FieldId) {
+        "ValueFunction" => function ($Item, $FieldId): string {
             return '<a href="mailto:'.$Item->getContactEmail().'">'
                 .$Item->getContactEmail().'</a>';
         },
@@ -46,11 +66,19 @@ $RegistrationFields = [
 ];
 
 $H_RegistrationListUI = new ItemListUI($RegistrationFields);
-$RLTransport = new TransportControlsUI();
-$H_RegistrationListUI->setTransportControls($RLTransport);
 $H_RegistrationListUI->fieldsSortableByDefault(false);
 $H_RegistrationListUI->setNoItemsMessage(
     "No LTI registrations"
+);
+$H_RegistrationListUI->setItemsPerPage($ItemsPerPage);
+
+# ----- DISPLAY --------------------------------------------------------------
+$H_RegistrationListUI->addTopCheckbox(
+    "Show Internal",
+    $_GET["ALL"] ?? false,
+    "ALL",
+    "index.php?P=P_EduLink_ListRegistrations",
+    "Include internal LMS registrations in list"
 );
 
 if (User::getCurrentUser()->hasPriv(PRIV_SYSADMIN)) {
@@ -71,16 +99,18 @@ $H_RegistrationListUI->addActionButton(
     "Delete.svg"
 );
 
-$H_Plugin = EduLink::getInstance();
-
 $Factory = new LMSRegistrationFactory();
-$RegistrationIds = $Factory->getItemIds();
+$RegistrationIds = $Factory->getItemIds(
+    !$ShowAll ? "IsInternal = 0" : ""
+);
 
 $H_NumRegistrations = count($RegistrationIds);
+$H_RegistrationListUI->setTotalItemCount($H_NumRegistrations);
+
 $RegistrationIds = array_slice(
     $RegistrationIds,
-    $RLTransport->startingIndex(),
-    $RLTransport->itemsPerPage()
+    $H_RegistrationListUI->getStartingIndex() ?? 0,
+    $ItemsPerPage
 );
 
 $H_Registrations = [];

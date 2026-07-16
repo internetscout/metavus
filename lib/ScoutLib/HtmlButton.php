@@ -254,7 +254,7 @@ abstract class HtmlButton
         $AttribString = "";
         array_walk(
             $Attribs,
-            function ($Value, $Key) use (&$AttribString) {
+            function ($Value, $Key) use (&$AttribString): void {
                 $AttribString .= " ".$Key
                         .(($Value !== null) ? "=\"".htmlspecialchars($Value)."\"" : "");
             }
@@ -263,14 +263,14 @@ abstract class HtmlButton
         # add in any supplied raw attributes
         array_walk(
             $RawAttribs,
-            function ($Value, $Key) use (&$AttribString) {
+            function ($Value, $Key) use (&$AttribString): void {
                 $AttribString .= " ".$Key
                         .(($Value !== null) ? "=\"".$Value."\"" : "");
             }
         );
 
         # add leading space to attribute string if there were attributes
-        $AttribString = strlen($AttribString) ? " ".$AttribString : "";
+        $AttribString = strlen($AttribString) !== 0 ? " ".$AttribString : "";
 
         # assemble element with content and return HTML to caller
         $Html = "<".$Tag.$AttribString;

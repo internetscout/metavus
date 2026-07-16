@@ -335,10 +335,10 @@ class UrlChecker extends Plugin
         }
 
         # come back later if there are URLs still being checked
-        if ($this->getQueuedTaskCount("checkUrl")) {
+        if ($this->getQueuedTaskCount("checkUrl") !== 0) {
             return self::RETRY_TIME_CHECKING;
         }
-        if ($this->getQueuedTaskCount("checkResourceUrls")) {
+        if ($this->getQueuedTaskCount("checkResourceUrls") !== 0) {
             return self::RETRY_TIME_CHECKING;
         }
 
@@ -1515,7 +1515,7 @@ class UrlChecker extends Plugin
                         break;
 
                     case MetadataSchema::MDFTYPE_PARAGRAPH:
-                        if (!$Field->allowHTML()) {
+                        if (!$Field->allowHtml()) {
                             break;
                         }
                         /* fall through */
@@ -1622,7 +1622,7 @@ class UrlChecker extends Plugin
      * @param Record $Resource Resource for the estimate.
      * @return int Expected number of seconds
      */
-    private function estimateCheckTime($Resource): int
+    private function estimateCheckTime(object $Resource): int
     {
         $Fields = $this->getFieldsToCheck($Resource->getSchemaId());
 
@@ -1932,7 +1932,7 @@ class UrlChecker extends Plugin
 
                     foreach ($Patterns as $Pattern) {
                         preg_match_all($Pattern, $Text, $Matches);
-                        if (count($Matches[1])) {
+                        if (count($Matches[1]) !== 0) {
                             $Urls = array_merge(
                                 $Urls,
                                 $Matches[1]
@@ -1941,7 +1941,7 @@ class UrlChecker extends Plugin
                     }
 
                     # go over the list of URLs and prepend the base path to all relative URLs
-                    $Urls = array_map(function ($Url) {
+                    $Urls = array_map(function ($Url): string {
                         # parse the current URL to get its components
                         $UrlComponents = parse_url($Url);
 
@@ -1967,7 +1967,7 @@ class UrlChecker extends Plugin
                     # (e.g., for scaled images)
                     $Urls = array_filter(
                         $Urls,
-                        function ($Url) {
+                        function (string $Url): bool {
                             # if the current URL is not a syntactically valid URL
                             # or it contains an insertion keyword, then filter it out
                             if (!filter_var($Url, FILTER_VALIDATE_URL)
@@ -1990,7 +1990,7 @@ class UrlChecker extends Plugin
      * Update the resource history for the given resource.
      * @param Record $Resource The resource for which to update the history.
      */
-    private function updateResourceHistory($Resource): void
+    private function updateResourceHistory(object $Resource): void
     {
         $this->DB->query(
             "INSERT INTO UrlChecker_RecordHistory"
@@ -2026,7 +2026,7 @@ class UrlChecker extends Plugin
         # clean out history entries for URLs that are no longer associated
         # with this field and record
         $EscapedUrls = array_map(
-            function ($Url) {
+            function ($Url): string {
                 return "'".addslashes($Url)."'";
             },
             $UrlsToKeep
@@ -2085,7 +2085,7 @@ class UrlChecker extends Plugin
      * @param string $Url URL
      * @return HttpInfo Results of check
      */
-    private function getHttpInformation($Url): HttpInfo
+    private function getHttpInformation(string $Url): HttpInfo
     {
         # information for the URL
         list($Info, $Redirect) = $this->getHttpInformationWithoutRedirect($Url);
@@ -2130,7 +2130,7 @@ class UrlChecker extends Plugin
         $Info = new HttpInfo();
 
         # blank url (code defaults to self::STATUS_NOT_CHECKED)
-        if (!strlen(trim($Url))) {
+        if (strlen(trim($Url)) === 0) {
             return [$Info, null];
         }
 

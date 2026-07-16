@@ -31,14 +31,14 @@
 #       SetDebugLevel()
 #           - Determine verbosity
 #
-#   Copyright 2014-2019 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 
 namespace ScoutLib;
 
 use DOMNode;
-use SimpleXmlElement;
+use SimpleXMLElement;
 
 class OAIClient
 {
@@ -77,7 +77,7 @@ class OAIClient
     /**
      * Get or set URL of target OAI repository server.
      * @param string $NewValue New URL of target OAI repository server. (OPTIONAL)
-     * @return current URL of target OAI repository server
+     * @return string Current URL of target OAI repository server.
      */
     public function serverUrl($NewValue = null)
     {
@@ -90,7 +90,7 @@ class OAIClient
     /**
      * Get or set metadata schema for records being retrieved.
      * @param string $NewValue New metadata prefix.  (OPTIONAL)
-     * @return current metadata prefix
+     * @return string Current metadata prefix.
      */
     public function metadataPrefix($NewValue = null)
     {
@@ -103,7 +103,7 @@ class OAIClient
     /**
      * Get or set specification of subset of records to be retrieved.
      * @param string $NewValue New set specification.  (OPTIONAL)
-     * @return current set specification
+     * @return string Current set specification.
      */
     public function setSpec($NewValue = "X-NOSETSPECVALUE-X")
     {
@@ -120,24 +120,24 @@ class OAIClient
      *
      * @return array containing identification info
      */
-    public function getIdentification()
+    public function getIdentification(): array
     {
         # query server for XML text
-        $XmlText = $this->PerformQuery("Identify");
-        $this->DebugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
+        $XmlText = $this->performQuery("Identify");
+        $this->debugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
 
         # convert XML text into object
         $Xml = simplexml_load_string($XmlText);
-        $this->DebugOutVar(9, __METHOD__, "Xml", $Xml);
+        $this->debugOutVar(9, __METHOD__, "Xml", $Xml);
 
         # if identification info was found
         $Info = array();
         if (isset($Xml->Identify)) {
             # extract info
             $Ident = $Xml->Identify;
-            $this->GetValFromXml($Ident, "repositoryName", "Name", $Info);
-            $this->GetValFromXml($Ident, "adminEmail", "Email", $Info);
-            $this->GetValFromXml($Ident, "baseURL", "URL", $Info);
+            $this->getValFromXml($Ident, "repositoryName", "Name", $Info);
+            $this->getValFromXml($Ident, "adminEmail", "Email", $Info);
+            $this->getValFromXml($Ident, "baseURL", "URL", $Info);
         }
 
         # return info to caller
@@ -149,15 +149,15 @@ class OAIClient
      *
      * @return array containing list of available metadata formats
      */
-    public function getFormats()
+    public function getFormats(): array
     {
         # query server for XML text
-        $XmlText = $this->PerformQuery("ListMetadataFormats");
-        $this->DebugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
+        $XmlText = $this->performQuery("ListMetadataFormats");
+        $this->debugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
 
         # convert XML text into object
         $Xml = simplexml_load_string($XmlText);
-        $this->DebugOutVar(9, __METHOD__, "Xml", $Xml);
+        $this->debugOutVar(9, __METHOD__, "Xml", $Xml);
 
         # if format info was found
         $Formats = array();
@@ -165,19 +165,19 @@ class OAIClient
             # extract info
             $Index = 0;
             foreach ($Xml->ListMetadataFormats->metadataFormat as $Format) {
-                $this->GetValFromXml(
+                $this->getValFromXml(
                     $Format,
                     "metadataPrefix",
                     "Name",
                     $Formats[$Index]
                 );
-                $this->GetValFromXml(
+                $this->getValFromXml(
                     $Format,
                     "schema",
                     "Schema",
                     $Formats[$Index]
                 );
-                $this->GetValFromXml(
+                $this->getValFromXml(
                     $Format,
                     "metadataNamespace",
                     "Namespace",
@@ -233,7 +233,7 @@ class OAIClient
             }
 
             # query server for XML text
-            $XmlText = $this->PerformQuery("ListRecords", $Args);
+            $XmlText = $this->performQuery("ListRecords", $Args);
 
             # if a cache is in use, save this chunk of XML into it
             if ($this->Cache !== null) {
@@ -244,9 +244,9 @@ class OAIClient
             $XmlText = file_get_contents($cache_fname);
         }
 
-        $this->DebugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
+        $this->debugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
 
-        return $this->GetRecordsFromXML($XmlText, "ListRecords");
+        return $this->getRecordsFromXML($XmlText, "ListRecords");
     }
 
     /**
@@ -269,18 +269,18 @@ class OAIClient
         $Args["identifier"] = $Id;
 
         # query server for XML text
-        $XmlText = $this->PerformQuery("GetRecord", $Args);
-        $this->DebugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
+        $XmlText = $this->performQuery("GetRecord", $Args);
+        $this->debugOutVar(8, __METHOD__, "XmlText", htmlspecialchars($XmlText));
 
-        return $this->GetRecordsFromXML($XmlText, "GetRecord");
+        return $this->getRecordsFromXML($XmlText, "GetRecord");
     }
 
     /**
      * Check whether more records are available after last GetRecords().
      *
-     * @return TRUE if more records are available, otherwise FALSE
+     * @return bool TRUE if more records are available, otherwise FALSE
      */
-    public function moreRecordsAvailable()
+    public function moreRecordsAvailable(): bool
     {
         return isset($this->ResumptionToken) ? true : false;
     }
@@ -288,7 +288,7 @@ class OAIClient
     /**
      * Clear any additional records available after last GetRecords().
      */
-    public function resetRecordPointer()
+    public function resetRecordPointer(): void
     {
         unset($this->ResumptionToken);
         $this->CacheSequenceNumber = 0;
@@ -299,7 +299,7 @@ class OAIClient
      *
      * @param int $NewLevel Numerical debugging output level (0-9)
      */
-    public function setDebugLevel($NewLevel)
+    public function setDebugLevel($NewLevel): void
     {
         $this->DebugLevel = $NewLevel;
     }
@@ -320,8 +320,9 @@ class OAIClient
      * @param string $QueryVerb OAI query command (verb).
      * @param array $Args Arguments for query, with argument names for the
      *       index.  (OPTIONAL)
+     * @return string Query result data.
      */
-    private function performQuery($QueryVerb, $Args = null)
+    private function performQuery(string $QueryVerb, $Args = null): string
     {
         # open stream to OAI server
 
@@ -362,7 +363,7 @@ class OAIClient
      * @param string $DstName Name of destination element.
      * @param array $Results Array to set.
      */
-    private function getValFromXml($Xml, $SrcName, $DstName, &$Results)
+    private function getValFromXml($Xml, string $SrcName, string $DstName, array &$Results): void
     {
         if (isset($Xml->$SrcName)) {
             $Results[$DstName] = trim($Xml->$SrcName);
@@ -376,7 +377,7 @@ class OAIClient
      * @param string $VarName Name of variable.
      * @param mixed $VarValue Value of variable.
      */
-    private function debugOutVar($Level, $MethodName, $VarName, $VarValue)
+    private function debugOutVar(int $Level, string $MethodName, string $VarName, $VarValue): void
     {
         if ($this->DebugLevel >= $Level) {
             print("\n<pre>" . $MethodName . "()  " . $VarName . " = \n");
@@ -448,17 +449,21 @@ class OAIClient
     *     this record, should only be non-null when called recurisvely
     *     (OPTIONAL, default NULL)
     */
-    private function extractDataFromXml(&$Records, $Index, DOMNode $dom,
-                                        $Section, $ParentTagName = NULL)
-    {
+    // @codingStandardsIgnoreEnd
+    private function extractDataFromXml(
+        &$Records,
+        $Index,
+        DOMNode $dom,
+        $Section,
+        $ParentTagName = null
+    ): void {
         foreach ($dom->childNodes as $node) {
             # for DOM children that are elements (rather than comments, text,
             #       or something else)
             if ($node->nodeType == XML_ELEMENT_NODE) {
                 # compute a tag name to use
-                $StorageTagName =
-                    (($ParentTagName !== NULL) ? $ParentTagName . "/" : "")
-                    . $node->nodeName;
+                $StorageTagName = (($ParentTagName !== null) ? $ParentTagName . "/" : "")
+                        . $node->nodeName;
 
                 # Glue together the contents of the 'text' children of this node
                 $Value = "";
@@ -474,12 +479,16 @@ class OAIClient
                 }
 
                 # and process our children
-                $this->ExtractDataFromXml($Records, $Index,
-                    $node, $Section, $StorageTagName);
+                $this->extractDataFromXml(
+                    $Records,
+                    $Index,
+                    $node,
+                    $Section,
+                    $StorageTagName
+                );
             }
         }
     }
-    // @codingStandardsIgnoreEnd
 
     /**
      * Find and return the first child of a DOMNode that is an Element.
@@ -514,13 +523,13 @@ class OAIClient
      *   could not be parsed.
      * @see ExtractDataFromXml()
      */
-    private function getRecordsFromXML($XmlText, $ParseTo)
+    private function getRecordsFromXML($XmlText, string $ParseTo)
     {
         # create XML parser and pass it text
         $Xml = simplexml_load_string($XmlText);
 
         # if text could not be parsed, return NULL
-        if (!$Xml instanceof SimpleXmlElement) {
+        if (!$Xml instanceof SimpleXMLElement) {
             return null;
         }
 
@@ -560,19 +569,19 @@ class OAIClient
                 $doc = dom_import_simplexml($Record->metadata);
 
                 # get the 'record' element
-                $doc = $this->GetFirstElement($doc);
+                $doc = $this->getFirstElement($doc);
 
                 # record the format used for this record
                 $Records[$Index]["format"] = $doc->nodeName;
 
                 # extract data for this record
-                $this->ExtractDataFromXml($Records, $Index, $doc, "metadata");
+                $this->extractDataFromXml($Records, $Index, $doc, "metadata");
             }
 
             # if there is additional information available, snag that too
             if ($Record->about->count() > 0) {
                 $doc = dom_import_simplexml($Record->about);
-                $this->ExtractDataFromXml($Records, $Index, $doc, "about");
+                $this->extractDataFromXml($Records, $Index, $doc, "about");
             }
 
             # move along to the next record

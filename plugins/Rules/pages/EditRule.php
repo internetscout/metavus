@@ -28,7 +28,7 @@ use ScoutLib\PluginManager;
  * @param PrivilegeSet $PrivSet The privilege set to check.
  * @return string|null NULL if value is okay or error message if not.
  */
-function CheckThatPrivilegesHaveUserComponents(string $FieldName, PrivilegeSet $PrivSet)
+function CheckThatPrivilegesHaveUserComponents(string $FieldName, PrivilegeSet $PrivSet): ?string
 {
     return (count($PrivSet->getPossibleNecessaryPrivileges())
             || count($PrivSet->fieldsWithUserComparisons())) ? null
@@ -242,7 +242,7 @@ $FormFields["Action"]["Default"] = Rule::ACTION_UPDATEFIELDVALUES;
 # create ChangeSetEditingUIs for each schema containing editable fields
 $H_FieldEditors = [];
 foreach (FieldsToEdit() as $SchemaId => $FieldIds) {
-    if (count($FieldIds)) {
+    if (count($FieldIds) !== 0) {
         $H_FieldEditors[$SchemaId] = new ChangeSetEditingUI(
             "FieldEditor_".$SchemaId,
             $SchemaId
@@ -267,7 +267,8 @@ if ($PluginMgr->pluginReady("Mailer")) {
     $FormFields["SendEmail_Privileges"] = [
         "Type" => FormUI::FTYPE_PRIVILEGES,
         "Label" => "Email Recipients",
-        "Help" => "Emails will be sent to users for whom specified conditions are satisfied.",
+        "Help" => "Emails will be sent to non-disabled users for whom specified"
+                ." conditions are satisfied.",
         "Required" => true,
         "ValidateFunction" => "CheckThatPrivilegesHaveUserComponents",
         "Schemas" => [],
@@ -328,7 +329,7 @@ if (!$H_IsNewRule && isset($H_Rule)) {
 
 # and configure field editing buttons for adding more fields
 foreach (FieldsToEdit() as $SchemaId => $FieldIds) {
-    if (count($FieldIds)) {
+    if (count($FieldIds) !== 0) {
         $H_FieldEditors[$SchemaId]->addFieldButton("Add field", $FieldIds);
     }
 }
@@ -354,7 +355,7 @@ switch ($ButtonPushed) {
     case "Add":
     case "Save":
         # check values and bail out if any are invalid
-        if ($H_FormUI->validateFieldInput()) {
+        if ($H_FormUI->validateFieldInput() !== 0) {
             return;
         }
 

@@ -50,7 +50,7 @@ $TotalResults = count($SearchResults);
 $SearchResults = array_slice($SearchResults, 0, $DesiredNumberOfResults, true);
 
 $ResourceData = array();
-foreach ($SearchResults as $ResourceId => $Score) {
+foreach (array_keys($SearchResults) as $ResourceId) {
     $Summary = ResourceSummary::create($ResourceId);
     $Summary->termsToHighlight($SearchString);
 

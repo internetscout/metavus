@@ -368,21 +368,31 @@ abstract class FullRecordHelper_Base
                 break;
 
             case MetadataSchema::MDFTYPE_DATE:
-                if ($RawValue instanceof Date) {
+                # if date is in form that would allow us to assess its precision
+                if (($RawValue instanceof Date) || Date::isValidDate($RawValue)) {
+                    # convert it to Date (if necessary) to be able to get precision
+                    if (!($RawValue instanceof Date)) {
+                        $RawValue = new Date($RawValue);
+                    }
+
+                    # if precision of date is such that it can be prettified
                     $PrecisionForBasicDates = Date::PRE_BEGINYEAR
                             | Date::PRE_BEGINMONTH
                             | Date::PRE_BEGINDAY;
                     if ($RawValue->precision() == $PrecisionForBasicDates) {
+                        # prettify date
                         $Value = StdLib::getPrettyDate(
                             $RawValue->formatted(),
                             true,
                             ""
                         );
                     } else {
+                        # use formatted (but not prettified) version of date
                         $Value = $RawValue->formatted();
                     }
                 } else {
-                    $Value = StdLib::getPrettyDate($RawValue, true, "");
+                    # use date value as-is
+                    $Value = $RawValue;
                 }
                 break;
 
@@ -585,7 +595,7 @@ abstract class FullRecordHelper_Base
             if (is_array($Values)) {
                 # return array with FALSE for each value
                 $Qualifiers = [];
-                foreach ($Values as $ValueIndex => $Value) {
+                foreach (array_keys($Values) as $ValueIndex) {
                     $Qualifiers[$ValueIndex] = false;
                 }
                 return $Qualifiers;
@@ -603,7 +613,7 @@ abstract class FullRecordHelper_Base
         if (is_array($Values)) {
             $Qualifiers = [];
             if ($MField->hasItemLevelQualifiers()) {
-                foreach ($Values as $ValueIndex => $Value) {
+                foreach (array_keys($Values) as $ValueIndex) {
                     switch ($MField->type()) {
                         case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
                         case MetadataSchema::MDFTYPE_OPTION:
@@ -623,7 +633,7 @@ abstract class FullRecordHelper_Base
                 }
             } else {
                 # return array with default qualifier for each value
-                foreach ($Values as $ValueIndex => $Value) {
+                foreach (array_keys($Values) as $ValueIndex) {
                     $Qualifiers[$ValueIndex] = $DefaultQualifier;
                 }
             }

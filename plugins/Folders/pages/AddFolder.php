@@ -17,7 +17,7 @@ use ScoutLib\ApplicationFramework;
 # ----- MAIN -----------------------------------------------------------------
 
 # make sure a user is logged in
-if (!CheckAuthorization()) {
+if (!User::requireBeingLoggedIn()) {
     return;
 }
 
@@ -27,7 +27,7 @@ ApplicationFramework::getInstance()
 
 # nothing to do when no folder name provided
 $FolderName = $_GET["FolderName"] ?? "";
-if (!strlen($FolderName)) {
+if (strlen($FolderName) === 0) {
     return;
 }
 

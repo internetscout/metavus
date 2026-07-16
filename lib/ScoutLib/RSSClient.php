@@ -68,7 +68,7 @@ class RSSClient
         }
         $this->Parser->parseText($this->XmlText);
 
-        if ($this->DebugLevel) {
+        if ($this->DebugLevel !== 0) {
             print("RSSClient->RSSClient() returned ".strlen($this->XmlText)
                     ." characters from server query<br>\n");
         }
@@ -327,7 +327,7 @@ class RSSClient
      *                Type or NULL on failure or if not set,
      *                Charset or NULL on failure or if not set)
      */
-    private function getXmlInfo($Url)
+    private function getXmlInfo($Url): array
     {
         $Text = @file_get_contents($Url);
         $Type = null;

@@ -82,7 +82,7 @@ foreach ($UserFields as $MField) {
 
 # delete temporary record after page load is complete
 $AF->addPostProcessingCall(
-    function ($Record) {
+    function ($Record): void {
         $Record->destroy();
     },
     $Record

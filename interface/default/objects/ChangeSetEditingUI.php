@@ -470,7 +470,7 @@ class ChangeSetEditingUI
                 case MetadataSchema::MDFTYPE_OPTION:
                 case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
                 case MetadataSchema::MDFTYPE_REFERENCE:
-                    if (!strlen($Value)) {
+                    if (strlen($Value) === 0) {
                         $this->logError(
                             "Blank value not allowed.",
                             $Field->id()

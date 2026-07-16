@@ -110,7 +110,7 @@ class HumanMetadataField
     {
         $Value = $this->Field->getAllowedConversionTypes();
 
-        return count($Value) ? implode(", ", $Value) : $this->NotSetText;
+        return count($Value) !== 0 ? implode(", ", $Value) : $this->NotSetText;
     }
 
     /**
@@ -175,7 +175,7 @@ class HumanMetadataField
      */
     public function owner(): string
     {
-        return $this->getValueCheckingLength($this->Field->owner());
+        return $this->getValueCheckingLength($this->Field->getOwner());
     }
 
     /**
@@ -475,7 +475,7 @@ class HumanMetadataField
             $Values[] = $this->mapPrivilege($Id);
         }
 
-        return count($Values) ? implode(", ", $Values) : $this->NotSetText;
+        return count($Values) !== 0 ? implode(", ", $Values) : $this->NotSetText;
     }
 
     /**
@@ -515,7 +515,7 @@ class HumanMetadataField
             }
 
             if (!is_null($Y) && strlen($Y)) {
-                return (strlen($XText) ? $XText . ", " : "") . "Y: " . $Y;
+                return (strlen($XText) !== 0 ? $XText . ", " : "") . "Y: " . $Y;
             }
 
             return $this->NotSetText;
@@ -570,7 +570,7 @@ class HumanMetadataField
     {
         $Value = $this->Field->getPossibleValues();
 
-        return count($Value) ? implode(", ", $Value) : $this->NotSetText;
+        return count($Value) !== 0 ? implode(", ", $Value) : $this->NotSetText;
     }
 
     /**
@@ -602,7 +602,7 @@ class HumanMetadataField
     {
         $Value = $this->Field->associatedQualifierList();
 
-        return count($Value) ? implode(", ", $Value) : $this->NotSetText;
+        return count($Value) !== 0 ? implode(", ", $Value) : $this->NotSetText;
     }
 
     /**
@@ -613,7 +613,7 @@ class HumanMetadataField
     {
         $Value = $this->Field->unassociatedQualifierList();
 
-        return count($Value) ? implode(", ", $Value) : $this->NotSetText;
+        return count($Value) !== 0 ? implode(", ", $Value) : $this->NotSetText;
     }
 
     /**

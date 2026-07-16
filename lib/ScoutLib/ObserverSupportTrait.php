@@ -60,7 +60,7 @@ trait ObserverSupportTrait
         ?int $ItemId = null
     ): void {
         foreach (self::$Observers as $Observer) {
-            if ($Event & $Observer["Events"]) {
+            if (($Event & $Observer["Events"]) !== 0) {
                 if (($ItemId === null)
                         || ($Observer["Item ID"] === null)
                         || ($ItemId === $Observer["Item ID"])) {

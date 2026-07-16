@@ -3,22 +3,42 @@
 #   FILE:  EditPage.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\File;
-use Metavus\Image;
+use Metavus\FormUI;
 use Metavus\MetadataSchema;
 use Metavus\Plugins\Pages;
 use Metavus\Plugins\Pages\Page;
 use Metavus\Plugins\Pages\PageFactory;
-use Metavus\PrivilegeEditingUI;
-use Metavus\PrivilegeSet;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get HTML describing a page timestamp and user.
+ * @param Page $Page Page to inspect.
+ * @param string $DateFieldName Metadata field containing the timestamp.
+ * @param string $UserFieldName Metadata field containing the user ID.
+ * @return string Timestamp/user HTML.
+ */
+function getPageEditTimestampHtml(
+    Page $Page,
+    string $DateFieldName,
+    string $UserFieldName
+): string {
+    $User = current($Page->get($UserFieldName, true));
+    $Timestamp = StdLib::getPrettyTimestamp($Page->get($DateFieldName), true);
+    $UserName = ($User instanceof User) ? $User->name() : "(unknown)";
+    $TimestampInfo = $Timestamp." by <i>".$UserName."</i>";
+
+    return str_replace(" ", "&nbsp;", $TimestampInfo);
+}
 
 $AF = ApplicationFramework::getInstance();
 
@@ -26,310 +46,267 @@ $AF = ApplicationFramework::getInstance();
 $PageId = isset($_POST["F_Id"]) ? $_POST["F_Id"]
         : (isset($_GET["ID"]) ? $_GET["ID"] : null);
 
-# make sure user has needed privileges
+# if page was not specified
+if ($PageId === null) {
+    # set error message to be displayed
+    $H_ErrorMsgs[] = "No page ID was specified.";
+    return;
+}
+
 $Plugin = Pages::getInstance();
 $H_SchemaId = $Plugin->getConfigSetting("MetadataSchemaId");
 
-# retrieve user currently logged in
 $User = User::getCurrentUser();
-
+$Schema = new MetadataSchema($H_SchemaId);
 $PFactory = new PageFactory();
-$H_Page = null;
+
 if ($PageId == "NEW") {
-    $Schema = new MetadataSchema($H_SchemaId);
     if (!$Schema->userCanAuthor($User)) {
         $AF->setJumpToPage("UnauthorizedAccess");
         return;
     }
+
+    $Page = Page::create();
 } else {
-    if ($PageId !== null && $PFactory->itemExists($PageId)) {
-        $H_Page = new Page($PageId);
-        if (!$H_Page->userCanEdit($User)) {
-            $AF->setJumpToPage("UnauthorizedAccess");
-            return;
-        }
+    if (!$PFactory->itemExists($PageId)) {
+        $H_DisplayMode = "Error";
+        $H_ErrorMsgs[] = "Invalid page ID.";
+        return;
+    }
+
+    $Page = new Page($PageId);
+    if (!$Page->userCanModify($User)) {
+        $AF->setJumpToPage("UnauthorizedAccess");
+        return;
     }
 }
 
-# save invoking page
-$H_ReturnTo = isset($_POST["F_ReturnTo"]) ? $_POST["F_ReturnTo"]
-        : (isset($_GET["ReturnTo"]) ? $_GET["ReturnTo"]
-        : (isset($_SERVER["HTTP_REFERER"]) ? $_SERVER["HTTP_REFERER"]
-        : null));
+$H_DisplayMode = $Page->isTempRecord() ? "Adding" : "Editing";
 
-# take action based on which button was pushed or which action was requested
-$Action = isset($_POST["Submit"]) ? $_POST["Submit"] : "Edit";
-switch ($Action) {
-    case "Edit":
-        # if new page was requested
-        if ($PageId == "NEW") {
-            # create new page
-            $H_Page = Page::create();
+$FormValues = [
+    "Title" => $Page->get("Title"),
+    "Content" => $Page->get("Content"),
+    "Summary" => $Page->get("Summary"),
+    "Keywords" => $Page->get("Keywords"),
+    "CleanUrl" => $Page->get("Clean URL"),
+    "Image" => $Page->get("Images", true),
+    "File" => $Page->get("Files", true),
+    "ViewingPrivs" => $Page->viewingPrivileges(),
+];
 
-            # set display mode to adding new page
-            $H_DisplayMode = "Adding";
-        } else {
-            # if page was not specified
-            if ($PageId === null) {
+$AllowedKeywords = $Plugin->getAllowedInsertionKeywords();
+$FormFields = [
+    "Title" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Title",
+        "Size" => 60,
+        "MaxLength" => 120,
+        "Help" => "Displayed in the browser title bar, and also "
+                ."used by search engines who index the page. ",
+    ],
+    "Content" => [
+        "Type" => FormUI::FTYPE_PARAGRAPH,
+        "Label" => "Page Content",
+        "Rows" => 20,
+        "Columns" => 80,
+        "UseWYSIWYG" => true,
+        "AllowedInsertionKeywords" => $AllowedKeywords,
+    ],
+    "Summary" => [
+        "Type" => FormUI::FTYPE_PARAGRAPH,
+        "Label" => "Summary",
+        "Rows" => 5,
+        "Columns" => 60,
+        "AllowedInsertionKeywords" => $AllowedKeywords,
+        "Help" => "Displayed in search results, both on the site and by "
+                ."external search engines like Google. If left blank, this "
+                ."will be auto-generated from the page content.",
+    ],
+    "Keywords" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Keywords",
+        "Size" => 60,
+        "MaxLength" => 120,
+        "Help" => "Additional keywords that might be used to search "
+                ."for this page. (OPTIONAL)",
+    ],
+    "CleanUrl" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Clean URL Path",
+        "Size" => 60,
+        "MaxLength" => 120,
+        "Help" => "If a &quot;clean URL&quot; path (e.g. <i>my/new/page"
+                ."</i>) is set, the page will be reachable at that address.",
+        "ValidateFunction" => function (
+            $FieldName,
+            $Value
+        ) use (
+            $AF,
+            $PFactory,
+            $Page
+        ) : ?string {
+            if (strlen($Value) == 0) {
+                return null;
+            }
+
+            if (preg_match("%[^a-z0-9_/-]+%i", $Value)) {
+                return "Invalid characters in Clean URL."
+                    ." Only alphanumerics, underscores, dashes,"
+                    ." and slash are allowed.";
+            }
+
+            if (substr($Value, 0, 1) == "/") {
+                return "Clean URL cannot begin with a slash.";
+            }
+
+            if (substr($Value, -1) == "/") {
+                return "Clean URL cannot end with a slash.";
+            }
+
+            # if specified clean URL is already in use (and not by us)
+            $CleanUrlList = $PFactory->getCleanUrls();
+            if ($AF->cleanUrlIsMapped($Value) &&
+                (!array_key_exists($Page->id(), $CleanUrlList) ||
+                 !in_array($Value, $CleanUrlList[$Page->id()]))) {
                 # set error message to be displayed
-                $H_ErrorMsgs[] = "No page ID was specified.";
-                $H_DisplayMode = "Error";
-            } else {
-                # if page does not exist
-                if (!$PFactory->itemExists($PageId)) {
-                    # set error message to be displayed
-                    $H_ErrorMsgs[] = "The specified page (ID=<i>"
-                            .$PageId."</i>) does not exist.";
-                    $H_DisplayMode = "Error";
-                } else {
-                    # set display mode based on page status
-                    $H_DisplayMode = $H_Page->isTempRecord()
-                            ? "Adding" : "Editing";
-                }
+                return "The specified clean URL path (<a href=\""
+                    .$AF->baseUrl().$Value."\"><i>".$Value
+                    ."</i></a>) is already in use.";
             }
-        }
 
-        # load values for editing
-        if ($H_DisplayMode != "Error") {
-            $H_Title = $H_Page->get("Title");
-            $H_Content = $H_Page->get("Content");
-            if ($H_Content === null) {
-                $H_Content = "";
-            }
-            $H_Summary = $H_Page->get("Summary");
-            if ($H_Summary === null) {
-                $H_Summary = "";
-            }
-            $H_Keywords = $H_Page->get("Keywords");
-            if ($H_Keywords === null) {
-                $H_Keywords = "";
-            }
-            $H_CleanUrl = $H_Page->get("Clean URL");
-            $H_AltTexts = [];
-            $Images = $H_Page->get("Images", true);
-            foreach ($Images as $Image) {
-                $H_AltTexts[$Image->id()] = $Image->altText();
-            }
-            $H_Privileges = $H_Page->viewingPrivileges();
-            if ($H_Privileges == null) {
-                $H_Privileges = new PrivilegeSet();
-            }
+            return null;
         }
+    ],
+    "Image" => [
+        "Type" => FormUI::FTYPE_IMAGE,
+        "Label" => "Images",
+        "AllowMultiple" => true,
+        "InsertIntoField" => "Content",
+    ],
+    "File" => [
+        "Type" => FormUI::FTYPE_FILE,
+        "Label" => "Files",
+        "AllowMultiple" => true,
+        "InsertIntoField" => "Content",
+    ],
+    "ViewingPrivs" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Label" => "Privileges Required for Viewing Page",
+        "Schemas" => $H_SchemaId,
+    ],
+    "Created" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Created",
+        "Content" => getPageEditTimestampHtml(
+            $Page,
+            "Creation Date",
+            "Added By Id"
+        )
+    ],
+    "LastModified" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "Last Modified",
+        "Content" =>  getPageEditTimestampHtml(
+            $Page,
+            "Date Last Modified",
+            "Last Modified By Id"
+        )
+    ],
+];
+
+$H_FormUI = new FormUI($FormFields, $FormValues);
+
+$H_FormUI->addHiddenField("F_Id", (string)$Page->id());
+
+$ReturnTo = $_POST["F_ReturnTo"] ??
+    $_SERVER["HTTP_REFERER"] ??
+    "index.php?P=P_Pages_ListPages";
+$H_FormUI->addHiddenField("F_ReturnTo", (string)$ReturnTo);
+
+$Action = $H_FormUI->getSubmitButtonValue();
+switch ($Action) {
+    case "Upload":
+        $H_FormUI->handleUploads();
         break;
 
     case "Delete":
-        # if image was specified to delete
-        $Schema = new MetadataSchema($H_SchemaId);
-        if (strlen($_POST["F_ImageToDelete"])) {
-            # dissociate image from page and delete image
-            $ImageId = $_POST["F_ImageToDelete"];
-            if (Image::itemExists($ImageId)) {
-                $Image = new Image($ImageId);
-                $Field = $Schema->getField("Images");
-                $H_Page->clear($Field, $Image);
-            }
-        } elseif (strlen($_POST["F_FileToDelete"])) {
-            # if file was specified to delete
-            # dissociate file from page and delete file
-            $FileId = $_POST["F_FileToDelete"];
-            if (File::itemExists($FileId)) {
-                $Field = $Schema->getField("Files");
-                $File = new File($FileId);
-                $H_Page->clear($Field, $File);
-            }
-        }
-        break;
-
-    case "Upload":
-        # if image uploaded
-        if (isset($_FILES["F_Image"]["tmp_name"]) &&
-            is_uploaded_file($_FILES["F_Image"]["tmp_name"])) {
-            # create temp copy of file with correct name
-            $TempFile = "tmp/".$_FILES["F_Image"]["name"];
-            copy($_FILES["F_Image"]["tmp_name"], $TempFile);
-
-            # create new Image object from uploaded file
-            $Schema = new MetadataSchema($H_SchemaId);
-            $Field = $Schema->getField("Images");
-
-            try {
-                $Image = Image::create($TempFile);
-            } catch (Exception $Ex) {
-                $ImageName = $_FILES["F_Image"]["name"];
-                $H_ErrorMsgs[] = "A problem was encountered uploading"
-                    ." the image file <i>".$ImageName."</i>."
-                    ."(".$Ex->getMessage().")";
-                break;
-            }
-
-            # attach image to resource
-            $H_Page->set($Field, $Image->id());
-
-            # set the image's alternate text
-            $AltText = StdLib::getArrayValue($_POST, "F_ImageAltText");
-            if (strlen($AltText)) {
-                $Image->altText($AltText);
-            }
-        }
-
-        # if file uploaded
-        if (isset($_FILES["F_File"]["tmp_name"]) &&
-            is_uploaded_file($_FILES["F_File"]["tmp_name"])) {
-            # create temp copy of file with correct name
-            $TempFile = "tmp/".$_FILES["F_File"]["name"];
-            copy($_FILES["F_File"]["tmp_name"], $TempFile);
-
-            # create new File object from uploaded file
-            $Schema = new MetadataSchema($H_SchemaId);
-            $Field = $Schema->getField("Files");
-            $FileName = $_FILES["F_File"]["name"];
-            $File = File::create($TempFile, $FileName);
-
-            # if file save was successful
-            if (is_object($File)) {
-                # set additional file attributes
-                $File->resourceId($H_Page->id());
-                $File->fieldId($Field->id());
-            } else {
-                # set error message and error out
-                switch ($File) {
-                    case File::FILESTAT_ZEROLENGTH:
-                        $H_ErrorMsgs[] = "The file <i>".$FileName
-                                ."</i> uploaded was empty (zero length).";
-                        break;
-
-                    default:
-                        $H_ErrorMsgs[] = "A problem was encountered uploading"
-                                ." the file <i>".$FileName."</i>.(".$File.")";
-                        break;
-                }
-            }
-        }
+        $H_FormUI->handleDeletes();
         break;
 
     case "Add":
     case "Save":
-        # tidy up clean URL if specified
-        $CleanUrl = "";
-        if (array_key_exists("F_CleanUrl", $_POST) && strlen(trim($_POST["F_CleanUrl"]))) {
-            $CleanUrl = $_POST["F_CleanUrl"];
-            $CleanUrl = trim($CleanUrl, "/");
-            $CleanUrl = str_replace($AF->baseUrl(), "", $CleanUrl);
-            $CleanUrl = preg_replace("%[^a-z0-9_/-]+%i", "", $CleanUrl);
+        # stop processing on errors
+        if ($H_FormUI->validateFieldInput() > 0) {
+            return;
         }
 
-        # if specified clean URL is already in use (and not by us)
-        $CleanUrlList = $PFactory->getCleanUrls();
-        if (strlen($CleanUrl) &&
-            $AF->cleanUrlIsMapped($CleanUrl) &&
-            (!array_key_exists($H_Page->id(), $CleanUrlList) ||
-             !in_array($CleanUrl, $CleanUrlList[$H_Page->id()]))) {
-            # set error message to be displayed
-            $H_ErrorMsgs[] = "The specified clean URL path (<a href=\""
-                    .$AF->baseUrl().$CleanUrl."\"><i>".$CleanUrl
-                    ."</i></a>) is already in use.";
+        # get submitted values
+        $NewValues = $H_FormUI->getNewValuesFromForm();
+        $CleanUrl = $NewValues["CleanUrl"];
 
-            # reload values for editing
-            $H_Title = $_POST["F_Title"];
-            $H_Content = $_POST["F_Content"];
-            $H_Summary = $_POST["F_Summary"];
-            $H_Keywords = $_POST["F_Keywords"];
-            $H_CleanUrl = $CleanUrl;
-            $PrivUI = new PrivilegeEditingUI($H_SchemaId);
-            $PrivSets = $PrivUI->getPrivilegeSetsFromForm();
-            $H_Privileges = $PrivSets["ViewingPrivs"];
+        # update page data
+        $Page->set("Title", $NewValues["Title"]);
 
-            # set display mode appropriately
-            $H_DisplayMode = $H_Page->isTempRecord() ? "Adding" : "Editing";
+        $OldSummary = $Page->getSummary($Plugin->getConfigSetting("SummaryLength"));
+        $Page->set("Content", $NewValues["Content"]);
+
+        # if summary was not edited or is empty
+        if (strlen(trim($NewValues["Summary"])) == 0 ||
+            ($NewValues["Summary"] == $OldSummary)) {
+            # generate from content
+            $Page->set("Summary", $Page->getSummary(
+                $Plugin->getConfigSetting("SummaryLength")
+            ));
         } else {
-            # if summary was not edited or is empty
-            if (!strlen(trim($_POST["F_Summary"])) ||
-                ($_POST["F_Summary"]
-                == $H_Page->getSummary($Plugin->getConfigSetting("SummaryLength")))) {
-                # update content and regenerate summary from content
-                $H_Page->set("Content", $_POST["F_Content"]);
-                $H_Page->set("Summary", $H_Page->getSummary(
-                    $Plugin->getConfigSetting("SummaryLength")
-                ));
-            } else {
-                # save edited summary
-                $H_Page->set("Summary", $_POST["F_Summary"]);
-            }
+            # otherwise, use provided value
+            $Page->set("Summary", $NewValues["Summary"]);
+        }
 
-            # update page content
-            $H_Page->set("Title", $_POST["F_Title"]);
-            $H_Page->set("Content", $_POST["F_Content"]);
-            $H_Page->set("Clean URL", $CleanUrl);
-            $H_Page->set("Keywords", $_POST["F_Keywords"]);
-            foreach ($_POST as $Name => $Value) {
-                if (preg_match("/^F_ImageAltText_[0-9]+/", $Name)) {
-                    $ImageId = preg_replace("/F_ImageAltText_/", "", $Name);
-                    $Image = new Image($ImageId);
-                    $Image->altText($Value);
-                }
-            }
+        $Page->set("Clean URL", $CleanUrl);
+        $Page->set("Keywords", $NewValues["Keywords"]);
+        $Page->set("Images", $NewValues["Image"], true);
+        $Page->set("Files", $NewValues["File"], true);
 
-            # update page modification times
-            $H_Page->set("Last Modified By Id", $User->id());
-            $H_Page->set("Date Last Modified", date("Y-m-d H:i:s"));
 
-            # update viewing privileges for page
-            $PrivUI = new PrivilegeEditingUI($H_SchemaId);
-            $PrivSets = $PrivUI->getPrivilegeSetsFromForm();
-            $H_Page->viewingPrivileges($PrivSets["ViewingPrivs"]);
+        # update page modification times
+        $Page->set("Last Modified By Id", $User->id());
+        $Page->set("Date Last Modified", date("Y-m-d H:i:s"));
 
-            # if new page
-            if ($Action == "Add") {
-                # set author and mark page no longer temporary
-                $H_Page->set("Added By Id", $User->id());
-                $H_Page->isTempRecord(false);
-            }
+        # update viewing privileges for page
+        $Page->viewingPrivileges($NewValues["ViewingPrivs"]);
 
-            # go to display saved page
-            if (strlen($CleanUrl)) {
-                $AF->setJumpToPage($CleanUrl, 0, true);
-            } else {
-                $AF->setJumpToPage(
-                    "index.php?P=P_Pages_DisplayPage&ID=".$H_Page->id()
-                );
-            }
+        # clean up uploaded files/images not associated with the record
+        # (Record::set() makes a copy of the file, this handles the one from
+        # the upload. It also handles images/files that were uploaded but then
+        # deleted before the record was saved.)
+        $H_FormUI->deleteUploads();
+
+        # if new page
+        if ($Action == "Add") {
+            # set author and mark page no longer temporary
+            $Page->set("Added By Id", $User->id());
+            $Page->isTempRecord(false);
+        }
+
+        # go to display saved page
+        if (strlen($CleanUrl) !== 0) {
+            $AF->setJumpToPage($CleanUrl, 0, true);
+        } else {
+            $AF->setJumpToPage(
+                "index.php?P=P_Pages_DisplayPage&ID=".$Page->id()
+            );
         }
         break;
 
     case "Cancel":
+        $H_FormUI->deleteUploads();
+
         # discard page if temporary
-        if (isset($H_Page) && $H_Page->isTempRecord()) {
-            $H_Page->destroy();
+        if ($Page->isTempRecord()) {
+            $Page->destroy();
         }
 
         # return to invoking page
-        $AF->setJumpToPage($H_ReturnTo);
+        $AF->setJumpToPage($ReturnTo);
         break;
-}
-
-# if just processed delete or upload request
-if (($Action == "Delete") || ($Action == "Upload")) {
-    # retrieve display mode
-    $H_DisplayMode = StdLib::getArrayValue($_POST, "F_DisplayMode", "Editing");
-
-    # transfer existing values from form
-    $H_Title = StdLib::getArrayValue($_POST, "F_Title");
-    $H_Content = StdLib::getArrayValue($_POST, "F_Content");
-    $H_Summary = StdLib::getArrayValue($_POST, "F_Summary");
-    $H_Keywords = StdLib::getArrayValue($_POST, "F_Keywords");
-    $H_CleanUrl = StdLib::getArrayValue($_POST, "F_CleanUrl");
-    $H_AltTexts = [];
-    $Images = $H_Page->get("Images", true);
-    foreach ($Images as $Image) {
-        if (isset($_POST["F_ImageAltText_".$Image->id()])) {
-            $H_AltTexts[$Image->id()] = $_POST["F_ImageAltText_".$Image->id()];
-        } else {
-            $H_AltTexts[$Image->id()] = $Image->altText();
-        }
-    }
-
-    # transfer viewing privileges for page
-    $PrivUI = new PrivilegeEditingUI($H_SchemaId);
-    $PrivSets = $PrivUI->getPrivilegeSetsFromForm();
-    $H_Privileges = $PrivSets["ViewingPrivs"];
 }

@@ -13,6 +13,9 @@ namespace Metavus;
 use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+
+User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN);
+
 $AF = ApplicationFramework::getInstance();
 
 $PurgeButton = new HtmlButton("Purge Sample Data");
@@ -33,7 +36,7 @@ $AF->setPageTitle("Purge Sample Data");
 records that are distributed with the software package. All sample records with
 <i>[--SAMPLE RECORD--]</i> in the description and all sample
 collections with <i>[--SAMPLE COLLECTION--]</i> in the description
-will be deleted from the database.  Once you click the purge button,
+will be deleted from the database. Once you click the purge button,
 the resources will be removed. Classifications and controlled names
 will also be removed automatically, provided they have not been
 assigned to other resources prior to purging.</p>

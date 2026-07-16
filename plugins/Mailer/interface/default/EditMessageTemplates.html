@@ -23,7 +23,7 @@ require_once($AF->GUIFile("CKEditorSetup.php"));
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function DisplayMessages($Msgs)
+function DisplayMessages($Msgs): void
 {
     ?><ul class="cw-form-modified"><?PHP
 foreach ($Msgs as $Msg) {
@@ -78,7 +78,7 @@ $SavedSearchKeywords = [
     "SEARCHCRITERIA" => "text description of search criteria",
 ];
 
-function DisplayKeywordList($Keywords)
+function DisplayKeywordList($Keywords): void
 {
     ?><dl class="mv-content-specialstrings"><?PHP
         ksort($Keywords);
@@ -302,8 +302,8 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
         ],
         "Users" => [
             "Heading" => "",
-            "ValueFunction" => function ($Item, $FieldName) {
-                if (count($Item["TemplateUsers"])) {
+            "ValueFunction" => function ($Item, $FieldName): string {
+                if (count($Item["TemplateUsers"]) !== 0) {
                     return "Currently in use and cannot be deleted.<br/>"
                         ."Used by: <i>".implode(", ", $Item["TemplateUsers"])."</i>";
                 } else {
@@ -314,21 +314,20 @@ if (($H_DisplayMode == "Adding") || ($H_DisplayMode == "Editing")) {
     ];
 
     $ItemList = new ItemListUI($ListFields);
-    $ItemList->Heading("Email Message Templates");
-    $ItemList->ItemsPerPage(count($H_Templates));
-    $ItemList->BaseLink("");
+    $ItemList->heading("Email Message Templates");
+    $ItemList->itemsPerPage(count($H_Templates));
     $ItemList->fieldsSortableByDefault(false);
 
-    $ItemList->AddActionButton(
+    $ItemList->addActionButton(
         "Edit",
         "index.php?P=P_Mailer_EditMessageTemplates&amp;AC=Edit&amp;ID=\$ID",
         "Pencil.svg"
     );
-    $ItemList->AddActionButton(
+    $ItemList->addActionButton(
         "Delete",
         "index.php?P=P_Mailer_EditMessageTemplates&amp;AC=Delete&amp;ID=\$ID",
         "Cross.svg",
-        function ($Item) {
+        function ($Item): bool {
             return count($Item["TemplateUsers"]) == 0 ? true : false ;
         }
     );

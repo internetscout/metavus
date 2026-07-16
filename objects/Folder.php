@@ -100,7 +100,7 @@ class Folder
         $DB = new Database();
         $DB->query("SELECT * FROM Folders WHERE FolderId = "
                 . intval($FolderId));
-        return $DB->numRowsSelected() ? true : false;
+        return $DB->numRowsSelected() !== 0 ? true : false;
     }
 
     /**
@@ -187,7 +187,7 @@ class Folder
     {
         $Name = $this->DB->updateValue("NormalizedName", $NewValue);
         # attempt to generate and set new normalized name if none found
-        if (!strlen($Name)) {
+        if (strlen($Name) === 0) {
             $Name = $this->DB->updateValue(
                 "NormalizedName",
                 self::normalizeFolderName($this->name())
@@ -469,7 +469,7 @@ class Folder
             }
         }
 
-        usort($Items, function ($ItemA, $ItemB) {
+        usort($Items, function ($ItemA, $ItemB): int {
             return $this->sortCompare($ItemA["ID"], $ItemB["ID"]);
         });
 
@@ -638,7 +638,7 @@ class Folder
      * Create a new folder with the exact same content as this folder.
      * @return Folder Folder object just cloned.
      */
-    public function duplicate()
+    public function duplicate(): self
     {
         $Factory = new FolderFactory();
         $NewFolder = $Factory->createFolder(
@@ -879,7 +879,7 @@ class Folder
         # for arrays, use the smallest element in the array
         $Value = $Resource->get($SortField);
         if (is_array($Value)) {
-            if (count($Value)) {
+            if (count($Value) !== 0) {
                 sort($Value);
                 $Value = current($Value);
             } else {

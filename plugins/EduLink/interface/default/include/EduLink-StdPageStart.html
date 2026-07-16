@@ -16,69 +16,6 @@ use Metavus\Plugins\EduLink;
 use ScoutLib\ApplicationFramework;
 
 /**
- * Determine if the Select Folder link should be displayed.
- * @return bool TRUE if a user is logged in and they have any folders with
- *   publicly viewable items. FALSE otherwise.
- */
-function shouldDisplaySelectFolder() : bool
-{
-    $AF = ApplicationFramework::getInstance();
-
-    if ($AF->getPageName() == "P_EduLink_SelectPublisher") {
-        return false;
-    }
-
-    # get list of public folders
-    $FolderIds = EduLink::getInstance()
-        ->getFolderList();
-
-    # if a user is logged in, add their folders as well
-    $User = $User = User::getCurrentUser();
-    if ($User->isLoggedIn()) {
-        $UserFolderIds = (new FolderFactory($User->id()))
-            ->getResourceFolder()
-            ->getItemIds();
-
-        $FolderIds = array_merge(
-            $FolderIds,
-            $UserFolderIds
-        );
-    }
-
-    # if no folders, nothing to show
-    if (count($FolderIds) == 0) {
-        return false;
-    }
-
-    # otherwise, see if any folders have a visible records in them
-    $RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
-    foreach ($FolderIds as $FolderId) {
-        $Folder = new Folder($FolderId);
-
-        $RecordIds = RecordFactory::buildMultiSchemaRecordList(
-            $Folder->getItemIds()
-        );
-
-        if (!isset($RecordIds[MetadataSchema::SCHEMAID_DEFAULT])) {
-            continue;
-        }
-
-        $VisibleItemIds = $RFactory->filterOutUnviewableRecords(
-            $RecordIds[MetadataSchema::SCHEMAID_DEFAULT],
-            User::getAnonymousUser()
-        );
-
-        # if so, show the folder list
-        if (count($VisibleItemIds) > 0) {
-            return true;
-        }
-    }
-
-    # if no folders contained a visible record, nothing to show
-    return false;
-}
-
-/**
  * Print the header of the page.
  * @param string $H_LaunchId LaunchId for the current page
  */
@@ -114,6 +51,11 @@ function printPageHeader($H_LaunchId) : void
         ."index.php?P=P_EduLink_LTIHome&L=".$H_LaunchId;
     $SelectFolderUrl = $AF->baseUrl()
         ."index.php?P=P_EduLink_SelectPublisher&L=".$H_LaunchId;
+
+    $DisplaySelectFolder =
+        ($AF->getPageName() == "P_EduLink_SelectPublisher") ?
+        false :
+        count($Plugin->getFolderList()) > 0;
 
     // phpcs:disable Generic.Files.LineLength.MaxExceeded
     // phpcs:disable Generic.WhiteSpace.ScopeIndent.Incorrect
@@ -162,7 +104,7 @@ function printPageHeader($H_LaunchId) : void
                      aria-label="<?= $ServiceName ?>"
                      ><img class="mv-logo" alt="" src="<?= $AF->gUIFile($LogoFileName) ?>"/></a></span></div>
             <div class="col text-end">
-              <?PHP if (shouldDisplaySelectFolder()) { ?>
+              <?PHP if ($DisplaySelectFolder) { ?>
               <a id="mv-p-edulink-folder-button" href="<?= $SelectFolderUrl ?>"
                  ><?= $AF->inlineUIFile("OpenFolder.svg") ?> Collections</a>
               <?PHP } ?>

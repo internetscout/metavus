@@ -9,27 +9,166 @@
 
 namespace Metavus;
 
-use Exception;
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get a field from a File object for display.
+ * @param int $Id FileId to extract data from.
+ * @param string $Function File:: function to call to get data.
+ * @return mixed Requested data.
+ */
+function getFileData(int $Id, string $Function)
+{
+    static $File = null;
+
+    if (is_null($File) || $File->id() != $Id) {
+        $File = new File($Id);
+    }
+    return $File->$Function();
+}
+
+/**
+ * Get a field from an Image object for display.
+ * @param int $Id ImageId to extract data from.
+ * @param string $Function Image:: function to call to get data.
+ * @return mixed Requested data.
+ */
+function getImageData(int $Id, string $Function)
+{
+    static $Image = null;
+
+    if (is_null($Image) || $Image->id() != $Id) {
+        $Image = new Image($Id);
+    }
+    return $Image->$Function();
+}
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_ImageListUI)) {
-    throw new Exception("H_ImageListUI not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
-if (!isset($H_Images)) {
-    throw new Exception("H_Images not defined.");
-}
-if (!isset($H_FileListUI)) {
-    throw new Exception("H_FileListUI not defined.");
-}
-if (!isset($H_Files)) {
-    throw new Exception("H_Files not defined.");
-}
-if (!isset($H_NumImages)) {
-    throw new Exception("H_NumImages not defined.");
-}
-if (!isset($H_NumFiles)) {
-    throw new Exception("H_NumFiles not defined.");
-}
+
+$ItemsPerPage = 50;
+
+# define fields for the list of files
+$FileFields = [
+    "FileId" => [
+        "Heading" => "File ID",
+        "Sortable" => false,
+        "ValueFunction" => function ($ItemId) {
+            return $ItemId;
+        }
+    ],
+    "FileName" => [
+        "Heading" => "File Name",
+        "Sortable" => false,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($ItemId): string {
+            $FileName = getFileData($ItemId, "name");
+            $FilePath = getFileData($ItemId, "getNameOfStoredFile");
+            return "<a href='".$FilePath."'>"
+                .htmlspecialchars($FileName)."</a>";
+        }
+    ],
+    "Record" => [
+        "Heading" => "Associated Record",
+        "Sortable" => false,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($ItemId): string {
+            $RecordId = getFileData($ItemId, "resourceId");
+
+            if ($RecordId == Record::NO_ITEM) {
+                return "(none)";
+            }
+
+            if (!Record::itemExists($RecordId)) {
+                return "(Invalid record ID ".$RecordId.")";
+            }
+
+            $FieldId = getFileData($ItemId, "fieldId");
+
+            $Record = new Record($RecordId);
+
+            $Title = $Record->getMapped("Title");
+            if (is_null($Title)) {
+                $Title = "<i>Record ".$Record->id()."</i>";
+            }
+
+            return "<a href='".$Record->getViewPageUrl()."'>".
+                $Title."</a> for field "
+                ."<i>".$Record->getSchema()->getField($FieldId)->name()."</i>";
+        }
+    ]
+];
+
+# define fields for the list of images
+$ImageFields = [
+    "ImageId" => [
+        "Heading" => "Image ID",
+        "Sortable" => false,
+        "ValueFunction" => function ($ItemId) {
+            return $ItemId;
+        },
+    ],
+    "FileName" => [
+        "Heading" => "File Name",
+        "Sortable" => false,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($ItemId): string {
+            $Image = new Image($ItemId);
+            return "<a href='".$Image->url("mv-image-large")
+                ."'>".$Image->getFullPathForOriginalImage()."</a>";
+        },
+    ],
+    "Record" => [
+        "Heading" => "Associated Record",
+        "Sortable" => false,
+        "AllowHTML" => true,
+        "ValueFunction" => function ($ItemId): string {
+            $RecordId = getImageData($ItemId, "getIdOfAssociatedItem");
+            $FieldId = getImageData($ItemId, "getFieldId");
+
+            if (!Record::itemExists($RecordId)) {
+                return "Invalid RecordId: ".$RecordId;
+            }
+
+            $Record = new Record($RecordId);
+            $Title = $Record->getMapped("Title");
+            if (is_null($Title)) {
+                $Title = "<i>Record ".$Record->id()."</i>";
+            }
+
+            return "<a href='".$Record->getViewPageUrl()."'>".
+                $Title."</a> for field ".
+                "<i>".$Record->getSchema()->getField($FieldId)->name()."</i>";
+        }
+    ],
+];
+
+# get the list of files with problems
+$FileListUI = new ItemListUI($FileFields);
+$FLTransport = new TransportControlsUI();
+$FileListUI->setTransportControls($FLTransport);
+$FileListUI->setNoItemsMessage("No file integrity problems found.");
+$FileListUI->setItemsPerPage($ItemsPerPage);
+$Files = (new FileFactory())->getFilesWithFixityProblems();
+$NumFiles = count($Files);
+$Files = array_slice($Files, $FLTransport->startingIndex(), $FLTransport->itemsPerPage());
+$FileListUI->setItems($Files);
+$FileListUI->setTotalItemCount($NumFiles);
+
+# get the list of images with problems
+$ImageListUI = new ItemListUI($ImageFields);
+$ILTransport = new TransportControlsUI();
+$ImageListUI->setTransportControls($ILTransport);
+$ImageListUI->setNoItemsMessage("No image integrity problems found.");
+$ImageListUI->setItemsPerPage($ItemsPerPage);
+$Images = (new ImageFactory())::getImagesWithFixityProblems();
+$NumImages = count($Images);
+$Images = array_slice($Images, $ILTransport->startingIndex(), $ILTransport->itemsPerPage());
+$ImageListUI->setItems($Images);
+$ImageListUI->setTotalItemCount($NumImages);
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
@@ -39,7 +178,7 @@ if (!isset($H_NumFiles)) {
   (See <a href="https://en.wikipedia.org/wiki/File_fixity">Wikipedia: File fixity</a>).</p>
 
 <h2>Files</h2>
-<?PHP $H_FileListUI->display($H_Files, $H_NumFiles); ?>
+<?PHP print $FileListUI->getHtml(); ?>
 
 <h2>Images</h2>
-<?PHP $H_ImageListUI->display($H_Images, $H_NumImages); ?>
+<?PHP print $ImageListUI->getHtml(); ?>

@@ -75,7 +75,8 @@ $Folder = new Folder($FolderId);
 
 # if the 'resource folder' does not contain the target, that tells us that the
 # target folder is owned by a different user
-if (!$ResourceFolder->containsItem($Folder->id())) {
+if (($Action !== "reorder-folder" && !$ResourceFolder->containsItem($Folder->id()))
+        || ($Action === "reorder-folder" && !$ResourceFolder->containsItem($ItemId))) {
     $Result = [
         "Status" => "Error",
         "Message" => "Folder is owned by a different user."
@@ -86,7 +87,7 @@ if (!$ResourceFolder->containsItem($Folder->id())) {
 }
 
 if (($Action == "move" || $Action == "move-folder")
-    && !$Folder->containsItem($ItemId)) {
+        && !$Folder->containsItem($ItemId)) {
     $Result = [
         "Status" => "Error",
         "Message" => "Source folder does not contain the item being moved."
@@ -120,6 +121,7 @@ switch ($Action) {
         break;
 
     case "move":
+        # move record within a folder
         if ($AfterItemId === null || !Record::itemExists($AfterItemId)) {
             $Result = [
                 "Status" => "Error",
@@ -146,6 +148,7 @@ switch ($Action) {
         break;
 
     case "move-folder":
+        # move record between folders
         if ($NewFolderId === null || !Folder::itemExists($NewFolderId)) {
             $Result = [
                 "Status" => "Error",
@@ -173,6 +176,18 @@ switch ($Action) {
             $NewFolder->sort();
         }
         $Message = "Item successfully moved to new folder.";
+        break;
+
+    case "reorder-folder":
+        # reorder folders
+        if ($AfterItemId !== null && $ResourceFolder->containsItem($AfterItemId)) {
+            # if given an after ID, move the item after it
+            $ResourceFolder->insertItemAfter($AfterItemId, $ItemId);
+        } else {
+            # otherwise just add it to the beginning of the list
+            $ResourceFolder->prependItem($ItemId);
+        }
+        $Message = "Folder successfully moved.";
         break;
 
     default:

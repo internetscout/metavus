@@ -3,7 +3,7 @@
 #   FILE:  Date.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 1999-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 1999-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 
@@ -49,7 +49,7 @@ class Date
         # set debug state
         $this->DebugLevel = $DebugLevel;
 
-        if ($this->DebugLevel) {
+        if ($this->DebugLevel !== 0) {
             print("Date:  Date(BeginDate=\"".$BeginDate
                     ."\" EndDate=\"".$EndDate."\" Precision="
                     .$this->formattedPrecision($Precision).")<br>\n");
@@ -438,24 +438,24 @@ class Date
     {
         # if begin year available
         $DateString = "";
-        if ($this->Precision & self::PRE_BEGINYEAR) {
+        if (($this->Precision & self::PRE_BEGINYEAR) !== 0) {
             # start with begin year
             $DateString = sprintf("%04d", $this->BeginYear);
 
             # if begin month available
-            if ($this->Precision & self::PRE_BEGINMONTH) {
+            if (($this->Precision & self::PRE_BEGINMONTH) !== 0) {
                 # add begin month
                 $DateString .= "-".sprintf("%02d", $this->BeginMonth);
 
                 # if begin day available
-                if ($this->Precision & self::PRE_BEGINDAY) {
+                if (($this->Precision & self::PRE_BEGINDAY) !== 0) {
                     # add begin day
                     $DateString .= "-".sprintf("%02d", $this->BeginDay);
                 }
             }
 
             # if end year available
-            if ($this->Precision & self::PRE_ENDYEAR) {
+            if (($this->Precision & self::PRE_ENDYEAR) !== 0) {
                 # separate dates with dash
                 $DateString .= " - ";
 
@@ -463,32 +463,32 @@ class Date
                 $DateString .= sprintf("%04d", $this->EndYear);
 
                 # if end month available
-                if ($this->Precision & self::PRE_ENDMONTH) {
+                if (($this->Precision & self::PRE_ENDMONTH) !== 0) {
                     # add end month
                     $DateString .= "-".sprintf("%02d", $this->EndMonth);
 
                     # if end day available
-                    if ($this->Precision & self::PRE_ENDDAY) {
+                    if (($this->Precision & self::PRE_ENDDAY) !== 0) {
                         # add end day
                         $DateString .= "-".sprintf("%02d", $this->EndDay);
                     }
                 }
             } else {
                 # if date is open-ended
-                if ($this->Precision & self::PRE_CONTINUOUS) {
+                if (($this->Precision & self::PRE_CONTINUOUS) !== 0) {
                     # add dash to indicate open-ended
                     $DateString .= "-";
                 }
             }
 
             # if copyright flag is set
-            if ($this->Precision & self::PRE_COPYRIGHT) {
+            if (($this->Precision & self::PRE_COPYRIGHT) !== 0) {
                 # add on copyright indicator
                 $DateString = "c".$DateString;
             }
 
             # if flag is set indicating date was inferred
-            if ($this->Precision & self::PRE_INFERRED) {
+            if (($this->Precision & self::PRE_INFERRED) !== 0) {
                 # add on inferred indicators
                 $DateString = "[".$DateString."]";
             }
@@ -508,13 +508,13 @@ class Date
     public function pFormatted(string $Format, bool $ReturnEndDate = false): string
     {
         if ($ReturnEndDate) {
-            $Month = ($this->Precision & self::PRE_ENDMONTH) ? $this->EndMonth : 1;
-            $Day = ($this->Precision & self::PRE_ENDDAY) ? $this->EndDay : 1;
-            $Year = ($this->Precision & self::PRE_ENDYEAR) ? $this->EndYear : 1;
+            $Month = (($this->Precision & self::PRE_ENDMONTH) !== 0) ? $this->EndMonth : 1;
+            $Day = (($this->Precision & self::PRE_ENDDAY) !== 0) ? $this->EndDay : 1;
+            $Year = (($this->Precision & self::PRE_ENDYEAR) !== 0) ? $this->EndYear : 1;
         } else {
-            $Month = ($this->Precision & self::PRE_BEGINMONTH) ? $this->BeginMonth : 1;
-            $Day = ($this->Precision & self::PRE_BEGINDAY) ? $this->BeginDay : 1;
-            $Year = ($this->Precision & self::PRE_BEGINYEAR) ? $this->BeginYear : 1;
+            $Month = (($this->Precision & self::PRE_BEGINMONTH) !== 0) ? $this->BeginMonth : 1;
+            $Day = (($this->Precision & self::PRE_BEGINDAY) !== 0) ? $this->BeginDay : 1;
+            $Year = (($this->Precision & self::PRE_BEGINYEAR) !== 0) ? $this->BeginYear : 1;
         }
         $Timestamp = mktime(0, 0, 0, $Month, $Day, $Year);
         if ($Timestamp === false) {
@@ -545,17 +545,17 @@ class Date
         $DateString = "";
 
         # if begin year available
-        if ($this->Precision & self::PRE_BEGINYEAR) {
+        if (($this->Precision & self::PRE_BEGINYEAR) !== 0) {
             # start with begin year
             $DateString = sprintf("%04d", $this->BeginYear);
 
             # if begin month available
-            if ($this->Precision & self::PRE_BEGINMONTH) {
+            if (($this->Precision & self::PRE_BEGINMONTH) !== 0) {
                 # add begin month
                 $DateString .= sprintf("-%02d", $this->BeginMonth);
 
                 # if begin day available
-                if ($this->Precision & self::PRE_BEGINDAY) {
+                if (($this->Precision & self::PRE_BEGINDAY) !== 0) {
                     # add begin day
                     $DateString .= sprintf("-%02d", $this->BeginDay);
                 }
@@ -573,9 +573,9 @@ class Date
     public function beginDate()
     {
         # build date string based on current precision
-        if ($this->Precision & self::PRE_BEGINYEAR) {
-            if ($this->Precision & self::PRE_BEGINMONTH) {
-                if ($this->Precision & self::PRE_BEGINDAY) {
+        if (($this->Precision & self::PRE_BEGINYEAR) !== 0) {
+            if (($this->Precision & self::PRE_BEGINMONTH) !== 0) {
+                if (($this->Precision & self::PRE_BEGINDAY) !== 0) {
                     $DateFormat = "%04d-%02d-%02d";
                 } else {
                     $DateFormat = "%04d-%02d-01";
@@ -605,9 +605,9 @@ class Date
     public function endDate()
     {
         # build date string based on current precision
-        if ($this->Precision & self::PRE_ENDYEAR) {
-            if ($this->Precision & self::PRE_ENDMONTH) {
-                if ($this->Precision & self::PRE_ENDDAY) {
+        if (($this->Precision & self::PRE_ENDYEAR) !== 0) {
+            if (($this->Precision & self::PRE_ENDMONTH) !== 0) {
+                if (($this->Precision & self::PRE_ENDDAY) !== 0) {
                     $DateFormat = "%04d-%02d-%02d";
                 } else {
                     $DateFormat = "%04d-%02d-01";
@@ -676,9 +676,9 @@ class Date
 
             # determine begin and end of range
             $BeginYear = $this->BeginYear;
-            if ($this->Precision & self::PRE_BEGINMONTH) {
+            if (($this->Precision & self::PRE_BEGINMONTH) !== 0) {
                 $BeginMonth = $this->BeginMonth;
-                if ($this->Precision & self::PRE_BEGINDAY) {
+                if (($this->Precision & self::PRE_BEGINDAY) !== 0) {
                     $BeginDay = $this->BeginDay - 1;
                 } else {
                     $BeginDay = 0;
@@ -687,11 +687,11 @@ class Date
                 $BeginMonth = 1;
                 $BeginDay = 0;
             }
-            if ($this->Precision & self::PRE_ENDYEAR) {
+            if (($this->Precision & self::PRE_ENDYEAR) !== 0) {
                 $EndYear = $this->EndYear;
-                if ($this->Precision & self::PRE_ENDMONTH) {
+                if (($this->Precision & self::PRE_ENDMONTH) !== 0) {
                     $EndMonth = $this->EndMonth;
-                    if ($this->Precision & self::PRE_ENDDAY) {
+                    if (($this->Precision & self::PRE_ENDDAY) !== 0) {
                         $EndDay = $this->EndDay;
                     } else {
                         $EndMonth++;
@@ -704,9 +704,9 @@ class Date
                 }
             } else {
                 $EndYear = $BeginYear;
-                if ($this->Precision & self::PRE_BEGINMONTH) {
+                if (($this->Precision & self::PRE_BEGINMONTH) !== 0) {
                     $EndMonth = $BeginMonth;
-                    if ($this->Precision & self::PRE_BEGINDAY) {
+                    if (($this->Precision & self::PRE_BEGINDAY) !== 0) {
                         $EndDay = $BeginDay + 1;
                     } else {
                         $EndMonth++;
@@ -778,37 +778,37 @@ class Date
             $Precision = $this->Precision;
         }
         $String = "";
-        if ($Precision & self::PRE_BEGINYEAR) {
+        if (($Precision & self::PRE_BEGINYEAR) !== 0) {
             $String .= "| BEGINYEAR ";
         }
-        if ($Precision & self::PRE_BEGINMONTH) {
+        if (($Precision & self::PRE_BEGINMONTH) !== 0) {
             $String .= "| BEGINMONTH ";
         }
-        if ($Precision & self::PRE_BEGINDAY) {
+        if (($Precision & self::PRE_BEGINDAY) !== 0) {
             $String .= "| BEGINDAY ";
         }
-        if ($Precision & self::PRE_BEGINDECADE) {
+        if (($Precision & self::PRE_BEGINDECADE) !== 0) {
             $String .= "| BEGINDECADE ";
         }
-        if ($Precision & self::PRE_ENDYEAR) {
+        if (($Precision & self::PRE_ENDYEAR) !== 0) {
             $String .= "| ENDYEAR ";
         }
-        if ($Precision & self::PRE_ENDMONTH) {
+        if (($Precision & self::PRE_ENDMONTH) !== 0) {
             $String .= "| ENDMONTH ";
         }
-        if ($Precision & self::PRE_ENDDAY) {
+        if (($Precision & self::PRE_ENDDAY) !== 0) {
             $String .= "| ENDDAY ";
         }
-        if ($Precision & self::PRE_ENDDECADE) {
+        if (($Precision & self::PRE_ENDDECADE) !== 0) {
             $String .= "| ENDDECADE ";
         }
-        if ($Precision & self::PRE_INFERRED) {
+        if (($Precision & self::PRE_INFERRED) !== 0) {
             $String .= "| INFERRED ";
         }
-        if ($Precision & self::PRE_COPYRIGHT) {
+        if (($Precision & self::PRE_COPYRIGHT) !== 0) {
             $String .= "| COPYRIGHT ";
         }
-        if ($Precision & self::PRE_CONTINUOUS) {
+        if (($Precision & self::PRE_CONTINUOUS) !== 0) {
             $String .= "| CONTINUOUS ";
         }
         $String = preg_replace("/^\\|/", "", $String);
@@ -817,12 +817,12 @@ class Date
 
     /**
      * Determine if a date is valid
-     * @param string $BeginDate Date (or beginning date, if range).
-     * @param string $EndDate Ending date (OPTIONAL, default to NULL).
+     * @param ?string $BeginDate Date (or beginning date, if range).
+     * @param ?string $EndDate Ending date (OPTIONAL, default to NULL).
      * @return bool TRUE for valid dates, FALSE otherwise.
      */
     public static function isValidDate(
-        string $BeginDate,
+        ?string $BeginDate,
         ?string $EndDate = null
     ): bool {
         $Result = true;
@@ -830,7 +830,7 @@ class Date
         # erroneously doesn't throw an exception when passed an empty begin
         # date. This should be removed when Date::__construct() is updated to
         # not accept empty dates.
-        if (strlen(trim($BeginDate)) < 1) {
+        if (($BeginDate === null) || strlen(trim($BeginDate)) < 1) {
             return false;
         }
 
@@ -880,7 +880,7 @@ class Date
      * @param int $Year
      * @return bool TRUE for days that are in bounds, FALSE for days out of bounds
      */
-    private function isValidDayMonthCombo($Month, $Day, $Year): bool
+    private function isValidDayMonthCombo(int $Month, int $Day, int $Year): bool
     {
         $LEAP_YEAR = 4;
         # If year is 0000, use 0004 instead because:

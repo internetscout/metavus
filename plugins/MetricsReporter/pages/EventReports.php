@@ -27,7 +27,7 @@ use ScoutLib\PluginManager;
 * @param string $Key Key to increment.
 * @return void
 */
-function CreateOrIncrement(&$Array, $Key)
+function CreateOrIncrement(&$Array, $Key): void
 {
     if (!isset($Array[$Key])) {
         $Array[$Key] = 1;

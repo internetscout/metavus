@@ -261,8 +261,8 @@ abstract class SearchEngine
                 $Weight += self::$FieldInfo[$FieldId]["Weight"];
             }
         }
-        if (count($SearchParams->getKeywordSearchStrings())) {
-            foreach (self::$FieldInfo as $FieldId => $Info) {
+        if (count($SearchParams->getKeywordSearchStrings()) !== 0) {
+            foreach (self::$FieldInfo as $Info) {
                 if ($Info["InKeywordSearch"]) {
                     $Weight += $Info["Weight"];
                 }
@@ -595,7 +595,7 @@ abstract class SearchEngine
         }
 
         # sort array alphabetically (just for convenience)
-        foreach ($SynonymList as $Word => $Synonyms) {
+        foreach (array_keys($SynonymList) as $Word) {
             asort($SynonymList[$Word]);
         }
         ksort($SynonymList);
@@ -683,7 +683,7 @@ abstract class SearchEngine
 
             # make sure all words are alphanumeric, if not throw exception
             foreach ($Words as $Index => $Word) {
-                if (!strlen($Word)) {
+                if (strlen($Word) === 0) {
                     unset($Words[$Index]);
                     continue;
                 }
@@ -722,7 +722,7 @@ abstract class SearchEngine
     public static function flattenMultiTypeResults(array $Results): array
     {
         $FlatScores = [];
-        foreach ($Results as $ItemType => $ItemScores) {
+        foreach ($Results as $ItemScores) {
             $FlatScores += $ItemScores;
         }
 
@@ -795,7 +795,7 @@ abstract class SearchEngine
         $KeywordSearchStrings = $SearchParams->getKeywordSearchStrings();
 
         # add keyword searches (if any) to fielded searches
-        if (count($KeywordSearchStrings)) {
+        if (count($KeywordSearchStrings) !== 0) {
             $SearchStrings[self::KEYWORD_FIELD_ID] = $KeywordSearchStrings;
         }
 
@@ -807,7 +807,7 @@ abstract class SearchEngine
             }
             foreach ($SearchStringArray as $String) {
                 $String = trim($String);
-                if (strlen($String)) {
+                if (strlen($String) !== 0) {
                     $NormalizedSearchStrings[$FieldId][] = $String;
                 }
             }
@@ -816,7 +816,7 @@ abstract class SearchEngine
 
         # if we have strings to search for
         $Scores = [];
-        if (count($SearchStrings)) {
+        if (count($SearchStrings) !== 0) {
             # perform search
             $Scores = $this->searchAcrossFields(
                 $SearchStrings,
@@ -844,7 +844,7 @@ abstract class SearchEngine
             $NewScores = $this->rawSearch($Subgroup);
 
             # added subgroup search scores to previous scores as appropriate
-            if (count($Scores)) {
+            if (count($Scores) !== 0) {
                 $Scores = $this->combineScores(
                     $Scores,
                     $NewScores,
@@ -869,7 +869,7 @@ abstract class SearchEngine
         $AllowedItemTypes = $SearchParams->itemTypes();
         if ($AllowedItemTypes !== false) {
             $this->loadItemTypeCache(array_keys($Scores));
-            foreach ($Scores as $ItemId => $Score) {
+            foreach (array_keys($Scores) as $ItemId) {
                 if (!in_array($this->getItemType($ItemId), $AllowedItemTypes)) {
                     unset($Scores[$ItemId]);
                 }
@@ -960,7 +960,7 @@ abstract class SearchEngine
                         $this->parseSearchStringForWords($SearchString, $Logic);
 
                     # calculate scores for matching items
-                    if (count($Words[$FieldId])) {
+                    if (count($Words[$FieldId]) !== 0) {
                         $Scores = $this->searchForWords(
                             $Words[$FieldId],
                             $FieldId,
@@ -977,7 +977,7 @@ abstract class SearchEngine
                     );
 
                     # handle any phrases
-                    if (count($Phrases[$FieldId])) {
+                    if (count($Phrases[$FieldId]) !== 0) {
                         $Scores = $this->searchForPhrases(
                             $Phrases[$FieldId],
                             $Scores,
@@ -1024,7 +1024,7 @@ abstract class SearchEngine
             # determine what item types were in use for the fields we
             # are searching
             $FieldTypes = [];
-            foreach ($SearchStrings as $FieldId => $Info) {
+            foreach (array_keys($SearchStrings) as $FieldId) {
                 $MyTypes = ($FieldId == self::KEYWORD_FIELD_ID) ?
                     $KeywordItemTypes :
                     self::$FieldInfo[$FieldId]["ItemTypes"];
@@ -1041,7 +1041,7 @@ abstract class SearchEngine
         }
 
         # if search results found
-        if (count($Scores)) {
+        if (count($Scores) !== 0) {
             # for each search text string
             foreach ($SearchStrings as $FieldId => $SearchStringArray) {
                 # for each search string for this field
@@ -1114,7 +1114,7 @@ abstract class SearchEngine
             }
 
             # if word is not excluded
-            if (!($Flags & self::WORD_EXCLUDED)) {
+            if (($Flags & self::WORD_EXCLUDED) === 0) {
                 # look up word ID
                 $this->dMsg(2, "Looking up word \"" . $Word . "\"");
                 $WordId = $this->getWordId($Word);
@@ -1181,11 +1181,11 @@ abstract class SearchEngine
                 }
 
                 # if counts were found
-                if (count($Counts)) {
+                if (count($Counts) !== 0) {
                     # for each count
                     foreach ($Counts as $ItemId => $Count) {
                         # if word flagged as required
-                        if ($Flags & self::WORD_REQUIRED) {
+                        if (($Flags & self::WORD_REQUIRED) !== 0) {
                             # increment required word count for record
                             if (isset($this->RequiredTermCounts[$ItemId])) {
                                 $this->RequiredTermCounts[$ItemId]++;
@@ -1427,7 +1427,7 @@ abstract class SearchEngine
                                 }
 
                                 # if phrase flagged as required
-                                if ($Flags & self::WORD_REQUIRED) {
+                                if (($Flags & self::WORD_REQUIRED) !== 0) {
                                     # increment required word count for record
                                     if (isset($this->RequiredTermCounts[$ItemId])) {
                                         $this->RequiredTermCounts[$ItemId]++;
@@ -1464,7 +1464,7 @@ abstract class SearchEngine
         # for each word
         foreach ($Words as $Word => $Flags) {
             # if word flagged as excluded
-            if ($Flags & self::WORD_EXCLUDED) {
+            if (($Flags & self::WORD_EXCLUDED) !== 0) {
                 # look up record ID for word
                 $WordId = $this->getWordId($Word);
 
@@ -1504,7 +1504,7 @@ abstract class SearchEngine
         # if there were required words
         if ($this->RequiredTermCount > 0) {
             # for each item
-            foreach ($Scores as $ItemId => $Score) {
+            foreach (array_keys($Scores) as $ItemId) {
                 # if item does not meet required word count
                 if (!isset($this->RequiredTermCounts[$ItemId])
                     || ($this->RequiredTermCounts[$ItemId]
@@ -1631,7 +1631,7 @@ abstract class SearchEngine
         # if filter functions have been set
         if (isset($this->FilterFuncs)) {
             # for each result
-            foreach ($Scores as $ItemId => $Score) {
+            foreach (array_keys($Scores) as $ItemId) {
                 # for each filter function
                 foreach ($this->FilterFuncs as $FuncName) {
                     # if filter function return TRUE for item
@@ -1740,7 +1740,7 @@ abstract class SearchEngine
             # if search logic is set to AND
             if ($Logic == "AND") {
                 # if results were found
-                if (count($Results)) {
+                if (count($Results) !== 0) {
                     # if there were no prior results and no terms for keyword search
                     if ((count($Scores) == 0) && ($this->InclusiveTermCount == 0)) {
                         # add all results to scores
@@ -1751,7 +1751,7 @@ abstract class SearchEngine
                         $FlippedResults = array_flip($Results);
 
                         # remove anything from scores that is not part of results
-                        foreach ($Scores as $ItemId => $Score) {
+                        foreach (array_keys($Scores) as $ItemId) {
                             if (!isset($FlippedResults[$ItemId])) {
                                 unset($Scores[$ItemId]);
                             }
@@ -1948,9 +1948,9 @@ abstract class SearchEngine
         $Words = $this->parseSearchStringForWords($Text, "OR", true);
 
         # if there was text left after parsing
-        if (count($Words)) {
+        if (count($Words) !== 0) {
             # for each word
-            foreach ($Words as $Word => $Flags) {
+            foreach (array_keys($Words) as $Word) {
                 # update count for word
                 $this->updateWordCount($Word, $ItemId, $FieldId);
 
@@ -2250,7 +2250,7 @@ abstract class SearchEngine
      * @param int $ItemId ID for item.
      * @return int|null Item type, or NULL if item type is unknown.
      */
-    private function getItemType(int $ItemId)
+    private function getItemType(int $ItemId): ?int
     {
         if (!isset(self::$ItemTypeCache[$ItemId])) {
             $this->loadItemTypeCache([$ItemId]);

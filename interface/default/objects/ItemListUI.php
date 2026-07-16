@@ -297,6 +297,15 @@ class ItemListUI
     }
 
     /**
+     * Get starting index for segment of items (within total list of items)
+     * to be displayed.
+     */
+    public function getStartingIndex(): ?int
+    {
+        return $this->StartingIndex;
+    }
+
+    /**
      * Set text to display on transport controls line.  If not specified,
      * this defaults to "Items X - Y of Z", where "X", "Y", and "Z" are
      * filled in appropriately for the current segment being displayed.
@@ -350,6 +359,15 @@ class ItemListUI
                 $this->Id = $TransportUI->id();
             }
         }
+    }
+
+    /**
+     * Add a class for the main table.
+     * @param string $Class The class to add to the table.
+     */
+    public function addAdditionalTableClass(string $Class): void
+    {
+        $this->AdditionalTableClasses[] = $Class;
     }
 
     /**
@@ -693,6 +711,7 @@ class ItemListUI
     const PNAME_STARTINGINDEX = "SI";
 
     private $Actions = [];
+    private $AdditionalTableClasses = [];
     private $BaseLink;
     private $Buttons = [];
     private $DisplayEmptyTable = false;
@@ -816,7 +835,7 @@ class ItemListUI
 
         # add remaining variables to supplied base link and return it to caller
         $FullBaseLink = $this->BaseLink
-                .(count($Vars) ? "&amp;".http_build_query($Vars, "", "&amp;") : "");
+                .(count($Vars) !== 0 ? "&amp;".http_build_query($Vars, "", "&amp;") : "");
         return $FullBaseLink;
     }
 
@@ -828,7 +847,7 @@ class ItemListUI
      */
     private function getTopButtonHtml(): string
     {
-        if (!count($this->Buttons)) {
+        if (count($this->Buttons) === 0) {
             return "";
         }
 
@@ -866,7 +885,7 @@ class ItemListUI
             } else {
                 $Button = new HtmlButton($Info["Label"]);
                 $Button->setLink($Info["Link"]);
-                if (strlen($Info["Icon"] ?? "")) {
+                if (strlen($Info["Icon"] ?? "") !== 0) {
                     $Button->setIcon($Info["Icon"]);
                 }
                 $Html .= $Button->getHtml();
@@ -885,7 +904,7 @@ class ItemListUI
     {
         $Html = "";
 
-        if (strlen($this->Heading)) {
+        if (strlen($this->Heading) !== 0) {
             if ($this->Heading == strip_tags($this->Heading)) {
                 $Html .= "<h1>".$this->Heading."</h1>\n";
             } else {
@@ -893,7 +912,7 @@ class ItemListUI
             }
         }
 
-        if (strlen($this->Subheading)) {
+        if (strlen($this->Subheading) !== 0) {
             if ($this->Subheading == strip_tags($this->Subheading)) {
                 $Html .= "<p class=\"mv-itemlistui-subheading\">"
                         .$this->Subheading."</p>\n";
@@ -914,7 +933,7 @@ class ItemListUI
         $Html = "<span class=\"mv-itemlistui-empty\">";
         if (!is_null($this->NoItemsMsg) && strlen($this->NoItemsMsg)) {
             $Html .= $this->NoItemsMsg;
-        } elseif (strlen($this->TransportUI->itemTypeName())) {
+        } elseif (strlen($this->TransportUI->itemTypeName()) !== 0) {
             $Html .= "(no ".strtolower(StdLib::pluralize(
                 $this->TransportUI->itemTypeName()
             ))." to display)";
@@ -933,7 +952,8 @@ class ItemListUI
     private function getMainTableHtml(array $Items): string
     {
         # begin table
-        $Html = '<table class="table table-striped mv-itemlistui">';
+        $Html = '<table class="table table-striped mv-itemlistui '
+                .implode(" ", $this->AdditionalTableClasses).'">';
 
         # begin header row
         $Html .= "<thead><tr class='table-dark'>";
@@ -947,7 +967,7 @@ class ItemListUI
         }
 
         # add action header if needed
-        if (count($this->Actions)) {
+        if (count($this->Actions) !== 0) {
             $Html .= "<th>Actions</th>\n";
         }
 
@@ -960,7 +980,7 @@ class ItemListUI
         # if no items in table
         if (!count($Items)) {
             # display "no items" table row
-            $ColumnCount = count($this->Fields) + (count($this->Actions) ? 1 : 0);
+            $ColumnCount = count($this->Fields) + (count($this->Actions) !== 0 ? 1 : 0);
             $Html .= "<tr><td colspan=\"".$ColumnCount."\">"
                     .$this->getNoItemsMessageHtml()."</td></tr>";
         } else {
@@ -985,7 +1005,7 @@ class ItemListUI
      * @param Item|array $Item Object or array of data for row.
      * @return string Generated HTML.
      */
-    private function getRowHtml($ItemId, $Item): string
+    private function getRowHtml(string $ItemId, $Item): string
     {
         $Html = "<tr>\n";
 
@@ -1002,7 +1022,7 @@ class ItemListUI
             if (isset($FieldInfo["CssClasses"])) {
                 $Classes .= " ".$FieldInfo["CssClasses"];
             }
-            $ClassAttrib = strlen($Classes)
+            $ClassAttrib = strlen($Classes) !== 0
                     ? " class=\"".trim($Classes)."\""
                     : "";
 
@@ -1011,7 +1031,7 @@ class ItemListUI
         }
 
         # add action button cell (if needed)
-        if (count($this->Actions)) {
+        if (count($this->Actions) !== 0) {
             $Html .= "<td>".$this->getActionButtonHtml($ItemId, $Item)."</td>\n";
         }
 
@@ -1158,7 +1178,7 @@ class ItemListUI
             $LinkEnd = "</a>";
         } elseif (isset($FieldInfo["LinkFunction"])) {
             $Link = $FieldInfo["LinkFunction"]($Item);
-            if (!strlen($Link)) {
+            if (strlen($Link) === 0) {
                 $LinkStart = "";
                 $LinkEnd = "";
             } else {
@@ -1356,8 +1376,7 @@ class ItemListUI
             # otherwise use first field present in field definitions
             } else {
                 $Fields = $this->Fields;
-                reset($Fields);
-                $SortField = key($Fields);
+                $SortField = array_key_first($Fields);
             }
         }
 

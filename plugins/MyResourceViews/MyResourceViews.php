@@ -3,7 +3,7 @@
 #   FILE:  MyResourceViews.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout::phpstan
@@ -15,6 +15,7 @@ use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
+use ScoutLib\PluginManager;
 
 /**
  * Plugin that adds the recently viewed resources for the current user to the
@@ -95,15 +96,20 @@ class MyResourceViews extends Plugin
      */
     public function getHtmlForRecentlyViewedBox(): string
     {
-        # retrieve user currently logged in
-        $User = User::getCurrentUser();
+        # bail out if metrics recorder (source of recent view data) is not available
+        $PManager = PluginManager::getInstance();
+        if (!$PManager->pluginReady("MetricsRecorder")) {
+            return "";
+        }
 
-        # return nothing if no user logged in
+        # bail out if user is not logged in
+        $User = User::getCurrentUser();
         if (!$User->isLoggedIn()) {
             return "";
         }
 
         $Box = "";
+
         # get the list length + 5 in case some resources cannot be displayed
         $NumToFetch = $this->getConfigSetting("ListLength") + 5;
 
@@ -151,7 +157,7 @@ class MyResourceViews extends Plugin
         }
 
         # if there were resources found
-        if (count($Resources)) {
+        if (count($Resources) !== 0) {
             ob_start();
             ?><div class="mv-section mv-section-simple mv-html5-section">
                 <div class="mv-section-header mv-html5-header">

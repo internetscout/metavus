@@ -9,10 +9,10 @@
 # @scout:phpstan
 
 namespace Metavus\Plugins\EduLink;
-
 use Exception;
 use Metavus\SearchParameterSet;
 use Metavus\User;
+use ScoutLib\Database;
 use ScoutLib\Item;
 
 /**
@@ -44,6 +44,7 @@ class LMSRegistration extends Item
         ];
 
         $AllowedKeys = $RequiredKeys;
+        $AllowedKeys[] = "InstitutionName";
         $AllowedKeys[] = "ContactEmail";
         $AllowedKeys[] = "LMS";
         $AllowedKeys[] = "SearchParameters";
@@ -111,6 +112,61 @@ class LMSRegistration extends Item
 
         # report result to caller
         return ($Count > 0);
+    }
+
+    /**
+     * Get the Registration Id corresponding to a provided Issuer and Client Id.
+     * @param string $Issuer Issuer to search for.
+     * @param string $ClientId Client Id to search for
+     * @return int Registration Id
+     * @throwx Exception when no corresponding registration can be found.
+     */
+    public static function findRegistrationId(
+        string $Issuer,
+        string $ClientId
+    ): int {
+        $DB = new Database();
+
+        $DB->query(
+            "SELECT Id FROM EduLink_Registrations "
+                ." WHERE Issuer = '".addslashes($Issuer)."'"
+                ." AND ClientId = '".addslashes($ClientId)."'"
+        );
+
+        if ($DB->numRowsSelected() == 0) {
+            throw new Exception(
+                "Issuer '".$Issuer."' not found"
+                ." with Client Id '".$ClientId."'"
+            );
+        }
+
+        $Row = $DB->fetchRow();
+        if ($Row === false) {
+            throw new Exception(
+                "No row from database even though query succeeded."
+                ." (should be impossible)"
+            );
+        }
+
+        return (int)$Row["Id"];
+    }
+
+    /**
+     * Get institution name.
+     * @return string Institution name.
+     */
+    public function getInstitutionName(): string
+    {
+        return $this->DB->updateValue("InstitutionName");
+    }
+
+    /**
+     * Set institution name.
+     * @param string $NewValue Institution name.
+     */
+    public function setInstitutionName(string $NewValue): void
+    {
+        $this->DB->updateValue("InstitutionName", $NewValue);
     }
 
     /**
@@ -272,6 +328,24 @@ class LMSRegistration extends Item
     {
         $this->SearchParams = $NewValue;
         $this->DB->updateValue("SearchParameters", $this->SearchParams->data());
+    }
+
+    /**
+     * Get value of the IsInternal flag.
+     * @return bool TRUE for internal registrations.
+     */
+    public function getIsInternal() : bool
+    {
+        return $this->DB->updateBoolValue("IsInternal");
+    }
+
+    /**
+     * Set value of the IsInternal flag.
+     * @param bool $NewValue TRUE for internal registrations.
+     */
+    public function setIsInternal(bool $NewValue) : void
+    {
+        $this->DB->updateBoolValue("IsInternal", $NewValue);
     }
 
     /**

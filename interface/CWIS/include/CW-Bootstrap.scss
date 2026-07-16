@@ -3,7 +3,7 @@
 /* this file should primarily contain @extend directives to translate
    from legacy class names to Bootstrap-based ones. It can also
    contain css attributes (like column widths) that apply globally to
-   every Bootstrap-based intefrace. Directives that shouldn't be
+   every Bootstrap-based interface. Directives that shouldn't be
    global for every interface belong in CW-Theme rather than in this
    file. */
 
@@ -30,6 +30,10 @@
     @extend .cw-list-horizontal !optional;
 }
 
+.list-inline.calendar_events-categories,
+.list-inline.calendar_events-ate_area,
+.list-inline.calendar_events-contact,
+.list-inline.calendar_events-attachments,
 .list-inline.blog-categories {
     @extend .cw-list-separated !optional;
 }

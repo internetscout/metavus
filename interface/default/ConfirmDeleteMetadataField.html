@@ -3,22 +3,55 @@
 #   FILE:  ConfirmDeleteMetadataField.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
-use Exception;
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Determine whether the given metadata field is the last enabled tree field.
+ * @param MetadataField $Field Tree metadata field
+ * @return Bool TRUE if the metadata field is the last tree field, else FALSE
+ */
+function isFinalTreeField(MetadataField $Field): bool
+{
+    # re-assign browsing field ID if that is what is being deleted
+    if (InterfaceConfiguration::getInstance()->getInt("BrowsingFieldId") == $Field->id()) {
+        $Schema = new MetadataSchema();
+        $TreeFields = $Schema->getFields(MetadataSchema::MDFTYPE_TREE);
+
+        # remove the field to be deleted from the list
+        unset($TreeFields[$Field->id()]);
+
+        return count($TreeFields) < 1;
+    }
+
+    return false;
+}
 
 # ----- SETUP ----------------------------------------------------------------
 
-if (!isset($H_Field)) {
-    throw new Exception("Field not defined.");
+# make sure the user can access this page
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
-if (!isset($H_IsFinalTreeField)) {
-    throw new Exception("IsFinalTreeField not defined.");
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Metadata Field Deletion");
+
+$Field = MetadataField::getField(StdLib::getArrayValue($_GET, "Id"));
+$IsFinalTreeField = isFinalTreeField($Field);
+
+# invalid field, go to the main page
+if ($Field->status() != MetadataSchema::MDFSTAT_OK) {
+    $AF->setJumpToPage("DBEditor");
+    return;
 }
 
 $CancelButton = new HtmlButton("Cancel");
@@ -30,15 +63,15 @@ $DeleteButton = new HtmlButton("Delete Field");
 $DeleteButton->setIcon("Delete.svg");
 $DeleteButton->makeSubmitButton();
 
-$SafeFieldId = defaulthtmlentities($H_Field->Id());
-$SafeFieldName = defaulthtmlentities($H_Field->Name());
+$SafeFieldId = defaulthtmlentities($Field->id());
+$SafeFieldName = defaulthtmlentities($Field->name());
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Confirm Metadata Field Deletion</h1>
 
-<?PHP if ($H_IsFinalTreeField) { ?>
+<?PHP if ($IsFinalTreeField) { ?>
   <p class="alert alert-danger">
     <strong>
       <i><?= $SafeFieldName; ?></i> is the last tree field. It is
@@ -57,7 +90,7 @@ $SafeFieldName = defaulthtmlentities($H_Field->Name());
 <form method="post" action="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>">
   <input type="hidden" name="F_Confirmation" value="1" />
 
-    <?PHP if (!$H_IsFinalTreeField) { ?>
+    <?PHP if (!$IsFinalTreeField) { ?>
         <?= $DeleteButton->getHtml() ?>
     <?PHP } ?>
     <?= $CancelButton->getHtml() ?>

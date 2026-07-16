@@ -58,7 +58,7 @@ class IIIFImage
             }
             # otherwise take a square portion that is centered on the middle
             # of the image
-            $Length = (int) min($SrcWidth, $SrcHeight);
+            $Length = min($SrcWidth, $SrcHeight);
             $XOffset = (int) (($SrcWidth - $Length) / 2);
             $YOffset = (int) (($SrcHeight - $Length) / 2);
             $Width = $Length;

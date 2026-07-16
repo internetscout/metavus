@@ -38,7 +38,7 @@ function DisplayLimits($Fields, $SearchParameters, $TypeMask) : void
     foreach ($Fields as $FieldId => $DisplayName) {
         $Field = MetadataField::getField($FieldId);
 
-        if ($Field->type() & $TypeMask) {
+        if (($Field->type() & $TypeMask) !== 0) {
             $CurrentValues = $SearchParameters->getSearchStringsForField($FieldId);
 
             # (ignore phpstan errors for functions defined in AdvancedSearch.php)
@@ -150,6 +150,7 @@ $CheckIfButton = new HtmlButton("Allow Unassigned Values");
 $CheckIfButton->setIcon("Check.svg");
 $CheckIfButton->addClass("toggle-disabled");
 $CheckIfButton->setSize(HtmlButton::SIZE_SMALL);
+$CheckIfButton->setOnclick("toggleDisabledClick()");
 
 $AddFieldButton = new HtmlButton("Add Field");
 $AddFieldButton->setIcon("Plus.svg");
@@ -325,10 +326,10 @@ foreach ($H_SelectedFields as $FieldId) {
     </div>
 
 <?PHP
-if (count($H_SavedSearches)) {
+if (count($H_SavedSearches) !== 0) {
     print "<div class=\"mv-load-saved-search\"><h2>Load Saved Search:</h2></div>"
             ."<ul class=\"mv-saved-search-list mv-content-boundingbox\">\n";
-    foreach ($H_SavedSearches as $SearchId => $Search) {
+    foreach ($H_SavedSearches as $Search) {
         try {
             $Descrip = addslashes(strip_tags(
                 $Search->SearchParameters()->TextDescription()
@@ -425,6 +426,17 @@ if (count($H_SavedSearches)) {
                         an exact match, the content of the field has to be identical
                         to the search string to be considered a match.</p>
             </dd>
+            <dt><strong>Prefix/Suffix Matches</strong></dt>
+            <dd><p>To match the text at the beginning of a field, use
+                a <code>^</code> prefix. To match at the end, use
+                a <code>$</code> prefix.</p>
+              <blockquote>
+                <code>^https://www.nytimes.com/</code><br/>
+                <code>$Databases</code>
+              </blockquote>
+              <p>This can be used to search <i>Text</i>, <i>Paragraph</i>, <i>URL</i>, <i>Email</i>,
+                <i>Controlled Name</i>, <i>Option</i>, and <i>Classification</i> fields.</p>
+            </dd>
             <dt><strong>Date Ranges</strong></dt>
             <dd><p>You can search for dates within a specific
                         range by entering a beginning and end date separated
@@ -513,7 +525,7 @@ function addFieldClick() {
     // randomly select an option in the select box
     $("select option:selected", $clone).removeAttr("selected");
     var $options = $("select option", $clone);
-    var random = Math.floor(Math.random() * ($options.size() + 1));
+    var random = Math.floor(Math.random() * ($options.length + 1));
     $($options.get(random)).attr("selected", "selected");
 
     // update the input box's attributes
@@ -533,6 +545,34 @@ function addFieldClick() {
     var offset = parseInt($("#AdvancedSearchEnd").position().top - $(window).height());
     if (offset > 10) {
         $(window).scrollTop(offset)
+    }
+}
+
+function toggleDisabledClick() {
+    const allowIconSrc = "<?= $AF->gUIFile('Check.svg'); ?>";
+    const disableIconSrc = "<?= $AF->gUIFile('Ban.svg'); ?>";
+
+    var target = $("button.toggle-disabled");
+    // get elements to toggle
+    var toToggle = $('[data-term-unused="1"]');
+    const buttonIcon = $(".mv-button-icon", "button.toggle-disabled").get(0);
+
+    // if options are currently disabled
+    if(target.data("enabled") == 0){
+      // enable options and update the button info
+        toToggle.removeAttr("disabled");
+        target.data("enabled", 1);
+        target.html("Disable Unassigned Values");
+        $(buttonIcon).attr("src", disableIconSrc);
+        target.prepend(buttonIcon);
+    } else {
+        // otherwise unselect, disable, and update info button
+        toToggle.removeAttr("selected");
+        toToggle.attr("disabled", "disabled");
+        target.data("enabled", 0);
+        target.html("Allow Unassigned Values");
+        $(buttonIcon).attr("src", allowIconSrc);
+        target.prepend(buttonIcon);
     }
 }
 
@@ -561,30 +601,6 @@ $("input[type=hidden][name=F_JscptSpmbt]", $(this)).val("8304RPC");
 
 <?PHP if ($IsResourceAdmin) { ?>
 <script type="text/javascript">
-  const allowIconSrc = "<?= $AF->gUIFile('Check.svg'); ?>";
-  const disableIconSrc = "<?= $AF->gUIFile('Ban.svg'); ?>";
-  $(".toggle-disabled").click(function(){
-    //Get elements to toggle
-    var toToggle = $('[data-term-unused="1"]');
-    const buttonIcon = $(this).children(".mv-button-icon").get(0);
-    //If options are currently disabled
-    if($(this).data("enabled") == 0){
-      //Un-disable options and update the button info
-      toToggle.removeAttr("disabled");
-      $(this).data("enabled", 1);
-      $(this).html("Disable Unassigned Values");
-      $(buttonIcon).attr("src", disableIconSrc);
-      $(this).prepend(buttonIcon);
-    } else {
-      //Otherwise unselect, disable, and update info button
-      toToggle.removeAttr("selected");
-      toToggle.attr("disabled", "disabled");
-      $(this).data("enabled", 0);
-      $(this).html("Allow Unassigned Values");
-      $(buttonIcon).attr("src", allowIconSrc);
-      $(this).prepend(buttonIcon);
-    }
-  });
   $(document).ready(function(){
     $("option:disabled",".mv-search-limits").attr("data-term-unused", "1");
     $(".toggle-disabled").data("enabled", 0);

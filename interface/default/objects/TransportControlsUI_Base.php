@@ -263,7 +263,7 @@ abstract class TransportControlsUI_Base
             unset($QData[$Param]);
         }
 
-        if (count($QData)) {
+        if (count($QData) !== 0) {
             $String .= $Sep.http_build_query($QData, "", $Sep);
         }
 

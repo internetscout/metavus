@@ -144,7 +144,12 @@ switch ($LinkType) {
         );
 }
 
-$H_RecordIds = RecordFactory::multiSchemaFilterNonViewableRecords(
+# filter for visibility (note that H_RecordIds can only be from the
+# default schema - for a-la-carte record selection we only allow
+# Resources and in the case of a folder we've explicitly filtered it
+# down to Resources above)
+$RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
+$H_RecordIds = $RFactory->filterOutUnviewableRecords(
     $H_RecordIds,
     User::getAnonymousUser()
 );

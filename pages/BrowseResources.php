@@ -19,7 +19,7 @@ use ScoutLib\Database;
 * Retrieve a sorted list of links for browsing resources
 * @return array An alphabetical array of links indexed by field name
 */
-function GetBrowseLinks()
+function GetBrowseLinks(): array
 {
     $Schema = new MetadataSchema();
     $BrowsingFieldId = GetBrowsingFieldId();
@@ -33,12 +33,12 @@ function GetBrowseLinks()
         }
 
         # skip displaying the current field
-        if ($Field->Id() == $BrowsingFieldId) {
+        if ($Field->id() == $BrowsingFieldId) {
             continue;
         }
 
-        $Links[$Field->Name()] =
-            "index.php?P=BrowseResources&amp;FieldId=".$Field->Id();
+        $Links[$Field->name()] =
+            "index.php?P=BrowseResources&amp;FieldId=".$Field->id();
     }
 
     # sort the links in alphabetical order
@@ -140,7 +140,7 @@ function PrintTreeName(): void
 * what the user is currently browsing
 * @return int the number of entries to display
 */
-function GetClassificationCount()
+function GetClassificationCount(): int
 {
     global $ParentId;
     global $StartingLetter;
@@ -288,7 +288,7 @@ function GetResourceCount()
         # total up resources from each schema
         $Resources = GetVisibleResources();
         $ResourceCount = 0;
-        foreach ($Resources as $SchemaId => $ResourceIds) {
+        foreach ($Resources as $ResourceIds) {
             $ResourceCount += count($ResourceIds);
         }
     }
@@ -303,7 +303,7 @@ function GetResourceCount()
  * previous resources available
  * @deprecated
 */
-function PreviousResourcesAvailable()
+function PreviousResourcesAvailable(): bool
 {
     global $H_StartingResourceIndex;
     return ($H_StartingResourceIndex > 0) ? true : false;
@@ -316,7 +316,7 @@ function PreviousResourcesAvailable()
 * to display
 * @deprecated
 */
-function NextResourcesAvailable()
+function NextResourcesAvailable(): bool
 {
     /* @var int $H_StartingResourceIndex */
     global $H_StartingResourceIndex;
@@ -411,7 +411,7 @@ function getResourceListHtml(): string
     $Resources = GetVisibleResources();
 
     $AllResourceIds = [];
-    foreach ($Resources as $SchemaId => $ResourceIds) {
+    foreach ($Resources as $ResourceIds) {
         $AllResourceIds = array_merge($AllResourceIds, $ResourceIds);
     }
 
@@ -467,9 +467,9 @@ function GetBrowsingLinks(): array
 
     $Links = array();
     foreach ($Fields as $Field) {
-        if ($Field->userCanView($User) && $Field->Id() != $BrowsingFieldId) {
-            $Links[$Field->Name()] =
-                "index.php?P=BrowseResources&amp;FieldId=".$Field->Id();
+        if ($Field->userCanView($User) && $Field->id() != $BrowsingFieldId) {
+            $Links[$Field->name()] =
+                "index.php?P=BrowseResources&amp;FieldId=".$Field->id();
         }
     }
     return $Links;
@@ -481,7 +481,7 @@ function GetBrowsingLinks(): array
 * @return bool CanDisplayField whether the field can
 * be displayed for the logged in user (or anon user)
 */
-function CanDisplayField(MetadataField $Field)
+function CanDisplayField(MetadataField $Field): bool
 {
     # do not display fields with a bad status
     if ($Field->status() != MetadataSchema::MDFSTAT_OK) {
@@ -507,7 +507,7 @@ function CanDisplayField(MetadataField $Field)
 * field is the tree's root
 * @deprecated
 */
-function AtTreeFieldRoot()
+function AtTreeFieldRoot(): bool
 {
     global $ParentId;
 
@@ -530,7 +530,13 @@ function GetVisibleResources(): array
 
     $DB = new Database();
     $SortFieldId = $IntConfig->getInt("BrowsingSortingFieldId");
-    $SortFieldName = $Schema->getField($SortFieldId)->dBFieldName();
+    $SortField = $Schema->getField($SortFieldId);
+    $SortFieldName = $SortField->dBFieldName();
+
+    if ($SortField->type() == MetadataSchema::MDFTYPE_DATE) {
+        $SortFieldName .= "Begin";
+    }
+
     $SortDirection = $IntConfig->getString("BrowsingSortingDirection");
     $Query = "SELECT Records.RecordId AS RecordId, SchemaId"
     ." FROM RecordClassInts, Records"
@@ -730,9 +736,11 @@ function GetClassificationDBQuery(
             SELECT * FROM Classifications
             WHERE Depth = 0
             AND FieldId = '".intval(GetBrowsingFieldId())."'
-            ".($StartingLetter ? "AND UPPER(ClassificationName) >= '"
+            ".($StartingLetter !== null && $StartingLetter !== '' && $StartingLetter !== '0' ?
+               "AND UPPER(ClassificationName) >= '"
                    .addslashes($StartingLetter)."'" : "")."
-            ".($EndingLetter ? "AND UPPER(ClassificationName) <= '"
+            ".($EndingLetter !== null && $EndingLetter !== '' && $EndingLetter !== '0' ?
+               "AND UPPER(ClassificationName) <= '"
                    .addslashes($EndingLetter)."ZZZZZZZZZZ'" : "")."
             ".(EditingEnabled() ? "" : "AND ResourceCount != 0 ")."
             ORDER BY ClassificationName";
@@ -877,7 +885,7 @@ if (!$Editing && ($Field === null || !CanDisplayField($Field))) {
     if (!is_null($DisplayableField)) {
         $AF->setJumpToPage(
             ApplicationFramework::baseUrl()
-            . "index.php?P=BrowseResources&FieldId=".$DisplayableField->Id()
+            . "index.php?P=BrowseResources&FieldId=".$DisplayableField->id()
         );
     # go to the home page instead
     } else {

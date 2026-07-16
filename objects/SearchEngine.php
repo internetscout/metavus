@@ -33,15 +33,15 @@ class SearchEngine extends \ScoutLib\SearchEngine
 
         # for each schema
         $Schemas = MetadataSchema::getAllSchemas();
-        foreach ($Schemas as $SchemaId => $Schema) {
+        foreach ($Schemas as $Schema) {
             # for each field defined in schema
             $Fields = $Schema->getFields();
             foreach ($Fields as $FieldId => $Field) {
                 # save metadata field type
-                self::$FieldTypes[$FieldId] = $Field->Type();
+                self::$FieldTypes[$FieldId] = $Field->type();
 
                 # determine field type for searching
-                switch ($Field->Type()) {
+                switch ($Field->type()) {
                     case MetadataSchema::MDFTYPE_TEXT:
                     case MetadataSchema::MDFTYPE_PARAGRAPH:
                     case MetadataSchema::MDFTYPE_USER:
@@ -75,7 +75,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                         break;
 
                     default:
-                        throw new Exception("ERROR: unknown field type ".$Field->Type());
+                        throw new Exception("ERROR: unknown field type ".$Field->type());
                 }
 
                 if ($FieldType !== null) {
@@ -166,7 +166,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         $SearchPhrase = strtolower(addslashes($Phrase));
 
         # query DB for matching list based on field type
-        $Field = MetadataField::getField((int)$FieldId);
+        $Field = MetadataField::getField($FieldId);
         switch ($Field->type()) {
             case MetadataSchema::MDFTYPE_TEXT:
             case MetadataSchema::MDFTYPE_PARAGRAPH:
@@ -187,7 +187,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
             case MetadataSchema::MDFTYPE_IMAGE:
                 $Factory = new ImageFactory();
                 return $Factory->searchImageField(
-                    (int)$FieldId,
+                    $FieldId,
                     $SearchPhrase
                 );
 
@@ -591,7 +591,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         # if queries found
         if (isset($Queries)) {
             # for each assembled query
-            foreach ($Queries as $QueryIndex => $Query) {
+            foreach ($Queries as $Query) {
                 if (isset($Query["IsExclusion"])) {
                     $SchemaId = $Query["SchemaId"];
                     $IsExclusion = $Query["IsExclusion"];
@@ -632,7 +632,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 } else {
                     # for each part of query
                     $ResourceIds = [];
-                    foreach ($Query as $PartIndex => $PartQuery) {
+                    foreach ($Query as $PartQuery) {
                         $ResourceIds =
                                 $ResourceIds +
                                 $this->runComparisonQuery(
@@ -756,7 +756,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         string $Operator,
         string $Value,
         int $FieldId
-    ) {
+    ): array {
         # if we do not have a regular query started for this field
         if (!isset($QueryInfo["Regular"]["Query"])) {
             # begin regular query
@@ -840,7 +840,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         string $Operator,
         string $Value,
         int $FieldId
-    ) {
+    ): array {
         # begin or extend query
         if (!isset($QueryInfo["Query"])) {
             $QueryInfo["Query"] = "SELECT DISTINCT RecordId"
@@ -893,7 +893,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         string $Operator,
         string $Value,
         int $FieldId
-    ) {
+    ): array {
         if (!isset($QueryInfo["Query"])) {
             $QueryInfo["Query"] = "SELECT DISTINCT RecordId"
                 ." FROM RecordClassInts, Classifications"
@@ -1123,7 +1123,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 # merge this chunk of data into $SearchClasses
                 array_walk(
                     $ChunkClasses,
-                    function ($RecordIds, $Id) use (&$SearchClasses) {
+                    function ($RecordIds, $Id) use (&$SearchClasses): void {
                         $SearchClasses[$Id] = isset($SearchClasses[$Id]) ?
                             array_merge($RecordIds, $SearchClasses[$Id]) :
                             $RecordIds;
@@ -1142,7 +1142,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
                 # merge this chunk of data into $SearchNames
                 array_walk(
                     $ChunkNames,
-                    function ($RecordIds, $Id) use (&$SearchNames) {
+                    function ($RecordIds, $Id) use (&$SearchNames): void {
                         $SearchNames[$Id] = isset($SearchNames[$Id]) ?
                             array_merge($RecordIds, $SearchNames[$Id]) :
                             $RecordIds;
@@ -1313,7 +1313,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         $Schemas = MetadataSchema::getAllSchemas();
         $ItemsQueued = 0;
 
-        foreach ($Schemas as $SchemaId => $Schema) {
+        foreach (array_keys($Schemas) as $SchemaId) {
             $ItemsQueued += self::queueDBRebuildForSchema($SchemaId);
         }
 
@@ -1347,7 +1347,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         int $NumberOfResults = 10,
         ?string $SortByField = null,
         bool $SortDescending = true
-    ) {
+    ): array {
 
         # check for use of deprecated parameters
         if ($StartingResult != 0) {
@@ -1436,12 +1436,12 @@ class SearchEngine extends \ScoutLib\SearchEngine
      * Check whether there are search index update tasks queued or running.
      * @return bool TRUE if there are update tasks queued, otherwise FALSE.
      */
-    public static function thereAreIndexUpdateTasksInQueue()
+    public static function thereAreIndexUpdateTasksInQueue(): bool
     {
         $AF = ApplicationFramework::getInstance();
         $Tasks = $AF->getRunningTaskList()
                 + $AF->getQueuedTaskList();
-        foreach ((array)$Tasks as $TaskId => $TaskInfo) {
+        foreach ((array)$Tasks as $TaskInfo) {
             if (strpos($TaskInfo["Description"], "Update search data for") === 0) {
                 return true;
             }
@@ -1481,7 +1481,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
         }
 
         # if we were given a prefix, add the necessary period so we can use it
-        if (strlen($Prefix)) {
+        if (strlen($Prefix) !== 0) {
             $Prefix = $Prefix.".";
         }
 

@@ -60,7 +60,7 @@ $ErrorListFields =
             "Heading" => "Date",
             "DefaultToDescendingSort" => true,
             "DefaultSortField" => true,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return StdLib::getPrettyTimestamp($Item["Date"]);
             }
         ],
@@ -68,7 +68,7 @@ $ErrorListFields =
             "Heading" => "Url",
             "AllowHTML" => true,
             "Sortable" => false,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return '<a href="'.$Item["Url"].'">'
                     .StdLib::neatlyTruncateString($Item["Url"], 50).'</a>';
             }
@@ -77,7 +77,7 @@ $ErrorListFields =
             "Heading" => "Resource",
             "AllowHTML" => true,
             "Sortable" => false,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 $RecordId = $Item["RecordId"];
                 $Resource = new Record($RecordId);
                 return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
@@ -100,7 +100,7 @@ $FetchLogFields =
             "Heading" => "Date",
             "DefaultToDescendingSort" => true,
             "DefaultSortField" => true,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 return StdLib::getPrettyTimestamp($Item["FetchDate"]);
             }
         ],
@@ -108,7 +108,7 @@ $FetchLogFields =
             "Heading" => "File",
             "AllowHTML" => true,
             "Sortable" => false,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 $FileId = $Item["FileId"];
                 $File = new File($FileId);
 
@@ -122,7 +122,7 @@ $FetchLogFields =
             "Heading" => "Resource",
             "AllowHTML" => true,
             "Sortable" => false,
-            "ValueFunction" => function ($Item, $FieldId) {
+            "ValueFunction" => function ($Item, $FieldId): string {
                 $FileId = $Item["FileId"];
                 $File = new File($FileId);
                 $RecordId = $File->resourceId();

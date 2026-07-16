@@ -27,11 +27,14 @@ class PluginUpgrade_1_1_0 extends PluginUpgrade
      */
     public function performUpgrade()
     {
+        /* current version of the plugin no longer has a checkCacheDirectory() method.
+         * In previous versions, this was what the upgrade did:
         $Plugin = Captcha::getInstance(true);
         $Result = $Plugin->checkCacheDirectory();
         if (!is_null($Result)) {
             return $Result;
         }
+         */
         return null;
     }
 

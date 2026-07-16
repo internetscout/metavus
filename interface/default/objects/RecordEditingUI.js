@@ -526,7 +526,7 @@ $(document).ready(function(){
 
     // reload when itemsPerPage is changed
     $("#mv-vocabsearchpopup .mv-num-results-per-page input").change(function(){
-        itemsPerPage = $(this).val();
+        itemsPerPage = Math.min($(this).val(), $(this).attr('max'));
         $.cookie(
             'vocabSearchPopupItems_' + $("#mv-vocabsearchpopup").data('fieldid'),
             itemsPerPage

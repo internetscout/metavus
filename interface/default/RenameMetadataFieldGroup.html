@@ -10,39 +10,44 @@
 
 use Metavus\FormUI;
 use Metavus\HtmlButton;
-use Metavus\MetadataField;
 use Metavus\MetadataFieldGroup;
+use Metavus\MetadataSchema;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
-
-function PrintFieldInGroup(MetadataField $Field): void
-{
-    $SafeFieldName = defaulthtmlentities($Field->getDisplayName());
-    ?>
-    <li class="list-group-item"><?= $SafeFieldName; ?></li>
-    <?PHP
-}
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Print the fields in the given metadata field group.
- * @param MetadataFieldGroup $Group metadata field group
+ * @param MetadataFieldGroup $Group Metadata field group.
  * @return void
  */
-function PrintGroupItems(MetadataFieldGroup $Group): void
+function printGroupItems(MetadataFieldGroup $Group): void
 {
     foreach ($Group->getFields() as $Field) {
-        PrintFieldInGroup($Field);
+        $SafeFieldName = defaulthtmlentities($Field->getDisplayName());
+        print "<li class=\"list-group-item\">".$SafeFieldName."</li>";
     }
 }
 
 # ----- SETUP ----------------------------------------------------------------
 
-# verify that required incoming variables are set
-if (!isset($H_Group)) {
-    throw new Exception("Variable \$H_Group not set.");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
-if (!isset($H_SchemaId)) {
-    throw new Exception("Variable \$H_SchemaId not set.");
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Rename Metadata Field Group");
+
+$SchemaId = StdLib::getArrayValue($_GET, "SchemaId", MetadataSchema::SCHEMAID_DEFAULT);
+$GroupId = StdLib::getArrayValue($_GET, "GroupId");
+
+if (MetadataFieldGroup::itemExists($GroupId)) {
+    $Group = new MetadataFieldGroup($GroupId);
+} else {
+    $AF->setJumpToPage("MetadataFieldOrdering");
+    return;
 }
 
 $RenameButton = new HtmlButton("Rename");
@@ -60,11 +65,11 @@ $FormFields = [
     ]
 ];
 $FormValues = [
-    "GroupName" => $H_Group->name()
+    "GroupName" => $Group->name()
 ];
 $RenameForm = new FormUI($FormFields, $FormValues);
-$RenameForm->addHiddenField("F_SchemaId", $H_SchemaId);
-$RenameForm->addHiddenField("F_GroupId", (string)$H_Group->id());
+$RenameForm->addHiddenField("F_SchemaId", $SchemaId);
+$RenameForm->addHiddenField("F_GroupId", (string)$Group->id());
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
@@ -74,7 +79,7 @@ $RenameForm->addHiddenField("F_GroupId", (string)$H_Group->id());
 <p>For reference, the following metadata fields are in this group:</p>
 
 <ul class="list-group">
-  <?PHP PrintGroupItems($H_Group); ?>
+  <?PHP printGroupItems($Group); ?>
 </ul>
 
 <form method="post" action="index.php?P=MetadataFieldOrdering" class="mv-fieldordering-renameform">

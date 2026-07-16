@@ -81,7 +81,7 @@ class PersistentDoublyLinkedList
      */
     public function sqlCondition(?string $Condition = null)
     {
-        if ($Condition) {
+        if ($Condition !== null && $Condition !== '' && $Condition !== '0') {
             $this->SqlCondition = $Condition;
         }
         return $this->SqlCondition;
@@ -259,7 +259,7 @@ class PersistentDoublyLinkedList
 
         # if there are items currently in list
         $ItemIds = $this->getIds();
-        if (count($ItemIds)) {
+        if (count($ItemIds) !== 0) {
             # link first item to source item
             if ($this->ItemTypesInUse) {
                 $Row = array_shift($ItemIds);
@@ -335,7 +335,7 @@ class PersistentDoublyLinkedList
             $ItemType = $ItemTypes[$Index];
 
             # if there are items currently in list
-            if (count($ItemIdList)) {
+            if (count($ItemIdList) !== 0) {
                 # remove item from current position if necessary
                 $ItemWasRemoved = $this->remove($ItemId, $ItemType);
 
@@ -346,17 +346,17 @@ class PersistentDoublyLinkedList
             }
 
             # if there are still items currently in list
-            if (count($ItemIdList)) {
+            if (count($ItemIdList) !== 0) {
                 # find ID and type of last item in list
                 if ($this->ItemTypesInUse) {
                     $Row = array_pop($ItemIdList);
                     $LastItemId = $Row["ID"];
                     $LastItemType = $Row["Type"];
-                    array_push($ItemIdList, $Row);
+                    $ItemIdList[] = $Row;
                 } else {
                     $LastItemId = array_pop($ItemIdList);
                     $LastItemType = null;
-                    array_push($ItemIdList, $LastItemId);
+                    $ItemIdList[] = $LastItemId;
                 }
 
                 # link last item to source item
@@ -382,12 +382,9 @@ class PersistentDoublyLinkedList
             }
 
             # add item to our local ID list
-            array_push(
-                $ItemIdList,
-                $this->ItemTypesInUse
-                        ? array("ID" => $ItemId, "Type" => $ItemType)
-                        : $ItemId
-            );
+            $ItemIdList[] = $this->ItemTypesInUse
+                    ? array("ID" => $ItemId, "Type" => $ItemType)
+                    : $ItemId;
         }
 
         # unlock database
@@ -595,7 +592,7 @@ class PersistentDoublyLinkedList
      *      or FALSE if specified item not found.  Or, if item types are in
      *      use, an associative array with "Type" and "ID" elements.
      */
-    private function getPreviousItemId(int $ItemId, $ItemType)
+    private function getPreviousItemId(int $ItemId, ?int $ItemType)
     {
         if ($this->ItemTypesInUse) {
             $this->DB->Query("SELECT Previous".$this->ItemIdFieldName
@@ -636,7 +633,7 @@ class PersistentDoublyLinkedList
      *      or FALSE if specified item not found.  Or, if item types are in
      *      use, an associative array with "Type" and "ID" elements.
      */
-    private function getNextItemId(int $ItemId, $ItemType)
+    private function getNextItemId(int $ItemId, ?int $ItemType)
     {
         if ($this->ItemTypesInUse) {
             $this->DB->Query("SELECT Next".$this->ItemIdFieldName

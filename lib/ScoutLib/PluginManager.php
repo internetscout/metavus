@@ -3,7 +3,7 @@
 #   FILE:  PluginManager.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -206,7 +206,7 @@ class PluginManager
         $this->ErrMsgs = $ErrMsgs;
 
         # report to caller whether any problems were encountered
-        return count($ErrMsgs) ? false : true;
+        return count($ErrMsgs) !== 0 ? false : true;
     }
 
     /**
@@ -294,7 +294,7 @@ class PluginManager
         }
 
         # sort plugins by name
-        uasort($Info, function ($A, $B) {
+        uasort($Info, function ($A, $B): int {
             $AName = strtoupper($A["Name"]);
             $BName = strtoupper($B["Name"]);
             return ($AName == $BName) ? 0
@@ -441,12 +441,15 @@ class PluginManager
     /**
      * Clear cached data.
      */
-    public function clearCaches(): void
+    public static function clearCaches(): void
     {
-        $this->DB->query(
+        $DB = new Database();
+        $DB->query(
             "UPDATE PluginInfo SET DirectoryCache=NULL, DirectoryCacheLastUpdatedAt=NULL"
         );
-        $this->PluginDirLists = [];
+        if (isset(self::$Instance)) {
+            self::$Instance->PluginDirLists = [];
+        }
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
@@ -532,16 +535,21 @@ class PluginManager
                         && preg_match("/^[a-zA-Z_][a-zA-Z0-9_]*/", $FileName)) {
                         # if there is a base plugin file in the directory
                         $PluginName = $FileName;
-                        $PluginFile = $Dir . "/" . $PluginName . "/" . $PluginName . ".php";
+                        $PluginDir = $Dir."/".$PluginName;
+                        $PluginFile = $PluginDir."/".$PluginName.".php";
                         if (file_exists($PluginFile)) {
                             # add file to list
                             $PluginFiles[$PluginName] = $PluginFile;
                         } else {
-                            # record error
-                            $this->ErrMsgs[$PluginName][] =
-                                "Expected plugin file <i>" . $PluginName . ".php</i> not"
-                                . " found in plugin subdirectory <i>"
-                                . $Dir . "/" . $PluginName . "</i>";
+                            # if we have not already found a plugin file for this plugin
+                            if (!isset($PluginFiles[$PluginName])) {
+                                # record error
+                                $this->ErrMsgs[$PluginName][] =
+                                        "Expected plugin file"
+                                            ." <i>".$PluginName.".php</i>"
+                                            ." not found in plugin subdirectory"
+                                            ." <i>".$PluginDir."</i>";
+                            }
                         }
                     }
                 }
@@ -598,7 +606,7 @@ class PluginManager
         $RequiredAttribs = ["Name", "Version"];
         $Attribs = $Plugin->getAttributes();
         foreach ($RequiredAttribs as $AttribName) {
-            if (!strlen($Attribs[$AttribName])) {
+            if (strlen($Attribs[$AttribName]) === 0) {
                 throw new Exception("Plugin <b>" . $PluginName . "</b>"
                     . " could not be loaded because it"
                     . " did not have a <i>"
@@ -673,13 +681,13 @@ class PluginManager
     {
         # register any events declared by plugin
         $Events = $Plugin->declareEvents();
-        if (count($Events)) {
+        if (count($Events) !== 0) {
             self::$AF->registerEvent($Events);
         }
 
         # if plugin has events that need to be hooked
         $EventsToHook = $Plugin->hookEvents();
-        if (count($EventsToHook)) {
+        if (count($EventsToHook) !== 0) {
             # for each event
             $ErrMsgs = [];
             foreach ($EventsToHook as $EventName => $PluginMethods) {
@@ -717,7 +725,7 @@ class PluginManager
             }
 
             # if event hook setup failed
-            if (count($ErrMsgs)) {
+            if (count($ErrMsgs) !== 0) {
                 # report errors to caller
                 return $ErrMsgs;
             }
@@ -735,7 +743,7 @@ class PluginManager
     {
         # if plugin had events to hook
         $EventsToHook = $Plugin->hookEvents();
-        if (count($EventsToHook)) {
+        if (count($EventsToHook) !== 0) {
             # for each event
             $ErrMsgs = [];
             foreach ($EventsToHook as $EventName => $PluginMethods) {
@@ -915,7 +923,7 @@ class PluginManager
             );
         }
 
-        if (strlen($DirLists["PageFileDir"])) {
+        if (strlen($DirLists["PageFileDir"]) !== 0) {
             self::$AF->addPageFileDirectories([ $DirLists["PageFileDir"] ], true);
             self::$AF->addPageNameMappingFunction(
                 [ $DirLists["PageFileDir"] ],
@@ -1062,13 +1070,13 @@ class PluginManager
                 $Result["InterfaceDirs"][] = $InterfaceDir."/%ACTIVEUI%/";
 
                 # add interface include directories if any found
-                if (count((array)glob($InterfaceDir . "/*/include"))) {
+                if (count((array)glob($InterfaceDir . "/*/include")) !== 0) {
                     $Result["IncludeDirs"][] = $InterfaceDir."/%DEFAULTUI%/include/";
                     $Result["IncludeDirs"][] = $InterfaceDir."/%ACTIVEUI%/include/";
                 }
 
                 # add image directories if any found
-                if (count((array)glob($InterfaceDir . "/*/images"))) {
+                if (count((array)glob($InterfaceDir . "/*/images")) !== 0) {
                     $Result["ImageDirs"][] = $InterfaceDir."/%DEFAULTUI%/images/";
                     $Result["ImageDirs"][] = $InterfaceDir."/%ACTIVEUI%/images/";
                 }
@@ -1082,7 +1090,7 @@ class PluginManager
         foreach ($InterfaceDirs as $InterfaceDir) {
             if (is_dir($InterfaceDir)) {
                 # add interface object directories if any found
-                if (count((array)glob($InterfaceDir . "/*/objects"))) {
+                if (count((array)glob($InterfaceDir . "/*/objects")) !== 0) {
                     $Result["InterfaceObjectDirs"][] = $InterfaceDir."/%ACTIVEUI%/objects/";
                     $Result["InterfaceObjectDirs"][] = $InterfaceDir."/%DEFAULTUI%/objects/";
                 }
@@ -1163,7 +1171,7 @@ class PluginManager
                     foreach ($Attribs[$PluginName]["Requires"] as $ReqName => $ReqVersion) {
                         # handle PHP version requirements
                         if ($ReqName == "PHP") {
-                            if (version_compare($ReqVersion, (string)phpversion(), ">")) {
+                            if (version_compare($ReqVersion, phpversion(), ">")) {
                                 $ErrMsgs[$PluginName][] = "PHP version "
                                     . "<i>" . $ReqVersion . "</i>"
                                     . " required by <b>" . $PluginName . "</b>"
@@ -1350,7 +1358,7 @@ class PluginManager
                         # yet been assigned an order, then we can't determine
                         # our own place on this iteration
                         # (array_push() pushes an element onto the end of the array)
-                        array_push($UnsortedPlugins, $NextPlugin);
+                        $UnsortedPlugins[] = $NextPlugin;
                         continue 2;
                     } else {
                         # otherwise, make sure that we're loaded
@@ -1365,7 +1373,7 @@ class PluginManager
         # arrange plugins according to our ordering
         asort($PluginsProcessed, SORT_NUMERIC);
         $SortedPlugins = [];
-        foreach ($PluginsProcessed as $PluginName => $SortOrder) {
+        foreach (array_keys($PluginsProcessed) as $PluginName) {
             $SortedPlugins[$PluginName] = $Plugins[$PluginName];
         }
 

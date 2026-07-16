@@ -3,7 +3,7 @@
 #   FILE:  DisplayGallery.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -11,6 +11,7 @@
 #   $H_SearchParams - Search parameters used to filter items currently to be
 #       displayed on page.
 # VALUES PROVIDED to INTERFACE (OPTIONAL):
+#   $H_FolderButtonsHtml - HTML for bulk folder action buttons.
 #   $H_TransportUI - Transport control UI to use for paging through items
 #       currently selected.  Only set if there are more items than will fit
 #       on a single page.
@@ -22,16 +23,22 @@ use Exception;
 use Metavus\Plugins\PhotoLibrary;
 use ScoutLib\ApplicationFramework;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
 $AF = ApplicationFramework::getInstance();
+$User = User::getCurrentUser();
+
+# request that this page not be indexed by search engines
+$AF->addMetaTag(["robots" => "noindex"]);
+
 $PhotoLibraryPlugin = PhotoLibrary::getInstance();
 $SchemaId = $PhotoLibraryPlugin->getConfigSetting("MetadataSchemaId");
 $RFactory = new RecordFactory($SchemaId);
-$User = User::getCurrentUser();
 $H_BaseLink = "index.php?P=P_PhotoLibrary_DisplayGallery";
-
 $MaxItemsPerPage = 24;
+
+
+# ----- MAIN -----------------------------------------------------------------
 
 # retrieve current search parameters
 $H_SearchParams = new SearchParameterSet();
@@ -45,7 +52,7 @@ try {
 $H_SearchParams->itemTypes($SchemaId);
 
 # if we have search parameters
-if ($H_SearchParams->parameterCount()) {
+if ($H_SearchParams->parameterCount() !== 0) {
     # retrieve images based on search parameters
     $SEngine = new SearchEngine();
     $SearchScores = $SEngine->search($H_SearchParams);
@@ -57,6 +64,19 @@ if ($H_SearchParams->parameterCount()) {
 
 # filter out those not viewable by current user (if any)
 $H_ItemIds = $RFactory->filterOutUnviewableRecords($H_ItemIds, $User);
+
+# filter out records without a screenshot available to display
+$H_ItemIds = $PhotoLibraryPlugin->filterOutRecordsWithoutDisplayableImages(
+    $H_ItemIds,
+    $User
+);
+
+# get bulk folder action buttons, based on all displayable matching photos
+$H_FolderButtonsHtml = $PhotoLibraryPlugin->getDisplayGalleryFolderButtonsHtml(
+    $H_SearchParams,
+    $H_ItemIds,
+    $User
+);
 
 # if we have more than one page of items
 if (count($H_ItemIds) > $MaxItemsPerPage) {

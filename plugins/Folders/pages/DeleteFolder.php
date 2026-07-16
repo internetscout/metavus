@@ -55,7 +55,7 @@ if (!$TgtIsCurrent) {
 }
 
 $FolderIds = $ResourceFolder->getItemIds();
-if (count($FolderIds)) {
+if (count($FolderIds) !== 0) {
     # select the next folder if available
     $NewCurrentFolder = new Folder(reset($FolderIds));
 } else {

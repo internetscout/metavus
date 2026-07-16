@@ -3,7 +3,7 @@
 #   FILE:  User.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -52,6 +52,9 @@ class User
     const U_PASSWORDNEEDSMIXEDCASE = 27;
     const U_PASSWORDNEEDSDIGIT = 28;
 
+    public const MAX_SETTING_SIZE = 64 * 1024;
+    public const MAX_SETTING_NAME_LEN = 24;
+
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /**
@@ -89,10 +92,10 @@ class User
         # if we are looking up user in database
         if (isset($Condition)) {
             # attempt to look up user
-            $this->DB->query("SELECT * FROM APUsers WHERE " . $Condition);
+            $this->DB->query("SELECT * FROM `APUsers` WHERE " . $Condition);
 
             # if user was found
-            if ($this->DB->numRowsSelected()) {
+            if ($this->DB->numRowsSelected() !== 0) {
                 # use user info from database
                 $Record = $this->DB->fetchRow();
             }
@@ -114,10 +117,13 @@ class User
             $this->LoggedIn = $Record["LoggedIn"] ? true : false;
             $this->Result = self::U_OKAY;
 
+            $UpdateCondition = "UserId = "
+                .($this->UserId !== null ? (int)$this->UserId : "''");
+
             # set up database value access
             $this->DB->setValueUpdateParameters(
                 "APUsers",
-                "UserId = '" . addslashes($this->UserId ?? "") . "'"
+                $UpdateCondition
             );
         } else {
             # otherwise, set code indicating no user found
@@ -195,7 +201,7 @@ class User
      * @param string $UserName Login name for new user.
      * @return User Newly-created user.
      */
-    public static function create(string $UserName)
+    public static function create(string $UserName): self
     {
         $DB = new Database();
         $NormalizedUserName = static::normalizeUserName($UserName);
@@ -208,7 +214,7 @@ class User
     }
 
     /**
-     * Delete user from system.  After this is called, object should now longer
+     * Delete user from system.  After this is called, object should no longer
      * be used.
      * @return int U_OKAY if deletion succeeded.
      */
@@ -278,7 +284,7 @@ class User
             return null;
         }
 
-        if ($NewLocation) {
+        if ($NewLocation !== null && $NewLocation !== '' && $NewLocation !== '0') {
             $this->DB->UpdateValue("LastLocation", $NewLocation);
             $this->DB->UpdateValue("LastActiveDate", date(StdLib::SQL_DATE_FORMAT));
             $this->DB->UpdateValue("LastIPAddress", $_SERVER["REMOTE_ADDR"]);
@@ -737,37 +743,37 @@ class User
             return false;
         }
 
-        # set up beginning of database query
-        $Query = "SELECT COUNT(*) AS PrivCount FROM APUserPrivileges "
-            . "WHERE UserId='" . $this->UserId . "' AND (";
+        $PrivList = [];
 
         # add first privilege(s) to query (first arg may be single value or array)
         if (is_array($Privilege)) {
-            $Sep = "";
             foreach ($Privilege as $Priv) {
-                $Query .= $Sep . "Privilege='" . addslashes($Priv) . "'";
-                $Sep = " OR ";
+                $PrivList[] = (int)$Priv;
             }
         } else {
-            $Query .= "Privilege='" . $Privilege . "'";
-            $Sep = " OR ";
+            $PrivList[] = (int)$Privilege;
         }
 
         # add any privileges from additional args to query
         array_shift($Args);
         foreach ($Args as $Arg) {
-            $Query .= $Sep . "Privilege='" . $Arg . "'";
-            $Sep = " OR ";
+            $PrivList[] = (int)$Arg;
         }
 
-        # close out query
-        $Query .= ")";
+        $Query = "SELECT Privilege FROM APUserPrivileges "
+            ."WHERE UserId=".($this->UserId !== null ? (int)$this->UserId : "''");
+        $this->DB->query($Query);
+        $UserPrivs = array_flip(
+            $this->DB->fetchColumn("Privilege")
+        );
 
-        # look for privilege in database
-        $PrivCount = $this->DB->queryValue($Query, "PrivCount");
+        foreach ($PrivList as $Priv) {
+            if (isset($UserPrivs[$Priv])) {
+                return true;
+            }
+        }
 
-        # return value to caller
-        return ($PrivCount > 0) ? true : false;
+        return false;
     }
 
     /**
@@ -1037,16 +1043,16 @@ class User
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}[]:;<>";
         $Password = "";
         # satisfy punctuation requirement - note $^+<> do not count as punctuation
-        if (self::$PasswordRules & self::PW_REQUIRE_PUNCTUATION) {
+        if ((self::$PasswordRules & self::PW_REQUIRE_PUNCTUATION) !== 0) {
             $Password .= StdLib::getRandomCharacters(1, "!@#%&*()_{}[]:;");
         }
         # satisfy mixed case requirement
-        if (self::$PasswordRules & self::PW_REQUIRE_MIXEDCASE) {
+        if ((self::$PasswordRules & self::PW_REQUIRE_MIXEDCASE) !== 0) {
             $Password .= StdLib::getRandomCharacters(1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
             $Password .= StdLib::getRandomCharacters(1, "abcdefghijklmnopqrstuvwxyz");
         }
         # satisfy digits requirement
-        if (self::$PasswordRules & self::PW_REQUIRE_DIGITS) {
+        if ((self::$PasswordRules & self::PW_REQUIRE_DIGITS) !== 0) {
             $Password .= StdLib::getRandomCharacters(1, "0123456789");
         }
         # satisfy length requirement
@@ -1245,12 +1251,129 @@ class User
             . " characters long, "
             . " have at least " . self::$PasswordMinUniqueChars
             . " different characters"
-            . (self::$PasswordRules & self::PW_REQUIRE_PUNCTUATION ?
+            . ((self::$PasswordRules & self::PW_REQUIRE_PUNCTUATION) !== 0 ?
                 ", include punctuation" : "")
-            . (self::$PasswordRules & self::PW_REQUIRE_MIXEDCASE ?
+            . ((self::$PasswordRules & self::PW_REQUIRE_MIXEDCASE) !== 0 ?
                 ", include capital and lowercase letters" : "")
-            . (self::$PasswordRules & self::PW_REQUIRE_DIGITS ?
+            . ((self::$PasswordRules & self::PW_REQUIRE_DIGITS) !== 0 ?
                 ", include a number" : "") . ".";
+    }
+
+    /**
+     * Retrieve current value (if any) for specified setting.  Settings are
+     * identified using a combination of the owner name and the setting name,
+     * with the owner name used to qualify the setting name.  Both names are
+     * arbitrary strings, chosen at the discretion of the caller, but owner
+     * names will often be a plugin name or a page name.
+     * @param string $OwnerName Name of owner of setting.
+     * @param string $SettingName Name of setting.
+     * @return ?string Value of setting, or NULL if no value has been set.
+     */
+    public function getSetting(string $OwnerName, string $SettingName): ?string
+    {
+        $DB = $this->DB;
+        $Query = "SELECT SettingValue FROM APUserSettings"
+                ." WHERE UserId = ".intval($this->UserId)
+                ." AND OwnerName = \"".$DB->escapeString($OwnerName)."\""
+                ." AND SettingName = \"".$DB->escapeString($SettingName)."\"";
+        return $DB->queryValue($Query, "SettingValue");
+    }
+
+    /**
+     * Retrieve current value for this user for the specified setting.  If no
+     * saved value is available for this user, it falls back to the value most
+     * recently saved for any user for the specified setting.  If no value has
+     * been saved for any user for this setting, then $FallbackValue is returned.
+     * @param string $OwnerName Name of owner of setting.
+     * @param string $SettingName Name of setting.
+     * @param ?string $FallbackValue Value to return if no value has been
+     *      set for any user for this setting.
+     * @return string Value of setting (or fallback value, as described above).
+     */
+    public function getSettingWithFallback(
+        string $OwnerName,
+        string $SettingName,
+        ?string $FallbackValue = null
+    ): ?string {
+        $Value = $this->getSetting($OwnerName, $SettingName);
+        if ($Value === null) {
+            $Value = self::getMostRecentSetting($OwnerName, $SettingName);
+        }
+        return $Value ?? $FallbackValue;
+    }
+
+    /**
+     * Set new value for this user for the specified setting.
+     * @param string $OwnerName Name of owner of setting.
+     * @param string $SettingName Name of setting.
+     * @param string $NewValue New value for setting.
+     */
+    public function setSetting(
+        string $OwnerName,
+        string $SettingName,
+        string $NewValue
+    ): void {
+        if (strlen($NewValue) > self::MAX_SETTING_SIZE) {
+            throw new InvalidArgumentException("Value for setting \""
+                    .$SettingName."\" owned by \"".$OwnerName
+                    ."\" exceeds maximum setting size.  (Size: "
+                    .number_format(strlen($NewValue))." bytes)");
+        }
+        if (strlen($OwnerName) > self::MAX_SETTING_NAME_LEN) {
+            throw new InvalidArgumentException("Owner name for setting \""
+                    .$SettingName."\" exceeds maximum name length ("
+                    .self::MAX_SETTING_NAME_LEN." chars)."
+                    ." (Owner Name \"".$OwnerName."\" is "
+                    .strlen($OwnerName)." chars.)");
+        }
+        if (strlen($SettingName) > self::MAX_SETTING_NAME_LEN) {
+            throw new InvalidArgumentException("Setting name for setting "
+                    ." owned by \"".$OwnerName."\" exceeds maximum name length ("
+                    .self::MAX_SETTING_NAME_LEN." chars)."
+                    ." (Setting Name \"".$SettingName."\" is "
+                    .strlen($SettingName)." chars.)");
+        }
+
+        $DB = $this->DB;
+        $Query = "INSERT INTO APUserSettings"
+                ." (UserId, OwnerName, SettingName, SettingValue)"
+                ." VALUES (".intval($this->UserId).","
+                    ." \"".$DB->escapeString($OwnerName)."\","
+                    ." \"".$DB->escapeString($SettingName)."\","
+                    ." \"".$DB->escapeString($NewValue)."\") AS New"
+                ." ON DUPLICATE KEY UPDATE SettingValue = New.SettingValue";
+        $DB->query($Query);
+    }
+
+    /**
+     * Clear any current value for this user for the specified setting.
+     * @param string $OwnerName Name of owner of setting.
+     * @param string $SettingName Name of setting.
+     */
+    public function clearSetting(
+        string $OwnerName,
+        string $SettingName
+    ): void {
+        $DB = $this->DB;
+        $Query = "DELETE FROM APUserSettings"
+                ." WHERE UserId = ".intval($this->UserId)
+                ." AND OwnerName = \"".$DB->escapeString($OwnerName)."\""
+                ." AND SettingName = \"".$DB->escapeString($SettingName)."\"";
+        $DB->query($Query);
+    }
+
+    /**
+     * Clear any and all settings associated with the specified owner, for all
+     * users.  This is intended for use in contexts like plugin uninstall, where
+     * the values are presumed to no longer be needed.
+     * @param string $OwnerName Name of owner of settings.
+     */
+    public static function clearAllSettingsForOwner(string $OwnerName): void
+    {
+        $DB = new Database();
+        $Query = "DELETE FROM APUserSettings"
+                ." WHERE OwnerName = \"".$DB->escapeString($OwnerName)."\"";
+        $DB->query($Query);
     }
 
 
@@ -1297,6 +1420,24 @@ class User
         } else {
             return substr($Salt, 0, 2);
         }
+    }
+
+    /**
+     * Retrieve value most recently set for any user, for the specified setting.
+     * @param string $OwnerName Name of owner of setting.
+     * @param string $SettingName Name of setting.
+     * @return ?string Value of setting, or NULL if no value has been set.
+     */
+    protected static function getMostRecentSetting(
+        string $OwnerName,
+        string $SettingName
+    ): ?string {
+        $DB = new Database();
+        $Query = "SELECT SettingValue FROM APUserSettings"
+                ." WHERE OwnerName = \"".$DB->escapeString($OwnerName)."\""
+                ." AND SettingName = \"".$DB->escapeString($SettingName)."\""
+                ." ORDER BY TimeLastUpdated DESC LIMIT 1";
+        return $DB->queryValue($Query, "SettingValue");
     }
 
     private static $PasswordMinLength = 6;

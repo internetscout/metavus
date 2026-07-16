@@ -9,8 +9,17 @@
 # @scout:phpstan
 
 namespace Metavus;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Recommender Database Rebuild");
+
 $ManualRebuildButton = new HtmlButton("Manual Rebuild");
 $ManualRebuildButton->setLink("index.php?P=RebuildRecommenderDB");
 

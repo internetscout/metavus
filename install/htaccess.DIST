@@ -8,6 +8,39 @@
 <IfModule mod_rewrite.c>
 RewriteEngine on
 RewriteBase X-REWRITEBASE-X
+
+# -- Access Control
+# if strict search urls is enabled, deny searches when they have no session
+# cookie and P= occurs but is not the first parameter in the string
+RewriteCond %{HTTP_COOKIE} =""
+RewriteCond %{QUERY_STRING} "&P=SearchResults(&|$)"
+RewriteCond %{SCRIPT_FILENAME} "^(.*)/index\.php$"
+RewriteCond %1/tmp/htaccess_strict_searches -f
+RewriteRule index\.php - [F]
+
+# allow only the following specific PHP files
+RewriteRule ^plugins/Captcha/lib/securimage/securimage_(show|play)\.php$ - [S=4]
+RewriteRule ^lib/FilePond/server/index\.php$ - [S=3]
+RewriteRule ^installmv\.php$ - [S=2]
+RewriteRule ^index\.php$ - [S=1]
+RewriteRule \.php$ - [F]
+
+# disallow access to html, ini, or scss files
+RewriteRule \.(html|ini|scss)$ - [F]
+
+# disallow access to directories that should not be public
+RewriteRule ^local/logs/ - [F]
+RewriteRule ^install/ - [F]
+
+# restrict FilePond to operations we use
+RewriteCond %{REQUEST_METHOD} !^(OPTIONS|POST|DELETE|HEAD|PATCH)$
+RewriteRule ^lib/FilePond/server/index\.php$ - [F]
+
+# limit FilePond patch operations to just the expected parameter
+RewriteCond %{REQUEST_METHOD} ^(HEAD|PATCH)$
+RewriteCond %{QUERY_STRING} !^patch=[0-9a-fA-F]{32}$
+RewriteRule ^lib/FilePond/server/index\.php$ - [F]
+
 # make sure fcgi installations get HTTP_AUTHORIZATION headers
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 # -- URL fingerprinting support
@@ -32,12 +65,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php [L]
 </IfModule>
 
-# only allow index.php and installmv.php to be directly executed
-<FilesMatch "^(?!(index|installmv)\.php).*\.php$">
-  Require all denied
-</FilesMatch>
-
-# set Cache Policy (static assets and fingerprinted files)
+# set Cache Policy for static assets and fingerprinted files
 <FilesMatch "\.(css|js|png|jpe?g|gif|svg|ico|swf|flv|mp4|pdf|docx?|pptx?|zip|woff)$">
   Header set Cache-Control "max-age=604800, public"
 </FilesMatch>
@@ -53,4 +81,3 @@ AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javasc
 </IfModule>
 </IfVersion>
 </IfModule>
-

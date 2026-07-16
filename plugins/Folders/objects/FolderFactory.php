@@ -31,9 +31,9 @@ class FolderFactory extends \Metavus\FolderFactory
 
     /**
      * Ensure constructor is supplied with an owner ID.
-     * @param int $OwnerId User ID.
+     * @param ?int $OwnerId User ID.
      */
-    public function __construct(int $OwnerId)
+    public function __construct(?int $OwnerId = null)
     {
         parent::__construct($OwnerId);
     }
@@ -117,7 +117,7 @@ class FolderFactory extends \Metavus\FolderFactory
 
     /**
      * Select the given folder for the given owner ID.
-     * @return Folder $Folder folder to select
+     * @param Folder $Folder folder to select
      * @param mixed $OwnerId owner ID (optional); uses data member if not set
      * @return void
      * @throws Exception if no owner ID is available
@@ -176,7 +176,7 @@ class FolderFactory extends \Metavus\FolderFactory
     ): array {
         array_walk(
             $UserIds,
-            function (&$x) {
+            function (&$x): void {
                 $x = (int)$x;
             }
         );
@@ -217,7 +217,7 @@ class FolderFactory extends \Metavus\FolderFactory
             self::RESOURCE_FOLDER_NAME
         );
 
-        return count($Folders) ? array_shift($Folders) : null;
+        return count($Folders) !== 0 ? array_shift($Folders) : null;
     }
 
     /**

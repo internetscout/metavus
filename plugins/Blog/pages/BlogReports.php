@@ -3,18 +3,17 @@
 #   FILE:  BlogReports.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\Graph;
+namespace Metavus;
 use Metavus\Plugins\Blog;
 use Metavus\Plugins\Blog\Entry;
 use Metavus\Plugins\MetricsRecorder;
 use Metavus\Plugins\MetricsReporter;
 use Metavus\Plugins\SocialMedia;
-use Metavus\RecordFactory;
-use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -24,7 +23,7 @@ use ScoutLib\ApplicationFramework;
 * @param array $Array Summary aray.
 * @param mixed $Key Key to create or increment
 */
-function CreateOrIncrement(&$Array, $Key)
+function createOrIncrement(&$Array, $Key): void
 {
     if (!isset($Array[$Key])) {
         $Array[$Key] = 1;
@@ -57,9 +56,11 @@ $Past = [
     "Year" => $Now - 365 * 86400
 ];
 
-$H_WeekAgo  = date('Y-m-d', $Past["Week"]);
-$H_MonthAgo = date('Y-m-d', $Past["Month"]);
-$H_YearAgo  = date('Y-m-d', $Past["Year"]);
+$H_StartDates = [
+    "Week" => date('Y-m-d', $Past["Week"]),
+    "Month" => date('Y-m-d', $Past["Month"]),
+    "Year" => date('Y-m-d', $Past["Year"])
+];
 
 #
 # Blog Views per day
@@ -71,7 +72,8 @@ $H_ViewData = [
     "Year" => []
 ];
 
-foreach ($MetricsRecorderPlugin->GetEventData(
+
+$Events = $MetricsRecorderPlugin->getEventData(
     "Blog",
     "ViewEntry",
     null,
@@ -79,10 +81,9 @@ foreach ($MetricsRecorderPlugin->GetEventData(
     null,
     null,
     null,
-    $MetricsReporterPlugin->getConfigSetting("PrivsToExcludeFromCounts"),
-    0,
-    null
-) as $Event) {
+    $MetricsReporterPlugin->getConfigSetting("PrivsToExcludeFromCounts")
+);
+foreach ($Events as $Event) {
     $TS = strtotime(date('Y-m-d', strtotime($Event["EventDate"])));
 
     if (!isset($ViewsPerDay[$TS])) {
@@ -93,14 +94,18 @@ foreach ($MetricsRecorderPlugin->GetEventData(
 
     foreach (["Week","Month","Year"] as $Period) {
         if ($Past[$Period] < $TS) {
-            CreateOrIncrement($H_ViewData[$Period], $Event["DataOne"]);
+            createOrIncrement($H_ViewData[$Period], $Event["DataOne"]);
         }
     }
 }
 
-$H_ViewsPerDay = new Graph(Graph::TYPE_DATE_BAR, $ViewsPerDay);
-$H_ViewsPerDay->XLabel("Date");
-$H_ViewsPerDay->YLabel("Blog Views");
+# default graphs are square; set a height to adjust to an 1.33 aspect ratio
+$GraphHeight = 450;
+
+$H_ViewsPerDay = new MultiDateChart();
+$H_ViewsPerDay->data($ViewsPerDay);
+$H_ViewsPerDay->height($GraphHeight);
+$H_ViewsPerDay->makeAutosizing();
 
 #
 # Blog shares per day
@@ -109,8 +114,8 @@ $H_ViewsPerDay->YLabel("Blog Views");
 # Get a list of all the Resources that are also events
 # Use that to filter the shares data
 
-$BlogFactory = new RecordFactory($Blog->GetSchemaId());
-$PostIds = array_flip($BlogFactory->GetItemIds());
+$BlogFactory = new RecordFactory($Blog->getSchemaId());
+$PostIds = array_flip($BlogFactory->getItemIds());
 
 $SharesData = [];
 $H_ShareData = [
@@ -127,7 +132,7 @@ $ShareTypeMap = [
     "gp" => 4 # old data covering shares on Google+
 ];
 
-foreach ($MetricsRecorderPlugin->GetEventData(
+foreach ($MetricsRecorderPlugin->getEventData(
     "SocialMedia",
     "ShareResource",
     null,
@@ -151,21 +156,21 @@ foreach ($MetricsRecorderPlugin->GetEventData(
 
     foreach (["Week", "Month", "Year"] as $Period) {
         if ($Past[$Period] < $TS) {
-            CreateOrIncrement($H_ShareData[$Period], $Event["DataOne"]);
+            createOrIncrement($H_ShareData[$Period], $Event["DataOne"]);
         }
     }
 }
 
-$H_SharesPerDay = new Graph(Graph::TYPE_DATE_BAR, $SharesData);
-$H_SharesPerDay->XLabel("Date");
-$H_SharesPerDay->YLabel("Blog Shares");
-$H_SharesPerDay->Legend(["Email", "Facebook", "Twitter", "LinkedIn", "Google+"]);
-$H_SharesPerDay->Scale(Graph::WEEKLY);
+$H_SharesPerDay = new MultiDateChart();
+$H_SharesPerDay->data($SharesData);
+$H_SharesPerDay->height($GraphHeight);
+$H_SharesPerDay->makeAutosizing();
+$H_SharesPerDay->labels(["Email", "Facebook", "Twitter", "LinkedIn", "Google+"]);
+$H_SharesPerDay->colors(["C5C53B", "2E4588", "2EC1FD", "007000", "A01E1A"]);
 
 #
 # Most viewed and shared blog posts
 #
-
 foreach (["Week", "Month", "Year"] as $Period) {
     arsort($H_ViewData[$Period]);
     arsort($H_ShareData[$Period]);

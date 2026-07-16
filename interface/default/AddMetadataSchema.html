@@ -1,0 +1,188 @@
+<?PHP
+#
+#   FILE:  AddMetadataSchema.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use ScoutLib\ApplicationFramework;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Create and return a new schema with given name and resource name, and default
+ * edit page, fields, and permissions, owned by current user. If there's an
+ * error creating the schema, log that error with FormUI and return null.
+ * @param string $SchemaName The name to give the schema.
+ * @param string $ResourceName The resource name to give the schema.
+ * @return ?MetadataSchema The newly-created schema, or NULL if there was an error.
+ */
+function createSchema(string $SchemaName, string $ResourceName): ?MetadataSchema
+{
+    $Schema = MetadataSchema::create($SchemaName);
+    $Schema->setViewPage("index.php?P=FullRecord&ID=\$ID");
+    $Schema->resourceName($ResourceName);
+    $Schema->setEditPage("index.php?P=EditResource&ID=\$ID");
+    $Schema->setOwnerToUser(User::getCurrentUser());
+    addDefaultFieldsToSchema($Schema);
+    if (count($Schema->getAllErrorMessages()) > 0) {
+        foreach ($Schema->getAllErrorMessages() as $MethodName => $MethodErrors) {
+            foreach ($MethodErrors as $Error) {
+                FormUI::logError($Error." [".$MethodName."]");
+            }
+        }
+        $Schema->delete();
+        return null;
+    }
+    setDefaultPermissionsForSchema($Schema);
+    addSchemaToSearchResults($Schema);
+    return $Schema;
+}
+
+/**
+ * Add default fields to the given schema.
+ * This method's caller should check schema for errors (for example, using
+ * getAllErrorMessages()) upon return of this method.
+ * @param MetadataSchema $Schema The schema to add fields to. This schema should
+ *         be checked for errors once the method returns.
+ */
+function addDefaultFieldsToSchema(MetadataSchema &$Schema): void
+{
+    # start with basic fields from administrative schema
+    $Schema->addFieldsFromXmlFile(
+        "install/MetadataSchema--Administrative.xml",
+        User::getCurrentUser()
+    );
+    # remove unneeded fields
+    foreach (["Cumulative Rating", "Date Record Checked"] as $FieldName) {
+        $Schema->dropField($FieldName);
+    }
+    # add title field
+    $Field = $Schema->addField("Title", MetadataSchema::MDFTYPE_TEXT);
+    if ($Field === null) {
+        # there was an error adding this field
+        return;
+    }
+    $Field->isTempItem(false);
+    $Field->description("Name by which the resource is formally known."
+        ." This field is a required field."
+        ." Required fields may not be customized as to the field type or disabled."
+        ." Required fields must be completed in each resource record. DCMI element.");
+    $Field->setOwnerToUser(User::getCurrentUser());
+    $Field->editable(true);
+    $Field->optional(false);
+    $Schema->stdNameToFieldMapping("Title", $Field->id());
+    $Field->includeInAdvancedSearch(true);
+    $Field->includeInKeywordSearch(true);
+}
+
+/**
+ * Add default permissions to the given schema.
+ * @param MetadataSchema $Schema The schema to set permissions on.
+ */
+function setDefaultPermissionsForSchema(MetadataSchema $Schema): void
+{
+    $AuthorPrivs = new PrivilegeSet();
+    $AuthorPrivs->addPrivilege(PRIV_RESOURCEADMIN);
+    $Schema->authoringPrivileges($AuthorPrivs);
+
+    $EditPrivs = clone $AuthorPrivs;
+    $NestedPrivs = new PrivilegeSet();
+    $NestedPrivs->usesAndLogic(true);
+    $NestedPrivs->addCondition($Schema->getField("Added By Id"));
+    $EditPrivs->addSubset($NestedPrivs);
+    $Schema->editingPrivileges($EditPrivs);
+
+    $ViewPrivs = clone $EditPrivs;
+    $RecordStatusField = $Schema->getField("Record Status");
+    $ViewPrivs->addCondition(
+        $RecordStatusField,
+        array_search("Published", $RecordStatusField->getPossibleValues())
+    );
+    $Schema->viewingPrivileges($ViewPrivs);
+}
+
+/**
+ * Add schema to search results in selected interface.
+ * @param MetadataSchema $Schema The schema to add to search results.
+ * @return void
+ */
+function addSchemaToSearchResults(MetadataSchema $Schema): void
+{
+    $IntCfg = InterfaceConfiguration::getInstance();
+    $ItemTypesToDisplay = $IntCfg->getArray("ItemTypesToDisplayInSearchResults");
+    $ItemTypesToDisplay[] = $Schema->id();
+    $IntCfg->updateValues(["ItemTypesToDisplayInSearchResults" => $ItemTypesToDisplay]);
+}
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$FormFields = [
+    "SchemaName" => [
+        "Label" => "Schema Name",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Value" => "",
+        "Required" => true,
+        "Help" => "Name for the schema itself (e.g. 'Blog')",
+        "ValidateFunction" => function ($FieldName, $Value): ?string {
+            if (MetadataSchema::getSchemaIdForName($Value) !== null) {
+                return "A schema with that name already exists.";
+            }
+            return null;
+        }
+    ],
+    "ResourceName" => [
+        "Label" => "Resource Name",
+        "Type" => FormUI::FTYPE_TEXT,
+        "Value" => "",
+        "Required" => true,
+        "Help" => "Name for the item described by that schema (e.g. 'Blog Entry')"
+    ]
+];
+
+$FormUI = new FormUI($FormFields);
+
+# ----- PROCESSING -----------------------------------------------------------
+
+switch ($FormUI->getSubmitButtonValue()) {
+    case "Add Schema":
+        if ($FormUI->validateFieldInput() > 0) {
+            break;
+        }
+        $FieldValues = $FormUI->getNewValuesFromForm();
+        $Schema = createSchema($FieldValues["SchemaName"], $FieldValues["ResourceName"]);
+        if ($Schema === null) {
+            break;
+        }
+        $AF->setJumpToPage("DBEditor&SC=".$Schema->id());
+        return;
+    case "Cancel":
+        $AF->setJumpToPage("DBEditor");
+        return;
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+$AF->setPageTitle("Add Schema");
+?>
+
+<h1>Add Schema</h1>
+
+<?PHP if ($FormUI::errorsLogged()) {
+    $FormUI::displayErrorBlock();
+} ?>
+
+<form name="addschema" method="post" action="index.php?P=AddMetadataSchema">
+    <?PHP $FormUI->displayFormTable(); ?>
+    <?= $FormUI->getSubmitButtonHtml("Add Schema", "Plus.svg"); ?>
+    <?= $FormUI->getSubmitButtonHtml("Cancel"); ?>
+</form>

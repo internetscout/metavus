@@ -120,7 +120,7 @@ function determineDisabledValues(MetadataField $Field, array $PossibleValues): a
     $DisabledValues = array();
 
     if ($Field->type() == MetadataSchema::MDFTYPE_FLAG) {
-        foreach ($PossibleValues as $ValueId => $Value) {
+        foreach (array_keys($PossibleValues) as $ValueId) {
             $ResourceIds = $Factories[$SchemaId]->getIdsOfMatchingRecords(
                 [$Field->id() => $ValueId]
             );
@@ -129,11 +129,11 @@ function determineDisabledValues(MetadataField $Field, array $PossibleValues): a
                 $User
             );
             if (count($ResourceIds) == 0) {
-                $DislabedValues[$ValueId] = 1;
+                $DisabledValues[$ValueId] = 1;
             }
         }
     } else {
-        foreach ($PossibleValues as $ValueId => $Value) {
+        foreach (array_keys($PossibleValues) as $ValueId) {
             if ($Factories[$SchemaId]->associatedVisibleRecordCount(
                 $ValueId,
                 $User
@@ -260,7 +260,7 @@ function getTextFieldList(
 
     $TextFieldsBySchema = [];
     $AllTextFields = [];
-    foreach ($AllSchemas as $SchemaId => $Schema) {
+    foreach ($AllSchemas as $Schema) {
         $Fields = $Schema->getFields($TextFieldTypes, MetadataSchema::MDFORDER_DISPLAY);
         foreach ($Fields as $FieldId => $Field) {
             if ($Field->Enabled() &&
@@ -295,12 +295,12 @@ function getTextFieldList(
     foreach ($TextFieldsBySchema as $SchemaName => $Fields) {
         $FilteredFields = array_filter(
             $Fields,
-            function ($DisplayName) use ($AllTextFields) {
+            function ($DisplayName) use ($AllTextFields): bool {
                 return count($AllTextFields[$DisplayName]) < 2;
             }
         );
 
-        if (count($FilteredFields)) {
+        if (count($FilteredFields) !== 0) {
             $Result[$SchemaName] = $FilteredFields;
         }
     }
@@ -331,13 +331,13 @@ function getSelectedTextFieldList(
     if ($User->isLoggedIn() &&
         !isset($_GET["ID"]) && !isset($_GET["RF"])) {
         $FieldData = $User->get("SearchSelections");
-        if (strlen($FieldData)) {
+        if (strlen($FieldData) !== 0) {
             $Result = unserialize($FieldData);
 
             # filter out invalid fields
             $Result = array_filter(
                 $Result,
-                function ($FieldId) {
+                function ($FieldId): bool {
                     return MetadataSchema::fieldExistsInAnySchema($FieldId);
                 }
             );
@@ -348,12 +348,12 @@ function getSelectedTextFieldList(
     $RemainingFields = [];
 
     # if a search was specified
-    if ($SearchParams->parameterCount()) {
+    if ($SearchParams->parameterCount() !== 0) {
         # get the list of non-keyword fields in this search
         $FieldsInSearch = $SearchParams->getFields();
 
         # if this includes keywords, then add that as well
-        if (count($SearchParams->getKeywordSearchStrings())) {
+        if (count($SearchParams->getKeywordSearchStrings()) !== 0) {
             $FieldsInSearch[] = "KEYWORD";
         }
 
@@ -590,7 +590,7 @@ $H_SchemaNames = array();
 foreach ($AllSchemas as $SchemaId => $Schema) {
     $H_SchemaNames[$SchemaId] =
             ($SchemaId == MetadataSchema::SCHEMAID_DEFAULT) ?
-            "Resource" : $Schema->Name();
+            "Resource" : $Schema->name();
 }
 
 # generate the list of fields that have text searches
@@ -614,7 +614,7 @@ $H_SortFields = getSortOptions($SortFieldTypes, $User);
 $DefaultSortField = $AllSchemas[MetadataSchema::SCHEMAID_DEFAULT]->defaultSortField();
 if (isset($_GET["SF"])) {
     if (is_array($_GET["SF"])) {
-        if (count($_GET["SF"])) {
+        if (count($_GET["SF"]) !== 0) {
             $PossibleSortField = array_shift($_GET["SF"]);
         }
     } else {

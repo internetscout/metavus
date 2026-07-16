@@ -93,7 +93,7 @@ class GlobalSearchEngine
     * @param int $NumberOfResults The number of results to retun.
     * @return array The results of the specified search.
     */
-    private function performSearch($SetSpec, $StartingResult, $NumberOfResults): array
+    private function performSearch(string $SetSpec, $StartingResult, $NumberOfResults): array
     {
         # for each global search site
         $DB = new Database();
@@ -107,7 +107,7 @@ class GlobalSearchEngine
             $SearchResults = array_merge($SearchResults, $SiteSearchResults);
         }
 
-        usort($SearchResults, function ($A, $B) {
+        usort($SearchResults, function ($A, $B): int {
             return StdLib::sortCompare($A["Search Score"], $B["Search Score"]);
         });
 

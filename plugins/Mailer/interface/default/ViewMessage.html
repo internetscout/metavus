@@ -13,7 +13,7 @@ use ScoutLib\ApplicationFramework;
 # ----- SETUP ----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 
-if (count($H_Errors)) {
+if (count($H_Errors) !== 0) {
     print "<ul class='mv-form-error'>";
     foreach ($H_Errors as $Error) {
         print "<li>".$Error."</li>";

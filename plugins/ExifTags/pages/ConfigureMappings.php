@@ -45,7 +45,7 @@ function collectMappingInfo(): array
 
     # exclude rows with -N suffix; these are rows shown at the bottom of the table
     # of mappings for each schema that are used to add new mappings
-    $ExifPickers = array_filter($_POST, function ($k) {
+    $ExifPickers = array_filter($_POST, function ($k): bool {
         return ( strpos($k, "F_ExifPicker") > -1 && strpos($k, "-N") == false);
     }, ARRAY_FILTER_USE_KEY);
 
@@ -195,7 +195,7 @@ function validateMultiplyMappedFields(array $Mappings, int $SchemaId): array
         }
     }
 
-    $MultiplyMappedFields = array_filter($MappingsPerField, function ($v, $k) {
+    $MultiplyMappedFields = array_filter($MappingsPerField, function ($v, $k): bool {
         return $v > 1;
     }, ARRAY_FILTER_USE_BOTH);
 
@@ -210,7 +210,7 @@ function validateMultiplyMappedFields(array $Mappings, int $SchemaId): array
                 MetadataSchema::MDFTYPE_CONTROLLEDNAME,
                 MetadataSchema::MDFTYPE_OPTION,
             ];
-    foreach ($MultiplyMappedFields as $MdFieldId => $MappedFieldCount) {
+    foreach (array_keys($MultiplyMappedFields) as $MdFieldId) {
         if ($MdFieldId == -1) {
             continue;
         }

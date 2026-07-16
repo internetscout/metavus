@@ -3,12 +3,13 @@
 #   FILE:  TaskQueue.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\ItemListUI;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginCaller;
 use ScoutLib\StdLib;
@@ -22,7 +23,6 @@ use ScoutLib\StdLib;
  */
 function getTaskCallbackName(array $Task): string
 {
-    $Name = null;
     $Callback = $Task["Callback"];
     $Parameters = $Task["Parameters"];
     if (is_array($Parameters) && (count($Parameters) == 3) &&
@@ -31,21 +31,15 @@ function getTaskCallbackName(array $Task): string
         $Parameters = $Parameters[2];
     }
 
-    # function name
+    # callback is function name
     if (!is_array($Callback)) {
         $Name = $Callback;
-    } else { # callback array or object
-        if (is_object($Callback[0])) {
-            if ($Callback[0] instanceof PluginCaller) {
-                $Name = $Callback[0]->getCallbackAsText();
-            } else {
-                $ClassName = get_class($Callback[0]);
-                $BaseClassName = basename(str_replace("\\", "/", $ClassName));
-                $Name = $BaseClassName."::".$Callback[1];
-            }
-        } else {
-            $Name = $Callback[0] . "::" . $Callback[1];
-        }
+    } elseif (($Callback[0] instanceof PluginCaller)) {
+        $Name = $Callback[0]->getCallbackAsText();
+    } else {
+        $ClassName = is_object($Callback[0]) ? get_class($Callback[0]) : $Callback[0];
+        $BaseClassName = basename(str_replace("\\", "/", $ClassName));
+        $Name = $BaseClassName."::".$Callback[1];
     }
 
     return $Name;
@@ -142,25 +136,140 @@ function getTaskCrashInfo($Task)
     return $CrashInfo;
 }
 
+/**
+ * Get human-friendly printable version of a task run time.
+ * @param int|string|false|null $Time Time value as a UNIX timestamp, SQL
+ *      DATETIME string, FALSE, or NULL.
+ * @return string Printable run time string.
+ */
+function getTaskRunTimeDisplayString($Time): string
+{
+    if (($Time === null) || ($Time === "") || ($Time === false)) {
+        return "-";
+    }
+
+    if (is_int($Time)) {
+        $RunAt = $Time;
+    } else {
+        $RunAt = strtotime($Time);
+        if ($RunAt === false) {
+            return "-";
+        }
+    }
+
+    $Value = StdLib::getPrettyTimestamp($RunAt);
+    $MinutesUntil = floor(max(($RunAt - time()), 0) / 60);
+    if ($MinutesUntil < 60) {
+        $Value .= " (".$MinutesUntil." "
+                .StdLib::pluralize("minute", (int)$MinutesUntil).")";
+    }
+
+    return $Value;
+}
 
 # ----- SETUP ----------------------------------------------------------------
 
-# verify that required incoming variables are set
-if (!isset($H_PageUrl)) {
-    throw new Exception("Variable \$H_PageUrl not set.");
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
 }
 
+# the base URL for this page used when refreshing
+$PageUrl = ApplicationFramework::baseUrl()."index.php?P=TaskQueue";
+
 $AF = ApplicationFramework::getInstance();
+
+# if task execution enable/disable requested
+if (isset($_GET["CE"])) {
+    # save new task execution state
+    $AF->taskExecutionEnabled(
+        StdLib::getFormValue("F_TaskExecutionEnabled", true),
+        true
+    );
+}
+
+# refresh the page every 30 seconds if appropriate. this must come after the
+# code that sets whether or not task execution is enabled
+if ($AF->taskExecutionEnabled()) {
+    header("Refresh: 30; url=".$PageUrl);
+}
+
+# if action requested
+if (isset($_GET["AC"]) && isset($_GET["ID"])) {
+    $TaskId = $_GET["ID"];
+
+    switch ($_GET["AC"]) {
+        case "REQUEUE":
+            # re-queue orphaned task if requested
+            $AF->requeueOrphanedTask($TaskId);
+            break;
+        case "REQUEUEALL":
+            # re-queue all orphaned tasks if requested
+            foreach ($AF->getOrphanedTaskList() as $Id => $Task) {
+                $NewPriority = max(1, ($Task["Priority"] - 1));
+                $AF->requeueOrphanedTask((int)$Id, (int)$NewPriority);
+            }
+            break;
+        case "DELETE":
+            # remove orphaned task if requested
+            $AF->deleteTask($TaskId);
+            break;
+        case "RUN":
+            # run task in foreground if requested
+            # if this is a periodic event
+            if (!is_numeric($TaskId)) {
+                # attempt to retrieve task
+                $PTasks = $AF->getKnownPeriodicEvents();
+
+                # if specified task found
+                if (isset($PTasks[$TaskId])) {
+                    # load task parameters
+                    $Task = $PTasks[$TaskId];
+                    $Task["Parameters"]["LastRunAt"] = date(
+                        StdLib::SQL_DATE_FORMAT,
+                        $Task["LastRun"]
+                    );
+
+                    # run task
+                    ApplicationFramework::runPeriodicEvent(
+                        $Task["Period"],
+                        $Task["Callback"],
+                        $Task["Parameters"]
+                    );
+                }
+            } else {
+                # attempt to retrieve task
+                $Task = $AF->getTask((int)$TaskId);
+
+                # if specified task found
+                if ($Task) {
+                    # if callback appears callable
+                    if (is_callable($Task["Callback"])) {
+                        # run task
+                        if ($Task["Parameters"]) {
+                            call_user_func_array($Task["Callback"], $Task["Parameters"]);
+                        } else {
+                            call_user_func($Task["Callback"]);
+                        }
+
+                        # remove task from queue
+                        $AF->deleteTask((int)$TaskId);
+                    }
+                }
+            }
+            break;
+    }
+}
+
 $MaxTasksToDisplay = 50;
-$RunningTasks = $AF->GetRunningTaskList();
+$RunningTasks = $AF->getRunningTaskList();
 $RunningTaskCount = count($RunningTasks);
-$QueuedTasks = $AF->GetQueuedTaskList($MaxTasksToDisplay);
-$QueuedTaskCount = $AF->GetTaskQueueSize();
-$OrphanedTasks = $AF->GetOrphanedTaskList($MaxTasksToDisplay);
-$OrphanedTaskCount = $AF->GetOrphanedTaskCount();
-$PeriodicEventInfo = $AF->GetKnownPeriodicEvents();
+$QueuedTasks = $AF->getQueuedTaskList($MaxTasksToDisplay);
+$QueuedTaskCount = $AF->getTaskQueueSize();
+$OrphanedTasks = $AF->getOrphanedTaskList($MaxTasksToDisplay);
+$OrphanedTaskCount = $AF->getOrphanedTaskCount();
+$PeriodicEventInfo = $AF->getKnownPeriodicEvents();
 $PeriodicEventCount = count($PeriodicEventInfo);
-uasort($PeriodicEventInfo, function ($A, $B) {
+uasort($PeriodicEventInfo, function ($A, $B): int {
     return ($A["NextRun"] < $B["NextRun"]) ? -1 : 1;
 });
 
@@ -169,7 +278,7 @@ $BaseFields = [
         "Heading" => "Task ID",
     ],
     "Callback" => [
-        "ValueFunction" => function ($Task) {
+        "ValueFunction" => function ($Task): string {
             return getTaskCallbackName($Task)."(".getTaskCallbackParameterString($Task).")";
         },
     ],
@@ -179,6 +288,11 @@ $BaseFields = [
     "Priority" => [
         "ValueFunction" => function ($Task) {
             return ApplicationFramework::$AvailablePriorities[$Task["Priority"]];
+        },
+    ],
+    "Run At" => [
+        "ValueFunction" => function ($Task): string {
+            return getTaskRunTimeDisplayString($Task["RunAfter"] ?? null);
         },
     ],
 ];
@@ -191,132 +305,125 @@ $RunLink = $ButtonLinkPrefix."RUN";
 $RequeueAllLink = $BaseLink."&ID=ALL&AC=REQUEUEALL";
 
 # ----- RUNNING TASKS
-$RFields = [
-    "TaskId" => $BaseFields["TaskId"],
-    "Callback" => $BaseFields["Callback"],
-    "Description" => $BaseFields["Description"],
-    "Priority" => $BaseFields["Priority"],
-    "Started" => [
-        "ValueFunction" => function ($Task) {
-            return StdLib::getPrettyTimestamp($Task["StartedAt"]);
-        },
-    ],
+$RFields = $BaseFields;
+$RFields["Started"] = [
+    "ValueFunction" => function ($Task): string {
+        return StdLib::getPrettyTimestamp($Task["StartedAt"]);
+    },
 ];
 $RListUI = new ItemListUI($RFields);
 $RListUI->fieldsSortableByDefault(false);
-$RListUI->heading("Running Tasks");
-if ($RunningTaskCount) {
-    $RListUI->subheading($RunningTaskCount." "
+$RListUI->setHeading("Running Tasks");
+if ($RunningTaskCount !== 0) {
+    $RListUI->setSubheading($RunningTaskCount." "
         .StdLib::pluralize("task", $RunningTaskCount)." currently running");
 }
-$RListUI->baseLink($BaseLink);
-$RListUI->noItemsMessage("(no tasks currently running)");
+$RListUI->setBaseLink($BaseLink);
+$RListUI->setItemsPerPage($MaxTasksToDisplay);
+$RListUI->setNoItemsMessage("(no tasks currently running)");
 $RListUI->willDisplayEmptyTable(true);
 $RListUI->addTopCheckbox(
     "Automatic Task Execution Enabled<br/><span id=\"mv-reload-timer\">&nbsp;</span>",
-    $AF->TaskExecutionEnabled(),
+    $AF->taskExecutionEnabled(),
     "F_TaskExecutionEnabled",
     $BaseLink."&amp;CE=1"
 );
+$RListUI->setItems($RunningTasks);
 
 # ----- QUEUED TASKS
 $QFields = $BaseFields;
 $QListUI = new ItemListUI($QFields);
 $QListUI->fieldsSortableByDefault(false);
-$QListUI->heading("Queued Tasks");
+$QListUI->setHeading("Queued Tasks");
 if ($QueuedTaskCount) {
     $Subheading = number_format($QueuedTaskCount)." "
             .StdLib::pluralize("task", $QueuedTaskCount)." currently queued";
     if ($QueuedTaskCount > count($QueuedTasks)) {
         $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
     }
-    $QListUI->subheading($Subheading);
+    $QListUI->setSubheading($Subheading);
 }
-$QListUI->baseLink($BaseLink);
+$QListUI->setBaseLink($BaseLink);
+$QListUI->setItemsPerPage($MaxTasksToDisplay);
+$QListUI->setNoItemsMessage("(no tasks currently in queue)");
 $QListUI->addActionButton("Delete", $DeleteLink, "cross.png");
 $QListUI->addActionButton("Run", $RunLink, "accept.png");
-$QListUI->noItemsMessage("(no tasks currently in queue)");
 $QListUI->willDisplayEmptyTable(true);
+$QListUI->setItems($QueuedTasks);
 
 # ----- ORPHANED TASKS
 if ($OrphanedTaskCount) {
     $OListUI = new ItemListUI($RFields);
     $OListUI->fieldsSortableByDefault(false);
-    $OListUI->heading("Orphaned Tasks");
+    $OListUI->setHeading("Orphaned Tasks");
     $Subheading = number_format($OrphanedTaskCount)." "
             .StdLib::pluralize("task", $OrphanedTaskCount)." currently orphaned";
     if ($OrphanedTaskCount > count($OrphanedTasks)) {
         $Subheading .= " (first ".$MaxTasksToDisplay." displayed)";
     }
-    $OListUI->subheading($Subheading);
-    $OListUI->heading("Orphaned Tasks");
-    $OListUI->baseLink($BaseLink);
+    $OListUI->setSubheading($Subheading);
+    $OListUI->setHeading("Orphaned Tasks");
+    $OListUI->setBaseLink($BaseLink);
+    $OListUI->setItemsPerPage($MaxTasksToDisplay);
     $OListUI->addActionButton("Requeue", $RequeueLink, "RefreshArrow.svg");
     $OListUI->addActionButton("Run", $RunLink, "accept.png");
     $OListUI->addActionButton("Delete", $DeleteLink, "cross.png");
     $OListUI->addTopButton("Requeue All", $RequeueAllLink, "RefreshArrow.svg");
+    $OListUI->setItems($OrphanedTasks);
 }
 
 # ----- PERIODIC EVENTS
 $PFields = [
     "Callback" => $BaseFields["Callback"],
     "Frequency" => [
-        "ValueFunction" => function ($Task) {
+        "ValueFunction" => function ($Task): string {
             return ucfirst(strtolower(preg_replace("/EVENT_/", "", $Task["Period"])));
         },
     ],
     "Last Run" => [
-        "ValueFunction" => function ($Task) {
+        "ValueFunction" => function ($Task): string {
             return ($Task["LastRun"] === false)
                 ? "-" : StdLib::getPrettyTimestamp($Task["LastRun"]);
         },
     ],
     "Next Queued" => [
-        "ValueFunction" => function ($Task) {
-            $NextRun = $Task["NextRun"];
-            if ($NextRun === false) {
-                $Value = "-";
-            } else {
-                $Value = StdLib::getPrettyTimestamp($NextRun);
-                $MinutesUntil = floor(max(($NextRun - time()), 0) / 60);
-                if ($MinutesUntil < 60) {
-                    $Value .= " (".$MinutesUntil." "
-                            .StdLib::pluralize("minute", (int)$MinutesUntil).")";
-                }
-            }
-            return $Value;
+        "ValueFunction" => function ($Task): string {
+            return getTaskRunTimeDisplayString($Task["NextRun"]);
         },
     ],
 ];
 $PListUI = new ItemListUI($PFields);
 $PListUI->fieldsSortableByDefault(false);
-$PListUI->heading("Periodic Events");
-if ($PeriodicEventCount) {
-    $PListUI->subheading($PeriodicEventCount." periodic "
+$PListUI->setHeading("Periodic Events");
+if ($PeriodicEventCount !== 0) {
+    $PListUI->setSubheading($PeriodicEventCount." periodic "
             .StdLib::pluralize("events", $PeriodicEventCount)." found");
 }
-$PListUI->baseLink($BaseLink);
+$PListUI->setBaseLink($BaseLink);
+$PListUI->setItemsPerPage($MaxTasksToDisplay);
 $PListUI->addActionButton("Run", $RunLink, "accept.png");
-$PListUI->noItemsMessage("(no periodic events found)");
+$PListUI->setNoItemsMessage("(no periodic events found)");
 $PListUI->willDisplayEmptyTable(true);
+$PListUI->setItems($PeriodicEventInfo);
 
+# ----- PROCESSING -----------------------------------------------------------
 
 # ----- DISPLAY --------------------------------------------------------------
 
 $AF->setPageTitle("Task Queue");
 
-$RListUI->display($RunningTasks);
-$QListUI->display($QueuedTasks);
+print $RListUI->getHtml();
+print $QListUI->getHtml();
 if ($OrphanedTaskCount) {
-    $OListUI->display($OrphanedTasks);
+    print $OListUI->getHtml();
 }
-$PListUI->display($PeriodicEventInfo);
+print $PListUI->getHtml();
 
-if ($AF->TaskExecutionEnabled()) {
+if ($AF->taskExecutionEnabled()) {
     ?><script type="text/javascript">
     // refresh the page in case the HTTP header (in TaskQueue.php) fails
     setTimeout(function(){
-      window.location = "<?= $H_PageUrl ?>";
+      window.location = "<?= $PageUrl ?>";
     }, 32000);
 
     $(document).ready(function(){
@@ -345,4 +452,3 @@ if ($AF->TaskExecutionEnabled()) {
     });
     </script><?PHP
 }
-

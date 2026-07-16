@@ -10,29 +10,112 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlTable;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_ClassificationCount)) {
-    throw new Exception("H_ClassificationCount not defined.");
-}
-if (!isset($H_ControlledNameCount)) {
-    throw new Exception("H_ControlledNameCount not defined.");
-}
-if (!isset($H_ResourceCount)) {
-    throw new Exception("H_ResourceCount not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
 
 $AF = ApplicationFramework::getInstance();
+$SearchEngine = new SearchEngine();
+
+# ----- PROCESSING -----------------------------------------------------------
+
+# check for submit button
+if (!array_key_exists("Submit", $_POST) || $_POST["Submit"] !== "Purge Sample Data") {
+    $AF->setJumpToPage("index.php?P=SysAdmin");
+    return;
+}
+
+# get sample record IDs
+$SearchParams = new SearchParameterSet();
+$SearchParams->addParameter('"[--SAMPLE RECORD--]"', "Description");
+$SearchResults = $SearchEngine->search($SearchParams);
+
+# convert search results to simple array of IDs
+$ResourceList = array_keys($SearchResults);
+
+$ResourceCount = 0;
+$ClassIds = [];
+$CNIds = [];
+
+foreach ($ResourceList as $ResourceId) {
+    $Resource = new Record($ResourceId);
+
+    # get Classifications associated with this Resource
+    $Names = $Resource->classifications();
+    foreach ($Names as $ClassificationTypes) {
+        foreach ($ClassificationTypes as $ClassId => $Classification) {
+            $ClassIds[$ClassId] = $Classification;
+        }
+    }
+
+    # get ControlledNames associated with this Resource
+    if ($Resource->getSchema()->fieldExists("Creator")) {
+        $Creators = $Resource->get("Creator");
+        foreach ($Creators as $CNId => $Creator) {
+            $CNIds[$CNId] = $Creator;
+        }
+    }
+    if ($Resource->getSchema()->fieldExists("Publisher")) {
+        $Publishers = $Resource->get("Publisher");
+        foreach ($Publishers as $CNId => $Publisher) {
+            $CNIds[$CNId] = $Publisher;
+        }
+    }
+
+    $Resource->destroy();
+    $ResourceCount++;
+}
+
+# post-process classification ids
+$ClassificationCount = 0;
+foreach ($ClassIds as $ClassId => $Classification) {
+    # nothing to do if classification has already been deleted
+    if (!Classification::itemExists((int)$ClassId)) {
+        continue;
+    }
+
+    # delete classification if no resources assigned
+    $Class = new Classification($ClassId);
+    $ClassificationCount += $Class->destroy(true);
+}
+
+# post-process controlled name ids
+$ControlledNameCount = 0;
+foreach ($CNIds as $CNId => $Dummy) {
+    # see if any resources are still using this controlled name
+    $CN = new ControlledName($CNId);
+
+    # controlled name not in use, so delete it
+    if (!$CN->inUse()) {
+        $CN->destroy();
+        $ControlledNameCount++;
+    }
+}
+
+# also clean out sample collections
+$CFactory = new CollectionFactory();
+$CollectionIds = $CFactory->getIdsOfMatchingRecords(
+    ["Description" => "\[--SAMPLE COLLECTION--\]"],
+    true,
+    "=~"
+);
+
+foreach ($CollectionIds as $Id) {
+    $Record = new Collection($Id);
+    $Record->destroy();
+}
 
 $DataTable = new HtmlTable();
 $DataTable->setTableClass("table table-striped");
 $DataTable->addRowsWithHeaders([
-    ["Resources Deleted", $H_ResourceCount],
-    ["Classifications Deleted", $H_ClassificationCount],
-    ["Controlled Names Deleted", $H_ControlledNameCount]
+    ["Resources Deleted", $ResourceCount],
+    ["Classifications Deleted", $ClassificationCount],
+    ["Controlled Names Deleted", $ControlledNameCount]
 ]);
 
 # ----- DISPLAY --------------------------------------------------------------

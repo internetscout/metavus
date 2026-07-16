@@ -9,56 +9,51 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 /**
-* Print an option list containing metadata schemas.
-* @param MetadataSchema $SchemaInUse Metadata schema in use.
-*/
-function PrintSchemaOptionList(MetadataSchema $SchemaInUse): void
-{
-    $Options = [];
-
-    # get the metadata schema options
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
-        $Options[$Schema->Id()] = $Schema->Name() . " Schema";
-    }
-
-    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
-    $OptList->SubmitOnChange(true);
-    $OptList->PrintHtml();
-}
-
-/**
-* Print a search URL to find resources associated with a given controlled name.
-* @param ControlledName $CName Target controlled name
-*/
-function GetSearchUrl(ControlledName $CName): string
+ * Print a search URL to find resources associated with a given controlled name.
+ * @param ControlledName $CName Target controlled name.
+ */
+function getSearchUrl(ControlledName $CName): string
 {
     $SearchParams = new SearchParameterSet();
-    $SearchParams->AddParameter("=".$CName->Name(), $CName->FieldId());
+    $SearchParams->addParameter("=".$CName->name(), $CName->fieldId());
 
-    return "index.php?P=SearchResults&" .$SearchParams->UrlParameterString();
+    return "index.php?P=SearchResults&".$SearchParams->urlParameterString();
 }
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_Schema)) {
-    throw new Exception("H_Schema not defined.");
+
+if (!User::requirePrivilege(PRIV_NAMEADMIN)) {
+    return;
 }
-if (!isset($H_OptionFields)) {
-    $H_OptionFields = null;
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Option List");
+
+$Error = "";
+
+if (!isset($_GET["FI"])) {
+    $AF->setJumpToPage("EditOptionLists");
+    return;
 }
-if (isset($G_Field)) {
-    if (!isset($H_OptionNames)) {
-        throw new Exception("H_OptionNames not defined.");
-    }
-    if (!isset($H_Options)) {
-        throw new Exception("H_Options not defined.");
-    }
+
+$Field = MetadataField::getField(intval($_GET["FI"]));
+
+if ($Field->type() !== MetadataSchema::MDFTYPE_OPTION) {
+    $Error = "Provided field id is not for options field.";
+} elseif (!$Field->vocabularyEditable()) {
+    $Error = "The vocabulary for this field is not editable.";
+}
+
+$OptionNames = $Field->getPossibleValues();
+$Options = [];
+foreach ($OptionNames as $Id => $Name) {
+    $Options[$Id] = new ControlledName($Id);
 }
 
 $CancelButton = new HtmlButton("Cancel");
@@ -70,51 +65,46 @@ $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
 $SaveButton->makeSubmitButton();
 
-$EditButton = new HtmlButton("Edit");
-$EditButton->setIcon("Pencil.svg");
-$EditButton->setSize(HtmlButton::SIZE_SMALL);
-
-$ExportButton = new HtmlButton("Export");
-$ExportButton->setIcon("FileExport.svg");
-$ExportButton->setSize(HtmlButton::SIZE_SMALL);
-
-$AF = ApplicationFramework::getInstance();
-$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$SafeSchemaId = defaulthtmlentities($Field->schemaId());
 
 # ----- DISPLAY --------------------------------------------------------------
+
+if ($Error !== "") {
+    print $Error;
+    return;
+}
 ?>
-<?PHP if (isset($G_Field)) { ?>
-<form method="post" action="index.php?P=EditOptionList&amp;SC=<?= $SafeSchemaId; ?>">
-    <input type="hidden" name="F_FieldId" value="<?= $G_Field->Id(); ?>" />
+<form method="post" action="index.php?P=EditOptionLists&amp;SC=<?= $SafeSchemaId; ?>">
+    <input type="hidden" name="F_FieldId" value="<?= $Field->id(); ?>"/>
     <div class="container-fluid">
-    <div class="row">
-        <div class="col">
-            <h1>Edit Options for <i><?= $G_Field->GetDisplayName(); ?></i></h1>
+        <div class="row">
+            <div class="col">
+                <h1>Edit Options for <i><?= $Field->getDisplayName(); ?></i></h1>
+            </div>
+            <div class="col text-end">
+                <?= $SaveButton->getHtml() ?>
+                <?= $CancelButton->getHtml() ?>
+            </div>
         </div>
-        <div class="col text-end">
-            <?= $SaveButton->getHtml() ?>
-            <?= $CancelButton->getHtml() ?>
-        </div>
-    </div>
     </div>
 
     <p>
         <i>(selection on the left selects the default value<?=
-            $G_Field->AllowMultiple() ? "s" : ""; ?> for field)</i>
+            $Field->allowMultiple() ? "s" : ""; ?> for field)</i>
     </p>
 
     <label>Update Unset Values With Default Value(s)?</label>
-    <input type="checkbox" id="F_UpdateValues" name="F_UpdateValues" value="UpdateValues" />
+    <input type="checkbox" id="F_UpdateValues" name="F_UpdateValues" value="UpdateValues"/>
 
     <table class="table table-striped mv-content-optionoptions">
         <tbody>
         <?PHP
-        $OptionNames = [-1 => "(no change)"] + $H_OptionNames;
+        $OptionNames = [-1 => "(no change)"] + $OptionNames;
         $Index = 0;
-        $DefaultValue = $G_Field->DefaultValue();
-        foreach ($H_Options as $Id => $CName) {
-            $Qualifier = $CName->Qualifier();
-            $QName = $Qualifier ? $Qualifier->Name() : "";
+        $DefaultValue = $Field->defaultValue();
+        foreach ($Options as $Id => $CName) {
+            $Qualifier = $CName->qualifier();
+            $QName = $Qualifier ? $Qualifier->name() : "";
 
             $Selected = is_array($DefaultValue) ?
                 in_array($Id, $DefaultValue) : $Id == $DefaultValue;
@@ -124,34 +114,34 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
             ?>
             <tr>
                 <td>
-                  <?PHP if ($G_Field->AllowMultiple()) { ?>
-                    <input type="checkbox" name="F_Default[]" value="<?= $Id; ?>" <?=
-                    $Selected ? "checked" : ""; ?> />
-                  <?PHP } else { ?>
-                    <input type="radio" name="F_Default" value="<?= $Id; ?>" <?=
-                    $Selected ? "checked" : ""; ?> />
-                  <?PHP } ?>
+                    <?PHP if ($Field->allowMultiple()) { ?>
+                        <input type="checkbox" name="F_Default[]" value="<?= $Id; ?>" <?=
+                        $Selected ? "checked" : ""; ?> />
+                    <?PHP } else { ?>
+                        <input type="radio" name="F_Default" value="<?= $Id; ?>" <?=
+                        $Selected ? "checked" : ""; ?> />
+                    <?PHP } ?>
                 </td>
                 <td class="mv-option-field-container">
-                    <input type="hidden" name="F_OptionId<?= $Index; ?>" value="<?= $Id; ?>" />
+                    <input type="hidden" name="F_OptionId<?= $Index; ?>" value="<?= $Id; ?>"/>
                     <input type="text" name="F_Option<?= $Index; ?>" size="20" maxlen="60"
-                        value="<?= htmlspecialchars($CName->Name()); ?>" />
+                        value="<?= htmlspecialchars($CName->name()); ?>"/>
                 </td>
                 <td>
                     <?= $QName; ?>
                 </td>
                 <td>
-                    (<a href="<?= GetSearchUrl($CName); ?>">
+                    (<a href="<?= getSearchUrl($CName); ?>">
                         <?= number_format(count($CName->getAssociatedResources())) ?> resources
                     </a>)
                 </td>
                 <td>
-                    <?PHP if ($CName->InUse()) { ?>
-                    <input type="radio" id="F_ConfirmRemap<?= $Index; ?>" name="F_ConfirmRemap"
-                        value="<?= $Id; ?>" />
-                    <label for="F_ConfirmRemap<?= $Index; ?>">remap to</label>
+                    <?PHP if ($CName->inUse()) { ?>
+                        <input type="radio" id="F_ConfirmRemap<?= $Index; ?>" name="F_ConfirmRemap"
+                               value="<?= $Id; ?>"/>
+                        <label for="F_ConfirmRemap<?= $Index; ?>">remap to</label>
                         <?PHP
-                        (new HtmlOptionList("F_RemapTo".$Index, $OptionNames, -1))->PrintHtml();
+                        (new HtmlOptionList("F_RemapTo".$Index, $OptionNames, -1))->printHtml();
                         ?>
                     <?PHP } ?>
                 </td>
@@ -169,127 +159,48 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
             $Index++;
         }
         ?>
-            <tr>
-                <?PHP if (!$G_Field->AllowMultiple()) { ?>
-                  <td>
-                      <input type="radio" id="F_DefaultNone" name="F_Default"
-                          value="-1" <?= isset($DefaultFound) ? "" : "checked"; ?> />
-                  </td>
-                  <td>
-                      <label for="F_DefaultNone">no default</label>
-                  </td>
-                <?PHP } ?>
-                <td colspan="<?= $G_Field->AllowMultiple() ? "4" : "2"; ?>">
-                    <input type="checkbox" name="F_ConfirmAdd" />
-                    <label for="F_AddName">add new option:</label>
-                    <input type="text" id="F_AddName" name="F_AddName" size="18" maxlen="60" />
+        <tr>
+            <?PHP if (!$Field->allowMultiple()) { ?>
+                <td>
+                    <input type="radio" id="F_DefaultNone" name="F_Default"
+                           value="-1" <?= isset($DefaultFound) ? "" : "checked"; ?> />
+                </td>
+                <td>
+                    <label for="F_DefaultNone">no default</label>
+                </td>
+            <?PHP } ?>
+            <td colspan="<?= $Field->allowMultiple() ? "4" : "2"; ?>">
+                <input type="checkbox" name="F_ConfirmAdd" />
+                <label for="F_AddName">add new option:</label>
+                <input type="text" id="F_AddName" name="F_AddName" size="18" maxlen="60"/>
 
-                    <?PHP
-                    if ($G_Field->UsesQualifiers()) {
-                        $Qualifiers = $G_Field->AssociatedQualifierList();
-                        if (count($Qualifiers) == 1 && $G_Field->HasItemLevelQualifiers() != true) {
-                            $QualifierIds = array_keys($Qualifiers);
-                            $Qualifier = array_pop($Qualifiers);
-                            $QualifierId = array_pop($QualifierIds);
+                <?PHP
+                if ($Field->usesQualifiers()) {
+                    $Qualifiers = $Field->associatedQualifierList();
+                    if (count($Qualifiers) == 1 && !$Field->hasItemLevelQualifiers()) {
+                        $QualifierIds = array_keys($Qualifiers);
+                        $Qualifier = array_pop($Qualifiers);
+                        $QualifierId = array_pop($QualifierIds);
 
-                            print $Qualifier;
-                            print '<input type="hidden" name="F_AddQualifier"
+                        print $Qualifier;
+                        print '<input type="hidden" name="F_AddQualifier"
                                 value="'.$QualifierId.'" />';
-                        } elseif (count($Qualifiers) >= 1) {
-                            $Qualifiers = [-1 => "--"] + $Qualifiers;
-                            (new HtmlOptionList(
-                                "F_AddQualifier",
-                                $Qualifiers,
-                                $G_Field->DefaultQualifier()
-                            ))->PrintHtml();
-                        }
+                    } elseif (count($Qualifiers) >= 1) {
+                        $Qualifiers = [-1 => "--"] + $Qualifiers;
+                        (new HtmlOptionList(
+                            "F_AddQualifier",
+                            $Qualifiers,
+                            $Field->defaultQualifier()
+                        ))->printHtml();
                     }
-                    ?>
-                </td>
-                <td colspan="2" class="text-end">
-                    <?= $SaveButton->getHtml() ?>
-                    <?= $CancelButton->getHtml() ?>
-                </td>
-            </tr>
+                }
+                ?>
+            </td>
+            <td colspan="2" class="text-end">
+                <?= $SaveButton->getHtml(); ?>
+                <?= $CancelButton->getHtml(); ?>
+            </td>
+        </tr>
         </tbody>
     </table>
-
 </form>
-
-<?PHP } else { ?>
-<div class="container-fluid">
-  <div class="row">
-    <div class="col">
-      <h1>Edit Option List</h1>
-    </div>
-    <div class="col text-end">
-      <form method="get" action="index.php">
-        <input type="hidden" name="P" value="EditOptionList" />
-        <?PHP PrintSchemaOptionList($H_Schema); ?>
-      </form>
-    </div>
-  </div>
-</div>
-
-    <?PHP
-
-    # if we do not have option fields available
-    if (!count($H_OptionFields)) {
-        ?>
-        <p>No Option fields were found for editing.</p><?PHP
-    } else { # else display a list of option fields to edit
-        # display action messages (if any)
-        if (isset($G_Msgs)) {
-            $CurrentFieldName = array_shift($G_Msgs);
-            ?>
-            <ul class="alert alert-primary">
-                <li class="mv-current-field-name-label"><b><?= $CurrentFieldName; ?></b></li>
-                <?PHP foreach ($G_Msgs as $Msg) { ?>
-                <li><?= $Msg; ?></li>
-                <?PHP } ?>
-            </ul>
-            <?PHP
-        }
-
-        ?><table class="table table-striped mv-content-optionlist">
-            <tbody>
-        <?PHP
-        $RFactory = new RecordFactory();
-        $ResourceCount = $RFactory->GetItemCount();
-        foreach ($H_OptionFields as $Field) {
-            $CNFactory = new ControlledNameFactory($Field->Id());
-            $EditButton->setLink("index.php?P=EditOptionList&FI=" . $Field->Id());
-            $ExportButton->setLink("index.php?P=DBExportField&Id=" . $Field->Id());
-            if ($ResourceCount) {
-                $UsageCount = $CNFactory->GetUsageCount();
-                $UsagePercentage = round(($UsageCount * 100) / $ResourceCount);
-            } else {
-                $UsageCount = 0;
-                $UsagePercentage = 0;
-            }
-            ?>
-            <tr valign="top">
-            <td>
-                <a href="index.php?P=EditOptionList&amp;FI=<?= $Field->Id(); ?>">
-                    <?= $Field->GetDisplayName(); ?>
-                </a>
-            </td>
-            <td>(<?= count($Field->GetPossibleValues()); ?>&nbsp;values)</td>
-            <td>
-                <?= $EditButton->getHtml(); ?>
-                <?= $ExportButton->getHtml(); ?>
-            </td>
-            <td width="65%"><?= $Field->Description();  ?></td>
-            <td>
-                Assigned&nbsp;to<br />
-                <?= number_format($UsageCount); ?>&nbsp;Resources<br />
-                (<?= $UsagePercentage; ?>%)
-            </td>
-            </tr>
-            <?PHP
-        }
-        ?>
-            </tbody>
-        </table><?PHP
-    }
-}

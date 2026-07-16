@@ -42,7 +42,7 @@ class VocabularyFactory
         }
 
         # sort vocabularies by name
-        $SortFunction = function ($VocA, $VocB) {
+        $SortFunction = function ($VocA, $VocB): int {
                 $NameA = $VocA->Name();
                 $NameB = $VocB->Name();
                 return ($NameA == $NameB) ? 0 : (($NameA < $NameB) ? -1 : 1);

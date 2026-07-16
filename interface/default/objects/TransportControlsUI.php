@@ -82,7 +82,7 @@ class TransportControlsUI extends TransportControlsUI_Base
         if (isset($TypeName)) {
             $RVTitleAttrib .= " of ".$TypeName;
         }
-        if (strlen($this->Message)) {
+        if (strlen($this->Message) !== 0) {
             $Message = $this->Message;
         } else {
             $ItemsLabel = StdLib::pluralize($this->itemTypeName());
@@ -109,7 +109,7 @@ class TransportControlsUI extends TransportControlsUI_Base
         }
 
         ?>
-        <div class="container mv-transport-controls">
+        <div class="container-fluid mv-transport-controls">
         <div class="row">
         <?PHP  if ($this->showAnyReverseButtons()) {  ?>
             <div class="col-2 text-start">

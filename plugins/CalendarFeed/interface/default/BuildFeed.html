@@ -34,7 +34,7 @@ function displayFeed(
     $CopyButton = new CopyButton($HtmlId);
     ?>
     <table class="mv-p-calendarfeed-feeddescription">
-        <?PHP  if (strlen($Title)) {  ?>
+        <?PHP  if (strlen($Title) !== 0) {  ?>
         <tr><th>Title</th><td><?= $Title ?></td></tr>
         <?PHP  }  ?>
         <tr><th>Parameters</th><td><?= $Description ?></td></tr>

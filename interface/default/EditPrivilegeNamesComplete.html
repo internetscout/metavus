@@ -10,12 +10,14 @@
 
 namespace Metavus;
 
+use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlTable;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
- * Get a 2D array of changed permission names and their update statuses.
+ * Add / update / delete privileges based on POST data and return a 2D array of
+ * changed permission names and their update statuses.
  * @return array Array of arrays each containing a privilege and the updates made to that privilege.
  */
 function updatePrivileges(): array
@@ -83,9 +85,9 @@ function updatePrivileges(): array
 
 /**
  * Get a 2D array of all permission names and their update statuses
- *     (always "No Update", since no updates are made in this function).
+ * (always "No Update", since no updates are made in this function).
  * @return array Array of arrays each containing a privilege and update status
- *     for each (always "No Update").
+ *         for each (always "No Update").
  */
 function getPrivileges(): array
 {
@@ -111,6 +113,23 @@ function getPrivileges(): array
 }
 
 # ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Privilege Editing Complete");
+
+# Check if the privileges have already been updated
+if (isset($_POST["AlreadyLoaded"])) {
+    # Go to all privileges  (needs the "?ID=" portion, fixes refresh bug)
+    $AF->setJumpToPage("EditPrivilegeNames&ID=");
+    return;
+}
+
+$_POST["AlreadyLoaded"] = "TRUE";
+
 $EditButton = new HtmlButton("Edit");
 $EditButton->setIcon("Pencil.svg");
 $EditButton->setLink("index.php?P=EditPrivilegeNames");

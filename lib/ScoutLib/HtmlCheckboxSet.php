@@ -23,7 +23,7 @@ class HtmlCheckboxSet extends HtmlInputSet
      * Get HTML for set.
      * @return string Generated HTML.
      */
-    public function getHtml()
+    public function getHtml(): string
     {
         # if there were no options, return nothing
         if (count($this->Options) == 0) {

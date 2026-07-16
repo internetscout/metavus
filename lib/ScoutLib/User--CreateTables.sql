@@ -3,7 +3,7 @@
 #   Axis--User.php
 #   SQL Table Creation Code
 #
-#   Copyright 1999-2022 Axis Data
+#   Copyright 1999-2026 Axis Data
 #   This code is free software that can be used or redistributed under the
 #   terms of Version 2 of the GNU General Public License, as published by the
 #   Free Software Foundation (http://www.fsf.org).
@@ -45,4 +45,15 @@ CREATE TABLE IF NOT EXISTS APUserPrivileges (
   Privilege         INT NOT NULL,
   INDEX             Index_U (UserId),
   INDEX             Index_P (Privilege)
+);
+
+CREATE TABLE IF NOT EXISTS APUserSettings (
+  UserId            INT NOT NULL,
+  OwnerName         TEXT DEFAULT NULL,
+  SettingName       TEXT DEFAULT NULL,
+  SettingValue      BLOB DEFAULT NULL,
+  TimeLastUpdated   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX             Index_U (UserId),
+  INDEX             Index_W (OwnerName(24)),
+  UNIQUE            Index_UWS (UserId, OwnerName(24), SettingName(24))
 );

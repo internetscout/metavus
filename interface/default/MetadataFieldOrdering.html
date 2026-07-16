@@ -12,6 +12,7 @@ namespace Metavus;
 
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
+use ScoutLib\StdLib;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
@@ -19,11 +20,11 @@ const TYPE_GROUP = 0;
 const TYPE_FIELD = 1;
 
 /**
- * Get Tree with structure to display fields/groups
- * @param MetadataFieldOrder $Order containing fields and groups to display
- * @return array representing structure in which to display the fields/groups
+ * Get Tree with structure to display fields/groups.
+ * @param MetadataFieldOrder $Order Fields and groups to display.
+ * @return array Array representing structure in which to display the fields/groups.
  */
-function getTree(MetadataFieldOrder $Order)
+function getTree(MetadataFieldOrder $Order): array
 {
     $Items = $Order->getItems();
     $Tree = [];
@@ -34,10 +35,10 @@ function getTree(MetadataFieldOrder $Order)
             $Tree[$Index]["Children"] = [];
             $Tree[$Index]["Type"] = TYPE_FIELD;
         } elseif ($Item instanceof MetadataFieldGroup) {
-            $Tree[$Index]["Id"] = $Item->Id();
+            $Tree[$Index]["Id"] = $Item->id();
             $Tree[$Index]["Label"] = $Item->name();
             $Tree[$Index]["Children"] = [];
-            foreach ($Item->GetFields() as $Field) {
+            foreach ($Item->getFields() as $Field) {
                 $Tree[$Index]["Children"][] = [
                     "Label" => $Field->getDisplayName(),
                     "Type" => TYPE_FIELD,
@@ -51,11 +52,11 @@ function getTree(MetadataFieldOrder $Order)
 }
 
 /**
- * Print all items in order using passed MetadataFieldOrder object
- * @param MetadataFieldOrder $Order containing items in order to print them
- * @param string $Type display or edit, depending on which order to display for
- * @param int $SchemaId id of schema for printing in inputs
- * @param int $GroupIdOffset offset for group IDs so we know they're groups
+ * Print all items in order using passed MetadataFieldOrder object.
+ * @param MetadataFieldOrder $Order Items in order to print them.
+ * @param string $Type Which order to display for--either "display" or "edit".
+ * @param int $SchemaId Id of schema for printing in inputs.
+ * @param int $GroupIdOffset Offset for group IDs so we know they're groups.
  */
 function printOrder(
     MetadataFieldOrder $Order,
@@ -65,9 +66,9 @@ function printOrder(
 ): void {
     # load the javascript we need
     $AF = ApplicationFramework::getInstance();
-    $AF->RequireUIFile("jquery-ui.js");
-    $AF->RequireUIFile("jquery-ui-nestedsortable.js");
-    $AF->RequireUIFile("MetadataFieldOrdering.js");
+    $AF->requireUIFile("jquery-ui.js");
+    $AF->requireUIFile("jquery-ui-nestedsortable.js");
+    $AF->requireUIFile("MetadataFieldOrdering.js");
 
     $ToPrint = getTree($Order);
 
@@ -94,8 +95,8 @@ function printOrder(
 }
 
 /**
- * Print all hidden types
- * @param array $Types hidden types
+ * Print all hidden types.
+ * @param string[] $Types Array of hidden type strings.
  */
 function printHiddenInputs(array $Types): void
 {
@@ -105,11 +106,11 @@ function printHiddenInputs(array $Types): void
 }
 
 /**
- * @param array $Items to print, in tree structure
- * @param string $Type specifying whether this is the list for display or edit
- * @param int $SchemaId to print in inputs in getGroupButtons() (delete button)
- * @param int $OrderId id of order, for printing in getGroupButtons() (delete button)
- * @param int $GroupIdOffset offset for group IDs so we know they're groups
+ * @param array $Items Items to print, in tree structure.
+ * @param string $Type Which order to display for--either "display" or "edit".
+ * @param int $SchemaId Schema id to print in inputs in getGroupButtons() (delete button).
+ * @param int $OrderId Id of order, for printing in getGroupButtons() (delete button).
+ * @param int $GroupIdOffset Offset for group IDs so we know they're groups.
  */
 function printItems(
     array $Items,
@@ -142,9 +143,8 @@ function printItems(
 }
 
 /**
- * Get the rename and delete buttons for MetadataGroup items
- * put here so printItems() isn't too cluttered
- * @return string html buttons to print
+ * Get HTML containing the rename and delete buttons for MetadataGroup items.
+ * @return string The HTML buttons to print.
  */
 function getGroupButtons(int $SchemaId, int $GroupId, int $OrderId): string
 {
@@ -152,30 +152,29 @@ function getGroupButtons(int $SchemaId, int $GroupId, int $OrderId): string
     $RenameButton->setIcon("Pencil.svg");
     $RenameButton->setSize(HtmlButton::SIZE_SMALL);
     $RenameButton->setLink("index.php?P=RenameMetadataFieldGroup"
-        . "&SchemaId=" . $SchemaId
-        . "&GroupId=" . $GroupId);
+        ."&SchemaId=".$SchemaId
+        ."&GroupId=".$GroupId);
     $DeleteButton = new HtmlButton("Delete");
     $DeleteButton->setIcon("Cross.svg");
     $DeleteButton->setSize(HtmlButton::SIZE_SMALL);
     $DeleteButton->addSemanticClass("btn-danger");
-    $DeleteButton->setValue("DeleteGroup," . $GroupId . "," . $OrderId);
+    $DeleteButton->setValue("DeleteGroup,".$GroupId.",".$OrderId);
     $DeleteButton->setTitle("Delete this metadata field group. "
-        . "The metadata field it contains will take its place.");
+        ."The metadata field it contains will take its place.");
 
-    return "<span class='float-end'>" . $RenameButton->getHtml() . "&nbsp;"
-        . $DeleteButton->getHtml() . "</span>";
+    return "<span class='float-end'>".$RenameButton->getHtml()."&nbsp;"
+        .$DeleteButton->getHtml()."</span>";
 }
 
 /**
- * Filter callback used to filter fields from display.
- * @param array $Item item to test for exclusion
- * @return bool TRUE if the item should be included or FALSE otherwise
+ * Filter callback used to check if a field should be displayed.
+ * @param array $Item Item to test for exclusion.
+ * @return bool TRUE if the item should be included or FALSE otherwise.
  */
-function fieldOrderFilter($Item): bool
+function fieldOrderFilter(array $Item): bool
 {
-    $Id = $Item["Id"];
     if ($Item["Type"] == TYPE_FIELD) {
-        $Field = MetadataField::getField($Id);
+        $Field = MetadataField::getField($Item["Id"]);
         if (!$Field->enabled()) {
             return false;
         }
@@ -184,24 +183,78 @@ function fieldOrderFilter($Item): bool
 }
 
 /**
-* Print an option list containing metadata schemas.
-* @param MetadataSchema $SchemaInUse Metadata schema in use.
-*/
-function PrintSchemaOptionList(MetadataSchema $SchemaInUse): void
+ * Print an option list containing metadata schemas.
+ * @param MetadataSchema $SchemaInUse Metadata schema in use.
+ */
+function printSchemaOptionList(MetadataSchema $SchemaInUse): void
 {
     $Options = [];
 
     # get the metadata schema options
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
-        $Options[$Schema->Id()] = $Schema->ResourceName() . " Schema";
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
+        $Options[$Schema->id()] = $Schema->resourceName()." Schema";
     }
 
-    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
-    $OptList->SubmitOnChange(true);
-    $OptList->PrintHtml();
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->id());
+    $OptList->submitOnChange(true);
+    $OptList->printHtml();
+}
+
+/**
+ * Save the edit and display field orders.
+ * @param MetadataFieldOrder $SchemaEditOrder The edit order.
+ * @param MetadataFieldOrder $SchemaDisplayOrder The display order.
+ * @param int $GroupIdOffset Offset to determine what is a group;
+ *         subtract from item ID to get group ID.
+ */
+function saveFieldOrder(
+    MetadataFieldOrder $SchemaEditOrder,
+    MetadataFieldOrder $SchemaDisplayOrder,
+    int $GroupIdOffset
+): void {
+    # get orders from hidden input, generated by nestedSortable::serialize()
+    parse_str(StdLib::getFormValue("editOrder"), $NewEditOrder);
+    parse_str(StdLib::getFormValue("displayOrder"), $NewDisplayOrder);
+
+    # save new order
+    if (is_array($NewEditOrder['edit-item']) && is_array($NewDisplayOrder["display-item"])) {
+        $SchemaEditOrder->reorder($NewEditOrder["edit-item"], $GroupIdOffset);
+        $SchemaDisplayOrder->reorder($NewDisplayOrder["display-item"], $GroupIdOffset);
+    }
+
+    # clear page cache so changed ordering will take effect
+    ApplicationFramework::getInstance()->clearPageCache();
 }
 
 # ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Metadata Field Ordering");
+
+# get the schema ID or use the default one if not specified
+$SchemaId = StdLib::getArrayValue(
+    $_GET,
+    "SC",
+    StdLib::getFormValue("F_SchemaId", MetadataSchema::SCHEMAID_DEFAULT)
+);
+
+# construct the metadata schema
+$Schema = new MetadataSchema($SchemaId);
+
+$GroupIdOffset = $Schema->getHighestFieldId() + 100;
+
+# construct the order objects
+$SchemaDisplayOrder = $Schema->getDisplayOrder();
+$SchemaEditOrder = $Schema->getEditOrder();
+
+# in case a bug results in any issues, try to fix them
+$SchemaDisplayOrder->mendIssues();
+$SchemaEditOrder->mendIssues();
+
 $AddButton = new HtmlButton("Add");
 $AddButton->setIcon("Plus.svg");
 $AddButton->setSize(HtmlButton::SIZE_SMALL);
@@ -211,25 +264,60 @@ $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
 $SaveButton->makeSubmitButton();
 
-if (!isset($H_Schema)) {
-    throw new \Exception("Variable \$H_Schema not set.");
+$SafeSchemaId = defaulthtmlentities($Schema->id());
+
+# ----- PROCESSING -----------------------------------------------------------
+
+$ButtonPushed = StdLib::getFormValue("Submit");
+
+switch ($ButtonPushed) {
+    case "Add":
+        # get values from the user
+        $GroupName = StdLib::getFormValue("F_GroupName");
+        $Ordering = StdLib::getFormValue("F_Ordering");
+
+        if ($GroupName && ($Ordering == "Display" || $Ordering == "Edit")) {
+            $Order = $Ordering == "Display" ? $SchemaDisplayOrder : $SchemaEditOrder;
+            $Order->createGroup($GroupName);
+        }
+        saveFieldOrder($SchemaEditOrder, $SchemaDisplayOrder, $GroupIdOffset);
+        break;
+    case "EditGroupName":
+        # get values from the user
+        $GroupId = StdLib::getFormValue("F_GroupId");
+        $GroupName = StdLib::getFormValue("F_GroupName");
+
+        if ($GroupId && $GroupName) {
+            $Group = new MetadataFieldGroup($GroupId);
+            $Group->name($GroupName);
+        }
+        break;
+    case "Save Changes":
+        saveFieldOrder($SchemaEditOrder, $SchemaDisplayOrder, $GroupIdOffset);
+        break;
+    default:
+        if (preg_match("[^DeleteGroup]", (string)$ButtonPushed)) {
+            # get values from the user, index 0 contains "DeleteGroup"
+            # used in the preg_match above to activate this code
+            $Ids = explode(",", $ButtonPushed);
+            $GroupId = $Ids[1];
+            $OrderId = $Ids[2];
+
+            if ($OrderId && $GroupId) {
+                $Order = new MetadataFieldOrder((int)$OrderId);
+                $Group = new MetadataFieldGroup((int)$GroupId);
+
+                $Order->deleteGroup($Group);
+            }
+        }
+        break;
 }
-if (!isset($H_DisplayOrder)) {
-    throw new \Exception("Variable \$H_DisplayOrder not set.");
-}
-if (!isset($H_GroupIdOffset)) {
-    throw new \Exception("Variable \$H_GroupIdOffset not set.");
-}
-if (!isset($H_EditOrder)) {
-    throw new \Exception("Variable \$H_EditOrder not set.");
-}
-$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <div class="container container-fluid">
-    <?PHP if (isset($H_ButtonPushed) && $H_ButtonPushed == "Save") { ?>
+    <?PHP if ($ButtonPushed == "Save Changes") { ?>
     <div class="row">
         <span id="fade-alert" class="alert alert-success">
             Changes to field and group ordering saved
@@ -251,7 +339,7 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
             <div class="float-end">
                 <form method="get" action="index.php">
                     <input type="hidden" name="P" value="MetadataFieldOrdering" />
-                    <?PHP PrintSchemaOptionList($H_Schema); ?>
+                    <?PHP printSchemaOptionList($Schema); ?>
                 </form>
                 <br/>
             </div>
@@ -287,7 +375,7 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 
                 <label for="F_GroupName">Group:</label>
                 <input type="text" id="F_GroupName" name="F_GroupName" placeholder="Group Name"
-                    required="true" />
+                    required/>
 
                 <?PHP printHiddenInputs(["display", "edit"]); ?>
                 <?= $AddButton->getHtml() ?>
@@ -296,10 +384,10 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
                 <form action="index.php?P=MetadataFieldOrdering" method="post">
                     <?PHP
                     printOrder(
-                        $H_DisplayOrder,
+                        $SchemaDisplayOrder,
                         "display",
-                        $H_Schema->Id(),
-                        $H_GroupIdOffset
+                        $Schema->id(),
+                        $GroupIdOffset
                     ); ?>
                     <input type="hidden" name="F_SchemaId" value="<?= $SafeSchemaId; ?>" />
                 </form>
@@ -314,7 +402,7 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
 
                 <label for="F_GroupName">Group:</label>
                 <input type="text" id="F_GroupName" name="F_GroupName" placeholder="Group Name"
-                    required="true" />
+                    required/>
 
                 <?PHP printHiddenInputs(["display", "edit"]); ?>
 
@@ -325,10 +413,10 @@ $SafeSchemaId = defaulthtmlentities($H_Schema->Id());
                     <form action="index.php?P=MetadataFieldOrdering" method="post">
                         <?PHP
                         printOrder(
-                            $H_EditOrder,
+                            $SchemaEditOrder,
                             "edit",
-                            $H_Schema->Id(),
-                            $H_GroupIdOffset
+                            $Schema->id(),
+                            $GroupIdOffset
                         ); ?>
                         <input type="hidden" name="F_SchemaId" value="<?= $SafeSchemaId; ?>" />
                     </form>

@@ -3,14 +3,15 @@
 #   FILE:  StdPageStart.html
 #
 #   Part of the Collection Workflow Integration System (CWIS)
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu/cwis/
 #
 #   (local functions at bottom of file)
 #
 
-use Metavus\MetadataSchema;
 use Metavus\InterfaceConfiguration;
+use Metavus\MetadataSchema;
+use Metavus\SecureLoginHelper;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 
@@ -77,8 +78,8 @@ $MDTNavItems = [
     # Nav Item Label => Nav Item Link
     "Add New Resource" => str_replace('$ID', "NEW", $Schema->getEditPage()),
     "Add New Controlled Name" => "index.php?P=AddControlledName",
-    "Edit Controlled Names" => "index.php?P=EditControlledName&amp;FieldId=0",
-    "Edit Option Lists" => "index.php?P=EditOptionList",
+    "Edit Controlled Names" => "index.php?P=EditControlledName",
+    "Edit Option Lists" => "index.php?P=EditOptionLists",
     "Add/Edit Classifications" => "index.php?P=EditClassifications",
     "Metadata Field Editor" => "index.php?P=DBEditor"
 ];
@@ -89,8 +90,8 @@ $MDTNavExclusions = [
     str_replace('$ID', "NEW", $Schema->getEditPage())
             => $Schema->AuthoringPrivileges()->MeetsRequirements($User),
     "index.php?P=AddControlledName" => $User->HasPriv(PRIV_NAMEADMIN),
-    "index.php?P=EditControlledName&amp;FieldId=0" => $User->HasPriv(PRIV_NAMEADMIN),
-    "index.php?P=EditOptionList" => $User->HasPriv(PRIV_NAMEADMIN),
+    "index.php?P=EditControlledName" => $User->HasPriv(PRIV_NAMEADMIN),
+    "index.php?P=EditOptionLists" => $User->HasPriv(PRIV_NAMEADMIN),
     "index.php?P=EditClassifications" => $User->HasPriv(PRIV_CLASSADMIN),
     "index.php?P=DBEditor" => $User->HasPriv(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)
 ];
@@ -130,6 +131,7 @@ $NoIndexPages = [
             # * for.css files, a.scss file will also be searched for, and
             #       compiled and loaded instead of the.css if available
             $CoreUIFiles = [
+                "jQuery.js",
                 "CWIS.css",
                 "CW-Theme.css",
                 "CW-Theme.js",
@@ -158,6 +160,7 @@ $NoIndexPages = [
         $AF->IncludeUIFile("awstats_misc_tracker.js");
     }
 
+    SecureLoginHelper::printHeaderContent();
     $AF->SignalEvent("EVENT_IN_HTML_HEADER");
     ?>
 
@@ -231,7 +234,7 @@ $NoIndexPages = [
  *    navigation menu item.
  * @param array $Tooltips The navigation menu items tooltips.
  */
-function DisplayNavItems($Items, $PossibleExclusions, $Event, $DisplayFunc, $Tooltips = null)
+function DisplayNavItems($Items, $PossibleExclusions, $Event, $DisplayFunc, $Tooltips = null): void
 {
     # filter out nav items based on system configuration
     foreach ($Items as $Label => $Link) {
@@ -272,7 +275,7 @@ function DisplayNavItems($Items, $PossibleExclusions, $Event, $DisplayFunc, $Too
  * @param string $Label The navigation item's label. (i.e. Display text)
  * @param array $Tooltip The navigation item's tooltip. (OPTIONAL)
  */
-function DisplayPrimaryNavItem($Link, $Label, $Tooltip = null)
+function DisplayPrimaryNavItem($Link, $Label, $Tooltip = null): void
 {
     ?>
     <a href="<?= $Link; ?>" title="<?= $Tooltip; ?>"><?= $Label; ?></a>
@@ -291,7 +294,7 @@ function DisplayPrimaryNavItem($Link, $Label, $Tooltip = null)
  * @param mixed $PositionString The styling margins for the link's container. (OPTIONAL)
  * @param mixed $Title The tooltip for the link's container. (OPTIONAL)
  */
-function PrintMenuEntry($Label, $Link, $PositionString = null, $Title = null)
+function PrintMenuEntry($Label, $Link, $PositionString = null, $Title = null): void
 {
     $PositionString = $PositionString ? $PositionString : "5px 10px 0px 0px";
     ?>
@@ -311,7 +314,7 @@ function PrintMenuEntry($Label, $Link, $PositionString = null, $Title = null)
  *
  * @return true if browesable tree field exists. Otherwise, returns false.
  */
-function BrowseableTreeFieldExists()
+function BrowseableTreeFieldExists(): bool
 {
     $Schema = new MetadataSchema();
 

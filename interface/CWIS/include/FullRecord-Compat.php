@@ -27,7 +27,7 @@ use ScoutLib\PluginManager;
  * @param mixed $Field Variable to check
  * @return bool TRUE for valid fields, FALSE otherwise.
  */
-function IsValidMetadataField($Field)
+function IsValidMetadataField($Field): bool
 {
     return $Field instanceof MetadataField;
 }
@@ -39,7 +39,7 @@ function IsValidMetadataField($Field)
  * @param $Field MetadataField object
  * @return the value of a metadata field for a resource
  */
-function GetResourceFieldValue(Record $Resource, MetadataField $Field = null)
+function GetResourceFieldValue(Record $Resource, ?MetadataField $Field = null)
 {
     global $AF;
 
@@ -68,7 +68,7 @@ function GetResourceFieldValue(Record $Resource, MetadataField $Field = null)
 * Determine if ratings are enabled.
 * @return bool TRUE when ratings are enabled
 */
-function CumulativeRatingEnabled()
+function CumulativeRatingEnabled(): bool
 {
     $Schema = new MetadataSchema();
     return $Schema->GetField("Cumulative Rating")->Enabled();
@@ -80,7 +80,7 @@ function CumulativeRatingEnabled()
  * @param callback $Filter Optional filter callback that returns TRUE if a
  *                resource/field pair should be filtered out
  */
-function DisplayResourceFields(Record $Resource, $Filter = null)
+function DisplayResourceFields(Record $Resource, $Filter = null): void
 {
     $Schema = new MetadataSchema();
     $Fields = $Schema->GetFields(null, MetadataSchema::MDFORDER_DISPLAY);
@@ -128,7 +128,7 @@ function GetFieldQualifier(Record $Resource, MetadataField $Field, $Id = null)
 /**
  * Print graphic for the cumulative rating.
  */
-function PrintCumulativeRatingGraphic()
+function PrintCumulativeRatingGraphic(): void
 {
     global $Resource;
     PrintRatingGraphic($Resource->CumulativeRating());
@@ -139,7 +139,7 @@ function PrintCumulativeRatingGraphic()
  * Print Rating Graphic.
  * @param int $Rating Rating for this resource.
  */
-function PrintRatingGraphic($Rating)
+function PrintRatingGraphic($Rating): void
 {
     global $Resource;
 
@@ -158,7 +158,7 @@ function PrintRatingGraphic($Rating)
 * Determine if a resource has been rated.
 * @return bool TRUE for resources with ratings
 */
-function ResourceHasBeenRated()
+function ResourceHasBeenRated(): bool
 {
     global $Resource;
     return ($Resource->NumberOfRatings() > 0) ? true : false;
@@ -167,7 +167,7 @@ function ResourceHasBeenRated()
 /**
 * Print number of reosurce ratings.
 */
-function PrintNumberOfRatings()
+function PrintNumberOfRatings(): void
 {
     global $Resource;
     print($Resource->NumberOfRatings());
@@ -176,7 +176,7 @@ function PrintNumberOfRatings()
 /**
 * Emit an 's' when we have more than one resource rating.
 */
-function PrintNumberOfRatingsPlural()
+function PrintNumberOfRatingsPlural(): void
 {
     global $Resource;
     if ($Resource->NumberOfRatings() > 1) {
@@ -187,7 +187,7 @@ function PrintNumberOfRatingsPlural()
 /**
 * Print link to resource rating page.
 */
-function PrintRateResourceLink()
+function PrintRateResourceLink(): void
 {
     global $Resource;
     print("index.php?P=RateResource&amp;F_ResourceId=".$Resource->id());
@@ -199,7 +199,7 @@ function PrintRateResourceLink()
 * Determine if the user has rated this resource.
 * @return bool TRUE if the user has
 */
-function UserAlreadyRatedResource()
+function UserAlreadyRatedResource(): bool
 {
     global $Resource;
     return ($Resource->Rating() == null) ? false : true;
@@ -208,7 +208,7 @@ function UserAlreadyRatedResource()
 /**
 * Print graphic for this user's rating.
 */
-function PrintUserRatingGraphic()
+function PrintUserRatingGraphic(): void
 {
     global $Resource;
     PrintRatingGraphic($Resource->Rating());
@@ -217,7 +217,7 @@ function PrintUserRatingGraphic()
 /**
 * Print resource comments.
 */
-function PrintResourceComments()
+function PrintResourceComments(): void
 {
     global $Resource;
 
@@ -258,7 +258,7 @@ function PrintResourceComments()
 * @param int $PosterId User to check
 * @return bool TRUE for users who can edit, FALSE otherwise
 */
-function CheckForEdit($PosterId)
+function CheckForEdit($PosterId): bool
 {
     $User = User::getCurrentUser();
 
@@ -303,7 +303,7 @@ function PrintForumMessage(
     $RemovePostPrivLink = null,
     $MessageIsComment = false,
     $SpammerLink = null
-) {
+): void {
     $User = User::getCurrentUser();
 
     # if handed a message instead of its values, use the auxiliary function
@@ -357,7 +357,7 @@ function PrintForumMessage(
         <a class="cw-button cw-button-elegant" href="<?PHP print($EditLink); ?>">Edit Message</a>
         <a class="cw-button cw-button-elegant" href="<?PHP print($DeleteLink); ?>">Delete Message</a>
         <?PHP } ?>
-        <?PHP if (strlen($RemovePostPrivLink)) {  ?>
+        <?PHP if (strlen($RemovePostPrivLink) !== 0) {  ?>
         <a class="cw-button cw-button-elegant" href="<?PHP print($RemovePostPrivLink); ?>">Remove Post Privilege</a>
         <?PHP } ?>
         <?PHP if (strlen($SpammerLink) && $User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) { ?>
@@ -392,7 +392,7 @@ function PrintForumMessageWithMessage(
     $MessageIsComment = false,
     $SpammerLink = null,
     $IncludeReplyButton = false
-) {
+): void {
     $User = User::getCurrentUser();
 
     $DatePosted = $Message->DatePosted();
@@ -481,7 +481,7 @@ function PrintForumMessageWithMessage(
             <a class="cw-button cw-button-elegant" href="<?PHP print($EditLink); ?>">Edit Message</a>
             <a class="cw-button cw-button-elegant" href="<?PHP print($DeleteLink); ?>">Delete Message</a>
             <?PHP } ?>
-            <?PHP if (strlen((string)$RemovePostPrivLink)) {  ?>
+            <?PHP if (strlen((string)$RemovePostPrivLink) !== 0) {  ?>
             <a class="cw-button cw-button-elegant" href="<?PHP print($RemovePostPrivLink); ?>">Remove Post Privilege</a>
             <?PHP } ?>
             <?PHP if (strlen((string)$SpammerLink) && $User->HasPriv(PRIV_SYSADMIN, PRIV_USERADMIN)) { ?>
@@ -505,10 +505,10 @@ function PrintForumMessageWithMessage(
  * @param string $String An email address to obfuscate
  * @return string the obfuscated email address
  */
-function MungeEmailAddress($String)
+function MungeEmailAddress($String): string
 {
-    $FuzzOne = substr(md5(mt_rand()), 0, rand(8, 32));
-    $FuzzTwo = substr(md5(mt_rand()), 0, rand(8, 32));
+    $FuzzOne = substr(md5(mt_rand()), 0, random_int(8, 32));
+    $FuzzTwo = substr(md5(mt_rand()), 0, random_int(8, 32));
     return '<span class="EMungeAddr">'.preg_replace(
         '/@/',
         '<span style="display:none;"> '.htmlentities($FuzzOne).' </span>'
@@ -522,7 +522,7 @@ function MungeEmailAddress($String)
  * Determine if a user is logged in.
  * @return bool TRUE when user is logged in, FALSE otherwise.
  */
-function UserIsLoggedIn()
+function UserIsLoggedIn(): bool
 {
     return User::getCurrentUser()->isLoggedIn();
 }

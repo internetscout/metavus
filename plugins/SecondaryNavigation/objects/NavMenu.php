@@ -10,6 +10,7 @@
 
 namespace Metavus\Plugins\SecondaryNavigation;
 
+use ScoutLib\Database;
 use ScoutLib\ItemFactory;
 
 /**
@@ -70,7 +71,7 @@ class NavMenu extends ItemFactory
      * @param int $OwnerId ID of owner to check for
      * @return bool true if there is already a NavMenu for the user, false otherwise
      */
-    public static function userNavMenuExists($OwnerId)
+    public static function userNavMenuExists($OwnerId): bool
     {
         $NavMenu = new NavMenu($OwnerId);
 
@@ -85,7 +86,7 @@ class NavMenu extends ItemFactory
      * @param string $Link link to check for
      * @return bool true if NavItem with link exists, false otherwise
      */
-    public function navItemExists($Link)
+    public function navItemExists($Link): bool
     {
         $Items = $this->getItems();
         foreach ($Items as $NavItem) {
@@ -94,6 +95,25 @@ class NavMenu extends ItemFactory
             }
         }
         return false;
+    }
+
+    /**
+     * Delete from DB all NavItems where Link matches the given string.
+     * @param string $Link The HTML link string to delete.
+     */
+    public static function deleteAnyItemsWithLink(string $Link): void
+    {
+        $DB = new Database();
+        $DB->query("SELECT OwnerId, NavItemId"
+                ." FROM SecondaryNavigation_NavItems"
+                ." WHERE Link='".addslashes($Link)."'");
+
+        while ($NavItemData = $DB->fetchRow()) {
+            $NavMenu = new NavMenu($NavItemData["OwnerId"]);
+            $NavItem = $NavMenu->getItem($NavItemData["NavItemId"]);
+            $NavMenu->removeItemFromOrder($NavItem->id());
+            $NavItem->destroy();
+        }
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------

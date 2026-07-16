@@ -16,7 +16,7 @@ use ScoutLib\StdLib;
 * @param string $Addr IP Address.
 * @return string Formatted version with hostname as mouseover
 */
-function FormatIPAddress($Addr)
+function FormatIPAddress($Addr): string
 {
     $HostName = StdLib::getHostName($Addr);
 
@@ -133,6 +133,7 @@ function FormatOaiRequest($Request)
 
         return $Result;
     }
+    return null;
 }
 
 

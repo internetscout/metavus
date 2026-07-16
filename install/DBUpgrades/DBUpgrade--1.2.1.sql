@@ -11,3 +11,9 @@
 -- add columns to store sort info for folders
 ALTER TABLE Folders ADD COLUMN SortFieldId INT DEFAULT NULL;
 ALTER TABLE Folders ADD COLUMN ReverseSortFlag TINYINT DEFAULT 0;
+
+-- clear EMailNew for change requests that were already done
+UPDATE APUsers SET EMailNew = "" WHERE EMail = EMailNew;
+
+-- add column to store owner for schemas
+ALTER TABLE MetadataSchemas ADD COLUMN Owner TEXT DEFAULT NULL;

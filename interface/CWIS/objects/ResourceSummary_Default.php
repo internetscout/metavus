@@ -61,7 +61,7 @@ class ResourceSummary_Default extends ResourceSummary
         $UrlField = $Schema->getFieldByMappedName("Url");
         if (($UrlField !== null) && $Resource->userCanViewField($User, $UrlField)) {
             $Url = $this->getFieldValue($UrlField);
-            if (strlen($Url)) {
+            if ($Url !== null && strlen($Url)) {
                 $UrlLink = ApplicationFramework::baseUrl()
                     ."index.php?P=GoTo&amp;ID=".$Resource->id()
                     ."&amp;MF=".$UrlField->id();
@@ -140,7 +140,7 @@ class ResourceSummary_Default extends ResourceSummary
 
             # if $Screenshot is an array of images, use the first one as thumbnail
             if (is_array($Screenshot)) {
-                if (count($Screenshot)) {
+                if (count($Screenshot) !== 0) {
                     $Screenshot = array_shift($Screenshot);
                     if (!($Screenshot instanceof \Metavus\Image)) {
                         unset($Screenshot);
@@ -347,7 +347,7 @@ class ResourceSummary_Default extends ResourceSummary
         if (($UrlField !== null) && $Resource->userCanViewField($User, $UrlField)) {
             $Url = $this->getFieldValue($UrlField);
 
-            if (strlen($Url)) {
+            if (strlen($Url) !== 0) {
                 $UrlLink = ApplicationFramework::baseUrl()
                     ."index.php?P=GoTo&amp;ID=".$Resource->id()
                     ."&amp;MF=".$UrlField->id();

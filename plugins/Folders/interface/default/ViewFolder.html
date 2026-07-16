@@ -3,7 +3,7 @@
 #   FILE:  ViewFolder.html (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -11,7 +11,6 @@
 namespace Metavus;
 
 use Exception;
-use Metavus\Plugins\Folders\Common;
 use Metavus\Plugins\Folders\Folder;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
@@ -25,7 +24,7 @@ use ScoutLib\StdLib;
  * @param array $Items Folder items to print
  * @return void
  */
-function PrintFolderItems($Folder, array $Items)
+function PrintFolderItems($Folder, array $Items): void
 {
     foreach ($Items as $Item) {
         $Summary = ResourceSummary::create($Item->id());
@@ -122,8 +121,8 @@ $SafeName = defaulthtmlentities($H_Folder->name());
 $SafeTruncatedName = defaulthtmlentities(
     StdLib::neatlyTruncateString($H_Folder->name(), 18)
 );
-$SafeNote = defaulthtmlentities($H_Folder->note());
-$SafeShareUrl = defaulthtmlentities(Common::getShareUrl($H_Folder));
+$SafeNote = defaulthtmlentities(trim($H_Folder->note()));
+$SafeShareUrl = defaulthtmlentities(Folder::getShareUrl($H_Folder));
 
 $LengthValues = [10 => 10, 25 => 25, 50 => 50, 100 => 100];
 $HasItems = (count($H_Items) > 0) ? true : false;
@@ -224,7 +223,9 @@ select#RS {
     <?PHP if ($IsOwner) { ?>
         <label>Sort: <?= $SortOptionList->getHtml() ?></label><?= $SortDirOptionList->getHtml() ?>
     <?PHP } ?>
-  <label class="ms-2">Per Page: <?= $LengthOptionList->getHtml() ?></label>
+    <?PHP if ($ShowTransportControls) { ?>
+        <label class="ms-2">Per Page: <?= $LengthOptionList->getHtml() ?></label>
+    <?PHP } ?>
 </form>
 <?PHP } ?>
 <?PHP if ($IsOwner) { ?>
@@ -233,8 +234,8 @@ select#RS {
         <?= $ClearButton->getHtml(); ?>
     <?PHP } ?>
     <?= $ManageButton->getHtml() ?>
-    <?PHP signalButtonInsertionPoint($H_Folder); ?>
 <?PHP } ?>
+<?PHP signalButtonInsertionPoint($H_Folder); ?>
 </div>
 
 <h1 class="mv-folders-folder-name"
@@ -247,10 +248,12 @@ select#RS {
       ><?= $SafeShareUrl; ?></a></p>
 <?PHP } ?>
 
-<p class="clearfix">&nbsp;</p>
+<div class="clearfix"></div>
 <?PHP printFolderImage($H_Folder); ?>
+<?PHP if (strlen($SafeNote) > 0) { ?>
 <p class="mv-folders-folder-description"><?= $SafeNote ?></p>
-<p class="clearfix">&nbsp;</p>
+<?PHP } ?>
+<div class="clearfix mb-1"></div>
 
 <?PHP if ($ShowTransportControls) { ?>
     <?PHP $H_TransportUI->display(); ?>
@@ -270,11 +273,13 @@ select#RS {
     <?PHP $H_TransportUI->display(); ?>
 <?PHP } ?>
 
+<?PHP if ($IsOwner) { ?>
 <div class="cw-dialog-confirm cw-no-close"
      id="mv-folders-folderclear<?= $H_Folder->id()?>"
      title="Clear <?= $SafeTruncatedName; ?>"
      >Clear contents of folder <em><?= $SafeName; ?></em>?
 </div>
+<?PHP } ?>
 
 <script>
   $("select#RS option[value='0']").text("\u2191");

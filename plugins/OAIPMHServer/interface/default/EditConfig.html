@@ -13,15 +13,15 @@ use ScoutLib\ApplicationFramework;
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 # convenience functions
-function pv($Value)
+function pv($Value): void
 {
     print defaulthtmlentities($Value);
 }
-function pc($Setting)
+function pc($Setting): void
 {
     print($Setting ? " checked" : "");
 }
-function pe($MatchVal, $CurrVal)
+function pe($MatchVal, $CurrVal): void
 {
     print(($CurrVal == $MatchVal) ? " checked" : "");
 }

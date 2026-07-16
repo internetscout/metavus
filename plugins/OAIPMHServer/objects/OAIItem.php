@@ -77,7 +77,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * Retrieve date stamp associated with item.
      * @return string Date stamp in ISO-8601 format.
      */
-    public function getDatestamp()
+    public function getDatestamp(): string
     {
         $DateString = $this->Resource->get("Date Of Record Creation");
         if (!isset($DateString) ||
@@ -188,7 +188,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * Retrieve list of sets to which this item belongs.
      * @return array List of sets (strings).
      */
-    public function getSets()
+    public function getSets(): array
     {
         # start out with empty list
         $Sets = [];
@@ -246,7 +246,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * @param string $Name Value to normalize.
      * @return string Normalized value.
      */
-    protected function normalizeForSetSpec($Name)
+    protected function normalizeForSetSpec($Name): ?string
     {
         return preg_replace("/[^a-zA-Z0-9\-_.!~*'()]/", "", $Name);
     }
@@ -257,7 +257,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * @return string The URL to the full record of the resource.
      * @see GetOaiIdentifierForResource()
      */
-    protected function getFullRecordUrlForResource($ResourceId)
+    protected function getFullRecordUrlForResource($ResourceId): string
     {
         $AF = ApplicationFramework::getInstance();
         $SafeResourceId = urlencode((string)$ResourceId);
@@ -272,7 +272,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * @param Record $Resource Resource to use.
      * @return string URL corresponding to the pref. link value.
      */
-    protected function getPreferredLinkValueForResource($Resource)
+    protected function getPreferredLinkValueForResource($Resource): string
     {
         $AF = ApplicationFramework::getInstance();
         $IntConfig = InterfaceConfiguration::getInstance();
@@ -318,7 +318,7 @@ class OAIItem implements \ScoutLib\OAIItem
      * @return string The OAI identifier of a resource.
      * @see GetFullRecordUrlForResource()
      */
-    protected function getOaiIdentifierForResource($ResourceId)
+    protected function getOaiIdentifierForResource($ResourceId): string
     {
         # return encoded value to caller
         return "oai:".$this->RepDescr["IDDomain"]

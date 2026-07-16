@@ -3,7 +3,7 @@
 #   FILE:  PluginUpgrade_1_0_7.php (Blog plugin)
 #
 #   A plugin upgrade file for the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -48,13 +48,13 @@ class PluginUpgrade_1_0_7 extends PluginUpgrade
 
         # try to create the subscription field if necessary
         if (!$UserSchema->fieldExists($Plugin::SUBSCRIPTION_FIELD_NAME)) {
-            if ($Schema->addFieldsFromXmlFile(
+            if ($UserSchema->addFieldsFromXmlFile(
                 "plugins/".$Plugin->getBaseName()."/install/MetadataSchema--"
                 ."User.xml"
             ) === false) {
                 return "Error loading User metadata fields from XML: ".implode(
                     " ",
-                    $Schema->errorMessages("AddFieldsFromXmlFile")
+                    $UserSchema->errorMessages("AddFieldsFromXmlFile")
                 );
             }
 

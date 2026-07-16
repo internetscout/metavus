@@ -62,7 +62,8 @@ if ($H_SortFieldId !== null) {
     }
 } else {
     $H_SortFieldId = $H_Folder->getSortFieldId();
-    if ($H_SortFieldId !== null) {
+    if ($H_SortFieldId !== false &&
+            MetadataSchema::fieldExistsInAnySchema($H_SortFieldId)) {
         $H_TransportUI->sortField((string)$H_SortFieldId);
         $H_TransportUI->reverseSortFlag(
             $H_Folder->getReverseSortFlag()

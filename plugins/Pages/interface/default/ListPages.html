@@ -59,7 +59,7 @@ $AF->setPageTitle("Page List");
 $Fields = [
     "Pages: Viewable" => [
         "Heading" => "",
-        "ValueFunction" => function ($Item) use ($AnonUser, $AF) {
+        "ValueFunction" => function ($Item) use ($AnonUser, $AF): string {
                 $EyeSlashLink = $AF->gUIFile("EyeSlash.svg");
                 return $Item->userCanView($AnonUser) ? "" :
                 "<img style=\"max-width: 25px; max-height: 25px;\"

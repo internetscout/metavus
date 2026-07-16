@@ -35,6 +35,22 @@ class SearchFacetUI extends SearchFacetUI_Base
         return (string)ob_get_clean();
     }
 
+    /**
+     * Require JS necessary to support the search facet UI.
+     */
+    public static function addSupportingJavascript(): void
+    {
+        $AF = ApplicationFramework::getInstance();
+
+        # (cookie needs to be loaded first so that it'll be available when
+        # SFUI.js wants to use it)
+        $AF->requireUIFile(
+            'jquery.cookie.js',
+            ApplicationFramework::ORDER_FIRST
+        );
+        $AF->requireUIFile('htmx.js');
+        $AF->requireUIFile("SearchFacetUI.js");
+    }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
@@ -71,29 +87,28 @@ class SearchFacetUI extends SearchFacetUI_Base
             # store the open/closed state of this facet
             $_COOKIE[$CookieName] = $Show;
 
-            # if this facet should be open, display it as such, otherwise
-            #       display a closed facet (the HTML below differs in which
-            #       elements get the "display: none" initially applied)
-            $ToggleClass = "DD_Toggle".$ShrinkCounter;
-
             print "<div class='mv-search-facets' "
-                ."onclick=\"toggleFacet(".$ShrinkCounter.",'".$CookieKey."');\">"
+                ."tabindex='0' role='button' "
+                ."data-cookie-key='".$CookieKey."' "
+                ."onkeydown='SearchFacetUI.handleKeydown(event)' "
+                ."onclick='SearchFacetUI.handleClick(event)'>"
                 ."<b>".$Field->getDisplayName()
                 ."<span class='float-end'>";
 
             if ($Show) {
-                print "<span style='display: none;' class='".$ToggleClass."'>v</span>"
-                    ."<span class='".$ToggleClass."'>&#652;</span>";
+                print "<span style='display: none;' "
+                    ."class='mv-search-facets-toggleable'>v</span>"
+                    ."<span class='mv-search-facets-toggleable'>&#652;</span>";
             } else {
-                print "<span class='".$ToggleClass."'>v</span>"
-                    ."<span style='display: none;' class='".$ToggleClass."'>&#652;</span>";
+                print "<span class='mv-search-facets-toggleable'>v</span>"
+                    ."<span style='display: none;'"
+                    ." class='mv-search-facets-toggleable'>&#652;</span>";
             }
             print "</span></b></div>\n";
 
             $this->printFacetList(
                 $Values,
                 $Field->searchGroupLogic(),
-                $ToggleClass,
                 $Show
             );
 
@@ -106,18 +121,16 @@ class SearchFacetUI extends SearchFacetUI_Base
      * @param array $Facets Facets in this list in the 'nested array format'
      *  documented in SearchFacetUI_Base.
      * @param int $Logic Search logic applied to these facets.
-     * @param string $ToggleClass CSS class to add to the <ul> that javascript will use
-     *   to toggle facet display.
      * @param bool $Show TRUE for facets that should be initially open, FALSE otherwise.
      */
     private function printFacetList(
         array $Facets,
         int $Logic,
-        string $ToggleClass = "",
         bool $Show = true
     ): void {
-        print "<ul class='list-group list-group-flush mv-search-facets "
-            .$ToggleClass."' ".(!$Show ? "style='display: none;'" : "").">\n";
+        print "<ul class='list-group list-group-flush mv-search-facets"
+            ." mv-search-facets-toggleable' "
+            .(!$Show ? "style='display: none;'" : "").">\n";
 
         foreach ($Facets as $FacetData) {
             # if this element is a sublist rather than a term, move on to the
@@ -156,45 +169,11 @@ class SearchFacetUI extends SearchFacetUI_Base
             print $Item."\n";
 
             # if we have child items, print a sublist for them
-            if (count($FacetData)) {
+            if (count($FacetData) !== 0) {
                 $this->printFacetList($FacetData, $Logic);
             }
         }
 
         print "</ul>\n";
-    }
-
-    /**
-     * Output JavaScript code (with surrounding <script> tags) needed to
-     * support search facet UI.  If this method is called multiple times,
-     * the code is only written out once, by the first call.
-     */
-    private function addSupportingJavascript(): void
-    {
-        static $SupportJsDisplayed = false;
-        if ($SupportJsDisplayed) {
-            return;
-        }
-        (ApplicationFramework::getInstance())->requireUIFile(
-            'jquery.cookie.js',
-            ApplicationFramework::ORDER_FIRST
-        );
-
-        ?>
-        <script type='text/javascript'>
-        function toggleFacet(FacetNumber, CookieKey){
-            var CookieName = 'SearchResults_Facet_' + CookieKey;
-            $.cookie(CookieName, 1 - $.cookie(CookieName));
-
-            $('.DD_Toggle'+FacetNumber).each(function(Index, Element){
-                if ($(Element).is("ul")) {
-                    $(Element).slideToggle();
-                } else {
-                    $(Element).toggle();
-                }
-            });
-        }
-        </script>
-        <?PHP
     }
 }

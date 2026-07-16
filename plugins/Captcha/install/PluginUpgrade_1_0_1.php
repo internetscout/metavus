@@ -30,10 +30,8 @@ class PluginUpgrade_1_0_1 extends PluginUpgrade
     {
         $Plugin = Captcha::getInstance(true);
 
-        if (is_null($Plugin->DB)) {
-            $Plugin->DB = new Database();
-        }
-        $Method = $Plugin->DB->queryValue("
+        $DB = new Database();
+        $Method = $DB->queryValue("
             SELECT V FROM CaptchaPrefs
             WHERE K='Method'", "Method");
 

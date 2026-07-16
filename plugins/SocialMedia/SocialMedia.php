@@ -315,7 +315,7 @@ class SocialMedia extends Plugin
             }
 
             # if on the view page for the schema
-            if ($Schema->PathMatchesViewPage($Path)) {
+            if ($Schema->pathMatchesViewPage($Path)) {
                 $IdParameter = $Schema->getViewPageIdParameter();
                 $ResourceId = StdLib::getFormValue($IdParameter);
                 break;
@@ -590,7 +590,7 @@ class SocialMedia extends Plugin
         $Images = $Resource->getForDisplay($Field);
 
         # return empty values if there is no image or image is invalid
-        if (!count($Images)) {
+        if (count($Images) === 0) {
             return $Values;
         }
         $Image = array_shift($Images);
@@ -952,7 +952,7 @@ class SocialMedia extends Plugin
         $TitleBase = "Share this blog entry via ";
 
         # maps social media constants to their icon url
-        $SiteIconUrl = array_map(function ($Site) use ($Size) {
+        $SiteIconUrl = array_map(function ($Site) use ($Size): string {
             return strtolower($Site)."_".$Size.".png";
         }, SocialMedia::$SiteNameHumanEnums);
 
@@ -963,7 +963,7 @@ class SocialMedia extends Plugin
             $ResourceUrl = defaulthtmlentities(
                 rawurlencode($this->getViewPageUrl($Resource))
             );
-            $EmailBody = strlen($ResourceTitle) ?
+            $EmailBody = strlen($ResourceTitle) !== 0 ?
                 $ResourceTitle.":%0D%0A".$ResourceUrl : $ResourceUrl;
             $EmailMailTo = "mailto:?to=&amp;subject="
                 . $ResourceTitle."&amp;body=".$EmailBody;

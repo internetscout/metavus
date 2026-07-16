@@ -15,38 +15,33 @@ use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
-# include some ui files for dialogs/tooltips
-$AF = ApplicationFramework::getInstance();
-$AF->RequireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
-$AF->RequireUIFile('jquery-ui.js', ApplicationFramework::ORDER_FIRST);
-
-# ----- EXPORTED FUNCTIONS ---------------------------------------------------
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Print a text metadata field row.
- * @param MetadataField $Field text metadata field
+ * @param MetadataField $Field Text metadata field.
  */
-function PrintTextFieldRow(MetadataField $Field): void
+function printTextFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
-      <?PHP $P->DefaultValue(); ?>
+      <?PHP $ValuePrinter->defaultValue(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
       <i>N/A</i>
@@ -58,31 +53,31 @@ function PrintTextFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
-      <?PHP $P->TextFieldSize(); ?>
+      <?PHP $ValuePrinter->textFieldSize(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-maxlength">
-      <?PHP $P->MaxLength(); ?>
+      <?PHP $ValuePrinter->maxLength(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-allowhtml">
-      <?PHP $P->AllowHTML(); ?>
+      <?PHP $ValuePrinter->allowHtml(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-paragraphrows">
       <i>N/A</i>
@@ -115,22 +110,22 @@ function PrintTextFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
-      <?PHP $P->IncludeInSortOptions(); ?>
+      <?PHP $ValuePrinter->includeInSortOptions(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -138,26 +133,26 @@ function PrintTextFieldRow(MetadataField $Field): void
 
 /**
  * Print a URL metadata field row.
- * @param MetadataField $Field URL metadata field
+ * @param MetadataField $Field URL metadata field.
  */
-function PrintUrlFieldRow(MetadataField $Field): void
+function printUrlFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -172,28 +167,28 @@ function PrintUrlFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
-      <?PHP $P->TextFieldSize(); ?>
+      <?PHP $ValuePrinter->textFieldSize(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-maxlength">
-      <?PHP $P->MaxLength(); ?>
+      <?PHP $ValuePrinter->maxLength(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-allowhtml">
       <i>N/A</i>
@@ -229,22 +224,22 @@ function PrintUrlFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
-      <?PHP $P->IncludeInSortOptions(); ?>
+      <?PHP $ValuePrinter->includeInSortOptions(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -252,26 +247,26 @@ function PrintUrlFieldRow(MetadataField $Field): void
 
 /**
  * Print an Email metadata field row.
- * @param MetadataField $Field Email metadata field
+ * @param MetadataField $Field Email metadata field.
  */
-function PrintEmailFieldRow(MetadataField $Field): void
+function printEmailFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-email mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -286,28 +281,28 @@ function PrintEmailFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-email mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-display mfe-field-textfieldsize">
-      <?PHP $P->TextFieldSize(); ?>
+      <?PHP $ValuePrinter->textFieldSize(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-display mfe-field-maxlength">
-      <?PHP $P->MaxLength(); ?>
+      <?PHP $ValuePrinter->maxLength(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-email mfe-group-display mfe-field-allowhtml">
       <i>N/A</i>
@@ -343,22 +338,22 @@ function PrintEmailFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-email mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-includeinsortoptions">
-      <?PHP $P->IncludeInSortOptions(); ?>
+      <?PHP $ValuePrinter->includeInSortOptions(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-email mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -366,29 +361,29 @@ function PrintEmailFieldRow(MetadataField $Field): void
 
 /**
  * Print a paragraph metadata field row.
- * @param MetadataField $Field paragraph metadata field
+ * @param MetadataField $Field Paragraph metadata field.
  */
-function PrintParagraphFieldRow(MetadataField $Field): void
+function printParagraphFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
-      <?PHP $P->DefaultValue(); ?>
+      <?PHP $ValuePrinter->defaultValue(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
       <i>N/A</i>
@@ -400,19 +395,19 @@ function PrintParagraphFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
@@ -424,16 +419,16 @@ function PrintParagraphFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-allowhtml">
-      <?PHP $P->AllowHTML(); ?>
+      <?PHP $ValuePrinter->allowHtml(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-paragraphrows">
-      <?PHP $P->ParagraphRows(); ?>
+      <?PHP $ValuePrinter->paragraphRows(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-paragraphcols">
-      <?PHP $P->ParagraphCols(); ?>
+      <?PHP $ValuePrinter->paragraphCols(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-usewysiwygeditor">
-      <?PHP $P->UseWysiwygEditor(); ?>
+      <?PHP $ValuePrinter->useWysiwygEditor(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-minvalue">
       <i>N/A</i>
@@ -457,10 +452,10 @@ function PrintParagraphFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -469,10 +464,10 @@ function PrintParagraphFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -480,29 +475,29 @@ function PrintParagraphFieldRow(MetadataField $Field): void
 
 /**
  * Print a number metadata field row.
- * @param MetadataField $Field number metadata field
+ * @param MetadataField $Field Number metadata field.
  */
-function PrintNumberFieldRow(MetadataField $Field): void
+function printNumberFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
-      <?PHP $P->DefaultValue(); ?>
+      <?PHP $ValuePrinter->defaultValue(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
       <i>N/A</i>
@@ -514,25 +509,25 @@ function PrintNumberFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
-      <?PHP $P->TextFieldSize(); ?>
+      <?PHP $ValuePrinter->textFieldSize(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
       <i>N/A</i>
@@ -550,10 +545,10 @@ function PrintNumberFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-minvalue">
-      <?PHP $P->MinValue(); ?>
+      <?PHP $ValuePrinter->minValue(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-maxvalue">
-      <?PHP $P->MaxValue(); ?>
+      <?PHP $ValuePrinter->maxValue(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-flagonlabel">
       <i>N/A</i>
@@ -571,22 +566,22 @@ function PrintNumberFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
-      <?PHP $P->IncludeInSortOptions(); ?>
+      <?PHP $ValuePrinter->includeInSortOptions(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -594,26 +589,26 @@ function PrintNumberFieldRow(MetadataField $Field): void
 
 /**
  * Print a date metadata field row.
- * @param MetadataField $Field date metadata field
+ * @param MetadataField $Field Date metadata field.
  */
-function PrintDateFieldRow(MetadataField $Field): void
+function printDateFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -628,25 +623,25 @@ function PrintDateFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
-      <?PHP $P->TextFieldSize(); ?>
+      <?PHP $ValuePrinter->textFieldSize(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
       <i>N/A</i>
@@ -688,19 +683,19 @@ function PrintDateFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
-      <?PHP $P->IncludeInSortOptions(); ?>
+      <?PHP $ValuePrinter->includeInSortOptions(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -708,26 +703,26 @@ function PrintDateFieldRow(MetadataField $Field): void
 
 /**
  * Print a timestamp metadata field row.
- * @param MetadataField $Field timestamp metadata field
+ * @param MetadataField $Field Timestamp metadata field.
  */
-function PrintTimestampFieldRow(MetadataField $Field): void
+function printTimestampFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -739,22 +734,22 @@ function PrintTimestampFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-updatemethod">
-      <?PHP $P->UpdateMethod(); ?>
+      <?PHP $ValuePrinter->updateMethod(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
@@ -802,19 +797,19 @@ function PrintTimestampFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
-      <?PHP $P->IncludeInSortOptions(); ?>
+      <?PHP $ValuePrinter->includeInSortOptions(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
      <?PHP
@@ -822,29 +817,29 @@ function PrintTimestampFieldRow(MetadataField $Field): void
 
 /**
  * Print a flag metadata field row.
- * @param MetadataField $Field flag metadata field
+ * @param MetadataField $Field Flag metadata field.
  */
-function PrintFlagFieldRow(MetadataField $Field): void
+function printFlagFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
-      <?PHP $P->DefaultValue(); ?>
+      <?PHP $ValuePrinter->defaultValue(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
       <i>N/A</i>
@@ -856,19 +851,19 @@ function PrintFlagFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
@@ -898,10 +893,10 @@ function PrintFlagFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-flagonlabel">
-      <?PHP $P->FlagOnLabel(); ?>
+      <?PHP $ValuePrinter->flagOnLabel(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-flagofflabel">
-      <?PHP $P->FlagOffLabel(); ?>
+      <?PHP $ValuePrinter->flagOffLabel(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-numajaxresults">
       <i>N/A</i>
@@ -916,7 +911,7 @@ function PrintFlagFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -928,7 +923,7 @@ function PrintFlagFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -936,32 +931,32 @@ function PrintFlagFieldRow(MetadataField $Field): void
 
 /**
  * Print a tree metadata field row.
- * @param MetadataField $Field tree metadata field
+ * @param MetadataField $Field Tree metadata field.
  */
-function PrintTreeFieldRow(MetadataField $Field): void
+function printTreeFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
-      <i>N/A</i>
+      <?PHP $ValuePrinter->allowMultiple(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
       <i>N/A</i>
@@ -970,22 +965,22 @@ function PrintTreeFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
-      <?PHP $P->UseForOaiSets(); ?>
+      <?PHP $ValuePrinter->useForOaiSets(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
       <i>N/A</i>
@@ -1018,7 +1013,7 @@ function PrintTreeFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
-      <?PHP $P->NumAjaxResults(); ?>
+      <?PHP $ValuePrinter->numAjaxResults(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
       <i>N/A</i>
@@ -1027,22 +1022,22 @@ function PrintTreeFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
-      <?PHP $P->IncludeInFacetedSearch(); ?>
+      <?PHP $ValuePrinter->includeInFacetedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1050,26 +1045,26 @@ function PrintTreeFieldRow(MetadataField $Field): void
 
 /**
  * Print a controlled name metadata field row.
- * @param MetadataField $Field controlled name metadata field
+ * @param MetadataField $Field Controlled name metadata field.
  */
-function PrintControlledNameFieldRow(MetadataField $Field): void
+function printControlledNameFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -1084,22 +1079,22 @@ function PrintControlledNameFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
-      <?PHP $P->UseForOaiSets(); ?>
+      <?PHP $ValuePrinter->useForOaiSets(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
       <i>N/A</i>
@@ -1132,7 +1127,7 @@ function PrintControlledNameFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
-      <?PHP $P->NumAjaxResults(); ?>
+      <?PHP $ValuePrinter->numAjaxResults(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
       <i>N/A</i>
@@ -1141,22 +1136,22 @@ function PrintControlledNameFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
-      <?PHP $P->IncludeInFacetedSearch(); ?>
+      <?PHP $ValuePrinter->includeInFacetedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1164,32 +1159,32 @@ function PrintControlledNameFieldRow(MetadataField $Field): void
 
 /**
  * Print an option metadata field row.
- * @param MetadataField $Field option metadata field
+ * @param MetadataField $Field Option metadata field.
  */
-function PrintOptionFieldRow(MetadataField $Field): void
+function printOptionFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
-      <?PHP $P->AllowMultiple(); ?>
+      <?PHP $ValuePrinter->allowMultiple(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
       <i>N/A</i>
@@ -1198,22 +1193,22 @@ function PrintOptionFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
-      <?PHP $P->UseForOaiSets(); ?>
+      <?PHP $ValuePrinter->useForOaiSets(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-textfieldsize">
       <i>N/A</i>
@@ -1255,22 +1250,22 @@ function PrintOptionFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
-      <?PHP $P->IncludeInFacetedSearch(); ?>
+      <?PHP $ValuePrinter->includeInFacetedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinsortoptions">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1278,35 +1273,35 @@ function PrintOptionFieldRow(MetadataField $Field): void
 
 /**
  * Print a user metadata field row.
- * @param MetadataField $Field user metadata field
+ * @param MetadataField $Field User metadata field.
  */
-function PrintUserFieldRow(MetadataField $Field): void
+function printUserFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
-      <i>N/A</i>
+      <?PHP $ValuePrinter->allowMultiple(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
-      <?PHP $P->UserPrivilegeRestrictions(); ?>
+      <?PHP $ValuePrinter->userPrivilegeRestrictions(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-updatemethod">
       <i>N/A</i>
@@ -1369,10 +1364,10 @@ function PrintUserFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -1381,10 +1376,10 @@ function PrintUserFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1392,26 +1387,26 @@ function PrintUserFieldRow(MetadataField $Field): void
 
 /**
  * Print a file metadata field row.
- * @param MetadataField $Field file metadata field
+ * @param MetadataField $Field File metadata field.
  */
-function PrintFileFieldRow(MetadataField $Field): void
+function printFileFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -1426,19 +1421,19 @@ function PrintFileFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
@@ -1483,10 +1478,10 @@ function PrintFileFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -1495,10 +1490,10 @@ function PrintFileFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1506,32 +1501,32 @@ function PrintFileFieldRow(MetadataField $Field): void
 
 /**
  * Print an image metadata field row.
- * @param MetadataField $Field image metadata field
+ * @param MetadataField $Field Image metadata field.
  */
-function PrintImageFieldRow(MetadataField $Field): void
+function printImageFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    ata-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    ata-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
-      <?PHP $P->AllowMultiple(); ?>
+      <?PHP $ValuePrinter->allowMultiple(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
       <i>N/A</i>
@@ -1540,19 +1535,19 @@ function PrintImageFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets">
       <i>N/A</i>
@@ -1597,10 +1592,10 @@ function PrintImageFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
-      <?PHP $P->IncludeInKeywordSearch(); ?>
+      <?PHP $ValuePrinter->includeInKeywordSearch(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -1609,10 +1604,10 @@ function PrintImageFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1620,29 +1615,29 @@ function PrintImageFieldRow(MetadataField $Field): void
 
 /**
  * Print a point metadata field row.
- * @param MetadataField $Field point metadata field
+ * @param MetadataField $Field Point metadata field.
  */
-function PrintPointFieldRow(MetadataField $Field): void
+function printPointFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
-      <?PHP $P->DefaultValue(); ?>
+      <?PHP $ValuePrinter->defaultValue(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
       <i>N/A</i>
@@ -1654,25 +1649,25 @@ function PrintPointFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-usesqualifiers">
-      <?PHP $P->UsesQualifiers(); ?>
+      <?PHP $ValuePrinter->usesQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-hasitemlevelqualifiers">
-      <?PHP $P->HasItemLevelQualifiers(); ?>
+      <?PHP $ValuePrinter->hasItemLevelQualifiers(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-defaultqualifier">
-      <?PHP $P->DefaultQualifier(); ?>
+      <?PHP $ValuePrinter->defaultQualifier(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-associatedqualifierlist">
-      <?PHP $P->AssociatedQualifierList(); ?>
+      <?PHP $ValuePrinter->associatedQualifierList(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-showqualifiers">
-      <?PHP $P->ShowQualifiers(); ?>
+      <?PHP $ValuePrinter->showQualifiers(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-useforoaisets"
     ><i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-textfieldsize">
-      <?PHP $P->TextFieldSize(); ?>
+      <?PHP $ValuePrinter->textFieldSize(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-maxlength">
       <i>N/A</i>
@@ -1705,16 +1700,16 @@ function PrintPointFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-pointprecision">
-      <?PHP $P->PointPrecision(); ?>
+      <?PHP $ValuePrinter->pointPrecision(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-pointdecimaldigits">
-      <?PHP $P->PointDecimalDigits(); ?>
+      <?PHP $ValuePrinter->pointDecimalDigits(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinkeywordsearch">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -1723,10 +1718,10 @@ function PrintPointFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1734,32 +1729,32 @@ function PrintPointFieldRow(MetadataField $Field): void
 
 /**
  * Print a reference metadata field row.
- * @param MetadataField $Field reference metadata field
+ * @param MetadataField $Field Reference metadata field.
  */
-function PrintReferenceFieldRow(MetadataField $Field): void
+function printReferenceFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-allowmultiple">
-      <i>N/A</i>
+      <?PHP $ValuePrinter->allowMultiple(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-userprivilegerestrictions">
       <i>N/A</i>
@@ -1816,7 +1811,7 @@ function PrintReferenceFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-display mfe-field-numajaxresults">
-      <?PHP $P->NumAjaxResults(); ?>
+      <?PHP $ValuePrinter->numAjaxResults(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-display mfe-field-pointprecision">
       <i>N/A</i>
@@ -1828,7 +1823,7 @@ function PrintReferenceFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-includeinadvancedsearch">
-      <?PHP $P->IncludeInAdvancedSearch(); ?>
+      <?PHP $ValuePrinter->includeInAdvancedSearch(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-search mfe-field-includeinfacetedsearch">
       <i>N/A</i>
@@ -1837,10 +1832,10 @@ function PrintReferenceFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
@@ -1848,26 +1843,26 @@ function PrintReferenceFieldRow(MetadataField $Field): void
 
 /**
  * Print a SearchParameterSet metadata field row.
- * @param MetadataField $Field SearchParameterSet metadata field
+ * @param MetadataField $Field SearchParameterSet metadata field.
  */
-function PrintSearchParameterSetFieldRow(MetadataField $Field): void
+function printSearchParameterSetFieldRow(MetadataField $Field): void
 {
-    $P = new MfeFieldValuePrinter($Field);
+    $ValuePrinter = new MfeFieldValuePrinter($Field);
     ?>
-  <tr class="mfe mfe-<?PHP PrintEnabledText($Field); ?>"
-    data-fieldid="<?PHP PrintFieldIdText($Field); ?>"
-    data-istogglable="<?PHP $P->FieldIsTogglable(); ?>">
+  <tr class="mfe mfe-<?PHP printEnabledText($Field); ?>"
+    data-fieldid="<?PHP printFieldIdText($Field); ?>"
+    data-istogglable="<?PHP $ValuePrinter->fieldIsTogglable(); ?>">
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-enabled">
-      <?PHP $P->Enabled(); ?>
+      <?PHP $ValuePrinter->enabled(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-fieldname">
-      <?PHP PrintFieldNameText($Field); ?>
+      <?PHP printFieldNameText($Field); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-editable">
-      <?PHP $P->Editable(); ?>
+      <?PHP $ValuePrinter->editable(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-metadata mfe-field-optional">
-      <?PHP $P->Optional(); ?>
+      <?PHP $ValuePrinter->optional(); ?>
     </td>
     <td class="mfe mfe-na mfe-type-text mfe-group-metadata mfe-field-defaultvalue">
       <i>N/A</i>
@@ -1951,50 +1946,49 @@ function PrintSearchParameterSetFieldRow(MetadataField $Field): void
       <i>N/A</i>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-search mfe-field-searchweight">
-      <?PHP $P->SearchWeight(); ?>
+      <?PHP $ValuePrinter->searchWeight(); ?>
     </td>
     <td class="mfe mfe-value mfe-type-text mfe-group-generic mfe-field-edit">
-      <?PHP PrintEditText($Field); ?>
+      <?PHP printEditText($Field); ?>
     </td>
   </tr>
     <?PHP
 }
 
 /**
- * Prints all fields for a schema, using its corresponding print function
- *
- * @param MetadataSchema $Schema The schema to print
- * @param int $FieldType The type of field to print
+ * Prints all fields for a schema, using its corresponding print function.
+ * @param MetadataSchema $Schema The schema to print.
+ * @param int $FieldType The type of field to print.
  * @return void
  * @throws Exception
  */
-function PrintFieldAttributes(MetadataSchema $Schema, int $FieldType): void
+function printFieldAttributes(MetadataSchema $Schema, int $FieldType): void
 {
     $PrintFunctionMapping = [
-        MetadataSchema::MDFTYPE_CONTROLLEDNAME => "PrintControlledNameFieldRow",
-        MetadataSchema::MDFTYPE_DATE => "PrintDateFieldRow",
-        MetadataSchema::MDFTYPE_EMAIL => "PrintEmailFieldRow",
-        MetadataSchema::MDFTYPE_IMAGE => "PrintImageFieldRow",
-        MetadataSchema::MDFTYPE_FILE => "PrintFileFieldRow",
-        MetadataSchema::MDFTYPE_FLAG => "PrintFlagFieldRow",
-        MetadataSchema::MDFTYPE_NUMBER => "PrintNumberFieldRow",
-        MetadataSchema::MDFTYPE_OPTION => "PrintOptionFieldRow",
-        MetadataSchema::MDFTYPE_PARAGRAPH => "PrintParagraphFieldRow",
-        MetadataSchema::MDFTYPE_POINT => "PrintPointFieldRow",
-        MetadataSchema::MDFTYPE_REFERENCE => "PrintReferenceFieldRow",
-        MetadataSchema::MDFTYPE_SEARCHPARAMETERSET => "PrintSearchParameterSetFieldRow",
-        MetadataSchema::MDFTYPE_URL => "PrintUrlFieldRow",
-        MetadataSchema::MDFTYPE_USER => "PrintUserFieldRow",
-        MetadataSchema::MDFTYPE_TEXT => "PrintTextFieldRow",
-        MetadataSchema::MDFTYPE_TIMESTAMP => "PrintTimestampFieldRow",
-        MetadataSchema::MDFTYPE_TREE => "PrintTreeFieldRow"
+        MetadataSchema::MDFTYPE_CONTROLLEDNAME => "printControlledNameFieldRow",
+        MetadataSchema::MDFTYPE_DATE => "printDateFieldRow",
+        MetadataSchema::MDFTYPE_EMAIL => "printEmailFieldRow",
+        MetadataSchema::MDFTYPE_IMAGE => "printImageFieldRow",
+        MetadataSchema::MDFTYPE_FILE => "printFileFieldRow",
+        MetadataSchema::MDFTYPE_FLAG => "printFlagFieldRow",
+        MetadataSchema::MDFTYPE_NUMBER => "printNumberFieldRow",
+        MetadataSchema::MDFTYPE_OPTION => "printOptionFieldRow",
+        MetadataSchema::MDFTYPE_PARAGRAPH => "printParagraphFieldRow",
+        MetadataSchema::MDFTYPE_POINT => "printPointFieldRow",
+        MetadataSchema::MDFTYPE_REFERENCE => "printReferenceFieldRow",
+        MetadataSchema::MDFTYPE_SEARCHPARAMETERSET => "printSearchParameterSetFieldRow",
+        MetadataSchema::MDFTYPE_URL => "printUrlFieldRow",
+        MetadataSchema::MDFTYPE_USER => "printUserFieldRow",
+        MetadataSchema::MDFTYPE_TEXT => "printTextFieldRow",
+        MetadataSchema::MDFTYPE_TIMESTAMP => "printTimestampFieldRow",
+        MetadataSchema::MDFTYPE_TREE => "printTreeFieldRow"
     ];
 
     if (!array_key_exists($FieldType, $PrintFunctionMapping)) {
         throw new Exception("$FieldType is not a valid field type");
     }
 
-    $NameOfPrintFunction = "Metavus\\" . $PrintFunctionMapping[$FieldType];
+    $NameOfPrintFunction = "Metavus\\".$PrintFunctionMapping[$FieldType];
 
     if (!is_callable($NameOfPrintFunction)) {
         throw new Exception("$NameOfPrintFunction is not callable");
@@ -2012,64 +2006,62 @@ function PrintFieldAttributes(MetadataSchema $Schema, int $FieldType): void
     }
 }
 
-# ----- LOCAL FUNCTIONS ------------------------------------------------------
-
 /**
  * Class used to make printing field values more convenient.
  *
  * These method declarations are here because this class is used to call methods
  * of HumanMetadataField via its __call() method.
- * @method void AllowHTML()
- * @method void AllowMultiple()
- * @method void AssociatedQualifierList()
- * @method void DefaultQualifier()
- * @method void DefaultValue()
- * @method void Editable()
- * @method void Enabled()
- * @method void FlagOffLabel()
- * @method void FlagOnLabel()
- * @method void HasItemLevelQualifiers()
- * @method void IncludeInAdvancedSearch()
- * @method void IncludeInFacetedSearch()
- * @method void IncludeInKeywordSearch()
- * @method void IncludeInSortOptions()
- * @method void MaxLength()
- * @method void MaxValue()
- * @method void MinValue()
- * @method void NumAjaxResults()
- * @method void Optional()
- * @method void ParagraphCols()
- * @method void ParagraphRows()
- * @method void PointDecimalDigits()
- * @method void PointPrecision()
- * @method void SearchWeight()
- * @method void ShowQualifiers()
- * @method void TextFieldSize()
- * @method void UpdateMethod()
- * @method void UseForOaiSets()
- * @method void UserPrivilegeRestrictions()
- * @method void UsesQualifiers()
- * @method void UseWysiwygEditor()
+ * @method void allowHtml()
+ * @method void allowMultiple()
+ * @method void associatedQualifierList()
+ * @method void defaultQualifier()
+ * @method void defaultValue()
+ * @method void editable()
+ * @method void enabled()
+ * @method void flagOffLabel()
+ * @method void flagOnLabel()
+ * @method void hasItemLevelQualifiers()
+ * @method void includeInAdvancedSearch()
+ * @method void includeInFacetedSearch()
+ * @method void includeInKeywordSearch()
+ * @method void includeInSortOptions()
+ * @method void maxLength()
+ * @method void maxValue()
+ * @method void minValue()
+ * @method void numAjaxResults()
+ * @method void optional()
+ * @method void paragraphCols()
+ * @method void paragraphRows()
+ * @method void pointDecimalDigits()
+ * @method void pointPrecision()
+ * @method void searchWeight()
+ * @method void showQualifiers()
+ * @method void textFieldSize()
+ * @method void updateMethod()
+ * @method void useForOaiSets()
+ * @method void userPrivilegeRestrictions()
+ * @method void usesQualifiers()
+ * @method void useWysiwygEditor()
  */
 class MfeFieldValuePrinter
 {
 
     /**
      * Set up the field value printer.
-     * @param MetadataField $MetadataField metadata field
+     * @param MetadataField $MetadataField Metadata field.
      */
     public function __construct(MetadataField $MetadataField)
     {
         $this->MetadataField = $MetadataField;
         $this->HumanField = new HumanMetadataField($MetadataField);
-        $this->HumanField->SetNotSetText("&mdash;");
+        $this->HumanField->setNotSetText("&mdash;");
     }
 
     /**
      * Escape for HTML and print the value returned from
      * $this->HumanField->$Method($Arguments).
-     * @param string $Method method name
-     * @param array $Arguments method arguments
+     * @param string $Method Method name.
+     * @param array $Arguments Method arguments.
      * @throws Exception
      */
     public function __call(string $Method, array $Arguments): void
@@ -2093,21 +2085,21 @@ class MfeFieldValuePrinter
     {
         if (!isset(self::$ActivePlugins)) {
             global $G_PluginManager;
-            self::$ActivePlugins = $G_PluginManager->GetActivePluginList();
+            self::$ActivePlugins = $G_PluginManager->getActivePluginList();
         }
 
-        $Id = $this->MetadataField->Id();
-        $Owner = $this->MetadataField->Owner();
-        $OwnerIsActive = in_array($Owner, self::$ActivePlugins);
-
         if (InterfaceConfiguration::getInstance()->getBool("ResourceRatingsEnabled") &&
-            $this->MetadataField->Name() == "Cumulative Rating") {
+                $this->MetadataField->name() == "Cumulative Rating") {
             $IsTogglable = false;
         } else {
-            $Schema = new MetadataSchema($this->MetadataField->SchemaId());
-            $IsTogglable = !$Schema->FieldToStdNameMapping($Id)
-                    && !MetadataSchema::FieldUsedInPrivileges($Id);
-            $IsTogglable = $IsTogglable && (!$Owner || $OwnerIsActive);
+            $Schema = new MetadataSchema($this->MetadataField->schemaId());
+            $Id = $this->MetadataField->id();
+            $Owner = $this->MetadataField->getOwner();
+            $OwnerIsActivePlugin = $this->MetadataField->isOwnedByPlugin()
+                    && in_array($Owner, self::$ActivePlugins);
+            $IsTogglable = !$Schema->fieldToStdNameMapping($Id)
+                    && !MetadataSchema::fieldUsedInPrivileges($Id)
+                    && (!$Owner || $OwnerIsActivePlugin || $this->MetadataField->isOwnedByUser());
         }
 
         print defaulthtmlentities($IsTogglable ? "1" : "0");
@@ -2134,66 +2126,66 @@ class MfeFieldValuePrinter
  * Get the display text for the field, which includes the display name and the
  * name in parentheses if a label is set. The text will be properly escaped
  * HTML.
- * @param MetadataField $Field metadata field
- * @return string the display text for the field as escaped HTML
+ * @param MetadataField $Field Metadata field.
+ * @return string The display text for the field as escaped HTML.
  */
 function getFieldInfoDisplayText(MetadataField $Field): string
 {
-    $DisplayName = defaulthtmlentities($Field->GetDisplayName());
-    $Name = defaulthtmlentities($Field->Name());
+    $DisplayName = defaulthtmlentities($Field->getDisplayName());
+    $Name = defaulthtmlentities($Field->name());
 
-    return $DisplayName . (strlen($Field->Label()) ? " (".$Name.")" : "");
+    return $DisplayName.(strlen($Field->label()) !== 0 ? " (".$Name.")" : "");
 }
 
 /**
  * Print "enabled" or "disabled" if the field is enabled or disabled,
  * respectively.
- * @param MetadataField $Field metadata field
+ * @param MetadataField $Field Metadata field.
  */
 function printEnabledText(MetadataField $Field): void
 {
-    print $Field->Enabled() ? "enabled" : "disabled";
+    print $Field->enabled() ? "enabled" : "disabled";
 }
 
 /**
  * Print the escaped metadata field ID.
- * @param MetadataField $Field metadata field
+ * @param MetadataField $Field Metadata field.
  */
 function printFieldIdText(MetadataField $Field): void
 {
-    print defaulthtmlentities($Field->Id());
+    print defaulthtmlentities($Field->id());
 }
 
 /**
  * Print the metadata field name text, which includes a link to the field
  * editing page, the name of the field, the label of the field, and a help
  * tooltip containing the field description.
- * @param MetadataField $Field metadata field
+ * @param MetadataField $Field Metadata field.
  */
 function printFieldNameText(MetadataField $Field): void
 {
     global $AF;
 
-    $SafeFieldId = defaulthtmlentities($Field->Id());
-    $SafeFieldName = defaulthtmlentities(GetFieldInfoDisplayText($Field));
+    $SafeFieldId = defaulthtmlentities($Field->id());
+    $SafeFieldName = defaulthtmlentities(getFieldInfoDisplayText($Field));
     $TooltipId = "mv-dialog-".$SafeFieldId;
 
-    $HelpImage = $Field->Enabled() ? "help.png" : "help_disabled.png";
+    $HelpImage = $Field->enabled() ? "help.png" : "help_disabled.png";
     ?>
     <?PHP if (ApplicationFramework::getInstance()->getInterfaceSetting("TooltipsUseDialogs")) { ?>
   <a href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>"
     ><?= $SafeFieldName; ?></a>
   <img class="mv-form-instructions" data-fieldid="<?= $SafeFieldId ?>"
-      src="<?PHP $AF->PUIFile($HelpImage); ?>" alt="?" />
+      src="<?PHP $AF->pUIFile($HelpImage); ?>" alt="?" />
 <div id="<?= $TooltipId ?>" class="tooltip-dialog" style="display: none;"
   title="<?= $SafeFieldName ?>">
-  <p><?= $Field->Description() ?></p>
+  <p><?= $Field->description() ?></p>
 </div>
     <?PHP } else { ?>
   <a href="index.php?P=EditMetadataField&amp;Id=<?= $SafeFieldId; ?>"
   ><?= $SafeFieldName; ?></a>
-  <img class="mv-form-instructions" src="<?PHP $AF->PUIFile($HelpImage); ?>" alt="?"
-       title="<?= defaulthtmlentities(strip_tags($Field->Description())) ?>" />
+  <img class="mv-form-instructions" src="<?PHP $AF->pUIFile($HelpImage); ?>" alt="?"
+       title="<?= defaulthtmlentities(strip_tags($Field->description())) ?>" />
     <?PHP } ?>
     <?PHP
 }
@@ -2201,11 +2193,11 @@ function printFieldNameText(MetadataField $Field): void
 /**
  * Print the metadata field edit text, which includes a link to the field
  * editing page.
- * @param MetadataField $Field metadata field
+ * @param MetadataField $Field Metadata field.
  */
 function printEditText(MetadataField $Field): void
 {
-    $SafeFieldId = defaulthtmlentities($Field->Id());
+    $SafeFieldId = defaulthtmlentities($Field->id());
 
     $EditButton = new HtmlButton("Edit");
     $EditButton->setIcon("Pencil.svg");
@@ -2215,32 +2207,45 @@ function printEditText(MetadataField $Field): void
 }
 
 /**
-* Print an option list containing metadata schemas.
-* @param MetadataSchema $SchemaInUse Metadata schema in use.
-*/
+ * Print an option list containing metadata schemas.
+ * @param MetadataSchema $SchemaInUse Metadata schema in use.
+ */
 function printSchemaOptionList(MetadataSchema $SchemaInUse): void
 {
     $Options = [];
 
     # get the metadata schema options
-    foreach (MetadataSchema::GetAllSchemas() as $Schema) {
-        $Options[$Schema->Id()] = $Schema->ResourceName() . " Schema";
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
+        $Options[$Schema->id()] = $Schema->resourceName()." Schema";
     }
 
-    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->Id());
-    $OptList->SubmitOnChange(true);
-    $OptList->PrintHtml();
+    $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->id());
+    $OptList->submitOnChange(true);
+    $OptList->printHtml();
 }
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_PromptDBRebuild)) {
-    throw new Exception("H_PromptDBRebuild not defined.");
-}
-if (!isset($H_Schema)) {
-    throw new Exception("H_Schema not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
 
-$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$AF = ApplicationFramework::getInstance();
+
+# include some ui files for dialogs/tooltips
+$AF->requireUIFile('jquery-ui.css', ApplicationFramework::ORDER_FIRST);
+$AF->requireUIFile('jquery-ui.js', ApplicationFramework::ORDER_FIRST);
+
+# retrieve the schema ID
+$SchemaId = StdLib::getArrayValue($_GET, "SC", MetadataSchema::SCHEMAID_DEFAULT);
+
+# construct the schema
+$Schema = new MetadataSchema($SchemaId);
+
+# retrieve if user should be prompted to run a search DB rebuild
+$PromptDBRebuild = StdLib::getArrayValue($_GET, "PSDBR", false);
+
+$SafeSchemaId = defaulthtmlentities($Schema->id());
 
 $AddButton = new HtmlButton("Add New Field");
 $AddButton->setIcon("Plus.svg");
@@ -2266,6 +2271,11 @@ $AccessButton->setId("displayAccessOnly");
 $SearchButton = new HtmlButton("Search");
 $SearchButton->setId("displaySearchOnly");
 $SearchButton->setOnclick("displaySearchOnly()");
+
+$AddSchemaButton = new HtmlButton("Add Schema");
+$AddSchemaButton->setIcon("Plus.svg");
+$AddSchemaButton->setSize(HtmlButton::SIZE_MEDIUM);
+$AddSchemaButton->setLink("index.php?P=AddMetadataSchema");
 
 $ChosenView = StdLib::getArrayValue($_GET, "View", "Metadata");
 $Views = [
@@ -2318,9 +2328,9 @@ $(document).tooltip();
     display: none;
   }
 </style>
-<script type="text/javascript" src="<?PHP $AF->PUIFile("jquery.cookie.js"); ?>"></script>
+<script type="text/javascript" src="<?PHP $AF->pUIFile("jquery.cookie.js"); ?>"></script>
 <div class="container">
-  <?PHP if ($H_PromptDBRebuild) { ?>
+  <?PHP if ($PromptDBRebuild) { ?>
   <div class="alert alert-warning" role="alert">
     <p>In order for the <em>Search</em> settings updates to take place, please
       <u><a href="index.php?P=ConfirmRebuildSearchDB">rebuild the search database</a></u>.</p>
@@ -2331,6 +2341,7 @@ $(document).tooltip();
       <h1>Metadata Field Editor</h1>
     </div>
     <div class="col text-end">
+      <?= $AddSchemaButton->getHtml(); ?>
       <?= $AddButton->getHtml() ?>
       <?= $EditButton->getHtml() ?>
     </div>
@@ -2351,7 +2362,7 @@ $(document).tooltip();
   </span>
   <form class="d-inline-block" method="get" action="index.php">
     <input type="hidden" name="P" value="DBEditor" />
-    <?PHP PrintSchemaOptionList($H_Schema); ?>
+    <?PHP printSchemaOptionList($Schema); ?>
   </form>
 </div>
 
@@ -2562,159 +2573,159 @@ $(document).tooltip();
       </th>
     </tr>
   </tfoot>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TEXT, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_TEXT, null, true)) !== 0) {  ?>
   <tbody id="text">
     <tr class="table-dark"><th colspan="44">Text Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_TEXT
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_URL, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_URL, null, true)) !== 0) {  ?>
   <tbody id="url">
     <tr class="table-dark"><th colspan="44">Url Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_URL
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_EMAIL, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_EMAIL, null, true)) !== 0) {  ?>
   <tbody id="email">
           <tr class="table-dark"><th colspan="44">Email Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_EMAIL
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_PARAGRAPH, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_PARAGRAPH, null, true)) !== 0) {  ?>
   <tbody id="paragraph">
     <tr class="table-dark"><th colspan="44">Paragraph Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_PARAGRAPH
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_NUMBER, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_NUMBER, null, true)) !== 0) {  ?>
   <tbody id="number">
     <tr class="table-dark"><th colspan="44">Number Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_NUMBER
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_DATE, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_DATE, null, true)) !== 0) {  ?>
   <tbody id="date">
     <tr class="table-dark"><th colspan="44">Date Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_DATE
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TIMESTAMP, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_TIMESTAMP, null, true)) !== 0) {  ?>
   <tbody id="timestamp">
     <tr class="table-dark"><th colspan="44">Timestamp Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_TIMESTAMP
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_FLAG, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_FLAG, null, true)) !== 0) {  ?>
   <tbody id="flag">
     <tr class="table-dark"><th colspan="44">Flag Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_FLAG
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_TREE, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_TREE, null, true)) !== 0) {  ?>
   <tbody id="tree">
     <tr class="table-dark"><th colspan="44">Tree Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_TREE
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME, null, true)) !== 0) { // @phpcs:ignore ?>
   <tbody id="controlledname">
     <tr class="table-dark"><th colspan="44">Controlled Name Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_CONTROLLEDNAME
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_OPTION, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_OPTION, null, true)) !== 0) {  ?>
   <tbody id="option">
     <tr class="table-dark"><th colspan="44">Option Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_OPTION
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_USER, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_USER, null, true)) !== 0) {  ?>
   <tbody id="user">
     <tr class="table-dark"><th colspan="44">User Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_USER
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_FILE, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_FILE, null, true)) !== 0) {  ?>
   <tbody id="file">
     <tr class="table-dark"><th colspan="44">File Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_FILE
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_IMAGE, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_IMAGE, null, true)) !== 0) {  ?>
   <tbody id="image">
     <tr class="table-dark"><th colspan="44">Image Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_IMAGE
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_POINT, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_POINT, null, true)) !== 0) {  ?>
   <tbody id="point">
     <tr class="table-dark"><th colspan="44">Point Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_POINT
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(MetadataSchema::MDFTYPE_REFERENCE, null, true))) {  ?>
+  <?PHP  if (count($Schema->getFields(MetadataSchema::MDFTYPE_REFERENCE, null, true)) !== 0) {  ?>
   <tbody id="reference">
     <tr class="table-dark"><th colspan="44">Reference Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_REFERENCE
         ); ?>
   </tbody>
   <?PHP  }  ?>
-  <?PHP  if (count($H_Schema->GetFields(
+  <?PHP  if (count($Schema->getFields(
       MetadataSchema::MDFTYPE_SEARCHPARAMETERSET,
       null,
       true
-  ))) {  ?>
+  )) !== 0) {  ?>
   <tbody id="searchparameterset">
     <tr class="table-dark"><th colspan="44">Search Parameter Set Fields</th></tr>
-        <?PHP PrintFieldAttributes(
-            $H_Schema,
+        <?PHP printFieldAttributes(
+            $Schema,
             MetadataSchema::MDFTYPE_SEARCHPARAMETERSET
         ); ?>
   </tbody>
@@ -2733,8 +2744,8 @@ $(document).tooltip();
 <!-- this must come at the end of the page -->
 <script type="text/javascript">
   (function(){
-    var helpImage = "<?PHP $AF->PUIFile("help.png"); ?>",
-        disabledHelpImage = "<?PHP $AF->PUIFile("help_disabled.png"); ?>";
+    var helpImage = "<?PHP $AF->pUIFile("help.png"); ?>",
+        disabledHelpImage = "<?PHP $AF->pUIFile("help_disabled.png"); ?>";
 
     function createToggleCheckboxes() {
       $("td.mfe-field-enabled, th.mfe-field-enabled").css("display", "table-cell");

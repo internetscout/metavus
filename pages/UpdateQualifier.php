@@ -21,7 +21,7 @@ use ScoutLib\ApplicationFramework;
 * Get list of qualifiers to remove.
 * @return array remove list
 */
-function GetRemoveList()
+function GetRemoveList(): array
 {
     $Schema = new MetadataSchema();
 
@@ -75,7 +75,7 @@ function AddListValue($NewName, $NewNamespace, $NewUrl)
     # (pass true to nameIsInUse so a case-insensitive string
     # comparison is used to check if the new qualifier's name
     # is already in use)
-    if (!empty($NewName)) {
+    if ($NewName !== '' && $NewName !== '0') {
         if ($QualifierFactory->nameIsInUse($NewName, true)) {
             return "<b>Error: </b>".$NewName." already exists";
         }
@@ -122,7 +122,8 @@ function UpdateListValue(): void
         if (preg_match("/qu_[0-9]+/", $Var)) {
             $Value = trim($Value);
             $QualifierUrl = addslashes($Value);
-            if (!empty($QualifierName) && isset($QualifierId) && isset($QualifierNamespace)) {
+            if (isset($QualifierName) && isset($QualifierId) &&
+                isset($QualifierNamespace)) {
                 # create new qualifier
                 $Qualifier = new Qualifier($QualifierId);
                 $Qualifier->name($QualifierName);

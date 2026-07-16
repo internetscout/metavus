@@ -69,7 +69,7 @@ class PrivilegeFactory extends ItemFactory
             $PrivObjects = [];
 
             # convert strings to objects and return to caller
-            foreach ($PrivNames as $Id => $Name) {
+            foreach (array_keys($PrivNames) as $Id) {
                 $PrivObjects[$Id] = new Privilege($Id);
             }
 
@@ -118,7 +118,7 @@ class PrivilegeFactory extends ItemFactory
     /**
      * Get the Privilege object with the given value.
      * @param int $Value Privilege value.
-     * @return object|null A Privilege object or NULL if one doesn't exist with the value.
+     * @return Privilege|null A Privilege object or NULL if one doesn't exist with the value.
      */
     public function getPrivilegeWithValue(int $Value)
     {
@@ -132,7 +132,7 @@ class PrivilegeFactory extends ItemFactory
         $CustomPrivileges = $this->getPrivileges(false, false);
 
         # custom privilege name
-        foreach ($CustomPrivileges as $Id => $PrivilegeName) {
+        foreach (array_keys($CustomPrivileges) as $Id) {
             if ($Value == $Id) {
                 $Privilege = new Privilege($Id);
 
@@ -296,7 +296,7 @@ class PrivilegeFactory extends ItemFactory
      * Get a list of privileges, excluding pseudo-privileges
      * @return array privilege labels keyed on privilege ID
      */
-    public function getPrivilegeOptions()
+    public function getPrivilegeOptions(): array
     {
         $PrivilegeOptions = [];
         $Privileges = $this->getPrivileges(true, false);

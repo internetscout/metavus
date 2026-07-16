@@ -30,7 +30,7 @@ $ActivateButton->makeSubmitButton();
 <h1>Activate Account</h1>
 
 <?PHP
-if (count($H_SuccessMessages)) {
+if (count($H_SuccessMessages) !== 0) {
     print "<ul class='alert alert-primary'>";
 
     foreach ($H_SuccessMessages as $Message) {

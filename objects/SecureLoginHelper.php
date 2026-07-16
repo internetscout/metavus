@@ -27,43 +27,45 @@ class SecureLoginHelper
      */
     public static function printHeaderContent(): void
     {
-        if (self::shouldUseSecureLogin()) {
-            # include the 'jsbn' javascript encryption library
-            # (included inline rather than with RequireUIFile() so that
-            #  the RSAKey js object will be defined before the js above
-            #  the login form tries to use it)
-            $LoginInterfaceFiles = [
-                "prng4.js",
-                "rng.js",
-                "jsbn.js",
-                "rsa.js",
-                "base64.js"
-            ];
-
-            ApplicationFramework::getInstance()->includeUIFile($LoginInterfaceFiles);
-
-            # get the public key parameters for the most recently generated keypair
-            $PubKeyParams = self::getCryptKey();
-
-            # define CryptPw javascript function to encrypt the user-supplied
-            # password, pad it with 2 random bytes, then base64 the result for
-            # transmission
-            # (pages/UserLogin.php contains the companion decryption code)
-            $Modulus = $PubKeyParams["Modulus"];
-            $Exponent = $PubKeyParams["Exponent"];
-            ?>
-                <script type="text/javascript">
-                    var RSA = new RSAKey();
-                    RSA.setPublic("$Modulus", "$Exponent");
-                    function CryptPw() {
-                        var resp = hex2b64(RSA.encrypt($("input#Password").val() + "\t"
-                        + rng_get_byte() + rng_get_byte()));
-                        $("input#CryptPassword").val(resp);
-                        $("input#Password").val("");
-                    }
-                </script>
-            <?PHP
+        if (!self::shouldUseSecureLogin()) {
+            return;
         }
+
+        # include the 'jsbn' javascript encryption library
+        # (included inline rather than with RequireUIFile() so that
+        #  the RSAKey js object will be defined before the js above
+        #  the login form tries to use it)
+        $LoginInterfaceFiles = [
+            "prng4.js",
+            "rng.js",
+            "jsbn.js",
+            "rsa.js",
+            "base64.js"
+        ];
+
+        ApplicationFramework::getInstance()->includeUIFile($LoginInterfaceFiles);
+
+        # get the public key parameters for the most recently generated keypair
+        $PubKeyParams = self::getCryptKey();
+
+        # define CryptPw javascript function to encrypt the user-supplied
+        # password, pad it with 2 random bytes, then base64 the result for
+        # transmission
+        # (pages/UserLogin.php contains the companion decryption code)
+        $Modulus = $PubKeyParams["Modulus"];
+        $Exponent = $PubKeyParams["Exponent"];
+        ?>
+            <script type="text/javascript">
+                 var RSA = new RSAKey();
+                 RSA.setPublic("<?= $Modulus ?>", "<?= $Exponent ?>");
+                function CryptPw() {
+                    var resp = hex2b64(RSA.encrypt($("input#Password").val() + "\t"
+                    + rng_get_byte() + rng_get_byte()));
+                    $("input#CryptPassword").val(resp);
+                    $("input#Password").val("");
+                }
+            </script>
+        <?PHP
     }
 
     /**
@@ -82,64 +84,13 @@ class SecureLoginHelper
      */
     public static function printLoginFormContent(): void
     {
-        if (self::shouldUseSecureLogin()) {
-            ?>
-            <input type="hidden" id="UseSecure" name="UseSecure">
-            <input type="hidden" id="CryptPassword" name="F_CryptPassword" value="">
-            <?PHP
+        if (!self::shouldUseSecureLogin()) {
+            return;
         }
-    }
-
-    /**
-     * Generate and return a cryptographic keypair for user login, to
-     * support the use of RSA encryption on the password field of login forms.
-     * This function gets the most recently generated keypair, clearing out
-     * keys older than 48 hours, and re-generating a new key if the most
-     * recent one is older than 24 hours.
-     * @return array containing "Modulus" and "Exponent" key parameters
-     */
-    public static function getCryptKey() : array
-    {
-        $DB = new Database();
-
-        $MaxKeyAge = self::computeMaxKeyAge();
-
-        # NOTE: One can not simply subtract two TIMESTAMPs and expect
-        # a sane result from mysql.  Using a TIMESTAMP in numeric
-        # context converts it to an int, but in YYYYMMDDHHMMSS format
-        # rather than as a UNIX time.  Hence the use of
-        # TIMESTAMPDIFF() below.
-
-        # clear expired keys and replay protection tokens
-        $DB->query("DELETE FROM UsedLoginTokens WHERE "
-                   ."TIMESTAMPDIFF(SECOND, KeyCTime, NOW()) > ".$MaxKeyAge);
-
-        $DB->query("LOCK TABLES LoginKeys WRITE");
-        $DB->query("DELETE FROM LoginKeys WHERE "
-                   ."TIMESTAMPDIFF(SECOND, CreationTime, NOW()) > ".$MaxKeyAge);
-
-        # get the most recently generated key
-        $DB->query("SELECT TIMESTAMPDIFF(SECOND, CreationTime, NOW()) as Age,"
-                   ."KeyPair FROM LoginKeys "
-                   ."ORDER BY Age ASC LIMIT 1");
-        $Row = $DB->fetchRow();
-
-        # if there is no key in the database, or the key is too old
-        if (($Row === false) || ($Row["Age"] >= self::$KeyRegenInterval)) {
-            # generate a new OpenSSL format keypair
-            $KeyPair = self::generateAndSaveNewKeypair($DB);
-        } else {
-            # if we do have a current key in the database,
-            #  convert it to openssl format for usage
-            $KeyPair = openssl_pkey_get_private($Row["KeyPair"]);
-        }
-        $DB->query("UNLOCK TABLES");
-
-        if ($KeyPair === false) {
-            throw new Exception("Unable to locate secure login keypair.");
-        }
-
-        return self::extractPubKeyParameters($KeyPair);
+        ?>
+        <input type="hidden" id="UseSecure" name="UseSecure">
+        <input type="hidden" id="CryptPassword" name="F_CryptPassword" value="">
+        <?PHP
     }
 
     /**
@@ -222,6 +173,69 @@ class SecureLoginHelper
     # regenerate keys every day (24 * 60 * 60 = 86,400 seconds)
     private static $KeyRegenInterval = 86400;
 
+
+    /**
+     * Generate and return a cryptographic keypair for user login, to
+     * support the use of RSA encryption on the password field of login forms.
+     * This function gets the most recently generated keypair, clearing out
+     * keys older than 48 hours, and re-generating a new key if the most
+     * recent one is older than 24 hours.
+     * @return array containing "Modulus" and "Exponent" key parameters
+     */
+    private static function getCryptKey() : array
+    {
+        static $Result = null;
+        if ($Result !== null) {
+            return $Result;
+        }
+
+        $DB = new Database();
+
+        $MaxKeyAge = self::computeMaxKeyAge();
+
+        # NOTE: One can not simply subtract two TIMESTAMPs and expect
+        # a sane result from mysql.  Using a TIMESTAMP in numeric
+        # context converts it to an int, but in YYYYMMDDHHMMSS format
+        # rather than as a UNIX time.  Hence the use of
+        # TIMESTAMPDIFF() below.
+
+        # clear expired keys and replay protection tokens
+        $DB->query("DELETE FROM UsedLoginTokens WHERE "
+                   ."TIMESTAMPDIFF(SECOND, KeyCTime, NOW()) > ".$MaxKeyAge);
+
+        $DB->query("LOCK TABLES LoginKeys WRITE");
+        $DB->query("DELETE FROM LoginKeys WHERE "
+                   ."TIMESTAMPDIFF(SECOND, CreationTime, NOW()) > ".$MaxKeyAge);
+
+        # get the most recently generated key
+        $DB->query("SELECT TIMESTAMPDIFF(SECOND, CreationTime, NOW()) as Age,"
+                   ."KeyPair FROM LoginKeys "
+                   ."ORDER BY Age ASC LIMIT 1");
+        $Row = $DB->fetchRow();
+
+        # if there is no key in the database, or the key is too old
+        if (($Row === false) || ($Row["Age"] >= self::$KeyRegenInterval)) {
+            # generate a new OpenSSL format keypair
+            $KeyPair = self::generateAndSaveNewKeypair($DB);
+            $DB->query("UNLOCK TABLES");
+        } else {
+            # if we do have a current key in the database,
+            #  convert it to openssl format for usage
+            $KeyPair = openssl_pkey_get_private($Row["KeyPair"]);
+            $DB->query("UNLOCK TABLES");
+
+            if ($KeyPair === false) {
+                throw new Exception(
+                    "Unable to load saved keypair. "
+                    ."Error was: ".openssl_error_string()
+                );
+            }
+        }
+
+        $Result = self::extractPubKeyParameters($KeyPair);
+        return $Result;
+    }
+
     /**
      * Extract the modulus and exponent of the public key from an OpenSSL
      *   format keypair
@@ -233,16 +247,40 @@ class SecureLoginHelper
         $CSR = openssl_csr_new([], $KeyPair);
         if ($CSR === false) {
             throw new Exception(
-                "Unable to generate ASCII CSR from keypair."
+                "Unable to generate CSR from keypair. "
+                ."Error was: ".openssl_error_string()
             );
         }
 
+        if ($CSR === true) {
+            # if signature failed, explicitly specify a digest and retry
+            $Options = [
+                "digest_alg" => "sha256",
+            ];
+            $CSR = openssl_csr_new([], $KeyPair, $Options);
+
+            if ($CSR === false) {
+                throw new Exception(
+                    "Unable to generate CSR from keypair when specifying digest_alg. "
+                    ."Error was: ".openssl_error_string()
+                );
+            }
+            if ($CSR === true) {
+                throw new Exception(
+                    "CSR signing failed. "
+                    ."Error was: ".openssl_error_string()
+                );
+            }
+        }
+
         # export the keypair as an ASCII signing request (which contains the data we want)
-        openssl_csr_export(
-            $CSR, // @phpstan-ignore-line
-            $Export,
-            false
-        );
+        $Result = openssl_csr_export($CSR, $Export, false);
+        if ($Result === false) {
+            throw new Exception(
+                "Unable to export CSR to ASCII. "
+                ."Error was: ".openssl_error_string()
+            );
+        }
 
         $Modulus  = "";
         $Exponent = "";
@@ -261,6 +299,12 @@ class SecureLoginHelper
                 $Exponent = $Matches[2];
                 break;
             }
+        }
+
+        if (strlen($Modulus) == 0 || strlen($Exponent) == 0) {
+            throw new Exception(
+                "Unable to extract key parameters from exported CSR."
+            );
         }
 
         # clean newlines and whitespace out of the modulus
@@ -309,11 +353,20 @@ class SecureLoginHelper
         $KeyPair = openssl_pkey_new($KeySettings);
 
         if ($KeyPair === false) {
-            throw new Exception("Unable to generate new private key.");
+            throw new Exception(
+                "Unable to generate new private key. "
+                ."Error was: ".openssl_error_string()
+            );
         }
 
         # serialize it for storage
-        openssl_pkey_export($KeyPair, $KeyPairDBFormat);
+        $Result = openssl_pkey_export($KeyPair, $KeyPairDBFormat);
+        if ($Result === false) {
+            throw new Exception(
+                "Failed to export private key. "
+                ."Error was: ".openssl_error_string()
+            );
+        }
 
         # stick it into the database
         $DB->query(
@@ -330,6 +383,30 @@ class SecureLoginHelper
      */
     private static function shouldUseSecureLogin(): bool
     {
-        return isset($_SERVER["HTTPS"]) ? false : true;
+        static $Result = null;
+        if ($Result !== null) {
+            return $Result;
+        }
+
+        if (isset($_SERVER["HTTPS"])) {
+            $Result = false;
+            return $Result;
+        }
+
+        try {
+            self::getCryptKey();
+            $Result = true;
+        } catch (Exception $Ex) {
+            $AF = ApplicationFramework::getInstance();
+            $AF->logMessage(
+                ApplicationFramework::LOGLVL_WARNING,
+                "Secure Login setup failed: ".
+                $Ex->getMessage()
+            );
+
+            $Result = false;
+        }
+
+        return $Result;
     }
 }

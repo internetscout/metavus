@@ -55,11 +55,15 @@ if (!isset($H_SearchParams)) {
 }
 
 # set page title
-$AF->setPageTitle("Search Results - ".StdLib::NeatlyTruncateString(
+$AF->setPageTitle("Search Results - ".StdLib::neatlyTruncateString(
     $H_SearchParams->TextDescription(false),
     120
 ));
 
+# include JS required for facets (JS in SearchFacetUI is used by the
+# HTML we fetch via htmx)
+$AF->requireUIFile("htmx.js");
+$AF->requireUIFile("SearchFacetUI.js");
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
@@ -84,7 +88,7 @@ function getSortFieldHiddenTags(
 
     # for each URL parameter
     foreach ($UrlParameters as $Param => $Values) {
-        $VarNameSuffix = $ItemType ? $ItemType : "";
+        $VarNameSuffix = $ItemType !== 0 ? $ItemType : "";
 
         # if multiple values were (or may be) provided
         if (is_array($Values)) {
@@ -145,7 +149,7 @@ function getSortFieldHiddenTags(
  * @param int $NumSearchResults Number of search results
  * @return string Returns the sort controls HTML as a string.
  */
-function GetSortControls(
+function getSortControls(
     int $ItemType,
     ?MetadataField $SortField,
     bool $SortDescending,
@@ -163,16 +167,16 @@ function GetSortControls(
     );
 
     # retrieve specifications for sort direction button
-    list($AscOrderInfo, $DescOrderInfo) = GetSortOrderButton($SortField);
+    list($AscOrderInfo, $DescOrderInfo) = getSortOrderButton($SortField);
 
     # grab unique ID for use in the JavaScript below
     $SafeUniqId = defaulthtmlentities(uniqid());
 
     $ForwardSortValue = (is_null($SortField) ||
-        $SortField->Type() == MetadataSchema::MDFTYPE_DATE ||
-        $SortField->Type() == MetadataSchema::MDFTYPE_TIMESTAMP) ? 1 : 0;
+        $SortField->type() == MetadataSchema::MDFTYPE_DATE ||
+        $SortField->type() == MetadataSchema::MDFTYPE_TIMESTAMP) ? 1 : 0;
 
-    $VarNameSuffix = $ItemType ? $ItemType : "";
+    $VarNameSuffix = $ItemType !== 0 ? $ItemType : "";
     $SortFieldVarName = TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix;
     $ReverseSortVarName = TransportControlsUI::PNAME_REVERSESORT.$VarNameSuffix;
 
@@ -181,7 +185,7 @@ function GetSortControls(
     $SortButton->addClass("mv-search-sort-submit-button");
 
     $SortOptions = [];
-    $SortFieldId = is_object($SortField) ? $SortField->Id() : "R";
+    $SortFieldId = is_object($SortField) ? $SortField->id() : "R";
     foreach ($SortableFields as $FieldId => $FieldName) {
         $SortOptions[$FieldId] = $FieldName;
     }
@@ -266,7 +270,7 @@ function GetSortControls(
  * @param ?MetadataField $Field The metadata field to use as context.
  * @return array Returns the details for the sort order button.
  */
-function GetSortOrderButton(?MetadataField $Field = null): array
+function getSortOrderButton(?MetadataField $Field = null): array
 {
     $Ascending = [
         "Message" => "Display the results in ascending order",
@@ -280,13 +284,13 @@ function GetSortOrderButton(?MetadataField $Field = null): array
     ];
 
     # relevance or rating
-    if (is_null($Field) || $Field->Name() == "Cumulative Rating") {
+    if (is_null($Field) || $Field->name() == "Cumulative Rating") {
         $Ascending["Text"] = ["Lo", "Hi"];
         $Descending["Text"] = ["Hi", "Lo"];
         $Ascending["Width"] = 30;
         $Descending["Width"] = 30;
     } else { # based on field type
-        switch ($Field->Type()) {
+        switch ($Field->type()) {
             case MetadataSchema::MDFTYPE_NUMBER:
                 $Ascending["Text"] = ["1", "10"];
                 $Descending["Text"] = ["10", "1"];
@@ -341,7 +345,7 @@ function printSearchResults(
     $AF = ApplicationFramework::getInstance();
 
     # get text description of search parameters
-    $SearchDescription = $SearchParams->TextDescription();
+    $SearchDescription = $SearchParams->textDescription();
 
     # build description of where we are in search results
     $ResultCount = count($SearchResults);
@@ -357,23 +361,21 @@ function printSearchResults(
     $SortableFields = ["R" => "(Relevance)"] + $Schema->getSortFields();
 
     $FullUrlParameterString = "P=SearchResults&"
-            .$SearchParams->UrlParameterString()
-        .$TransportUI->UrlParameterString(false);
+        .$SearchParams->urlParameterString()
+        .$TransportUI->urlParameterString(false);
 
     # get data for faceted search
     $BaseLink = "index.php?P=SearchResults";
     # if a sort field was set, preserve it
     if ($SortField !== null) {
-        $VarNameSuffix = $Schema->id() ? $Schema->id() : "";
+        $VarNameSuffix = $Schema->id() !== 0 ? $Schema->id() : "";
         $BaseLink .= "&amp;"
             .TransportControlsUI::PNAME_SORTFIELD.$VarNameSuffix."=".$SortField->id();
     }
 
-    $FacetUI = new SearchFacetUI(
-        $SearchParams,
-        $SearchResults
-    );
-    $FacetUI->setBaseLink($BaseLink);
+    $FacetUrl = "index.php?P=GenerateFacetHtml&amp;"
+        .http_build_query($SearchParams->urlParameters(), "", "&amp;")
+        ."&amp;SC=".$ItemType;
 
     # load resources to be displayed
     $ResultsToDisplay = [];
@@ -388,7 +390,7 @@ function printSearchResults(
     }
 
     $BaseLinkWithSearchParams = "index.php?P=SearchResults&amp;"
-            .http_build_query($SearchParams->UrlParameters(), "&amp;");
+        .http_build_query($SearchParams->urlParameters(), "", "&amp;");
     foreach ($ListChecksums as $Index => $Checksum) {
         $BaseLinkWithSearchParams .= "&amp;" . $Index . "=" . $Checksum;
     }
@@ -396,7 +398,7 @@ function printSearchResults(
     $OurLink = urlencode("index.php?".http_build_query($_GET));
     $TransportUI->baseLink($BaseLinkWithSearchParams);
     $RefineLink = "index.php?P=AdvancedSearch&amp;RF=1&amp;"
-        .$SearchParams->UrlParameterString();
+        .$SearchParams->urlParameterString();
 
     ob_start();
     $AF->signalEvent(
@@ -427,7 +429,7 @@ function printSearchResults(
         foreach ($ResultsToDisplay as $Resource) {
             $Summary = ResourceSummary::create($Resource->id());
             $Summary->showScreenshot($ShowScreenshots);
-            $Summary->termsToHighlight(implode(" ", $SearchParams->GetKeywordSearchStrings()));
+            $Summary->termsToHighlight(implode(" ", $SearchParams->getKeywordSearchStrings()));
             $Summary->display();
         }
         $ResultsHtml = ob_get_clean();
@@ -463,7 +465,6 @@ function printSearchResults(
     }
     ?>
 
-
     <div class="<?= $ContainerCssClasses?>" <?= $ContainerAttrs ?>>
       <div class="row h-100">
         <div class="col">
@@ -495,7 +496,8 @@ function printSearchResults(
 
         <div class="col-3 mv-narrow-your-search">
           <?= $SortControlsHtml ?>
-          <?= $FacetUI->getHtml() ?>
+          <div id="mv-facet-container-<?= $ItemType ?>"
+               hx-get="<?= $FacetUrl ?>" hx-trigger="intersect once"></div>
         </div>
       </div>
     </div>
@@ -547,7 +549,7 @@ if ($UseTabs) {
             $Schema = new MetadataSchema($ItemType); ?>
             <li>
                 <a href="#mv-tabs-<?= $ItemType ?>">
-                    <strong><?= $Schema->Name() ?></strong> (<?=
+                    <strong><?= $Schema->name() ?></strong> (<?=
                         number_format(count($TypeResults)) ?>)
                 </a>
             </li><?PHP
@@ -576,7 +578,7 @@ foreach ($H_SearchResults as $ItemType => $TypeResults) {
     if (!isset($H_ListChecksums)) {
         throw new Exception("Required variable \$H_ListChecksums was not initialized");
     }
-    PrintSearchResults(
+    printSearchResults(
         $ItemType,
         $H_SearchParams,
         $TypeResults,

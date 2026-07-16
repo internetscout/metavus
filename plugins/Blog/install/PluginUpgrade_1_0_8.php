@@ -34,7 +34,7 @@ class PluginUpgrade_1_0_8 extends PluginUpgrade
         $BlogName = $Plugin->getConfigSetting("BlogName");
 
         # if a non-blank blog name is available
-        if (strlen(trim($BlogName))) {
+        if (strlen(trim($BlogName)) !== 0) {
             # change the subscribe field's label to reflect the blog name
             $SubscribeField->label("Subscribe to ".$BlogName);
         # otherwise clear the label

@@ -3,7 +3,7 @@
 #   FILE:  RecordFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -105,7 +105,7 @@ class RecordFactory extends ItemFactory
             $NormalizedName = preg_replace(
                 "/[^A-Za-z0-9]/",
                 "",
-                $Field->Name()
+                $Field->name()
             );
             if (is_string($NormalizedName)) {
                 $PossibleTags[$NormalizedName] = $Field;
@@ -137,11 +137,11 @@ class RecordFactory extends ItemFactory
                     continue;
                 }
 
-                $Value = $FieldXml->count() ? $FieldXml->children() : (string) $FieldXml;
+                $Value = $FieldXml->count() !== 0 ? $FieldXml->children() : (string) $FieldXml;
                 $Field = $PossibleTags[$TagName];
 
                 # set value in resource based on field type
-                switch ($Field->Type()) {
+                switch ($Field->type()) {
                     case MetadataSchema::MDFTYPE_TEXT:
                     case MetadataSchema::MDFTYPE_PARAGRAPH:
                     case MetadataSchema::MDFTYPE_NUMBER:
@@ -161,14 +161,14 @@ class RecordFactory extends ItemFactory
 
                     case MetadataSchema::MDFTYPE_OPTION:
                     case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
-                        if (!isset($CNFacts[$Field->Id()])) {
+                        if (!isset($CNFacts[$Field->id()])) {
                             $CNFacts[$Field->id()] = $Field->getFactory();
                         }
 
-                        $CName = $CNFacts[$Field->Id()]->GetItemByName($Value);
+                        $CName = $CNFacts[$Field->id()]->GetItemByName($Value);
                         if ($CName === null) {
-                            $CNFacts[$Field->Id()]->ClearCaches();
-                            $CName = ControlledName::create($Value, $Field->Id());
+                            $CNFacts[$Field->id()]->ClearCaches();
+                            $CName = ControlledName::create($Value, $Field->id());
                         }
                         $Resource->set($Field, $CName);
                         break;
@@ -178,10 +178,10 @@ class RecordFactory extends ItemFactory
                             $CFacts[$Field->id()] = $Field->getFactory();
                         }
 
-                        $Class = $CFacts[$Field->Id()]->getItemByName($Value);
+                        $Class = $CFacts[$Field->id()]->getItemByName($Value);
                         if ($Class === null) {
                             $CFacts[$Field->id()]->clearCaches();
-                            $Class = Classification::create($Value, $Field->Id());
+                            $Class = Classification::create($Value, $Field->id());
                         }
                         $Resource->set($Field, $Class);
                         break;
@@ -269,8 +269,8 @@ class RecordFactory extends ItemFactory
         $Fields = $this->Schema->getFields();
         foreach ($Fields as $Field) {
             # if field uses qualifiers and uses item-level qualifiers
-            $QualColName = $Field->DBFieldName()."Qualifier";
-            if ($Field->UsesQualifiers() && $Field->HasItemLevelQualifiers() &&
+            $QualColName = $Field->dBFieldName()."Qualifier";
+            if ($Field->usesQualifiers() && $Field->hasItemLevelQualifiers() &&
                 $this->DB->FieldExists("Records", $QualColName)) {
                 # set all occurrences to new qualifier value
                 $this->DB->Query("UPDATE Records"
@@ -644,100 +644,53 @@ class RecordFactory extends ItemFactory
     }
 
     /**
-     * Filter a list of records from our schema down to only those viewable
-     * by the specified user.
+     * Filter a list of records from our schema down to only those viewable by
+     *         the specified user.
      * @param array $RecordIds List of record IDs to filter.
      * @param User $User User to use for filtering.
      * @return array List of record IDs after filtering.
      */
     public function filterOutUnviewableRecords(array $RecordIds, User $User): array
     {
-        # compute this user's class
+        $this->loadRecordVisibilityCacheForUser(
+            $RecordIds,
+            $User
+        );
+
+        $MissingIds = $this->getRecordIdsMissingFromVisibilityCache(
+            $RecordIds,
+            $User
+        );
+
+        $this->computeAndCacheRecordVisibilityForUser(
+            $MissingIds,
+            $User
+        );
+
+        $FlippedRecordIds = array_flip($RecordIds);
+
+        # get user specific CanView values from our visibility cache
+        $PerUserKey = "S".$this->SchemaId.".U".$User->id();
+        $CachedVisibility = array_intersect_key(
+            self::$RecordVisibilityCache[$PerUserKey],
+            $FlippedRecordIds
+        );
+
+        # add in CanView vales for our user class, which covers cases where
+        # this user's CanView specific value is not different from the general
+        # value for their class
         $UserClass = $this->Schema->computeUserClass($User);
-
-        # load our permissions cache (self::$UserClassPermissionsCache)
-        $this->loadUserPermsCache($UserClass, $RecordIds);
-
-        # extract CanView results for the records requested from our global
-        #   cache for all records
-        $Cache = array_intersect_key(
-            self::$UserClassPermissionsCache[$UserClass],
-            array_flip($RecordIds)
+        $CachedVisibility += array_intersect_key(
+            self::$RecordVisibilityCache[$UserClass],
+            $FlippedRecordIds
         );
 
-        # generate an array where the keys are record IDs affected by
-        #   user comparisons for the current user
-        $UserComparisonsRIDs = array_flip(
-            $this->recordsWhereUserComparisonsMatterForViewing($User)
-        );
-
-        # generate a per-user cache key
-        $PerUserKey = $this->SchemaId.".UID_".$User->id();
-
-        # figure out which records we didn't have cached values for
-        #   and iterate over those, adding them to our cache when possible
-        $CanViewValuesToStore = [];
-        $MissingIds = array_diff($RecordIds, array_keys($Cache));
-        foreach ($MissingIds as $Id) {
-            # if we've already computed per-user permissions for this user in
-            #   this page load, use that
-            if (isset(self::$PerUserPermissionsCache[$PerUserKey])) {
-                $CanView = self::$PerUserPermissionsCache[$PerUserKey];
-            } else {
-                # otherwise, evaluate permissions for this record
-                if (Record::itemExists($Id)) {
-                    $Record = Record::getRecord($Id);
-                    $CanView = $Record->userCanView($User, false);
-                    $ExpirationDate = $Record->getViewCacheExpirationDate();
-                } else {
-                    $CanView = false;
-                    $ExpirationDate = null;
-                }
-
-                # if this is a result we can cache persistently
-                #   (i.e. not affected by user comparisons), update our internal
-                #   caches and queue this value for saving in the database
-                if (!isset($UserComparisonsRIDs[$Id])) {
-                    self::$UserClassPermissionsCache[$UserClass][$Id] = $CanView;
-                    $CanViewValuesToStore[] = [$Id, $UserClass, $CanView, $ExpirationDate];
-                } else {
-                    # this isn't a result we should cache persistently
-                    #   in the database, but we still want to cache it
-                    #   within this page load
-                    self::$PerUserPermissionsCache[$PerUserKey] = $CanView;
-                }
-            }
-            $Cache[$Id] = $CanView;
-        }
-
-        # save CanView values that can be persistently stored
-        $this->saveUserPermsCacheValues($CanViewValuesToStore);
-
-        # if record view permission check has any handlers that may
-        #   modify our cached values
-
-        $AF = ApplicationFramework::getInstance();
-
-        if ($AF->isHookedEvent("EVENT_RESOURCE_VIEW_PERMISSION_CHECK")) {
-            # apply hooked functions to each value
-            foreach (array_keys($Cache) as $Id) {
-                $SignalResult = $AF->signalEvent(
-                    "EVENT_RESOURCE_VIEW_PERMISSION_CHECK",
-                    [
-                        "Resource" => $Id,
-                        "User" => $User,
-                        "CanView" => $Cache[$Id],
-                        "Schema" => $this->Schema,
-                    ]
-                );
-                $Cache[$Id] = $SignalResult["CanView"];
-            }
-        }
+        $VisibleRecordIds = array_keys(array_filter($CachedVisibility));
 
         # filter out the non-viewable records, preserving the supplied order
         return array_intersect(
             $RecordIds,
-            array_keys(array_filter($Cache))
+            $VisibleRecordIds
         );
     }
 
@@ -813,10 +766,15 @@ class RecordFactory extends ItemFactory
 
         $Timestamp = false;
 
+        # compute this user's class
         $UserClass = $this->Schema->computeUserClass($User);
+
+        # generate a per-user cache key
+        $PerUserKey = "S".$this->SchemaId.".U".$User->id();
+
         $QueryBase = "SELECT MIN(ExpirationDate) AS Date FROM UserPermsCache WHERE "
-            ." ExpirationDate IS NOT NULL AND "
-            ." UserClass='".$UserClass."'"
+            ." ExpirationDate IS NOT NULL "
+            ." AND UserClass IN ('".$UserClass."','".$PerUserKey."')"
             ." AND RecordId IN ";
         $ChunkSize = Database::getIntegerDataChunkSize(
             $RecordIds,
@@ -924,7 +882,7 @@ class RecordFactory extends ItemFactory
         );
 
         # if there were valid conditions
-        if (strlen($Condition)) {
+        if (strlen($Condition) !== 0) {
             $Count = $this->DB->queryValue(
                 "SELECT COUNT(*) AS Count "
                 ." FROM `".$this->ItemTableName."` WHERE (".$Condition
@@ -994,7 +952,7 @@ class RecordFactory extends ItemFactory
                 "ValueId"
             );
 
-            if (count($NewData)) {
+            if (count($NewData) !== 0) {
                 self::$VisibleResourceCountCache[$CacheKey] += $NewData;
             }
             self::$VisibleResourceCountFieldsLoaded[$CName->fieldId()] = true;
@@ -1146,7 +1104,7 @@ class RecordFactory extends ItemFactory
         }
 
         # if any values were found
-        if (count($Values)) {
+        if (count($Values) !== 0) {
             # clear our visible resource count cache for those values
             $this->clearVisibleRecordCountForValues(
                 array_keys($Values)
@@ -1185,8 +1143,7 @@ class RecordFactory extends ItemFactory
     {
         self::$VisibleResourceCountCache = [];
         self::$VisibleResourceCountFieldsLoaded = [];
-        self::$UserClassPermissionsCache = [];
-        self::$PerUserPermissionsCache = [];
+        self::$RecordVisibilityCache = [];
         self::$UserComparisonResourceCache = [];
         self::$UserComparisonFieldCache = [];
         self::$RecordSchemaCache = null;
@@ -1212,7 +1169,7 @@ class RecordFactory extends ItemFactory
     public static function flattenMultiSchemaRecordList(array $ResourcesPerSchema): array
     {
         $Result = [];
-        foreach ($ResourcesPerSchema as $SchemaId => $ResourceIds) {
+        foreach ($ResourcesPerSchema as $ResourceIds) {
             $Result = array_merge($Result, $ResourceIds);
         }
 
@@ -1323,20 +1280,18 @@ class RecordFactory extends ItemFactory
         $DB = new Database();
         $DB->query("DELETE FROM UserPermsCache");
 
-        self::$UserClassPermissionsCache = [];
-        self::$PerUserPermissionsCache = [];
+        self::$RecordVisibilityCache = [];
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
-    protected $Schema;
-    protected $SchemaId;
+    protected ?MetadataSchema $Schema;
+    protected ?int $SchemaId;
 
     # internal caches
     private static $VisibleResourceCountCache;
     private static $VisibleResourceCountFieldsLoaded;
-    private static $UserClassPermissionsCache;
-    private static $PerUserPermissionsCache;
+    private static $RecordVisibilityCache;
     private static $UserComparisonResourceCache;
     private static $UserComparisonFieldCache;
     private static $RecordSchemaCache = null;
@@ -1394,7 +1349,7 @@ class RecordFactory extends ItemFactory
             );
 
             # check that provided operator is sane
-            switch ($Fields[$FieldId]->Type()) {
+            switch ($Fields[$FieldId]->type()) {
                 case MetadataSchema::MDFTYPE_TEXT:
                 case MetadataSchema::MDFTYPE_PARAGRAPH:
                 case MetadataSchema::MDFTYPE_URL:
@@ -1432,7 +1387,7 @@ class RecordFactory extends ItemFactory
             if (count($ValidOps) && !in_array($Operator, $ValidOps)) {
                 throw new InvalidArgumentException(
                     "Operator ".$Operator." is not supported for "
-                    .$Fields[$FieldId]->TypeAsName()." fields"
+                    .$Fields[$FieldId]->typeAsName()." fields"
                 );
             }
 
@@ -1454,7 +1409,7 @@ class RecordFactory extends ItemFactory
             }
 
             # add SQL fragments to Condition as needed
-            switch ($Fields[$FieldId]->Type()) {
+            switch ($Fields[$FieldId]->type()) {
                 case MetadataSchema::MDFTYPE_TEXT:
                 case MetadataSchema::MDFTYPE_PARAGRAPH:
                 case MetadataSchema::MDFTYPE_NUMBER:
@@ -1462,7 +1417,7 @@ class RecordFactory extends ItemFactory
                 case MetadataSchema::MDFTYPE_TIMESTAMP:
                 case MetadataSchema::MDFTYPE_FLAG:
                 case MetadataSchema::MDFTYPE_URL:
-                    $DBFname = $Fields[$FieldId]->DBFieldName();
+                    $DBFname = $Fields[$FieldId]->dBFieldName();
                     # add comparison to condition
                     if ($Value == "NULL") {
                         $Condition .= $LinkingTerm."("
@@ -1472,7 +1427,7 @@ class RecordFactory extends ItemFactory
                         if (is_array($Value)) {
                             # escape all the values given and enclose them in quotes
                             $EscapedValues = array_map(
-                                function ($x) {
+                                function ($x): string {
                                     return "'".addslashes($x)."'";
                                 },
                                 $Value
@@ -1492,7 +1447,7 @@ class RecordFactory extends ItemFactory
                     break;
 
                 case MetadataSchema::MDFTYPE_POINT:
-                    $DBFname = $Fields[$FieldId]->DBFieldName();
+                    $DBFname = $Fields[$FieldId]->dBFieldName();
 
                     if ($Value == "NULL") {
                         $Condition .= $LinkingTerm."("
@@ -1582,7 +1537,7 @@ class RecordFactory extends ItemFactory
 
                 default:
                     throw new InvalidArgumentException(
-                        "Unsupported field type: ".$Fields[$FieldId]->TypeAsName()
+                        "Unsupported field type: ".$Fields[$FieldId]->typeAsName()
                     );
             }
 
@@ -1593,13 +1548,115 @@ class RecordFactory extends ItemFactory
     }
 
     /**
-     * Populate the UserClassPermissionsCache for a specified user class.
-     * @param string $UserClass User class to use.
+     * Load internal record visibility cache for a specified list of records
+     *         and user.
+     * @param array $RecordIds Record IDs to load data for.
+     * @param User $User User to load data for.
+     */
+    private function loadRecordVisibilityCacheForUser(array $RecordIds, User $User): void
+    {
+        # compute this user's class
+        $UserClass = $this->Schema->computeUserClass($User);
+
+        # generate a per-user cache key
+        $PerUserKey = "S".$this->SchemaId.".U".$User->id();
+
+        # load our permissions cache (self::$RecordVisibilityCache)
+        $this->loadRecordVisibilityCacheForKey($PerUserKey, $RecordIds);
+        $this->loadRecordVisibilityCacheForKey($UserClass, $RecordIds);
+    }
+
+    /**
+     * Get the subset of Record IDs from a provided list that have no data in
+     *         our record visibility cache for a given user.
+     * @param array $RecordIds Record IDs to check.
+     * @param User $User User to check.
+     * @return array Record IDs that have no entries in the visibility cache.
+     */
+    private function getRecordIdsMissingFromVisibilityCache(
+        array $RecordIds,
+        User $User
+    ) : array {
+
+        # compute this user's class
+        $UserClass = $this->Schema->computeUserClass($User);
+
+        # generate a per-user cache key
+        $PerUserKey = "S".$this->SchemaId.".U".$User->id();
+
+        # get the list of records where per user conditions change their
+        # visibility
+        $UserComparisonsRIDs = $this->recordsWhereUserComparisonsMatterForViewing($User);
+
+        # figure out which records we have cached visibility for
+        $CachedGlobalIDs = array_diff(
+            array_keys(self::$RecordVisibilityCache[$UserClass]),
+            $UserComparisonsRIDs
+        );
+        $CachedPerUserIDs = array_keys(self::$RecordVisibilityCache[$PerUserKey]);
+
+        # figure out which records we're missing
+        $MissingIds = array_diff(
+            $RecordIds,
+            array_merge($CachedGlobalIDs, $CachedPerUserIDs)
+        );
+
+        return $MissingIds;
+    }
+
+    /**
+     * Determine the visibility for a given set of records and user, saving
+     *         the result in our record visibility cache and in the database.
+     * @param array $RecordIds Record IDs to check.
+     * @param User $User User to check.
+     */
+    private function computeAndCacheRecordVisibilityForUser(
+        $RecordIds,
+        $User
+    ) : void {
+
+        # get the relevant viewing privs
+        $SchemaPrivs = $this->Schema->viewingPrivileges();
+
+        # compute this user's class
+        $UserClass = $this->Schema->computeUserClass($User);
+
+        # generate a per-user cache key
+        $PerUserKey = "S".$this->SchemaId.".U".$User->id();
+
+
+        $UserComparisonsRIDs = array_flip(
+            $this->recordsWhereUserComparisonsMatterForViewing($User)
+        );
+
+        # iterate over the missing records, computing values and adding them
+        # to our cache
+        $ValuesToStore = [];
+        foreach ($RecordIds as $Id) {
+            if (!Record::itemExists($Id)) {
+                continue;
+            }
+            $CanView = $SchemaPrivs->meetsRequirements($User, $Id);
+            $ExpirationDate = $SchemaPrivs->getResultExpirationDate();
+
+            $CacheKey = isset($UserComparisonsRIDs[$Id]) ? $PerUserKey : $UserClass;
+
+            self::$RecordVisibilityCache[$CacheKey][$Id] = $CanView;
+            $ValuesToStore[] = [$Id, $CacheKey, $CanView, $ExpirationDate];
+        }
+
+        $this->saveRecordVisibilityCacheValues($ValuesToStore);
+    }
+
+    /**
+     * Populate the RecordVisibilityCache for a specified cache key..
+     * @param string $CacheKey Cache key to load, which will be either a
+     *         user class or a per-user key.
      * @param array $RecordIds RecordIds to load.
      * @return void
      */
-    private function loadUserPermsCache(
-        string $UserClass,
+    private function loadRecordVisibilityCacheForKey(
+        string $CacheKey,
         array $RecordIds
     ): void {
         # once per page-load, clear out expired entries in the database cache
@@ -1614,7 +1671,7 @@ class RecordFactory extends ItemFactory
         }
 
         # (Note: We can use the user class without a schema prefix to key
-        #  $UserClassPermissionsCache rather than a $CacheKey with an explicit
+        #  $RecordVisibilityCache rather than a $CacheKey with an explicit
         #  schema prefix (as in similar places like getUserComparisonFields(),
         #  associatedVisibleRecordCount(), and others) even though User Classes
         #  are schema specific because the values we're caching are Record IDs.
@@ -1623,14 +1680,14 @@ class RecordFactory extends ItemFactory
         #  was computed.)
 
         # ensure our cache has an entry for this user class
-        if (!isset(self::$UserClassPermissionsCache[$UserClass])) {
-            self::$UserClassPermissionsCache[$UserClass] = [];
+        if (!isset(self::$RecordVisibilityCache[$CacheKey])) {
+            self::$RecordVisibilityCache[$CacheKey] = [];
         }
 
         # figure out which records we are missing
         $MissingIds = array_diff(
             $RecordIds,
-            array_keys(self::$UserClassPermissionsCache[$UserClass])
+            array_keys(self::$RecordVisibilityCache[$CacheKey])
         );
 
         # if nothing was missing, nothing to do
@@ -1640,7 +1697,7 @@ class RecordFactory extends ItemFactory
 
         # populate the cache for the missing records
         $QueryBase = "SELECT RecordId, CanView FROM UserPermsCache WHERE"
-            ." UserClass='".$UserClass."'"
+            ." UserClass='".$CacheKey."'"
             ." AND RecordId IN ";
 
         $ChunkSize = Database::getIntegerDataChunkSize(
@@ -1652,7 +1709,7 @@ class RecordFactory extends ItemFactory
             $this->DB->query(
                 $QueryBase."(".implode(",", $ChunkIds).")"
             );
-            self::$UserClassPermissionsCache[$UserClass] += $this->DB->FetchColumn(
+            self::$RecordVisibilityCache[$CacheKey] += $this->DB->FetchColumn(
                 "CanView",
                 "RecordId"
             );
@@ -1665,7 +1722,7 @@ class RecordFactory extends ItemFactory
      *   form [Id, UserClass, CanView, ExpirationDate]
      * @return void
      */
-    private function saveUserPermsCacheValues($Values): void
+    private function saveRecordVisibilityCacheValues($Values): void
     {
         $QueryBase = "INSERT INTO UserPermsCache "
             ."(RecordId, UserClass, CanView, ExpirationDate) VALUES ";
@@ -1707,7 +1764,7 @@ class RecordFactory extends ItemFactory
         }
 
         # if we have values left to insert, do so
-        if (count($QueryValues)) {
+        if (count($QueryValues) !== 0) {
             $this->DB->query(
                 $QueryBase.implode(",", $QueryValues).$QuerySuffix
             );
@@ -1785,17 +1842,21 @@ class RecordFactory extends ItemFactory
             # iterate through all the fields in the schema,
             #  constructing a list of the User fields implicated
             #  in comparisons of the desired type
-            $UserComparisonFields = [];
+            $UserComparisonFields = $this->Schema
+                ->viewingPrivileges()
+                ->fieldsWithUserComparisons(
+                    $ComparisonType
+                );
             foreach ($this->Schema->getFields() as $Field) {
                 $UserComparisonFields = array_merge(
                     $UserComparisonFields,
-                    $Field->ViewingPrivileges()->FieldsWithUserComparisons(
+                    $Field->viewingPrivileges()->fieldsWithUserComparisons(
                         $ComparisonType
                     )
                 );
             }
             self::$UserComparisonFieldCache[$CacheKey] =
-            array_unique($UserComparisonFields);
+                array_unique($UserComparisonFields);
         }
 
         return self::$UserComparisonFieldCache[$CacheKey];

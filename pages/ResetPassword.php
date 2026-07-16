@@ -45,7 +45,7 @@ $FormFields = [
         "Type" => FormUI::FTYPE_TEXT,
         "Label" => "User Name",
         "Required" => true,
-        "ValidateFunction" => function ($FieldName, $Value) {
+        "ValidateFunction" => function ($FieldName, $Value): ?string {
             $UFactory = new UserFactory();
             if (is_null($Value) || !$UFactory->userNameExists($Value)) {
                 return "Invalid username.";
@@ -75,7 +75,7 @@ $FormFields = [
         "Type" => FormUI::FTYPE_PASSWORD,
         "Label" => "New Password Again",
         "Required" => true,
-        "ValidateFunction" => function ($FieldName, $Value, $Values) {
+        "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
             if ($Value != $Values["NewPassword"]) {
                 return "Passwords must match.";
             }

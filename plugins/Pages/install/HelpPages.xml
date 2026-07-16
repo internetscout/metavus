@@ -336,7 +336,7 @@ when a limited number of thematically related terms are needed to describe an
 item. These fields provide Limit options in the Advanced Search. Examples of
 this field type from the portal software default metadata fields are
 <i>Audience</i>, <i>Resource Type</i>, and <i>Language</i>. Options can be
-modified through the <a href="index.php?P=EditOptionList"><i>Edit Option
+modified through the <a href="index.php?P=EditOptionLists"><i>Edit Option
 Lists</i></a> page.</p> <h4>User Fields</h4> <p><i>User</i> fields record the
 user account that adds or modifies an item. Some user fields are required by
 the portal system and may not be modified.</p>
@@ -892,7 +892,7 @@ not public items.</p>
 
 <p>To accomplish this, you'll first create
 <a href="index.php?P=EditPrivilegeNames">Custom Privilege Flags</a> for each of
-your three user types. Then, you'll use <i><a href="index.php?P=EditOptionList">
+your three user types. Then, you'll use <i><a href="index.php?P=EditOptionLists">
 Edit Option Lists</a></i> to update <i>Resource Type</i> to include your material
 types (i.e. assignment and answer key) along with 'Public'.
 
@@ -1009,19 +1009,19 @@ metadata fields. <i>Option</i> fields are most useful when a limited number of
 thematically related terms are needed to describe an item. After the field is
 created using the <a href="help/collections/metadata_field_editor">Metadata Field
 Editor</a>, the vocabulary can then be added, edited, or deleted from the
-Metadata Tool's <a href="index.php?P=EditOptionList"><i>Edit Option
+Metadata Tool's <a href="index.php?P=EditOptionLists"><i>Edit Option
 Lists</i></a> page. These fields provide Limit options in the Advanced Search
 engine. Examples of this class of fields from the portal software default
 metadata fields are the <i>Audience</i>, <i>Resource Type</i>, and
 <i>Language</i> field. Options can be modified through the
-<a href="index.php?P=EditOptionList"><i>Edit Option Lists</i></a> page. To
+<a href="index.php?P=EditOptionLists"><i>Edit Option Lists</i></a> page. To
 add, edit, remap, delete, or set default Options:</p>
 
 <ol>
   <li>
     <p><a href="index.php?P=Login">Log in</a> to the portal with an authorized
     account and then go to the
-    <a href="index.php?P=EditOptionList"><i>Edit Option Lists</i></a> page.</p>
+    <a href="index.php?P=EditOptionLists"><i>Edit Option Lists</i></a> page.</p>
   </li>
   <li>
     <p>Select the appropriate field.</p>
@@ -1052,7 +1052,7 @@ add, edit, remap, delete, or set default Options:</p>
   </li>
 </ol>
 
-<p>When changes are made, the <a href="index.php?P=EditOptionList"><i>Edit
+<p>When changes are made, the <a href="index.php?P=EditOptionLists"><i>Edit
 Option List</i></a> page appears with a summary of the changes.</p>]]>
 		</Content>
     	<CleanURL>help/metadata/updating_option_lists</CleanURL>

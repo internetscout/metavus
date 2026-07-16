@@ -66,7 +66,7 @@ class ChatPDF extends Plugin
         $AllSchemas = MetadataSchema::getAllSchemas();
         foreach ($AllSchemas as $Schema) {
             $FileFields = $Schema->getFields(MetadataSchema::MDFTYPE_FILE);
-            foreach ($FileFields as $Index => $FileField) {
+            foreach ($FileFields as $FileField) {
                 MetadataField::registerObserver(
                     MetadataField::EVENT_ADD,
                     [$this, "observeFileUpload"],
@@ -879,7 +879,7 @@ class ChatPDF extends Plugin
                     $Addendum = "";
                     break;
             }
-            if (strlen($Addendum)) {
+            if (strlen($Addendum) !== 0) {
                 $Prompt .= "  ".$Addendum;
             }
 
@@ -893,8 +893,7 @@ class ChatPDF extends Plugin
             } else {
                 # ask about only first file and use that response
                 if (count($UploadedFiles) > 0) {
-                    reset($UploadedFiles);
-                    $FileId = key($UploadedFiles);
+                    $FileId = array_key_first($UploadedFiles);
                     $SrcId = $UploadedFiles[$FileId];
                     $FileResponses[$FileId] = $this->askQuestion((int)$FileId, $SrcId, $Prompt);
                 }
@@ -906,7 +905,7 @@ class ChatPDF extends Plugin
         }
 
         # delete the files from ChatPDF after asking our questions
-        foreach ($UploadedFiles as $FileId => $SrcId) {
+        foreach ($UploadedFiles as $SrcId) {
             $this->deleteFromChatPDF($SrcId);
         }
 
@@ -928,7 +927,8 @@ class ChatPDF extends Plugin
         $Lines = self::splitTextIntoLinesWithContent($Actions);
         $RecordSchema = $Record->getSchema();
         $UsablePrompts = [];
-        for ($I = 1; $I < count($Lines); $I += 2) {
+        $Counter = count($Lines);
+        for ($I = 1; $I < $Counter; $I += 2) {
             # check if field is in the same schema as the record, skip if not
             $QualifiedFieldName = substr($Lines[$I], strlen("Field:"));
             $QualifiedFieldName = trim($QualifiedFieldName);
@@ -978,7 +978,7 @@ class ChatPDF extends Plugin
     private function filterOutDisallowedTypesOfFiles(array $FileIds): array
     {
         $AllowedFileTypes = $this->getConfigSetting("AllowedFileTypes");
-        $FilterFunc = function ($FileId) use ($AllowedFileTypes) {
+        $FilterFunc = function ($FileId) use ($AllowedFileTypes): bool {
             $File = new File($FileId);
             return in_array($File->getMimeType(), $AllowedFileTypes);
         };
@@ -1201,7 +1201,7 @@ class ChatPDF extends Plugin
         int $FileId,
         string $SrcId,
         string $Question
-    ) {
+    ): \Metavus\Plugins\ChatPDF\ChatPDFResponse {
         # get the question ID for this question
         $QuestionId = $this->getQuestionId($Question);
 

@@ -38,7 +38,7 @@ class Pages extends Plugin
     public function register(): void
     {
         $this->Name = "Pages";
-        $this->Version = "2.0.15";
+        $this->Version = "2.0.17";
         $this->Description = "Allows the creation and editing of additional"
                 ." web pages with free-form HTML content";
         $this->Author = "Internet Scout Research Group";
@@ -62,7 +62,7 @@ class Pages extends Plugin
             "Type" => FormUI::FTYPE_PARAGRAPH,
             "Label" => "Allowed Insertion Keywords",
             "Help" => "Insertion keywords that are allowed to be"
-                        ." expanded when used in page content.(Any"
+                        ." expanded when used in page content. (Any"
                         ." insertion keywords not listed here will be"
                         ." displayed verbatim.)",
             "Columns" => 40,
@@ -130,26 +130,6 @@ class Pages extends Plugin
                 ["ID" => $PageId],
                 $PageUrl
             );
-
-            # if page contained any tabs, add those as well
-            foreach ($Urls as $TabUrl) {
-                # construct a regex from the URL that pulls the tab name out
-                # in a capturing subgroup
-                $Pattern = preg_replace(
-                    '%([^/]+)/(.+)%',
-                    '%^\1/(\2)$%',
-                    $TabUrl
-                );
-                $AF->addCleanUrl(
-                    $Pattern,
-                    "P_Pages_DisplayPage",
-                    [
-                        "ID" => $PageId,
-                        "AT" => "\$1"
-                    ],
-                    $PageUrl."/\$AT"
-                );
-            }
         }
 
         $PluginMgr = PluginManager::getInstance();
@@ -265,6 +245,14 @@ class Pages extends Plugin
         return $Events;
     }
 
+    /**
+     * Get the schema ID associated with the blog entry metadata schema.
+     * @return int Returns the schema ID of the blog entry metadata schema.
+     */
+    public function getSchemaId(): int
+    {
+        return $this::getConfigSetting("MetadataSchemaId");
+    }
 
     # ---- HOOKED METHODS ----------------------------------------------------
 
@@ -367,6 +355,7 @@ class Pages extends Plugin
             "index.php?P=P_Pages_DisplayPage&ID=\$ID"
         );
         $Schema->setItemClassName("Metavus\\Plugins\\Pages\\Page");
+        $Schema->setOwnerToPlugin($this);
         $this->setConfigSetting("MetadataSchemaId", $Schema->id());
         PageFactory::$PageSchemaId = $Schema->id();
         $Schema->setEditPage("index.php?P=P_Pages_EditPage&ID=\$ID");

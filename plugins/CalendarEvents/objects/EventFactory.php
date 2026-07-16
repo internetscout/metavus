@@ -397,7 +397,7 @@ class EventFactory extends RecordFactory
 
         # rather than doing complex SQL query logic, just get the count of all
         # of the events and subtract the others below
-        $AllEventsCount = strlen($Condition) ?
+        $AllEventsCount = strlen($Condition) !== 0 ?
             $this->getItemCount(preg_replace('/^ AND /', '', $Condition)) :
             $this->getItemCount();
 

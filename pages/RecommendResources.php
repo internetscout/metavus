@@ -3,7 +3,7 @@
 #   FILE:  RecommendResources.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -23,7 +23,7 @@ function ParseArguments(): void
 
     # grab starting result number if passed in
     if (isset($_GET["sr"])) {
-        $StartingResult = $_GET["sr"];
+        $StartingResult = (int)$_GET["sr"];
     } else {
         $StartingResult = 0;
     }

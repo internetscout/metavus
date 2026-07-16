@@ -3,17 +3,50 @@
 #   FILE:  EventReports.html (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\HtmlButton;
+namespace Metavus;
+use Exception;
 use Metavus\Plugins\Blog\Entry;
-use Metavus\Record;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function PrintBlogTable($CountData, $StartDate, $Caption)
+/**
+ * Print a tabbed summary table.
+ * @param string $Type Short description of the data being displayed,
+ *         used for the HTML Ids in the tabs.
+ * @param array $TabData Data for the tabs, keyed by tab name with values
+ *         providing the per-tab data in whatever format is required by the per-tab
+ *         callback (see below).
+ * @param array $TabStartDates Array of tarting dates for the data in each tab as
+ *         UNIX timestamps, keyed by tab name.
+ * @param string $TabCaption Caption for empty tabs.
+ */
+function printTabbedBlogSummaryTables(
+    string $Type,
+    array $TabData,
+    array $TabStartDates,
+    string $TabCaption
+): void {
+    $TabUI = new TabbedContentUI();
+
+    foreach ($TabData as $TabName => $Data) {
+        $TabUI->beginTab($TabName);
+        printBlogTable($Data, $TabStartDates[$TabName], $TabCaption);
+    }
+    $TabUI->display($Type."_Tabs");
+}
+
+/**
+ * Print a summary of blog data.
+ * @param array $CountData Counts to summarize.
+ * @param string $StartDate Start date for the data.
+ * @param string $Caption Caption to use for the table.
+ */
+function printBlogTable(array $CountData, string $StartDate, string $Caption): void
 {
     ?>
     <table class="table table-striped">
@@ -33,8 +66,8 @@ function PrintBlogTable($CountData, $StartDate, $Caption)
                         $Rows++;
                         ?><tr valign="top">
                             <td>
-                              <a href="<?= $BlogPost->EntryUrl(); ?>">
-                                <?= $BlogPost->Get("Title"); ?>
+                              <a href="<?= $BlogPost->entryUrl(); ?>">
+                                <?= $BlogPost->get("Title"); ?>
                               </a>
                             </td>
                             <td align="right"><?= $Count; ?></td>
@@ -53,132 +86,61 @@ function PrintBlogTable($CountData, $StartDate, $Caption)
             ?><tr><td colspan="2">(no <?= $Caption; ?> for this period)</td></tr><?PHP
         }
         print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
-                    .date("M j Y", strtotime($StartDate))." - " .date("M j Y")
-                    ."</i></td></tr>";
+            .date("M j Y", (int)strtotime($StartDate))." - " .date("M j Y")
+            ."</i></td></tr>";
 
         ?></table><?PHP
 }
 
+if (!isset($H_ShareData) || !is_array($H_ShareData)) {
+    throw new Exception("Variable H_ShareData is unset or incorrect type.");
+}
+if (!isset($H_SharesPerDay) || !($H_SharesPerDay instanceof MultiDateChart)) {
+    throw new Exception("Variable H_SharesPerDay is unset or incorrect type.");
+}
+if (!isset($H_StartDates) || !is_array($H_StartDates)) {
+    throw new Exception("Variable H_StartDates is unset or incorrect type.");
+}
+if (!isset($H_ViewData) || !is_array($H_ViewData)) {
+    throw new Exception("Variable H_ViewData is unset or incorrect type.");
+}
+if (!isset($H_ViewsPerDay) || !($H_ViewsPerDay instanceof MultiDateChart)) {
+    throw new Exception("Variable H_ViewsPerDay is unset or incorrect type.");
+}
 
-# ----- SETUP ----------------------------------------------------------------
-$ViewsWeekButton = new HtmlButton("Week");
-$ViewsWeekButton->addClass("mv-button-weekly mv-button-views mv-button-active");
-$ViewsMonthButton = new HtmlButton("Month");
-$ViewsMonthButton->addClass("mv-button-monthly mv-button-views");
-$ViewsYearButton = new HtmlButton("Year");
-$ViewsYearButton->addClass("mv-button-yearly mv-button-views");
-$SharesWeekButton = new HtmlButton("Week");
-$SharesWeekButton->addClass("mv-button-weekly mv-button-shares mv-button-active");
-$SharesMonthButton = new HtmlButton("Month");
-$SharesMonthButton->addClass("mv-button-monthly mv-button-shares");
-$SharesYearButton = new HtmlButton("Year");
-$SharesYearButton->addClass("mv-button-yearly mv-button-shares");
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
-
-<style type="text/css">
-.mv-stat-header {
-  display: inline-block;
-  margin: 0;
-  padding-left: 4px;
-  padding-top: 5px;
-}
-</style>
-
 <h1>Blog Usage Metrics</h1>
 
 <div style="min-width: 600px;">
 <table class="mv-table mv-table-fullsize" style="margin-bottom: 20px;">
   <tr valign="top">
     <td width="50%">
-      <div style="height: 2.5em">
-        <h2 class="mv-stat-header">Blog Post Views</h2>
-        <ul class="mv-button-group cw-content-mfetabs" style="float: right;">
-          <li><?= $ViewsWeekButton->getHtml(); ?></li>
-          <li><?= $ViewsMonthButton->getHtml(); ?></li>
-          <li><?= $ViewsYearButton->getHtml(); ?></li>
-        </ul>
-      </div>
-
-      <div class="mv-stat-views mv-stat-weekly">
-      <?PHP PrintBlogTable($H_ViewData["Week"], $H_WeekAgo, "blog post views"); ?>
-      </div>
-
-      <div class="mv-stat-views mv-stat-monthly">
-      <?PHP PrintBlogTable($H_ViewData["Month"], $H_MonthAgo, "blog post views"); ?>
-      </div>
-
-      <div class="mv-stat-views mv-stat-yearly">
-      <?PHP PrintBlogTable($H_ViewData["Year"], $H_YearAgo, "blog post views"); ?>
-      </div>
-
+      <h2>Blog Post Views</h2>
+      <?PHP printTabbedBlogSummaryTables(
+          "Views",
+          $H_ViewData,
+          $H_StartDates,
+          "blog post views"
+      ); ?>
     </td>
     <td></td>
     <td width="50%">
-
-      <div style="height: 2.5em">
-        <h2 class="mv-stat-header">Blog Post Shares</h2>
-        <ul class="mv-button-group cw-content-mfetabs" style="float: right;">
-          <li><?= $SharesWeekButton->getHtml(); ?></li>
-          <li><?= $SharesMonthButton->getHtml(); ?></li>
-          <li><?= $SharesYearButton->getHtml(); ?></li>
-        </ul>
-      </div>
-
-     <div class="mv-stat-shares mv-stat-weekly">
-      <?PHP PrintBlogTable($H_ShareData["Week"], $H_WeekAgo, "blog post shares"); ?>
-      </div>
-
-      <div class="mv-stat-shares mv-stat-monthly">
-      <?PHP PrintBlogTable($H_ShareData["Month"], $H_MonthAgo, "blog post shares"); ?>
-      </div>
-
-      <div class="mv-stat-shares mv-stat-yearly">
-      <?PHP PrintBlogTable($H_ShareData["Year"], $H_YearAgo, "blog post shares"); ?>
-      </div>
-
+      <h2>Blog Post Shares</h2>
+      <?PHP printTabbedBlogSummaryTables(
+          "Shares",
+          $H_ShareData,
+          $H_StartDates,
+          "blog post shares"
+      ); ?>
     </td>
   </tr>
 </table>
 </div>
 
+<h2>Blog Post Views</h2>
+<?PHP $H_ViewsPerDay->display("mv-blog-views"); ?>
 
-<script type="text/javascript">
-function toggle_stats(th, period){
-  var stat_type = '';
-  if      ($(th).hasClass('mv-button-views'))  { stat_type = 'views'; }
-  else if ($(th).hasClass('mv-button-shares')) { stat_type = 'shares'; }
-  else { return; }
-
-  $('.mv-stat-'+stat_type).hide();
-  $('.mv-button-'+stat_type).removeClass('mv-button-active');
-  $('.mv-stat-'+stat_type+'.mv-stat-'+period).show();
-  $('.mv-button-'+stat_type+'.mv-button-'+period).addClass('mv-button-active');
-}
-
-$('.mv-stat-monthly').hide();
-$('.mv-stat-yearly').hide();
-
-$(".mv-button-weekly").click( function(){ toggle_stats(this, 'weekly'); });
-$(".mv-button-monthly").click( function(){ toggle_stats(this, 'monthly'); });
-$(".mv-button-yearly").click( function(){ toggle_stats(this, 'yearly'); });
-</script>
-
-<?PHP
-  $H_ViewsPerDay->Title("<h2>Blog Post Views</h2>");
-  $H_ViewsPerDay->Display();
-
-?>
-<?PHP
-  $H_SharesPerDay->Title("<h2>Blog Post Shares</h2>");
-  $H_SharesPerDay->Display();
-?>
-
-<style type="text/css">
-#chart1 .graph_color0 { fill: #C5C53B; }
-#chart1 .graph_color1 { fill: #2E4588; }
-#chart1 .graph_color2 { fill: #2EC1FD; }
-#chart1 .graph_color3 { fill: #007000; }
-#chart1 .graph_color4 { fill: #A01E1A; }
-</style
+<h2>Blog Post Shares</h2>
+<?PHP $H_SharesPerDay->display("mv-blog-shares"); ?>

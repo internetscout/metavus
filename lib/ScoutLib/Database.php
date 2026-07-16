@@ -2,7 +2,7 @@
 #
 #   Database.php
 #
-#   Copyright 1999-2025 Axis Data
+#   Copyright 1999-2026 Axis Data
 #   This code is free software that can be used or redistributed under the
 #   terms of Version 2 of the GNU General Public License, as published by the
 #   Free Software Foundation (http://www.fsf.org).
@@ -12,6 +12,7 @@
 #   For more information see http://www.axisdata.com/AxisPHP/
 #
 # @scout:phpstan
+// phpcs:disable PSR1.Classes.ClassDeclaration.MultipleClasses
 
 namespace ScoutLib;
 use Exception;
@@ -21,6 +22,7 @@ use mysqli;
 use mysqli_result;
 use PDO;
 use PDOException;
+use RuntimeException;
 use ScoutLib\StdLib;
 
 /**
@@ -36,7 +38,9 @@ class Database
     /**
      * Object constructor.  If user name, password, or database name are omitted
      * they must have been set earlier with setGlobalServerInfo() and
-     * setGlobalDatabaseName().
+     * setGlobalDatabaseName().  When first instantiated with a specific database
+     * host/name combination, the timezone for the database server is set to the
+     * current default PHP timezone.
      * @param string $UserName User name to use to log in to database server.  (OPTIONAL)
      * @param string $Password Password to use to log in to database server.  (OPTIONAL)
      * @param string $DatabaseName Name of database to use once logged in.  (OPTIONAL)
@@ -67,7 +71,7 @@ class Database
         # if we don't already have a connection or DB access parameters were supplied
         $HandleIndex = $this->DBHostName . ":" . $this->DBName;
         if (!array_key_exists($HandleIndex, self::$ConnectionHandles)
-            || $UserName || $Password || $DatabaseName || $HostName) {
+                || $UserName || $Password || $DatabaseName || $HostName) {
             $this->Handle = self::connectToDatabaseServer(
                 $this->DBHostName,
                 $this->DBUserName,
@@ -75,6 +79,9 @@ class Database
             );
             self::$ConnectionHandles[$HandleIndex] = $this->Handle;
             $this->selectDatabase($this->DBName);
+
+            # set DB server timezone to default PHP timezone
+            $this->setServerTimezone(date("P"));
         } else {
             # set local connection handle
             $this->Handle = self::$ConnectionHandles[$HandleIndex];
@@ -202,6 +209,26 @@ class Database
         }
 
         return array_key_exists($EngineName, self::$SupportedEngines);
+    }
+
+    /**
+     * Set timezone on database server.  This only applies for the current
+     * database connection/session.  Setting the timezone using a name (e.g.
+     * "America/Chicago") will only work if the database server has the time
+     * zone tables loaded from the system, which is not guaranteed.
+     * @param string $Timezone Timezone name or offset.
+     * @return bool TRUE if set was succesful, otherwise FALSE.
+     */
+    public function setServerTimezone(string $Timezone): bool
+    {
+        $OperationSucceeded = true;
+        $Query = "SET time_zone = '".$this->escapeString($Timezone)."'";
+        try {
+            mysqli_query($this->Handle, $Query);
+        } catch (\mysqli_sql_exception $Ex) {
+            $OperationSucceeded = false;
+        }
+        return $OperationSucceeded;
     }
 
     /**
@@ -370,6 +397,7 @@ class Database
      *       caller.  (OPTIONAL)
      * @return mysqli_result|bool|string|null Query handle, FALSE on error, or (if
      *      field name supplied) retrieved value or NULL if no value available.
+     * @throws DatabaseQueryException If a cached read-only query fails.
      */
     public function query(string $QueryString, ?string $FieldName = null)
     {
@@ -403,7 +431,7 @@ class Database
                     $this->QueryHandle = $this->runQuery($QueryString);
                     if (!$this->QueryHandle instanceof mysqli_result) {
                         if ($this->QueryHandle === false) {
-                            throw new Exception("Database query \""
+                            throw new DatabaseQueryException("Database query \""
                                     .substr($QueryString, 0, 300)."\" failed"
                                     ." with error \"".$this->ErrNo.": "
                                     .$this->ErrMsg."\".");
@@ -435,9 +463,17 @@ class Database
                         # if rows found
                         if ($this->NumRows > 0) {
                             # load query results
-                            for ($Row = 0; $Row < $this->NumRows; $Row++) {
-                                $this->QueryResults[$Row] =
-                                    mysqli_fetch_assoc($this->QueryHandle);
+                            # (mysqli_fetch_all() may be unavailable before PHP 8.1)
+                            if (function_exists("mysqli_fetch_all")) {
+                                $this->QueryResults = mysqli_fetch_all(
+                                    $this->QueryHandle,
+                                    MYSQLI_ASSOC
+                                );
+                            } else {
+                                for ($Row = 0; $Row < $this->NumRows; $Row++) {
+                                    $this->QueryResults[$Row] =
+                                        mysqli_fetch_assoc($this->QueryHandle);
+                                }
                             }
 
                             # cache query results
@@ -533,12 +569,14 @@ class Database
      * @param string $QueryString SQL query string.
      * @param string $FieldName Name of field for which to return value to caller.
      * @return string|null Retrieved value or NULL if no value available.
+     * @throws RuntimeException If query attempt produces unexpected type
+     *      of return value.
      */
     public function queryValue(string $QueryString, string $FieldName)
     {
         $QueryResult = $this->query($QueryString, $FieldName);
         if (!is_string($QueryResult) && ($QueryResult !== null)) {
-            throw new Exception("Error when attempting to query value.");
+            throw new RuntimeException("Error when attempting to query value.");
         }
         return $QueryResult;
     }
@@ -683,38 +721,37 @@ class Database
      */
     public function fetchRow()
     {
-        # if caching is enabled and query was cached
+        # if caching is enabled and results of most recent query
+        #       should be retrieved from cache
         if (self::$CachingFlag && $this->GetResultsFromCache) {
-            # if rows left to return
-            if ($this->RowCounter < $this->NumRows) {
-                # retrieve row from cache
-                $Result = $this->QueryResults[$this->RowCounter];
+            # if no rows left to return, report no rows available
+            if ($this->RowCounter >= $this->NumRows) {
+                return false;
+            }
 
-                # increment row counter
-                $this->RowCounter++;
-            } else {
-                # return nothing
-                $Result = false;
-            }
-        } else {
-            # call to this method after successful query
-            if ($this->QueryHandle instanceof mysqli_result) {
-                $Result = mysqli_fetch_assoc($this->QueryHandle);
-                if ($Result === null) {
-                    $Result = false;
-                }
-                # call to this method after unsuccessful query
-            } else {
-                $Result = false;
-            }
+            # retrieve row from cache
+            $Result = $this->QueryResults[$this->RowCounter];
+
+            # increment row counter
+            $this->RowCounter++;
+
+            # return retrieved row to caller
+            return $Result;
         }
 
-        # return row to caller
-        return $Result;
+        # report no rows available to caller if most recent query failed
+        if (!($this->QueryHandle instanceof mysqli_result)) {
+            return false;
+        }
+
+        # retrieve and return row
+        return mysqli_fetch_assoc($this->QueryHandle) ?? false;
     }
 
     /**
      * Get specified number of database rows retrieved by most recent query.
+     * If fetchRow() has been previously called for this query, this method
+     * will retrieve rows beginning after the last row returned by fetchRow().
      * @param int $NumberOfRows Maximum number of rows to return.  (OPTIONAL -- if
      *       not specified then all available rows are returned)
      * @return array Array of rows.  Each row is an associative array indexed
@@ -725,13 +762,28 @@ class Database
         # assume no rows will be returned
         $Result = [];
 
-        # for each available row
-        $RowsFetched = 0;
-        while ((($RowsFetched < $NumberOfRows) || ($NumberOfRows == null))
-            && ($Row = $this->fetchRow())) {
-            # add row to results
-            $Result[] = $Row;
-            $RowsFetched++;
+        # determine number of rows to fetch
+        $RowsToFetch = ($NumberOfRows === null) ? $this->NumRows
+                : min($this->NumRows, $this->RowCounter + $NumberOfRows);
+
+        # if caching is enabled and results of most recent query
+        #       should be retrieved from cache
+        if (self::$CachingFlag && $this->GetResultsFromCache) {
+            # retrieve rows from cache
+            for ($Index = $this->RowCounter; $Index < $RowsToFetch; $Index++) {
+                $Result[] = $this->QueryResults[$Index];
+            }
+
+            # update row counter
+            $this->RowCounter = $RowsToFetch;
+        } else {
+            # for each available row
+            $RowsFetched = $this->RowCounter;
+            while (($RowsFetched < $RowsToFetch) && ($Row = $this->fetchRow())) {
+                # add row to results
+                $Result[] = $Row;
+                $RowsFetched++;
+            }
         }
 
         # return array of rows to caller
@@ -742,7 +794,10 @@ class Database
      * Get all available values for specified database field retrieved by most
      * recent query.  If a second database field name is specified then the array
      * returned will be indexed by the values from that field.  If all index field
-     * values are not unique then some values will be overwritten.
+     * values are not unique then some values will be overwritten.  If fetchRow()
+     * or fetchRows() have been called between issuing the query and calling this
+     * method, only the values from the remaining rows (not already retrieved by
+     * fetchRow() or fetchRows()) will be returned.
      *
      * A common use for this method is to retrieve a set of values with an ID field
      * specified for the index:<br>
@@ -756,15 +811,33 @@ class Database
      */
     public function fetchColumn(string $FieldName, ?string $IndexFieldName = null): array
     {
-        $Array = [];
-        while ($Record = $this->fetchRow()) {
-            if ($IndexFieldName != null) {
-                $Array[$Record[$IndexFieldName]] = $Record[$FieldName];
-            } else {
-                $Array[] = $Record[$FieldName];
+        # assume no values will be returned
+        $Values = [];
+
+        # if caching is enabled and results of most recent query
+        #       should be retrieved from cache
+        if (self::$CachingFlag && $this->GetResultsFromCache) {
+            # retrieve column values from cache
+            for (; $this->RowCounter < $this->NumRows; $this->RowCounter++) {
+                $Record = $this->QueryResults[$this->RowCounter];
+                if ($IndexFieldName === null) {
+                    $Values[] = $Record[$FieldName];
+                } else {
+                    $Values[$Record[$IndexFieldName]] = $Record[$FieldName];
+                }
+            }
+        } else {
+            # fetch rows and extract column values from rows
+            while ($Record = $this->fetchRow()) {
+                if ($IndexFieldName === null) {
+                    $Values[] = $Record[$FieldName];
+                } else {
+                    $Values[$Record[$IndexFieldName]] = $Record[$FieldName];
+                }
             }
         }
-        return $Array;
+
+        return $Values;
     }
 
     /**
@@ -784,19 +857,12 @@ class Database
     /**
      * Get ID of row added by the last SQL "INSERT" statement.  It should be
      * called immediately after the INSERT statement query.  This method uses the
-     * SQL "LAST_INSERT_ID()" function.
+     * PHP mysqli_insert_id() function.
      * @return int Numerical ID value.
      */
     public function getLastInsertId(): int
     {
-        $QueryResult = $this->queryValue(
-            "SELECT LAST_INSERT_ID() AS InsertId",
-            "InsertId"
-        );
-        if ($QueryResult === null) {
-            throw new Exception("Unable to retrieve last insert ID.");
-        }
-        return (int)$QueryResult;
+        return (int)mysqli_insert_id($this->Handle);
     }
 
     /**
@@ -807,12 +873,13 @@ class Database
      * @param string $TableName Table to examine.
      * @return int Next insert id (always zero for tables with no
      *   AUTO_INCREMENT column).
-     * @throws Exception If table does not exist.
+     * @throws InvalidArgumentException If table with specified name does not exist.
+     * @throws RuntimeException If ID retrieval command fails.
      */
     public function getNextInsertId(string $TableName): int
     {
         if (!$this->tableExists($TableName)) {
-            throw new Exception(
+            throw new InvalidArgumentException(
                 "Table " . $TableName . " does not exist"
             );
         }
@@ -824,7 +891,7 @@ class Database
             "Id"
         );
         if ($QueryResult === null) {
-            throw new Exception("Unable to retrieve next insert ID.");
+            throw new RuntimeException("Unable to retrieve next insert ID.");
         }
         return (int)$QueryResult;
     }
@@ -886,7 +953,7 @@ class Database
      * @param bool $NewValue New value to set.  (OPTIONAL)
      * @return bool Requested value.
      */
-    public function updateBoolValue(string $FieldName, ?bool $NewValue = null)
+    public function updateBoolValue(string $FieldName, ?bool $NewValue = null): bool
     {
         if ($NewValue !== null) {
             $CurrentValue = $this->updateValueForColumn(
@@ -939,8 +1006,8 @@ class Database
     ): void {
         $this->VUTableName = $TableName;
         $this->VUCondition = "";
-        if (strlen($Condition)) {
-            $this->VUCondition = " WHERE ".$Condition;
+        if (strlen($Condition) !== 0) {
+            $this->VUCondition = "WHERE ".$Condition;
         }
         $CacheKey = $TableName.$this->VUCondition;
 
@@ -993,7 +1060,7 @@ class Database
             $Query .= " SET " . implode(", ", $QuerySets);
             $QueryConditions = [];
             foreach ($DstIds as $Id) {
-                $QueryConditions[] = "Target.`" . $IdColumn . "` = '" . addslashes($DstId) . "'";
+                $QueryConditions[] = "Target.`" . $IdColumn . "` = '" . addslashes($Id) . "'";
             }
             $Query .= " WHERE " . implode(" OR ", $QueryConditions);
             $this->query($Query);
@@ -1055,7 +1122,7 @@ class Database
                 $Query .= ", `" . $KeyField . "`";
 
                 # assemble value segment with keys
-                $ValueSegFunc = function ($Carry, $Key) use ($ValueChunk) {
+                $ValueSegFunc = function ($Carry, $Key) use ($ValueChunk): string {
                     $Carry .= "('" . addslashes($ValueChunk[$Key]) . "','"
                         . addslashes($Key) . "'),";
                     return $Carry;
@@ -1063,11 +1130,14 @@ class Database
                 $ValueSegment = array_reduce(array_keys($ValueChunk), $ValueSegFunc);
             } else {
                 # assemble value segment
-                $ValueSegFunc = function ($Carry, $Value) {
+                $ValueSegFunc = function ($Carry, $Value): string {
                     $Carry .= "('" . addslashes($Value) . "'),";
                     return $Carry;
                 };
                 $ValueSegment = array_reduce($ValueChunk, $ValueSegFunc);
+            }
+            if ($ValueSegment === null) {
+                throw new Exception("Value segment assembly failed.");
             }
 
             # trim extraneous comma off of value segment
@@ -1163,14 +1233,10 @@ class Database
 
         # retrieve version string
         $Row = mysqli_fetch_assoc($QueryHandle);
-        if ($Row === false) {
+        if (($Row === false) || !isset($Row["ServerVer"])) {
             throw new Exception("Unable to retrieve SQL server version number.");
         }
-
-        $Version = $Row["ServerVer"];
-        if (!is_string($Version)) {
-            throw new Exception("Unable to retrieve SQL server version number.");
-        }
+        $Version = (string)$Row["ServerVer"];
 
         if (!$FullVersion) {
             # strip off any build/config suffix
@@ -1200,7 +1266,8 @@ class Database
             "SHOW DATABASES LIKE '".mysqli_real_escape_string($Handle, $DatabaseName)."'"
         );
         return ($QueryHandle instanceof mysqli_result)
-                ? (mysqli_num_rows($QueryHandle) ? true : false)
+                ? (mysqli_num_rows($QueryHandle) !== 0 &&
+                   !in_array(mysqli_num_rows($QueryHandle), ['', '0'], true) ? true : false)
                 : false;
     }
 
@@ -1263,7 +1330,7 @@ class Database
     public function tableExists(string $TableName): bool
     {
         $this->query("SHOW TABLES LIKE '" . addslashes($TableName) . "'");
-        return $this->numRowsSelected() ? true : false;
+        return $this->numRowsSelected() !== 0 ? true : false;
     }
 
     /**
@@ -1526,7 +1593,7 @@ class Database
     public static function slowQueryThreshold(?int $NewValue = null): int
     {
         if (!is_null($NewValue)) {
-            self::$LongQueryTime = (int)$NewValue;
+            self::$LongQueryTime = $NewValue;
             self::setServerVariable("long_query_time", $NewValue);
         }
 
@@ -1556,6 +1623,22 @@ class Database
     }
 
     /**
+     * Set a LOCK logging function, called when a LOCK TABLES or
+     *         UNLOCK TABLES is issued.
+     * @param Callable $NewValue Lock logging function, taking five
+     *         parameters. 1) The SQL statement of the LOCK/UNLOCK
+     *         currently being issued, 2) the location of this statement,
+     *         3-5 will be NULL when no lock is active. Otherwise:
+     *         3) the SQL that started the active lock, 4) the location
+     *         where that SQL was issued, and 5) the duration in seconds
+     *         that the lock was held.
+     */
+    public static function setLockLoggingFn(callable $NewValue) : void
+    {
+        self::$LockLoggingFn = $NewValue;
+    }
+
+    /**
      * Normalize supplied string so it can be used as column name.
      * @param string $Value String to normalize.
      * @return string String suitable for use as database column name.
@@ -1565,7 +1648,7 @@ class Database
      */
     public static function normalizeToColumnName(string $Value): string
     {
-        $ColumnName = preg_replace("%[^A-Za-z0-9_]%", "", $Value);
+        $ColumnName = (string)preg_replace("%[^A-Za-z0-9_]%", "", $Value);
         $ColumnNameLength = strlen($ColumnName);
         if ($ColumnNameLength == 0) {
             throw new InvalidArgumentException("String supplied (\"".$Value
@@ -1592,7 +1675,7 @@ class Database
         # sort in descending order of total time
         uasort(
             self::$QueryTimingStats,
-            function ($a, $b) {
+            function ($a, $b): int {
                 return $b["TotalTime"] <=> $a["TotalTime"];
             }
         );
@@ -1659,7 +1742,7 @@ class Database
      */
     public function dropTables(array $Tables): ?string
     {
-        foreach ($Tables as $TableName => $TableSql) {
+        foreach (array_keys($Tables) as $TableName) {
             $this->query("DROP TABLE IF EXISTS " . $TableName);
         }
         return null;
@@ -1668,9 +1751,15 @@ class Database
     /**
      * Get PDO (PHP Data Object) instance for database.
      * @return PDO PDO instance connected to database.
+     * @throws RuntimeException If unable to open PDO connection for database.
      */
     public static function getPDO(): PDO
     {
+        static $PDO;
+        if (isset($PDO)) {
+            return $PDO;
+        }
+
         $DataSourceName = "mysql:"
                 ."dbname=".self::$GlobalDBName.";"
                 ."host=".self::$GlobalDBHostName;
@@ -1681,7 +1770,7 @@ class Database
                 self::$GlobalDBPassword
             );
         } catch (PDOException $Ex) {
-            throw new Exception("Could not open PDO connection for database: "
+            throw new RunTimeException("Could not open PDO connection for database: "
                 .$Ex->getMessage()
                 ." (code: ".mysqli_connect_errno().")");
         }
@@ -1725,6 +1814,8 @@ class Database
 
     private static $SlowQueryLoggingFn = null;
     private static $LongQueryTime = 10;
+
+    private static $LockLoggingFn = null;
 
     private static $CachePruneLoggingFn = null;
 
@@ -1900,15 +1991,16 @@ class Database
      * @param string $DBUserName User name for logging in to server.
      * @param string $DBPassword Password for logging in to server.
      * @return mysqli Handle for database server connection.
-     * @throws Exception When unable to connect to database server or select
-     *       specified database.
+     * @throws InvalidArgumentException If no user name provided.
+     * @throws RuntimeException When unable to connect to database server
+     *       or select specified database.
      */
     private static function connectToDatabaseServer(
         string $DBHostName,
         string $DBUserName,
         string $DBPassword
     ) {
-        if (!strlen($DBUserName)) {
+        if (strlen($DBUserName) === 0) {
             throw new InvalidArgumentException("Database server user name not set.");
         }
 
@@ -1936,7 +2028,7 @@ class Database
 
         # throw exception if connection attempts failed
         if ($Handle === false) {
-            throw new Exception("Could not connect to database: "
+            throw new RunTimeException("Could not connect to database: "
                     .mysqli_connect_error()
                     ." (errno: ".mysqli_connect_errno().")");
         }
@@ -1948,17 +2040,17 @@ class Database
     /**
      * Select database.
      * @param string $DBName Name of database to select.
-     * @throws Exception When unable to select specified database.
+     * @throws InvalidArgumentException When unable to select specified database.
      */
     private function selectDatabase(string $DBName): void
     {
-        if (!strlen($DBName)) {
+        if (strlen($DBName) === 0) {
             throw new InvalidArgumentException("Database name not set.");
         }
 
         $Result = mysqli_select_db($this->Handle, $DBName);
         if ($Result !== true) {
-            throw new Exception("Could not select database: "
+            throw new InvalidArgumentException("Could not select database: "
                     .mysqli_error($this->Handle)
                     ." (errno: " . mysqli_errno($this->Handle) . ")");
         }
@@ -1971,7 +2063,7 @@ class Database
      */
     private function isReadOnlyStatement(string $QueryString): bool
     {
-        return preg_match("/^[ ]*(SELECT|DESC|DESCRIBE|SHOW) /i", $QueryString) ? true : false;
+        return preg_match('/^\s*(SELECT|DESC|DESCRIBE|SHOW)\s/i', $QueryString) ? true : false;
     }
 
     /**
@@ -1982,13 +2074,20 @@ class Database
      */
     private function tableModified(string $QueryString)
     {
+        # retrieve value from local cache if we have it
+        static $Cache;
+        if (isset($Cache[$QueryString])) {
+            return $Cache[$QueryString];
+        }
+
         # assume we're not going to be able to determine table
         $TableName = false;
 
         # split query into pieces
-        $QueryString = trim($QueryString);
-        $Words = preg_split("/\s+/", $QueryString);
+        $TrimmedQueryString = trim($QueryString);
+        $Words = preg_split("/\s+/", $TrimmedQueryString);
         if ($Words === false) {
+            $Cache[$QueryString] = false;
             return false;
         }
 
@@ -2043,6 +2142,7 @@ class Database
         }
 
         # return table name (or lack thereof) to caller
+        $Cache[$QueryString] = $TableName;
         return $TableName;
     }
 
@@ -2054,13 +2154,19 @@ class Database
      */
     private function tablesAccessed(string $QueryString)
     {
+        # retrieve value from local cache if we have it
+        static $Cache;
+        if (isset($Cache[$QueryString])) {
+            return $Cache[$QueryString];
+        }
+
         # assume we're not going to be able to determine tables
         $TableNames = false;
 
         # split query into pieces
-        $QueryString = trim($QueryString);
-        $Words = preg_split("/\s+/", $QueryString);
-        $UQueryString = strtoupper($QueryString);
+        $TrimmedQueryString = trim($QueryString);
+        $Words = preg_split("/\s+/", $TrimmedQueryString);
+        $UQueryString = strtoupper($TrimmedQueryString);
         $UWords = preg_split("/\s+/", $UQueryString);
 
         # if SELECT statement
@@ -2119,6 +2225,7 @@ class Database
         }
 
         # return table name (or lack thereof) to caller
+        $Cache[$QueryString] = $TableNames;
         return $TableNames;
     }
 
@@ -2147,16 +2254,20 @@ class Database
         }
 
         if (!is_null(self::$SlowQueryLoggingFn) && $QueryDuration > self::$LongQueryTime) {
-            $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
-
+            $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
             # go back the right number of frames to find the function that called
             # Database::query()
-            $CallingFrame = $Trace[2];
+            $CallingFrame = $Trace[1];
 
             call_user_func_array(
                 self::$SlowQueryLoggingFn,
                 [$QueryString, $CallingFrame, $QueryDuration]
             );
+        }
+
+        if (self::$LockLoggingFn !== null &&
+            preg_match('%^(UN)?LOCK TABLES?\b%', $QueryString)) {
+            $this->logLockingQuery($QueryString);
         }
 
         if (self::$RecordQueryTiming) {
@@ -2380,6 +2491,8 @@ class Database
      * @param string $ColName Name of database column.
      * @param string|null $NewValue New value to set.  (OPTIONAL)
      * @return string|null Current value or NULL if no value is set.
+     * @throws DatabaseQueryException If column with specified name not found,
+     *      or no row is found in the table.
      */
     private function updateValueForColumn(string $ColName, $NewValue = null)
     {
@@ -2391,6 +2504,38 @@ class Database
         $Condition = $this->VUCondition;
         $CacheKey = $TableName.$Condition;
 
+        # if cache not loaded
+        if (!isset(self::$VUCache[$CacheKey])) {
+            # read row from database
+            $Query = "SELECT * FROM `" . $TableName . "`"
+                .(strlen($Condition) > 0 ? " ".$Condition : "");
+            $this->query($Query);
+            $Row = $this->fetchRow();
+
+            # error out if no row was found
+            if ($Row === false) {
+                throw new DatabaseQueryException(
+                    "No row found in ".$TableName
+                        .(strlen($Condition) !== 0 ? " where '".$Condition."'" : "")
+                        ."."
+                );
+            }
+
+            # store row to cache
+            self::$VUCache[$CacheKey] = $Row;
+        } else {
+            # read row from cache
+            $Row = self::$VUCache[$CacheKey];
+        }
+
+        # error out if specified column does not exist in row loaded from database
+        if (!array_key_exists($ColName, $Row)) {
+            throw new DatabaseQueryException(
+                "Column '".$ColName
+                    ."' not found in table '".$TableName."'."
+            );
+        }
+
         # if value to set was supplied
         if (func_num_args() > 1) {
             # update value in database
@@ -2401,47 +2546,9 @@ class Database
                     ."` SET `".$ColName."` = ".$Value." ".$Condition;
             $this->query($Query);
 
-            # reload cache from database
-            $Query = "SELECT * FROM `" . $TableName . "` ".$Condition;
-            $this->query($Query);
-            $Row = $this->fetchRow();
-
-            # check to make sure reload succeeded
-            if ($Row === false) {
-                throw new Exception("Could not reload row from ".$TableName
-                    .(strlen($Condition) ? " (condition: '".$Condition."')" : "")
-                    .".");
-            }
-
-            # save reloaded row to cache
-            self::$VUCache[$CacheKey] = $Row;
-        } else {
-            # if cache not loaded
-            if (!isset(self::$VUCache[$CacheKey])) {
-                # read row from database into cache
-                $Query = "SELECT * FROM `" . $TableName . "` ".$Condition;
-                $this->query($Query);
-                $Row = $this->fetchRow();
-
-                # error out if no row was found
-                if ($Row === false) {
-                    throw new Exception("No row found in ".$TableName
-                        .(strlen($Condition) ? " where '".$Condition."'" : "")
-                        .".");
-                }
-
-                # store row to cache
-                self::$VUCache[$CacheKey] = $Row;
-            } else {
-                # read row from cache
-                $Row = self::$VUCache[$CacheKey];
-            }
-        }
-
-        # error out if specified column does not exist in row loaded from database
-        if (!array_key_exists($ColName, $Row)) {
-            throw new InvalidArgumentException("Column '".$ColName
-                    ."' not found in table '".$TableName."'.");
+            # update value in cache
+            self::$VUCache[$CacheKey][$ColName] = $NewValue;
+            $Row[$ColName] = $NewValue;
         }
 
         # return value from cached row to caller
@@ -2504,6 +2611,62 @@ class Database
     }
 
     /**
+     * Log debugging information about LOCK / UNLOCK queries.
+     * @param string $QueryString Query that was run.
+     */
+    private function logLockingQuery(string $QueryString): void
+    {
+        static $LockLocation = null;
+        static $LockStartTime = null;
+        static $LockSqlString = null;
+
+        # go back the right number of frames to find the function that called
+        # Database::query()
+        $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        $CallingFrame = $Trace[2];
+
+        if (strtoupper(trim($QueryString)) == "UNLOCK TABLES") {
+            $LockDuration = ($LockStartTime !== null) ?
+                microtime(true) - $LockStartTime : null;
+            call_user_func_array(
+                self::$LockLoggingFn,
+                [
+                    $QueryString,
+                    $CallingFrame,
+                    $LockSqlString,
+                    $LockLocation,
+                    $LockDuration
+                ]
+            );
+
+            $LockLocation = null;
+            $LockSqlString = null;
+            $LockStartTime = null;
+            return;
+        }
+
+        # if there was no active lock, record the location of this lock and
+        # the time that it started
+        if ($LockLocation === null) {
+            $LockStartTime = microtime(true);
+            $LockSqlString = $QueryString;
+            $LockLocation = $CallingFrame;
+            return;
+        }
+
+        call_user_func_array(
+            self::$LockLoggingFn,
+            [
+                $QueryString,
+                $CallingFrame,
+                $LockSqlString,
+                $LockLocation,
+                null
+            ]
+        );
+    }
+
+    /**
      * Get database server system variable.
      * @param string $VarName Server system variable name.
      * @return string Current value for variable.
@@ -2541,4 +2704,11 @@ class Database
         self::$ServerVariableCache[$VarName] = $NewValue;
         $DB->query("SET ".$VarName." = ".$NewValue);
     }
+}
+
+/**
+ * Exception thrown when a database query fails.
+ */
+class DatabaseQueryException extends RuntimeException
+{
 }

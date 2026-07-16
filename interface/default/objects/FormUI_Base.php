@@ -3,7 +3,7 @@
 #   FILE:  FormUI_Base.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -21,6 +21,8 @@ use ScoutLib\StdLib;
  */
 abstract class FormUI_Base
 {
+    use FilepondUploadSupportTrait;
+
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /** Supported field types. */
@@ -77,7 +79,7 @@ abstract class FormUI_Base
         $this->checkForMissingFieldParameters($FieldParams, $ErrMsgs);
         $this->checkForInvalidFieldParameters($FieldParams, $ErrMsgs);
 
-        if (count($ErrMsgs)) {
+        if (count($ErrMsgs) !== 0) {
             $ErrMsgString = implode("  ", $ErrMsgs);
             throw new InvalidArgumentException($ErrMsgString);
         }
@@ -86,7 +88,7 @@ abstract class FormUI_Base
         $MaxPostSize = StdLib::convertPhpIniSizeToBytes(
             (string)ini_get("post_max_size")
         );
-        if (empty($_POST) &&
+        if ($_POST === [] &&
             isset($_SERVER["CONTENT_LENGTH"]) && $_SERVER['CONTENT_LENGTH'] > $MaxPostSize) {
             if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $Message = "The content in your form exceeds the current POST "
@@ -151,6 +153,15 @@ abstract class FormUI_Base
     }
 
     /**
+     * Disable Javascript-based chunked file uploads in favor of uploads using
+     * vanilla HTML form inputs.
+     */
+    public function useSimpleFileUploading(): void
+    {
+        $this->DisableFilepond = true;
+    }
+
+    /**
      * Add extra hidden field to form.
      * @param string $FieldName Form field name.
      * @param string $Value Form field value.
@@ -206,15 +217,20 @@ abstract class FormUI_Base
     }
 
     /**
-     * Log error message for later display.
-     * @param string $Msg Error message.
+     * Log error message for later display.  NOTE: The error message is
+     * displayed exactly as supplied, so any user-supplied data included in the
+     * message text must be escaped before the message is passed to this method.
+     * @param string $Msg Error message, with any user-supplied text already
+     *      escaped.
      * @param string $Field Field associated with error.  (OPTIONAL, defaults
      *       to no field association)
      * @param string $UniqueKey key to log error under, for form specific error handling
-     * @return void
      */
-    public static function logError(string $Msg, ?string $Field = null, $UniqueKey = ""): void
-    {
+    public static function logError(
+        string $Msg,
+        ?string $Field = null,
+        $UniqueKey = ""
+    ): void {
         self::$ErrorMessages[$UniqueKey][$Field][] = $Msg;
     }
 
@@ -253,26 +269,31 @@ abstract class FormUI_Base
     public static function errorsLogged($Field = false, $UniqueKey = null): bool
     {
         if ($Field === false) {
-            if (!is_null($UniqueKey)) {
-                return count(self::$ErrorMessages[$UniqueKey]) ? true : false;
-            } else {
-                foreach (self::$ErrorMessages as $KeyErrorMessage) {
-                    if (count($KeyErrorMessage)) {
-                        return true;
-                    }
-                }
-                return false;
+            if ($UniqueKey !== null) {
+                return isset(self::$ErrorMessages[$UniqueKey])
+                    && count(self::$ErrorMessages[$UniqueKey]) !== 0;
             }
-        } elseif (!is_null($UniqueKey)) {
-            return isset(self::$ErrorMessages[$UniqueKey][$Field]) ? true : false;
-        } else {
+
             foreach (self::$ErrorMessages as $KeyErrorMessage) {
-                if (isset($KeyErrorMessage[$Field])) {
+                if (count($KeyErrorMessage) !== 0) {
                     return true;
                 }
             }
+
             return false;
         }
+
+        if ($UniqueKey !== null) {
+            return isset(self::$ErrorMessages[$UniqueKey][$Field]);
+        }
+
+        foreach (self::$ErrorMessages as $KeyErrorMessage) {
+            if (isset($KeyErrorMessage[$Field])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -284,7 +305,7 @@ abstract class FormUI_Base
     public static function clearLoggedErrors(?string $Field = null, $UniqueKey = null): void
     {
         if ($Field === null) {
-            if (strlen($UniqueKey)) {
+            if (strlen($UniqueKey) !== 0) {
                 unset(self::$ErrorMessages[$UniqueKey]);
             } else {
                 self::$ErrorMessages = [];
@@ -518,6 +539,22 @@ abstract class FormUI_Base
     }
 
     /**
+     * Get HTML form field name for specified field.
+     * @param string $FieldName Field name.
+     * @param bool $IncludePrefix If TRUE, "F_" prefix is included.  (OPTIONAL,
+     *       defaults to TRUE.)
+     * @return string Form field name.
+     */
+    public function getFormFieldName(
+        string $FieldName,
+        bool $IncludePrefix = true
+    ): string {
+        return ($IncludePrefix ? "F_" : "")
+                .($this->UniqueKey ? $this->UniqueKey."_" : "")
+                .preg_replace("/[^a-zA-Z0-9]/", "", $FieldName);
+    }
+
+    /**
      * Handle image and file uploads.
      * @return void
      */
@@ -539,7 +576,17 @@ abstract class FormUI_Base
             $UploadedFileName = null;
 
             # check for an upload via filepond
-            $TmpFile = $this->preprocessFilepondUpload($FormFieldName);
+            try {
+                $TmpFile = $this->preprocessFilepondUpload($FormFieldName);
+            } catch (Exception $Ex) {
+                $Message = "Error uploading file: ".$Ex->getMessage();
+                $this->logError(
+                    $Message,
+                    $FieldName,
+                    $this->UniqueKey
+                );
+                return;
+            }
 
             # if there was not one, look for an upload in _FILES
             if ($TmpFile === null) {
@@ -548,7 +595,7 @@ abstract class FormUI_Base
                     continue;
                 }
                 $UploadedFileName = $_FILES[$FormFieldName]["name"];
-                if (!strlen($UploadedFileName)) {
+                if (strlen($UploadedFileName) === 0) {
                     continue;
                 }
 
@@ -732,18 +779,49 @@ abstract class FormUI_Base
     }
 
     /**
-     * Delete uploaded files and images, to be used when editing is canceled
-     * without associating uploads with a record.
+     * Delete uploaded files and images that are not associated with a record,
+     * to be used when editing is canceled or after a record has been saved.
      * @return void
      */
     public function deleteUploads(): void
     {
         foreach ($this->AddedFiles as $FileId) {
-            (new File($FileId))->destroy();
+            if (File::itemExists($FileId)) {
+                $File = new File($FileId);
+                if ($File->resourceId() == File::NO_ITEM) {
+                    $File->destroy();
+                }
+            }
         }
 
         foreach ($this->AddedImages as $ImageId) {
-            (new Image($ImageId))->destroy();
+            if (Image::itemExists($ImageId)) {
+                $Image = new Image($ImageId);
+                if ($Image->getIdOfAssociatedItem() == Image::NO_ITEM) {
+                    $Image->destroy();
+                }
+            }
+        }
+
+        # for any files/images that were marked for deletion, if they still
+        # exist and are not associated with a record (as can happen with
+        # 'upload', 'delete', 'save'), delete those as well
+        foreach ($this->DeletedFiles as $FileId) {
+            if (File::itemExists($FileId)) {
+                $File = new File($FileId);
+                if ($File->resourceId() == File::NO_ITEM) {
+                    $File->destroy();
+                }
+            }
+        }
+
+        foreach ($this->DeletedImages as $ImageId) {
+            if (Image::itemExists($ImageId)) {
+                $Image = new Image($ImageId);
+                if ($Image->getIdOfAssociatedItem() == Image::NO_ITEM) {
+                    $Image->destroy();
+                }
+            }
         }
     }
 
@@ -818,7 +896,7 @@ abstract class FormUI_Base
 
             # the algorithm for associative arrays is slightly different from
             # sequential ones. the values for associative arrays must match the keys
-            if (count(array_filter(array_keys($OldValue), "is_string"))) {
+            if (count(array_filter(array_keys($OldValue), "is_string")) !== 0) {
                 foreach ($OldValue as $Key => $Value) {
                     # it changed if the keys don't match
                     if (!array_key_exists($Key, $NewValue)) {
@@ -974,74 +1052,6 @@ abstract class FormUI_Base
         return null;
     }
 
-    /**
-     * Clean up data from incomplete or canceled downloads in the FilePond
-     * upload directory.
-     */
-    public static function cleanFilePondUploadDir() : void
-    {
-        # nothing to do when FilePond upload dir does not (yet) exist
-        if (!is_dir(self::FILEPOND_UPLOAD_DIR)) {
-            return;
-        }
-
-        # directories where we've not added a new chunk of data in the last
-        # MaxAge seconds are assumed to belong to canceled or interrupted
-        # downloads
-        $MaxAge = 3600;
-        $Now = time();
-
-        $DirsToDelete = [];
-
-        $DirEntries = scandir(self::FILEPOND_UPLOAD_DIR);
-        if ($DirEntries === false) {
-            throw new Exception(
-                "scandir() on ".self::FILEPOND_UPLOAD_DIR." failed"
-                    ." (should be impossible)."
-            );
-        }
-        foreach ($DirEntries as $Entry) {
-            if ($Entry == "." || $Entry == "..") {
-                continue;
-            }
-
-            $TargetPath = self::FILEPOND_UPLOAD_DIR."/".$Entry;
-
-            # skip non-directories
-            if (!is_dir($TargetPath)) {
-                continue;
-            }
-
-            # if a file was added to the dir within the last MaxAge seconds
-            # (which is what mtime means for dirs), then skip it
-            if ($Now - filemtime($TargetPath) < $MaxAge) {
-                continue;
-            }
-
-            # otherwise, it should be deleted
-            $DirsToDelete [] = $TargetPath;
-        }
-
-        foreach ($DirsToDelete as $Dir) {
-            $DirEntries = scandir($Dir);
-            if ($DirEntries === false) {
-                throw new Exception(
-                    "scandir() on ".$Dir." failed"
-                        ." (should be impossible)."
-                );
-            }
-            foreach ($DirEntries as $File) {
-                $TargetPath = $Dir."/".$File;
-                if (is_file($TargetPath)) {
-                    unlink($TargetPath);
-                }
-            }
-
-            rmdir($Dir);
-        }
-    }
-
-
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
     protected $AdditionalHiddenFields = [];
@@ -1057,6 +1067,7 @@ abstract class FormUI_Base
     protected $SettingChangeEventName = null;
     protected $SettingChangeEventParams = [];
     protected $UniqueKey;
+    protected $DisableFilepond = false;
 
     protected static $ErrorMessages = [];
     protected static $TypeSpecificFieldParameters = [
@@ -1070,6 +1081,7 @@ abstract class FormUI_Base
             self::FTYPE_QUICKSEARCH,
             self::FTYPE_USER,
         ],
+        "AllowedInsertionKeywords" => [ self::FTYPE_PARAGRAPH, ],
         "Columns" => [ self::FTYPE_PARAGRAPH, ],
         "Field" => [ self::FTYPE_QUICKSEARCH, self::FTYPE_USER ],
         "FieldTypes" => [ self::FTYPE_METADATAFIELD, ],
@@ -1155,8 +1167,6 @@ abstract class FormUI_Base
     protected const MAX_YEAR = 2200;
     protected const FOUR_DIGIT_NUMBER_REGEX = '/^\s*\d{4}\s*$/';
 
-    const FILEPOND_UPLOAD_DIR = "tmp/FilePondUploads";
-
     /**
      * Normalize and format the value for a datetime form field.
      * If a 4-digit integer input for a timestamp is within a valid range,
@@ -1174,7 +1184,7 @@ abstract class FormUI_Base
         string $DateFormat
     ) {
 
-        if (!strlen($DateTimeValue)) {
+        if (strlen($DateTimeValue) === 0) {
             return false;
         }
 
@@ -1207,7 +1217,11 @@ abstract class FormUI_Base
     {
         $this->printDoubleClickSubmitLockoutJavascript($FormTableId);
 
-        $this->printFilepondJavascript($FormTableId);
+        $SysConfig = SystemConfiguration::getInstance();
+        if ($this->DisableFilepond === false &&
+            $SysConfig->getBool("UseFilepond") === true) {
+            $this->printFilepondJavascript($FormTableId);
+        }
     }
 
     /**
@@ -1235,83 +1249,6 @@ abstract class FormUI_Base
                      // the form has been submitted
                      FormToLock.data("clicked", true);
                  }
-            });
-        });
-        </script>
-        <?PHP
-    }
-
-    /**
-     * Output Javascript to use the filepond upload library.
-     * @param string $FormTableId ID of table containing the form to disable
-     *     submit buttons on once one of them is clicked.
-     */
-    private function printFilepondJavascript(
-        string $FormTableId
-    ): void {
-        $SysConfig = SystemConfiguration::getInstance();
-
-        # if filepond is disabled, nothing to do
-        if (!$SysConfig->getBool("UseFilepond")) {
-            return;
-        }
-
-        static $Initialized = false;
-        if (!$Initialized) {
-            $AF = ApplicationFramework::getInstance();
-            $AF->requireUIFile("filepond.min.css");
-            $AF->requireUIFile("filepond.js");
-            $AF->requireUIFile("filepond.jquery.js");
-            ?>
-            <script type="text/javascript">
-            $(document).ready(function() {
-                FilePond.setOptions({
-                    server: {
-                        url: '<?= $AF->baseUrl() ?>lib/FilePond/server/index.php'
-                    },
-                    chunkUploads: true,
-                    chunkSize: <?= $SysConfig->getInt("UploadChunkSize") * 1024 * 1024 ?>,
-                    credits: false
-                });
-            });
-            </script>
-            <?PHP
-            $Initialized = true;
-        }
-        ?>
-        <script type="text/javascript">
-        $(document).ready(function() {
-            var Form = $("#<?= $FormTableId ?>").parents("form");
-            $("input[type='file']", Form).filepond();
-            $("button[type='submit'][value='Upload']", Form).hide();
-
-            // on upload start, add 'data-clicked' to trigger the "lockout"
-            // from printDoubleClickSubmitLockoutJavascript() so that users
-            // can't submit the form before the upload completes
-            Form.on('FilePond:processfilestart', function(Event) {
-                Form.data("clicked", true);
-                Form.data("upload-in-progress", true);
-            });
-
-            // on upload completion
-            Form.on('FilePond:processfile', function(Event) {
-                Form.data("clicked", false);
-                Form.data("upload-in-progress", false);
-                var Row = $(Event.target).parents("tr.mv-content-tallrow");
-                if (Event.detail.error === null) {
-                    $("button[type='submit'][value='Upload']", Row).click();
-                }
-            });
-
-            // Add a 'beforeunload' handler to attempt to prevent the user
-            // from navigating away from the page while an upload is in
-            // progress
-            // (cf. https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event )
-            $(window).on('beforeunload', function(Event) {
-                if (Form.data("upload-in-progress")) {
-                    Event.preventDefault();
-                    Event.returnValue = true;
-                }
             });
         });
         </script>
@@ -1365,7 +1302,7 @@ abstract class FormUI_Base
      * @param array $ErrMsgs Current error message list.  (REFERENCE)
      * @return void
      */
-    private function checkForInvalidFieldParameters(array $FieldParams, &$ErrMsgs): void
+    private function checkForInvalidFieldParameters(array $FieldParams, array &$ErrMsgs): void
     {
         foreach ($FieldParams as $FieldName => $Params) {
             if (isset($Params["Type"]) && ($Params["Type"] == self::FTYPE_QUICKSEARCH)) {
@@ -1446,7 +1383,7 @@ abstract class FormUI_Base
      * @param array $ErrMsgs Current error message list.  (REFERENCE)
      * @return void
      */
-    private function checkForMissingFieldParameters(array $FieldParams, &$ErrMsgs): void
+    private function checkForMissingFieldParameters(array $FieldParams, array &$ErrMsgs): void
     {
         foreach ($FieldParams as $FieldName => $Params) {
             if (!isset($Params["Type"])) {
@@ -1492,7 +1429,7 @@ abstract class FormUI_Base
      * @param array $ErrMsgs Current error message list.  (REFERENCE)
      * @return void
      */
-    private function checkForUnrecognizedFieldParameters(array $FieldParams, &$ErrMsgs): void
+    private function checkForUnrecognizedFieldParameters(array $FieldParams, array &$ErrMsgs): void
     {
         foreach ($FieldParams as $FieldName => $Params) {
             foreach ($Params as $Key => $Value) {
@@ -1636,27 +1573,13 @@ abstract class FormUI_Base
     abstract protected function displayFormField(string $Name, $Value, array $Params): void;
 
     /**
-     * Get HTML form field name for specified field.
-     * @param string $FieldName Field name.
-     * @param bool $IncludePrefix If TRUE, "F_" prefix is included.  (OPTIONAL,
-     *       defaults to TRUE.)
-     * @return string Form field name.
-     */
-    protected function getFormFieldName(string $FieldName, bool $IncludePrefix = true): string
-    {
-        return ($IncludePrefix ? "F_" : "")
-                .($this->UniqueKey ? $this->UniqueKey."_" : "")
-                .preg_replace("/[^a-zA-Z0-9]/", "", $FieldName);
-    }
-
-    /**
      * Get HTML for hidden form fields associated with form processing.
      * @return string Hidden field HTML.
      */
     protected function getHiddenFieldsHtml(): string
     {
         $Html = "";
-        if (count($this->HiddenFields)) {
+        if (count($this->HiddenFields) !== 0) {
             foreach ($this->HiddenFields as $FieldName => $Value) {
                 if (is_array($Value)) {
                     foreach ($Value as $EachValue) {
@@ -1670,7 +1593,7 @@ abstract class FormUI_Base
                 }
             }
         }
-        if (count($this->AdditionalHiddenFields)) {
+        if (count($this->AdditionalHiddenFields) !== 0) {
             foreach ($this->AdditionalHiddenFields as $FieldName => $Value) {
                 if (isset($this->HiddenFields[$FieldName])) {
                     throw new Exception("Additional hidden field \"".$FieldName
@@ -1687,7 +1610,7 @@ abstract class FormUI_Base
             "AddedFileIds" => $this->AddedFiles,
         ];
         foreach ($FileAndImageData as $Name => $ItemIds) {
-            if (count($ItemIds)) {
+            if (count($ItemIds) !== 0) {
                 $FormName = $this->getFormFieldName($Name);
                 foreach ($ItemIds as $ItemId) {
                     $Html .= '<input type="hidden" name="'.$FormName
@@ -1697,107 +1620,6 @@ abstract class FormUI_Base
         }
 
         return $Html;
-    }
-
-    /**
-     * Check for an upload via the filepond upload library for a given form
-     * field, returning the path to the uploaded file if there was one.
-     * @param string $FormFieldName Form field name to check.
-     * @return string|null Name of uploaded file or NULL when there was not one.
-     * @throws Exception on scandir() failure.
-     * @throws Exception on multiple files in one upload directory (not
-     *     possible with our filepond configuration).
-     * @see https://pqina.nl/filepond/
-     */
-    private function preprocessFilepondUpload(string $FormFieldName): ?string
-    {
-        if (!isset($_POST[$FormFieldName])) {
-            return null;
-        }
-
-        if (strlen($_POST[$FormFieldName]) == 0) {
-            throw new Exception(
-                "No filename propvided for filepond upload "
-                    ." (should be impossible)."
-            );
-        }
-
-        # look in the `transfer` dir configured by lib/filepond/config.php,
-        # which contains completed uploads
-        $FilepondTransferDir = self::FILEPOND_UPLOAD_DIR."/".$_POST[$FormFieldName];
-
-        $FilesToSkip = [".htaccess", ".metadata",];
-
-        $Files = [];
-        $DirEntries = scandir($FilepondTransferDir);
-        if ($DirEntries === false) {
-            throw new Exception(
-                "scandir() on ".$FilepondTransferDir." failed"
-                    ." (should be impossible)."
-            );
-        }
-        foreach ($DirEntries as $File) {
-            # skip non-file entries
-            if (!is_file($FilepondTransferDir."/".$File)) {
-                continue;
-            }
-
-            if (in_array($File, $FilesToSkip)) {
-                continue;
-            }
-
-            $Files[] = $FilepondTransferDir."/".$File;
-        }
-
-        if (count($Files) == 0) {
-            throw new Exception(
-                "No files present in a filepond upload directory"
-                    ." (should be impossible)."
-            );
-        }
-
-        if (count($Files) > 1) {
-            throw new Exception(
-                "Multiple files in a filepond upload directory"
-                    ." (should be impossible)."
-            );
-        }
-
-        $TmpFile = array_shift($Files);
-
-        return $TmpFile;
-    }
-
-    /**
-     * Clean up after filepond uploads.
-     * @param string $FormFieldName Form field name to check.
-     */
-    private function postprocessFilepondUpload(string $FormFieldName): void
-    {
-        if (!isset($_POST[$FormFieldName])
-                || strlen($_POST[$FormFieldName]) == 0) {
-            return;
-        }
-
-        # delete directory from this upload
-        $TargetDir = self::FILEPOND_UPLOAD_DIR."/".$_POST[$FormFieldName];
-        $DirEntries = scandir($TargetDir);
-        if ($DirEntries === false) {
-            throw new Exception(
-                "scandir() on ".$TargetDir." failed"
-                    ." (should be impossible)."
-            );
-        }
-        foreach ($DirEntries as $Entry) {
-            $TargetPath = $TargetDir."/".$Entry;
-            if (is_file($TargetPath)) {
-                unlink($TargetPath);
-            }
-        }
-
-        rmdir($TargetDir);
-
-        self::cleanFilePondUploadDir();
     }
 
     /**
@@ -1822,7 +1644,7 @@ abstract class FormUI_Base
                     );
                 }
 
-                $ExistsFn = function ($Id) use ($Factory) {
+                $ExistsFn = function ($Id) use ($Factory): bool {
                     return is_numeric($Id) && $Factory->itemExists((int)$Id);
                 };
 
@@ -1834,17 +1656,17 @@ abstract class FormUI_Base
             case MetadataSchema::MDFTYPE_USER:
                 $Factory = new UserFactory();
 
-                $ExistsFn = function ($Id) use ($Factory) {
+                $ExistsFn = function ($Id) use ($Factory): bool {
                     return $Factory->userExists($Id);
                 };
 
-                $NameFn = function ($Id) {
+                $NameFn = function ($Id): string {
                     return (new User($Id))->name();
                 };
                 break;
 
             case MetadataSchema::MDFTYPE_REFERENCE:
-                $ExistsFn = function ($Id) {
+                $ExistsFn = function ($Id): bool {
                     return Record::itemExists($Id);
                 };
 
@@ -1877,27 +1699,24 @@ abstract class FormUI_Base
      */
     protected function fieldWasDisplayedWhenFormWasSubmitted(string $FieldName): bool
     {
-        # if this field might have been hidden
         $Params = $this->FieldParams[$FieldName];
-        if (isset($Params["DisplayIf"])) {
-            # iterate over all the togglers that might enable this field
-            foreach ($Params["DisplayIf"] as $Toggler => $ToggleValues) {
-                if (!is_array($ToggleValues)) {
-                    $ToggleValues = [$ToggleValues];
-                }
-
-                $CurrentValue = $this->getFieldValue($Toggler);
-                if (in_array($CurrentValue, $ToggleValues)) {
-                    return true;
-                }
-            }
-
-            # if no toggler was found to enable this field, it was hidden
-            return false;
-        } else {
-            # if field cannot be hidden, then it must have been shown
+        if (!isset($Params["DisplayIf"])) {
             return true;
         }
+
+        # field is displayed only when all configured togglers match
+        foreach ($Params["DisplayIf"] as $Toggler => $ToggleValues) {
+            if (!is_array($ToggleValues)) {
+                $ToggleValues = [$ToggleValues];
+            }
+
+            $CurrentValue = $this->getFieldValue($Toggler);
+            if (!in_array($CurrentValue, $ToggleValues)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1942,6 +1761,23 @@ abstract class FormUI_Base
         $ErrorsFound = 0;
         $FieldParams = $this->FieldParams[$FieldName];
         $FieldValue = $FieldValues[$FieldName] ?? null;
+        $FieldIsReadOnly = null;
+
+        # check if a required field was missing before running custom validation
+        if ($FieldParams["Required"]) {
+            $FieldIsReadOnly = $this->isReadOnly($FieldName);
+            if (!$FieldIsReadOnly
+                    && $this->requiredFieldValueIsMissing($FieldParams, $FieldValue)) {
+                # log error to indicate required value is missing
+                self::logError(
+                    "<i>".$FieldParams["Label"]."</i> is required.",
+                    $FieldName,
+                    $this->UniqueKey
+                );
+
+                return 1;
+            }
+        }
 
         # if a validation function was defined
         if (isset($FieldParams["ValidateFunction"])) {
@@ -1970,7 +1806,7 @@ abstract class FormUI_Base
         }
 
         # check if a read-only value was changed
-        if ($this->isReadOnly($FieldName)) {
+        if ($FieldIsReadOnly ?? $this->isReadOnly($FieldName)) {
             $OldValue = $this->getFallbackValueForField($FieldName);
             if ($FieldValue != $OldValue) {
                 # log error to indicate that a readonly value was changed
@@ -1986,39 +1822,6 @@ abstract class FormUI_Base
             return $ErrorsFound;
         }
 
-        # check if a required field was missing
-        if ($FieldParams["Required"]) {
-            switch ($FieldParams["Type"]) {
-                case self::FTYPE_SEARCHPARAMS:
-                    $IsEmpty = $FieldValue->parameterCount() == 0;
-                    break;
-
-                case self::FTYPE_PRIVILEGES:
-                    $IsEmpty = $FieldValue->comparisonCount() == 0;
-                    break;
-
-                default:
-                    if (is_array($FieldValue)) {
-                        $IsEmpty = count($FieldValue) == 0;
-                    } else {
-                        $IsEmpty = strlen(trim($FieldValue ?? "")) == 0;
-                    }
-                    break;
-            }
-
-            if ($IsEmpty) {
-                # log error to indicate required value is missing
-                self::logError(
-                    "<i>".$FieldParams["Label"]."</i> is required.",
-                    $FieldName,
-                    $this->UniqueKey
-                );
-                $ErrorsFound++;
-
-                return $ErrorsFound;
-            }
-        }
-
         # otherwise validate based on field type
         switch ($FieldParams["Type"]) {
             case self::FTYPE_NUMBER:
@@ -2030,7 +1833,8 @@ abstract class FormUI_Base
                 break;
 
             case self::FTYPE_USER:
-                $ErrorsFound += $this->validateUserFieldValue($FieldName, $FieldValue);
+                $UserFieldValue = ($FieldValue === null) ? [] : $FieldValue;
+                $ErrorsFound += $this->validateUserFieldValue($FieldName, $UserFieldValue);
                 break;
 
             case self::FTYPE_TEXT:
@@ -2041,6 +1845,34 @@ abstract class FormUI_Base
         }
 
         return $ErrorsFound;
+    }
+
+    /**
+     * Determine if a required field value should be considered missing.
+     * @param array $FieldParams Form field parameters.
+     * @param mixed $FieldValue Form field value.
+     * @return bool TRUE if the value is missing, otherwise FALSE.
+     */
+    private function requiredFieldValueIsMissing(
+        array $FieldParams,
+        $FieldValue
+    ): bool {
+        switch ($FieldParams["Type"]) {
+            case self::FTYPE_SEARCHPARAMS:
+                return $FieldValue === null
+                        || $FieldValue->parameterCount() === 0;
+
+            case self::FTYPE_PRIVILEGES:
+                return $FieldValue === null
+                        || $FieldValue->comparisonCount() === 0;
+
+            default:
+                if (is_array($FieldValue)) {
+                    return count($FieldValue) === 0;
+                }
+
+                return strlen(trim($FieldValue ?? "")) === 0;
+        }
     }
 
     /**
@@ -2243,7 +2075,7 @@ abstract class FormUI_Base
      * @param array $FormValues Incoming form values.
      * @return array Normalized data.
      */
-    private function normalizeFormValueEncoding($FormValues): array
+    private function normalizeFormValueEncoding(array $FormValues): array
     {
 
         foreach ($FormValues as $Name => $Values) {
@@ -2278,7 +2110,7 @@ abstract class FormUI_Base
      * @param array $FormValues Incoming form values.
      * @return array Normalized data.
      */
-    private function normalizeFormValueData($FormValues)
+    private function normalizeFormValueData(array $FormValues): array
     {
         foreach ($FormValues as $Name => $Values) {
             if (!isset($this->FieldParams[$Name])) {

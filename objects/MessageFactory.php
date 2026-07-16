@@ -52,7 +52,7 @@ class MessageFactory extends ItemFactory
         $this->DB->Query("SELECT MessageId FROM Messages"
                 ." WHERE PosterId = ".intval($UserId)
                 ." ORDER BY DatePosted DESC"
-                .($Count ? " LIMIT ".intval($Count) : ""));
+                .($Count !== null && $Count !== 0 ? " LIMIT ".intval($Count) : ""));
         $MessageIds = $this->DB->FetchColumn("MessageId");
 
         # load messages based on message IDs

@@ -463,7 +463,7 @@ class FeaturedItems extends Plugin
         $DisplayCount = 0;
         do {
             # iterate over our groups, selecting a record to display from each
-            foreach ($RecordsByGroup as $VocabId => $RecordIds) {
+            foreach ($RecordsByGroup as $RecordIds) {
                 # wrap our global index to fit within the records we have
                 # for this group, but indexing with each iteration
                 $Index_i = ($Index + $Iteration) % count($RecordIds);

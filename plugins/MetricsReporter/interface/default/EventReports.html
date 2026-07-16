@@ -6,15 +6,27 @@
 #   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
-use Metavus\BarChart;
-use Metavus\MultiDateChart;
+namespace Metavus;
+use Exception;
 use Metavus\Plugins\CalendarEvents\Event;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function PrintEventTable($CountData, $StartDate, $Caption)
-{
+/**
+ * Print a summary of event metrics data.
+ * @param array $CountData Counts for each event keyed by event id.
+ * @param string $StartDate Start date as a string suitable for strtotime().
+ * @param string $Caption Description of the data being displayed to use in
+ *         the 'no XX' messages.
+ * @return void
+ */
+function printEventTable(
+    array $CountData,
+    string $StartDate,
+    string $Caption
+): void {
     ?>
     <table class="table table-striped">
       <tr style="background-color: #CFCFDD;">
@@ -26,16 +38,15 @@ function PrintEventTable($CountData, $StartDate, $Caption)
             $Other = 0;
             $Rows = 0;
             foreach ($CountData as $Id => $Count) {
-                if (Event::ItemExists($Id)) {
+                if (Event::itemExists($Id)) {
                     $Event = new Event($Id);
-
 
                     $Total += $Count;
 
                     if ($Rows < 20) {
                         $Rows++;
-                        ?><tr valign="top"><td><a href="<?= $Event->EventUrl(); ?>"
-                               ><?= $Event->Get("Title");  ?></a></td>
+                        ?><tr valign="top"><td><a href="<?= $Event->eventUrl(); ?>"
+                               ><?= $Event->get("Title");  ?></a></td>
                            <td align="right"><?= $Count;  ?></td>
                          </tr><?PHP
                     } else {
@@ -53,7 +64,7 @@ function PrintEventTable($CountData, $StartDate, $Caption)
             ?><tr><td colspan="2">(no <?= $Caption; ?> for this period)</td></tr><?PHP
         }
         print "<tr><td colspan=\"2\" align=\"center\"><i><b>Period:</b> "
-                    .date("M j Y", strtotime($StartDate))." - " .date("M j Y")
+                    .date("M j Y", (int)strtotime($StartDate))." - " .date("M j Y")
                     ."</i></td></tr>";
 
         ?></table><?PHP
@@ -61,42 +72,79 @@ function PrintEventTable($CountData, $StartDate, $Caption)
 
 # ----- MAIN -----------------------------------------------------------------
 
+# ensure needed vars are set and of the right type
+if (!isset($H_EventsAddedPerDay) || !is_array($H_EventsAddedPerDay)) {
+    throw new Exception("Variable \$H_EventsAddedPerDay is not set or is the wrong type.");
+}
+if (!isset($H_MonthAgo) || !is_string($H_MonthAgo)) {
+    throw new Exception("Variable \$H_MonthAgo is not set or is the wrong type.");
+}
+if (!isset($H_SharesByDay) || !is_array($H_SharesByDay)) {
+    throw new Exception("Variable \$H_SharesByDay is not set or is the wrong type.");
+}
+if (!isset($H_ShareTypeColors) || !is_array($H_ShareTypeColors)) {
+    throw new Exception("Variable \$H_ShareTypeColors is not set or is the wrong type.");
+}
+if (!isset($H_ShareTypeLabels) || !is_array($H_ShareTypeLabels)) {
+    throw new Exception("Variable \$H_ShareTypeLabels is not set or is the wrong type.");
+}
+if (!isset($H_TopShares) || !is_array($H_TopShares)) {
+    throw new Exception("Variable \$H_TopShares is not set or is the wrong type.");
+}
+if (!isset($H_TopViews) || !is_array($H_TopViews)) {
+    throw new Exception("Variable \$H_TopViews is not set or is the wrong type.");
+}
+if (!isset($H_ViewsByDay) || !is_array($H_ViewsByDay)) {
+    throw new Exception("Variable \$H_ViewsByDay is not set or is the wrong type.");
+}
+if (!isset($H_WeekAgo) || !is_string($H_WeekAgo)) {
+    throw new Exception("Variable \$H_WeekAgo is not set or is the wrong type.");
+}
+if (!isset($H_YearAgo) || !is_string($H_YearAgo)) {
+    throw new Exception("Variable \$H_YearAgo is not set or is the wrong type.");
+}
+
 # convert events added summary to barchartable form
-$H_EventsAddedPerDay = array_map(function ($x) {
+$H_EventsAddedPerDay = array_map(function ($x): array {
     return [$x];
 }, $H_EventsAddedPerDay);
 
 # convert views summary to barchartable form
-$H_ViewsByDay = array_map(function ($x) {
+$H_ViewsByDay = array_map(function ($x): array {
     return [$x];
 }, $H_ViewsByDay);
 
 $EventsAddedGraph = new MultiDateChart();
-$EventsAddedGraph->Data($H_EventsAddedPerDay);
-$EventsAddedGraph->LegendPosition(BarChart::LEGEND_NONE);
-$EventsAddedGraph->Labels(["New Events"]);
-$EventsAddedGraph->Width(800);
+$EventsAddedGraph->data($H_EventsAddedPerDay);
+$EventsAddedGraph->setLegendPosition(BarChart::LEGEND_NONE);
+$EventsAddedGraph->labels(["New Events"]);
+$EventsAddedGraph->width(800);
 
 $ViewsGraph = new MultiDateChart();
-$ViewsGraph->Data($H_ViewsByDay);
-$ViewsGraph->LegendPosition(BarChart::LEGEND_NONE);
-$ViewsGraph->Labels(["Event Views"]);
-$ViewsGraph->Width(800);
+$ViewsGraph->data($H_ViewsByDay);
+$ViewsGraph->setLegendPosition(BarChart::LEGEND_NONE);
+$ViewsGraph->labels(["Event Views"]);
+$ViewsGraph->width(800);
 
 $SharesGraph = new MultiDateChart();
-$SharesGraph->Data($H_SharesByDay);
+$SharesGraph->data($H_SharesByDay);
 
-$SharesGraph->Labels($H_ShareTypeLabels);
-$SharesGraph->Colors($H_ShareTypeColors);
-$SharesGraph->Width(800);
+$SharesGraph->labels($H_ShareTypeLabels);
+$SharesGraph->colors($H_ShareTypeColors);
+$SharesGraph->width(800);
 ?>
 <style type="text/css">
-.mv-stat-header {
-  display: inline-block;
-  margin: 0;
-  padding-left: 4px;
-  padding-top: 5px;
+.mv-content-mfetabs li {
+    display: inline-block;
+    list-style-type: none;
 }
+.mv-stat-header {
+    display: inline-block;
+    margin: 0;
+    padding-left: 4px;
+    padding-top: 5px;
+}
+
 </style>
 
 <h1>Event Usage Metrics</h1>
@@ -108,22 +156,23 @@ $SharesGraph->Width(800);
       <div style="height: 2.5em">
         <h2 class="mv-stat-header">Event Views</h2>
         <ul class="mv-button-group mv-content-mfetabs" style="float: right;">
-          <li><a class="mv-button mv-button-weekly mv-button-views mv-button-active">Week</a></li>
-          <li><a class="mv-button mv-button-monthly mv-button-views">Month</a></li>
-          <li><a class="mv-button mv-button-yearly mv-button-views">Year</a></li>
+          <li><a class="btn btn-primary mv-button mv-button-weekly mv-button-views
+                        mv-button-active">Week</a></li>
+          <li><a class="btn btn-primary mv-button mv-button-monthly mv-button-views">Month</a></li>
+          <li><a class="btn btn-primary mv-button mv-button-yearly mv-button-views">Year</a></li>
         </ul>
       </div>
 
       <div class="mv-stat-views mv-stat-weekly">
-      <?PHP PrintEventTable($H_TopViews["Week"], $H_WeekAgo, "event views"); ?>
+      <?PHP printEventTable($H_TopViews["Week"], $H_WeekAgo, "event views"); ?>
       </div>
 
       <div class="mv-stat-views mv-stat-monthly">
-      <?PHP PrintEventTable($H_TopViews["Month"], $H_MonthAgo, "event views"); ?>
+      <?PHP printEventTable($H_TopViews["Month"], $H_MonthAgo, "event views"); ?>
       </div>
 
       <div class="mv-stat-views mv-stat-yearly">
-      <?PHP PrintEventTable($H_TopViews["Year"], $H_YearAgo, "event views"); ?>
+      <?PHP printEventTable($H_TopViews["Year"], $H_YearAgo, "event views"); ?>
       </div>
 
     </td>
@@ -133,22 +182,23 @@ $SharesGraph->Width(800);
       <div style="height: 2.5em">
         <h2 class="mv-stat-header">Event Shares</h2>
         <ul class="mv-button-group mv-content-mfetabs" style="float: right;">
-          <li><a class="mv-button mv-button-weekly mv-button-shares mv-button-active">Week</a></li>
-          <li><a class="mv-button mv-button-monthly mv-button-shares">Month</a></li>
-          <li><a class="mv-button mv-button-yearly mv-button-shares">Year</a></li>
+          <li><a class="btn btn-primary mv-button mv-button-weekly mv-button-shares
+                        mv-button-active">Week</a></li>
+          <li><a class="btn btn-primary mv-button mv-button-monthly mv-button-shares">Month</a></li>
+          <li><a class="btn btn-primary mv-button mv-button-yearly mv-button-shares">Year</a></li>
         </ul>
       </div>
 
      <div class="mv-stat-shares mv-stat-weekly">
-      <?PHP PrintEventTable($H_TopShares["Week"], $H_WeekAgo, "event shares"); ?>
+      <?PHP printEventTable($H_TopShares["Week"], $H_WeekAgo, "event shares"); ?>
       </div>
 
       <div class="mv-stat-shares mv-stat-monthly">
-      <?PHP PrintEventTable($H_TopShares["Month"], $H_MonthAgo, "event shares"); ?>
+      <?PHP printEventTable($H_TopShares["Month"], $H_MonthAgo, "event shares"); ?>
       </div>
 
       <div class="mv-stat-shares mv-stat-yearly">
-      <?PHP PrintEventTable($H_TopShares["Year"], $H_YearAgo, "event shares"); ?>
+      <?PHP printEventTable($H_TopShares["Year"], $H_YearAgo, "event shares"); ?>
       </div>
 
     </td>
@@ -178,10 +228,10 @@ $(".mv-button-yearly").click( function(){ toggle_stats(this, 'yearly'); });
 </script>
 
 <h2>New Events</h2>
-<?PHP $EventsAddedGraph->Display("new_events"); ?>
+<?PHP $EventsAddedGraph->display("new_events"); ?>
 
 <h2>Event Views</h2>
-<?PHP $ViewsGraph->Display("event_views"); ?>
+<?PHP $ViewsGraph->display("event_views"); ?>
 
 <h2>Event Shares</h2>
-<?PHP $SharesGraph->Display("event_shares"); ?>
+<?PHP $SharesGraph->display("event_shares"); ?>

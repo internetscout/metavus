@@ -135,7 +135,7 @@ class Collection extends Record
      */
     protected function getRandomHexColor(int $NumberOfPossibleColors): string
     {
-        $Seed = rand(0, ($NumberOfPossibleColors - 1));
+        $Seed = random_int(0, ($NumberOfPossibleColors - 1));
         $Hue = $Seed * (360 / $NumberOfPossibleColors);
         $HexColor = StdLib::hslToHexColor($Hue, 50, 50);
         return $HexColor;

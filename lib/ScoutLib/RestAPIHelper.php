@@ -108,7 +108,7 @@ class RestAPIHelper
      * @param array $Data Data to encapsulate
      * @return array Encrypted packet
      */
-    public function encodeEncryptedMessage($Data)
+    public function encodeEncryptedMessage($Data): array
     {
         # create an envelope for our message, put the provided data inside
         $Env = array();
@@ -163,7 +163,7 @@ class RestAPIHelper
      * issue.  On success, there will be a "Data" member giving the
      * decrypted payload.
      */
-    public function decodeEncryptedMessage($PostData)
+    public function decodeEncryptedMessage($PostData): array
     {
         # verify that the provided POST data has the correct elements
         if (!isset($PostData["MAC"]) || !isset($PostData["Payload"]) ||

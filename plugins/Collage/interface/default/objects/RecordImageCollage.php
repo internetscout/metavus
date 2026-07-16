@@ -29,7 +29,7 @@ class RecordImageCollage
      * @return string HTML for collage, or an empty string if no record
      *      IDs were supplied.
      */
-    public static function getHtml(array $RecordIds)
+    public static function getHtml(array $RecordIds): string
     {
         # if we weren't given records, don't try to get a collage
         if (count($RecordIds) == 0) {
@@ -68,7 +68,7 @@ class RecordImageCollage
      * (and only once) on any page that contains a collage.
      * @return string Supporting HTML.
      */
-    public static function getSupportingHtml()
+    public static function getSupportingHtml(): string
     {
         (ApplicationFramework::getInstance())->requireUIFile("RecordImageCollage.js");
 
@@ -97,7 +97,7 @@ class RecordImageCollage
      * @param Record $Record record to get html for
      * @return string html div with image and data for popup
      */
-    private static function getHtmlForRecord(Record $Record)
+    private static function getHtmlForRecord(Record $Record): string
     {
         $Screenshot = $Record->getMapped("Screenshot", true);
         if (is_null($Screenshot) || count($Screenshot) == 0) {

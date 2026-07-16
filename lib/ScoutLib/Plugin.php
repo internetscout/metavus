@@ -3,7 +3,7 @@
 #   FILE:  Plugin.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -36,8 +36,8 @@ abstract class Plugin
 
         $Plugin = self::$Instances[$ClassName];
         if (!$IgnoreReadyState && !$Plugin->isReady()) {
-            throw new Exception("Attempt to retrieve plugin that is not ready"
-                    ." for use at ".StdLib::getMyCaller());
+            throw new Exception("Attempt to retrieve plugin \"".get_called_class()
+                    ."\" that is not ready for use at ".StdLib::getMyCaller());
         }
         return $Plugin;
     }
@@ -302,11 +302,11 @@ abstract class Plugin
     /**
      * Get plugin configuration setting parameters.
      * @param string $SettingName Name of configuration value.
-     * @return array Associative array with plugin config settings, as
+     * @return ?array Associative array with plugin config settings, as
      *       defined by plugin, or NULL if no setting available with the
      *       specified name.
      */
-    final public function getConfigSettingParameters(string $SettingName): array
+    final public function getConfigSettingParameters(string $SettingName): ?array
     {
         return isset($this->CfgSetup[$SettingName])
             ? $this->CfgSetup[$SettingName] : null;
@@ -331,6 +331,40 @@ abstract class Plugin
 
         # save override value
         self::$CfgOver[static::getBaseName()][$SettingName] = $Value;
+    }
+
+    /**
+     * Get all configuration settings for a specified plugin. This does not
+     * require that the plugin be ready or even loaded.
+     * @param string $BaseName Base name of plugin to retrieve.
+     * @return array Available configuration settings, or an empty array if no
+     *         settings were found for a plugin with the specified name.
+     */
+    final public static function getConfigSettingsForPlugin(string $BaseName): array
+    {
+        # start off assuming no config available
+        $Result = [];
+
+        # load plugin info from database if necessary
+        self::loadPluginInfoCache();
+
+        # if we have info for this plugin
+        if (array_key_exists($BaseName, self::$PluginInfoCache)) {
+            $Info = self::$PluginInfoCache[$BaseName];
+
+            # if info included config, load it into our result
+            if (!is_null($Info["Cfg"]) && trim($Info["Cfg"]) !== "") {
+                $Result = unserialize($Info["Cfg"]);
+            }
+        }
+
+        # if self::$Cfg has settings for this plugin, overly them into Result
+        # (array addition prefers keys from the left-hand entry)
+        if (array_key_exists($BaseName, self::$Cfg)) {
+            $Result = self::$Cfg[$BaseName] + $Result;
+        }
+
+        return $Result;
     }
 
     /**
@@ -523,6 +557,65 @@ abstract class Plugin
         self::$AF = $AF;
     }
 
+    /**
+     * Retrieve current value (if any) for specified setting, for the current
+     * user.  User settings are identified using a combination of the owner
+     * name (in this case, the base name of the plugin) and the setting name,
+     * with the owner name used to qualify the setting name.
+     * @param string $SettingName Name of setting.
+     * @return ?string Value of setting, or NULL if no value has been set.
+     */
+    public function getUserSetting(string $SettingName): ?string
+    {
+        $User = User::getCurrentUser();
+        return $User->getSetting("Plugin::".static::getBaseName(), $SettingName);
+    }
+
+    /**
+     * Retrieve current value for the specified setting for the current user.
+     * If no saved value is available for this user, it falls back to the value
+     * most recently saved for any user for the specified setting.  If no value
+     * has been saved for any user for this setting, then $FallbackValue is
+     * returned (which is NULL by default).
+     * @param string $SettingName Name of setting.
+     * @param ?string $FallbackValue Value to return if no value has been
+     *      set for any user for this setting.
+     * @return ?string Value of setting (or fallback value, as described above).
+     */
+    public function getUserSettingWithFallback(
+        string $SettingName,
+        ?string $FallbackValue = null
+    ): ?string {
+        $User = User::getCurrentUser();
+        return $User->getSettingWithFallback(
+            "Plugin::".static::getBaseName(),
+            $SettingName,
+            $FallbackValue
+        );
+    }
+
+    /**
+     * Set new value for the specified setting for the current user.
+     * @param string $SettingName Name of setting.
+     * @param string $NewValue New value for setting.
+     */
+    public function setUserSetting(string $SettingName, string $NewValue): void
+    {
+        $User = User::getCurrentUser();
+        $User->setSetting("Plugin::".static::getBaseName(), $SettingName, $NewValue);
+    }
+
+    /**
+     * Clear any current value for the specified setting for the current user.
+     * If there is no value set, this method will have no effect.
+     * @param string $SettingName Name of setting.
+     */
+    public function clearUserSetting(string $SettingName): void
+    {
+        $User = User::getCurrentUser();
+        $User->clearSetting("Plugin::".static::getBaseName(), $SettingName);
+    }
+
 
     # ----- PROTECTED INTERFACE ----------------------------------------------
 
@@ -598,20 +691,12 @@ abstract class Plugin
         $this->register();
 
         # load plugin info from database if necessary
-        if (!isset(self::$PluginInfoCache)) {
-            $DB = new Database();
-            $DB->query("SELECT * FROM PluginInfo");
-            while ($Row = $DB->fetchRow()) {
-                self::$PluginInfoCache[$Row["BaseName"]] = $Row;
-            }
-        }
+        self::loadPluginInfoCache();
 
         # add plugin to database if not already in there
         $BaseName = static::getBaseName();
         if (!isset(self::$PluginInfoCache[$BaseName])) {
-            if (!isset($DB)) {
-                $DB = new Database();
-            }
+            $DB = new Database();
             $Attribs = $this->getAttributes();
 
             # lock tables to prevent inserting multiple rows
@@ -649,6 +734,22 @@ abstract class Plugin
         self::$Cfg[$BaseName] = (!is_null($Info["Cfg"]) && trim($Info["Cfg"]) !== "") ?
             unserialize($Info["Cfg"]) :
             null;
+    }
+
+    /**
+     * Load plugin information from database.
+     */
+    private static function loadPluginInfoCache() : void
+    {
+        if (isset(self::$PluginInfoCache)) {
+            return;
+        }
+
+        $DB = new Database();
+        $DB->query("SELECT * FROM PluginInfo");
+        while ($Row = $DB->fetchRow()) {
+            self::$PluginInfoCache[$Row["BaseName"]] = $Row;
+        }
     }
 
     /**
@@ -828,9 +929,9 @@ abstract class Plugin
     private function callAFTaskMethod(
         string $AFMethodName,
         string $PluginMethodName,
-        $Parameters,
-        $Priority,
-        $Description
+        ?array $Parameters,
+        ?int $Priority,
+        ?string $Description
     ) {
         if (!method_exists($this, $PluginMethodName)) {
             throw new InvalidArgumentException("Attempt to call"

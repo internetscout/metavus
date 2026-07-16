@@ -3,28 +3,65 @@
 #   FILE:  AddQualifier.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
 
-use Exception;
-use Metavus\FormUI;
-use Metavus\ItemListUI;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
-# ----- MAIN -----------------------------------------------------------------
+# ----- SETUP ----------------------------------------------------------------
 
-if (!isset($H_FormUI)) {
-    throw new Exception("H_FormUI not defined.");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
-if (!isset($H_Qualifiers)) {
-    throw new Exception("H_Qualifiers not defined.");
-}
+
+# form fields definition
+$FormFields = [
+    "Name" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "MaxLength" => 30,
+        "Size" => 15,
+        "Label" => "Name",
+        "Placeholder" => "",
+        "Required" => true,
+        "ValidateFunction" => function ($FieldName, $FieldValue): ?string {
+            # pass true to nameIsInUse so a case-insensitive string
+            # comparison is used to check if the new qualifier's name
+            # is already in use
+            return (
+            (new QualifierFactory())->nameIsInUse($FieldValue, true)
+            )
+                ? "Qualifier name already in use." : null;
+        }
+    ],
+    "Namespace" => [
+        "Type" => FormUI::FTYPE_URL,
+        "MaxLength" => 30,
+        "Size" => 50,
+        "Label" => "Namespace",
+        "Placeholder" => "",
+    ],
+    "URL" => [
+        "Type" => FormUI::FTYPE_URL,
+        "MaxLength" => 90,
+        "Size" => 50,
+        "Label" => "URL",
+        "Placeholder" => "",
+    ],
+];
 
 $QualifierFactory = new QualifierFactory();
+
+# instantiate FormUI using form fields
+$FormUI = new FormUI($FormFields);
+
+# get array of all qualifier ids
+$Qualifiers = $QualifierFactory->getItems();
+
 $AF = ApplicationFramework::getInstance();
 
 $AF->setPageTitle("Add/Edit Qualifiers");
@@ -45,6 +82,97 @@ $DeleteSelectedButton = new HtmlButton("Delete Selected");
 $DeleteSelectedButton->setIcon("Delete.svg");
 $DeleteSelectedButton->makeSubmitButton();
 
+# ----- PROCESSING -----------------------------------------------------------
+
+# act on any button push
+$ButtonPushed = StdLib::getFormValue("Submit");
+switch ($ButtonPushed) {
+    case "Add":
+        # check values and bail out if any are invalid
+        if ($FormUI->validateFieldInput() !== 0) {
+            break;
+        }
+
+        # Get form values for new qualifier
+        $QualifierValues = $FormUI->getNewValuesFromForm();
+
+        # create new qualifier from values
+        $Qualifier = Qualifier::create(trim($QualifierValues["Name"]));
+        $Qualifier->nSpace($QualifierValues["Namespace"]);
+        $Qualifier->url($QualifierValues["URL"]);
+
+        # refresh page to show new qualifier
+        $AF->setJumpToPage("AddQualifier");
+        return;
+
+    case "Cancel":
+        $AF->setJumpToPage("SysAdmin");
+        return;
+
+    case "Save":
+        $QualifierIds = [];
+        # get list of all qualifier ids using ids
+        foreach (array_keys($_POST) as $Var) {
+            if (preg_match("/qn_[0-9]+/", $Var)) {
+                $QualifierIds[] = intval(str_replace("qn_", "", $Var));
+            }
+        }
+        # go through and save inserted data for each field, with validation
+        foreach ($QualifierIds as $QualifierId) {
+            $Qualifier = new Qualifier($QualifierId);
+            $NewName = trim(StdLib::getFormValue("qn_".$QualifierId));
+            $NewNamespace = trim(StdLib::getFormValue("qs_".$QualifierId));
+            $NewUrl = trim(StdLib::getFormValue("qu_".$QualifierId));
+            $Valid = true;
+            # check if namespace is a valid url
+            if (!filter_var($NewNamespace, FILTER_VALIDATE_URL) && strlen($NewNamespace)) {
+                FormUI::logError($NewNamespace." is not a valid URL.");
+                $Valid = false;
+            }
+            # check if url is a valid url
+            if (!filter_var($NewUrl, FILTER_VALIDATE_URL) && strlen($NewUrl)) {
+                FormUI::logError($NewUrl." is not a valid URL.");
+                $Valid = false;
+            }
+            #check if name is empty
+            if (strlen($NewName) == 0) {
+                FormUI::logError("Name cannot be empty.");
+                $Valid = false;
+            }
+            # pass true to nameIsInUse so a case-insensitive string comparison
+            # is used to check if the new qualifier's name is already in use
+            if ($QualifierFactory->nameIsInUse($NewName, true)
+                && $NewName != $Qualifier->name()) {
+                FormUI::logError($NewName." is already in use.");
+                $Valid = false;
+            }
+            if ($Valid) {
+                $Qualifier = new Qualifier($QualifierId);
+                $Qualifier->name($NewName);
+                $Qualifier->nSpace($NewNamespace);
+                $Qualifier->url($NewUrl);
+                $QualifierId = null;
+            }
+        }
+        # get updated array of all qualifiers using qualifier ids
+        $Qualifiers = $QualifierFactory->getItems();
+        break;
+    case "Delete Selected":
+        $QualifierIds = [];
+        foreach ($_POST as $Var => $Value) {
+            if (preg_match("/qid_[0-9]+/", $Var)) {
+                $QualifierIds[] = $Value;
+            }
+        }
+        if (count($QualifierIds) > 0) {
+            $QualifierIdString = implode("|", $QualifierIds);
+            $AF->setJumpToPage("ConfirmDeleteQualifier&QI=".$QualifierIdString);
+        } else {
+            $AF->setJumpToPage("AddQualifier");
+        }
+        return;
+}
+
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
@@ -52,28 +180,17 @@ $DeleteSelectedButton->makeSubmitButton();
 
 <h1>Qualifier Editor</h1>
 
-<?PHP FormUI::DisplayErrorBlock(); ?>
+<?PHP FormUI::displayErrorBlock(); ?>
 
 <h2>Add Qualifier</h2>
 
 <form method="post" action="index.php?P=AddQualifier">
-    <?PHP $H_FormUI->DisplayFormTable(); ?>
-
-        <?= $SubmitButton->getHtml() ?>             
-        <?= $CancelButton->getHtml() ?>
+    <?PHP $FormUI->displayFormTable(); ?>
+    <?= $SubmitButton->getHtml() ?>
+    <?= $CancelButton->getHtml() ?>
 </form>
-<?PHP if ($QualifierFactory->GetItemCount()) { ?>
+<?PHP if ($QualifierFactory->getItemCount() !== 0) { ?>
 <h2>Edit Existing Qualifiers</h2>
-
-<p>
-    <?PHP if (isset($H_ErrorMessages) && count($H_ErrorMessages) > 0) { ?>
-        <ul class="alert alert-danger mv-form-error">
-            <?PHP foreach ($H_ErrorMessages as $Message) { ?>
-                <li><?= $Message ?></li>
-            <?PHP } ?>
-        </ul>
-    <?PHP } ?>
-</p>
 
 <p>For <a href="http://www.dublincore.org/documents/dcmi-terms/" target="_blank">Dublin Core</a>
 compliant schemas, <i>Qualifiers</i> are equivalent to DC <i>Encoding
@@ -85,7 +202,7 @@ throughout the database may result in data loss.</p>
 <p>For an up-to-date specification of all metadata terms maintained by the
 Dublin Core Metadata Initiative, including elements, element refinements,
 encoding schemes, and vocabulary terms (for example,
-<abbr title="Dublin Core Metadata Inititative">DCMI</abbr> Type Vocabulary) see
+<abbr title="Dublin Core Metadata Initiative">DCMI</abbr> Type Vocabulary) see
 the <a href="http://dublincore.org/documents/dcmi-terms/"><i>DCMI Metadata
 Terms</i></a> document. These terms are also explained in the
 <a href="http://dublincore.org/documents/usageguide/">Dublin Core <i>User
@@ -96,34 +213,34 @@ Guide</i></a>.</p>
     $Fields = [
         "Checkbox" => [
             "AllowHTML" => true,
-            "ValueFunction" => function ($Item) {
-                return '<input type="checkbox" name="qid_'.$Item->Id().'"
-                value="'.$Item->Id().'" />';
+            "ValueFunction" => function ($Item): string {
+                return '<input type="checkbox" name="qid_'.$Item->id().'"
+                value="'.$Item->id().'" />';
             },
             "Heading" => "",
         ],
         "Name" => [
             "AllowHTML" => true,
-            "ValueFunction" => function ($Item) {
+            "ValueFunction" => function ($Item): string {
                 return '<input type="text" size="15" maxlength="30" '
-                    .'id="qn_'.$Item->Id().'" name="qn_'.$Item->Id().'"'
-                    .' value="'.htmlspecialchars($Item->Name()).'" />';
+                    .'id="qn_'.$Item->id().'" name="qn_'.$Item->id().'"'
+                    .' value="'.htmlspecialchars($Item->name()).'" />';
             },
         ],
         "Namespace" => [
             "AllowHTML" => true,
-            "ValueFunction" => function ($Item) {
+            "ValueFunction" => function ($Item): string {
                 return '<input type="text" size="15" maxlength="30" '
-                    .'id="qs_'.$Item->Id().'" name="qs_'.$Item->Id().'"'
-                    .' value="'.$Item->NSpace().'" />';
+                    .'id="qs_'.$Item->id().'" name="qs_'.$Item->id().'"'
+                    .' value="'.$Item->nSpace().'" />';
             },
         ],
         "URL" => [
             "AllowHTML" => true,
-            "ValueFunction" => function ($Item) {
+            "ValueFunction" => function ($Item): string {
                 return '<input type="text" size="25" maxlength="90" '
-                    .'id="qu_'.$Item->Id().'" name="qu_'.$Item->Id().'"'
-                    .' value="'.$Item->Url().'" />';
+                    .'id="qu_'.$Item->id().'" name="qu_'.$Item->id().'"'
+                    .' value="'.$Item->url().'" />';
             },
         ],
     ];
@@ -134,7 +251,7 @@ Guide</i></a>.</p>
 
     ?>
 <form name="updatequalifiers" action="index.php?P=AddQualifier" method="post">
-    <?PHP $ListUI->Display($H_Qualifiers); ?>
+    <?PHP $ListUI->display($Qualifiers); ?>
     <?= $SaveButton->getHtml() ?>
     <?= $DeleteSelectedButton->getHtml() ?>
 </form>

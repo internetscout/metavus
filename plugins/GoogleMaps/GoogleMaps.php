@@ -117,6 +117,69 @@ class GoogleMaps extends Plugin
             "Mailer" => "1.3.1"
         ];
 
+        $this->Instructions =
+            "<p>The GoogleMaps plugin provides a way to display geographic data "
+            ."on a google map.</p>"
+
+            ."<p>In the simplest use case, where all you want is to place a map "
+            ."somewhere in your interface with point data on the map plotted from "
+            ."either a Point metadata field which contains Lat/Long data, or a text "
+            ."metadata field which contains street addresses, you will need to:</p>"
+
+            ."<ol>"
+            ."<li>Select the desired Metadata field in the GoogleMaps plugin "
+            ."configuration.</li>"
+            ."<li>Insert the following in your UI files where you want the map "
+            ."displayed, adjusting the parameters to taste:"
+            ."<pre>"
+            ."&lt;?PHP\n"
+            ."\\Metavus\\Plugins\\GoogleMaps::getInstance()->generateHTMLTagsSimple(\n"
+            ."\t40.0,   # default lat\n"
+            ."\t-90.0,  # default long\n"
+            ."\t4,      # default zoom level\n"
+            ."\t'click' # display info popup after click on pin\n"
+            .");\n"
+            ."?&gt;</pre>"
+            ."</ol>"
+
+            ."<p>For explanations of how to do more complex things, like providing "
+            ."custom marker stylings, or allowing multiple sets of markers, see the "
+            ."docstrings in <code>GoogleMaps.php</code>, especially for "
+            ."<code>generateHTMLTags()</code>.</p>"
+
+            ."<p>Google's machinery adds the pins to the map by creating overlays based "
+            ."on KML data that they fetch from your site via the GetKML plugin page.</p>"
+
+            ."<p>If Google's crawler cannot access GetKML (e.g., because of HTTP Auth"
+            ."requirements), then no pins will appear. The following in <code>.htaccess</code> "
+            ."will allow Google's crawler:"
+
+            ."<pre>"
+            ."&lt;If \"%{HTTP_USER_AGENT} =~ /Kml-Google/\"&gt;\n"
+            ."\tRequire all granted\n"
+            ."&lt;/If&gt;"
+            ."</pre>"
+
+            ."<p>Google does some pretty aggressive caching of KML files. "
+            ."The KmlCacheLifetime config setting is used to add a timestamp "
+            ."parameter to the URL of the generated KML files in order to force Google to "
+            ."reload the KML on our timeline rather than theirs. On the backend, "
+            ."they use the KML we've provided to generate PNG tiles that are used "
+            ."as an overlay on the map. New tiles with re-fetched markers won't "
+            ."be generated till the KmlCacheLifetime has passed or until Google "
+            ."expires their tile cache. Setting KmlCacheLifetime to a low value, "
+            ."like 30 seconds, will force Google to re-fetch the KML and the marker "
+            ."images after 30 seconds. Setting KmlCacheLifetime temporarily to a low "
+            ."value during development can make testing changes much faster. "
+            ."(Depending on what was changed, it may also be necessary to delete the "
+            ."static images and KML files stored in "
+            ."<code>".$this->getCachePath()."</code>).</p>"
+
+            ."<p>For an intro to the KML format, see "
+            ."<a href=\"https://en.wikipedia.org/wiki/Keyhole_Markup_Language\""
+            .">Wikipedia: Keyhole Markup Language</a>.</p>";
+
+
         $this->addAdminMenuEntry(
             "ErrorLog",
             "Geocode Error Log",
@@ -188,7 +251,7 @@ class GoogleMaps extends Plugin
         # (365 * 24 * 60 * 60 = 31536000)
         $this->CfgSetup["KmlCacheLifetime"] = [
             "Type" => "Number",
-            "MinVal" => 60,
+            "MinVal" => 15,
             "MaxVal" => 31536000,
             "Default" => 3600,
             "Label" => "KML Cache Lifetime",
@@ -411,7 +474,6 @@ class GoogleMaps extends Plugin
             "GoogleMaps_EVENT_DISTANCE" => "computeDistance",
             "GoogleMaps_EVENT_BEARING" => "computeBearing",
             "GoogleMaps_EVENT_GET_KML" => "getKml",
-            "Mailer_EVENT_IS_TEMPLATE_IN_USE" => "claimTemplate",
         ];
 
         if ($this->getConfigSetting("AutoPopulateEnable")) {
@@ -440,6 +502,8 @@ class GoogleMaps extends Plugin
                 [$this, "blankAutoPopulatedFields"]
             );
         }
+
+        Mailer::getInstance()->addTemplateUser($this->getMailerTemplateId(), $this->Name);
 
         # explicitly add our include directories because our code is
         #       sometimes called on pages that do not belong to the plugin
@@ -566,6 +630,38 @@ class GoogleMaps extends Plugin
      * that pops up over the map marker for that resource.  Anything that can
      * be a php callback is fair game.
      *
+     * The point provider should return an array of arrays where the inner array give the
+     * details for each point in the following form:
+     * [
+     *     # Required parameters
+     *     0 => (float)$Lat,
+     *     1 => (float)$Long,
+     *     2 => (int)$Id,
+     *     3 => (string)$BgColor,
+     *     4 => (string)$Label,
+     *     5 => (string)$FgColor,
+     *     // Optional parameters (may be omitted)
+     *     6 => (string)$Shape,
+     *     7 => (int)$XOffset,
+     *     8 => (int)$YOffset,
+     * ]
+     *
+     * Colors are specified in hex. The Label text is displayed on the
+     * marker. Shape is an optional parameter describing the marker shape. If
+     * not provided, "marker" will be used, which is a traditional map pin in
+     * the default UI. Custom UIs may override this with their own image. The
+     * XOffset/YOffset parameters describe the offset in pixels for the
+     * 'hotspot' that GMaps will use for mouseovers and clicks on the marker
+     * and that 'anchors' the marker to the Lat/Long specified for the
+     * point. Useful when the top left corner of the marker is transparent
+     * such that clicking in that empty spot shouldn't do anything. Defaults
+     * are 9px / 2px when not provided, which puts the hotspot on the stem of
+     * the pin in the default marker images. All markers of a given shape
+     * should provide the same hotspot values.
+     *
+     * The detail provider should return an html string, which will be
+     * inserted as the body of the popups shown on the map.
+     *
      * For both callbacks, the format of the user-provided array is up to the
      * user implementing the callback. It can contain any additional
      * information that the callback may need in order to emit the correct
@@ -578,27 +674,56 @@ class GoogleMaps extends Plugin
      * If you're using object methods, the objects will need to be somewhere
      * that the ApplicationFramework's object loading will look.
      *
-     * When the HTML for the map is generated, information about the provided
-     * callbacks is stored by the plugin. Google's machinery adds the pins to
-     * the map by creating overlays based on KML data that they fetch from us
-     * via our GetKML plugin page. It is that page that invokes the callbacks
-     * provided to generate the markup Google wants.
-     *
-     * If Google's crawler cannot access GetKML (e.g., because of HTTP Auth
-     * requirements), then no pins will appear. The following in .htaccess
-     * will allow Google's crawler:
-     * <If "%{HTTP_USER_AGENT} =~ /Kml-Google/">
-     *     Require all granted
-     * </If>
-     *
-     * The data for a given set of callbacks can be manually fetched via:
+     * The two callbacks are used to produce a KML datafile that Google will use to
+     * generate a map overlay. The KML for a given set of callbacks can be manually
+     * fetched via:
      * curl 'BaseUrl/index.php?P=P_GoogleMaps_GetKML&PP={PointProviderHash}&DP={DetailProviderHash}'
      *
      * The value for {PointProviderHash} can be found by searching the HTML for 'PointProvider = "'.
      * The value for {DetailProviderHash} can be found by searching the HTML for "&DP=".
      *
-     * For an intro to the KML syntax, see
-     * https://en.wikipedia.org/wiki/Keyhole_Markup_Language for a brief overview.
+     * Markers are generated (in pages/GetMarker.php) by combining three transparent
+     * PNGs taken from the interface:
+     * - ${Shape}-shadow.png, which should contain the shadow and any fixed color background
+     * - ${Shape}-black.png, which should be an all black image
+     * - ${Shape}-outline.phg, which should contain the foreground and is usually an outline
+     *
+     * The final version is assembled by:
+     * 1) Copying ${Shape}-shadow.png into an otherwise empty canvas. The
+     *    dimensions of this image define the dimensions of the resulting
+     *    marker.
+     * 2) loading ${Shape}-black.png, color shifting the black pixels to the
+     *    specified BgColor, then overlaying the result on to the canvas.  The
+     *    color shifting uses `imagefilter()` with IMG_FILTER_COLORIZE;
+     *    non-black pixels (of which there should be none) will end up being
+     *    some other, different color as a victim of the math used by
+     *    IMG_FILTER_COLORIZE.
+     * 3) loading ${Shape}-outline.png and overlaying it on the canvas.
+     * 4) Adding the specified ${Label} with the given FgColor. This uses
+     *    `imagestring()`, placing the text 5px in from the left edge and
+     *    flush with the top of the image.
+     *
+     * For the overlaying in 2-3, the lower left corners of the images are
+     * aligned. For ${Shape}-outline.png and ${Shape}-black.png, if these
+     * images are smaller than the canvas they are padded as needed at top and
+     * right with transparent areas. In 1 and 3 the colors and transparency
+     * are left unmodified, so colored accents can be included in these layers.
+     *
+     * Google's docs are annoyingly non-specific about the necessary sizes for
+     * marker images. The images in the default interface generate a 25 x 24
+     * px pin to match the size of Google's default pin. Icons of this size
+     * are rendered onto the KML overlay as-is, without any scaling. Posts on
+     * the Google Maps developers forum say that images larger than 32 x 32 px
+     * will be down-scaled to fit within a 32 pixel bounding box, which
+     * matches the behavior we're observing in late 2025. However, the
+     * official docs make no mention of this. The official docs also fail to
+     * specify if there's a maximum size or what might happen when an image
+     * exceeds it.
+     *
+     * We cache the generated PNGs in $this->getMarkerCachePath() for
+     * CallbackExpTime days. The URLs for GetMarker include a timestamp
+     * parameter to force Google to reload each marker after the
+     * KmlCacheLifetime has expired.
      *
      * @param array $PointProvider Callback that provides point information
      * @param array $PointProviderParams Parameters passed to the point
@@ -667,48 +792,48 @@ class GoogleMaps extends Plugin
         if (is_numeric($MapsOptions)) {
             $OptionsArray = [];
 
-            if ($MapsOptions & self::NO_DEFAULT_UI) {
+            if (($MapsOptions & self::NO_DEFAULT_UI) !== 0) {
                 $OptionsArray["disableDefaultUI"] = true;
             }
-            if ($MapsOptions & self::NO_DOUBLE_CLICK_ZOOM) {
+            if (($MapsOptions & self::NO_DOUBLE_CLICK_ZOOM) !== 0) {
                 $OptionsArray["disableDoubleClickZoom"] = true;
             }
-            if ($MapsOptions & self::NO_DRAGGABLE) {
+            if (($MapsOptions & self::NO_DRAGGABLE) !== 0) {
                 $OptionsArray["draggable"] = false;
             }
-            if ($MapsOptions & self::NO_KEYBOARD_SHORTCUTS) {
+            if (($MapsOptions & self::NO_KEYBOARD_SHORTCUTS) !== 0) {
                 $OptionsArray["keyboardShortcusts"] = false;
             }
-            if ($MapsOptions & self::NO_CLEAR) {
+            if (($MapsOptions & self::NO_CLEAR) !== 0) {
                 $OptionsArray["noClear"] = true;
             }
-            if ($MapsOptions & self::NO_OVERVIEW) {
+            if (($MapsOptions & self::NO_OVERVIEW) !== 0) {
                 $OptionsArray["overviewMapControl"] = false;
             }
-            if ($MapsOptions & self::NO_PAN) {
+            if (($MapsOptions & self::NO_PAN) !== 0) {
                 $OptionsArray["panControl"] = false;
             }
-            if ($MapsOptions & self::NO_ROTATE) {
+            if (($MapsOptions & self::NO_ROTATE) !== 0) {
                 $OptionsArray["rotateControl"] = false;
             }
-            if ($MapsOptions & self::NO_WHEEL_ZOOM) {
+            if (($MapsOptions & self::NO_WHEEL_ZOOM) !== 0) {
                 $OptionsArray["scrollwheel"] = false;
             }
-            if ($MapsOptions & self::NO_ZOOM) {
+            if (($MapsOptions & self::NO_ZOOM) !== 0) {
                 $OptionsArray["zoomControl"] = false;
             }
 
-            if ($MapsOptions & self::MAP_TYPE_START_OFF) {
+            if (($MapsOptions & self::MAP_TYPE_START_OFF) !== 0) {
                 $OptionsArray["mapTypeControl"] = false;
             }
-            if ($MapsOptions & self::SCALE_START_OFF) {
+            if (($MapsOptions & self::SCALE_START_OFF) !== 0) {
                 $OptionsArray["scaleControl"] = false;
             }
-            if ($MapsOptions & self::STREET_VIEW_START_OFF) {
+            if (($MapsOptions & self::STREET_VIEW_START_OFF) !== 0) {
                 $OptionsArray["streetViewControl"] = false;
             }
 
-            if ($MapsOptions & self::USE_MAP_MAKER) {
+            if (($MapsOptions & self::USE_MAP_MAKER) !== 0) {
                 $OptionsArray["mapMaker"] = true;
             }
 
@@ -1160,7 +1285,7 @@ class GoogleMaps extends Plugin
 
         # make sure the cache directories exist and are usable before attempting
         # to generate the KML
-        if (strlen($this->checkCacheDirectory())) {
+        if (strlen($this->checkCacheDirectory()) !== 0) {
             $AF->logMessage(
                 ApplicationFramework::LOGLVL_ERROR,
                 "[GoogleMaps] KML Cache directory is not writable."
@@ -1241,7 +1366,7 @@ class GoogleMaps extends Plugin
             ."'".addslashes($DetailProviderHash)."')"
         );
 
-        # call the supplied detail provider, expecting an Array
+        # call the supplied point provider
         $Points = call_user_func_array(
             $Callbacks["P"][$CallbackKey],
             [$Callbacks["P"][$CallbackParamsKey]]
@@ -1258,34 +1383,51 @@ class GoogleMaps extends Plugin
             $AF->logMessage(ApplicationFramework::LOGLVL_INFO, $Message);
         }
 
+        # timestamp parameter used to limit the lifetime google will cache our
+        # marker images (cached images expire when the TS= value changes)
+        $TS = floor(time() / ($this->getConfigSetting("KmlCacheLifetime") ?? 3600));
+
         # initialize the KML file
         $Kml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
         $Kml .= '<kml xmlns="http://www.opengis.net/kml/2.2">'."\n";
             $Kml .= "<Document>\n";
 
-        # Enumerate the different marker types that we're using:
+        # enumerate the different marker types that we're using
         $MarkerTypes = [];
+        $MarkerOffsets = [];
         foreach ($Points as $Point) {
             $BgColor = str_replace('#', '', $Point[3]);
             $Label   = defaulthtmlentities($Point[4]);
             $FgColor = str_replace('#', '', $Point[5]);
+            $Shape = $Point[6] ?? self::DEFAULT_MARKER_SHAPE;
+            $XOffset = $Points[7] ?? self::DEFAULT_MARKER_XOFFSET;
+            $YOffset = $Points[8] ?? self::DEFAULT_MARKER_YOFFSET;
 
-            $MarkerTypes[$Label.$BgColor.$FgColor] =
+            $Key = $Label.$BgColor.$FgColor.$Shape;
+            $MarkerTypes[$Key] =
                 ApplicationFramework::getInstance()->baseUrl()
                 ."index.php?P=P_GoogleMaps_GetMarker"
                 ."&T=".$Label
                 ."&BG=".$BgColor
-                ."&FG=".$FgColor ;
+                ."&FG=".$FgColor
+                ."&S=".$Shape
+                ."&TS=".$TS;
+            $MarkerOffsets[$Key] = [
+                "X" => $XOffset,
+                "Y" => $YOffset,
+            ];
         }
 
         # Style elements to define markers:
         foreach ($MarkerTypes as $Key => $Value) {
+            $XOffset = (int)$MarkerOffsets[$Key]["X"];
+            $YOffset = (int)$MarkerOffsets[$Key]["Y"];
+
             $Kml .= '<Style id="_'.defaulthtmlentities($Key).'">';
             $Kml .= '<IconStyle>';
             $Kml .= '<Icon><href>'.defaulthtmlentities($Value).'</href></Icon>';
 
-            # an offset of x=9 and y=2 puts the hotspot inside our marker graphic
-            $Kml .= '<hotSpot x="9" y="2" xunits="pixels" yunits="pixels" />';
+            $Kml .= '<hotSpot x="'.$XOffset.'" y="'.$YOffset.'" xunits="pixels" yunits="pixels" />';
 
             $Kml .= '</IconStyle>';
             $Kml .= '</Style>';
@@ -1294,7 +1436,7 @@ class GoogleMaps extends Plugin
         # Keep track of how many markers are placed at each point:
         $MarkersAtPoint = [];
 
-        # Point elements:
+        # point elements
         foreach ($Points as $Point) {
             $Lat = $Point[0];
             $Lon = $Point[1];
@@ -1302,6 +1444,7 @@ class GoogleMaps extends Plugin
             $BgColor = $Point[3];
             $Label   = $Point[4];
             $FgColor = $Point[5];
+            $Shape = $Point[6] ?? "marker";
 
             $ix =  "X-".$Lat.$Lon."-X";
             if (!isset($MarkersAtPoint[$ix])) {
@@ -1333,7 +1476,7 @@ class GoogleMaps extends Plugin
 
             $Kml .= ']]></description>';
 
-            $Kml .= '<styleUrl>#_'.$Label.$BgColor.$FgColor.'</styleUrl>';
+            $Kml .= '<styleUrl>#_'.$Label.$BgColor.$FgColor.$Shape.'</styleUrl>';
             $Kml .= '<Point><coordinates>'.$Lat.','.$Lon.'</coordinates></Point>';
             $Kml .= '</Placemark>';
         }
@@ -1450,21 +1593,6 @@ class GoogleMaps extends Plugin
     }
 
     /**
-     * Claim our mailer template so that it won't be deleted.
-     * @param int $TemplateId Template being checked.
-     * @param array $TemplateUsers Users of the given template.
-     * @return array parameters for next event in the chain.
-     */
-    public function claimTemplate(int $TemplateId, array $TemplateUsers): array
-    {
-        if ($this->getConfigSetting("GeocodeErrorEmailTemplate") == $TemplateId) {
-            $TemplateUsers[] = $this->Name;
-        }
-
-        return ["TemplateId" => $TemplateId, "TemplateUsers" => $TemplateUsers];
-    }
-
-    /**
      * Log an error message sent by client-side javascript.
      * @param string $Message Error message.
      */
@@ -1521,15 +1649,18 @@ class GoogleMaps extends Plugin
     * Generate the path for a specified map marker.
     * @param string $Label Marker label.
     * @param string $BgColor Hex background color as six lowercase hex digits
-    *   with no leading hashmark.
+    *         with no leading hashmark.
     * @param string $FgColor Hex foreground color (same format as $BgColor).
+    * @param string $Shape Marker shape giving the basename (without suffix,
+    *         eg. "marker") of the icon file to use for marker generation.
     * @throws InvalidArgumentException on invalid colors.
     * @return string Path to the generated marker.
     */
     public function getMarkerFilePath(
         string $Label,
         string $BgColor,
-        string $FgColor
+        string $FgColor,
+        string $Shape
     ): string {
         if (!preg_match('/^[0-9a-f]{6}$/', $BgColor)) {
             throw new InvalidArgumentException("Invalid BgColor: ".$BgColor);
@@ -1546,7 +1677,7 @@ class GoogleMaps extends Plugin
         }
 
         return $this->getMarkerCachePath()."/"
-            .implode("_", [$Label, $BgColor, $FgColor])
+            .implode("_", [$Label, $BgColor, $FgColor, $Shape])
             .".png";
     }
 
@@ -1587,7 +1718,7 @@ class GoogleMaps extends Plugin
         );
 
         if (is_int($TemplateId)) {
-            return (int) $TemplateId;
+            return $TemplateId;
         } else {
             throw new Exception(
                 "TemplateId is not an integer value ( Should not be possible )"
@@ -1930,11 +2061,11 @@ class GoogleMaps extends Plugin
      * @param string $Data Markup to clean.
      * @return string Cleaned data
      */
-    private function cleanMarkupForXml($Data): string
+    private function cleanMarkupForXml(string $Data): string
     {
         $Output = preg_replace_callback(
             '/&[A-Za-z]{0,15}[; ]/',
-            function ($Matches) {
+            function ($Matches): string {
                 # get the list of html entities that PHP knows about
                 static $Entities = null;
                 if ($Entities === null) {
@@ -1964,7 +2095,7 @@ class GoogleMaps extends Plugin
      * @param string $Path Directory to clean.
      * @param string $FilePattern Regex matching files that should be removed.
      */
-    private function cleanCacheDirectory($Path, $FilePattern): void
+    private function cleanCacheDirectory(string $Path, string $FilePattern): void
     {
         if (is_dir($Path)) {
             # determine when files should expire
@@ -2053,4 +2184,9 @@ class GoogleMaps extends Plugin
             ErrorTime TIMESTAMP,
             ErrorData TINYBLOB )",
     ];
+
+    public const DEFAULT_MARKER_SHAPE = "marker";
+
+    private const DEFAULT_MARKER_XOFFSET = 9;
+    private const DEFAULT_MARKER_YOFFSET = 2;
 }

@@ -23,7 +23,7 @@ use ScoutLib\StdLib;
  * @param mixed $Key key of the value to use
  * @return void
  */
-function OAIPMHServer_PrintReadonlyValue(array $Data, $Key)
+function OAIPMHServer_PrintReadonlyValue(array $Data, $Key): void
 {
     $Value = StdLib::getArrayValue($Data, $Key);
     $SafeName = defaulthtmlentities("F_".$Key);
@@ -35,15 +35,15 @@ function OAIPMHServer_PrintReadonlyValue(array $Data, $Key)
     <?PHP
 }
 
-function pv($Value)
+function pv($Value): void
 {
     print defaulthtmlentities($Value);
 }
-function pc($Value)
+function pc($Value): void
 {
     print($Value ? " checked" : "");
 }
-function pe($ValOne, $ValTwo)
+function pe($ValOne, $ValTwo): void
 {
     print(($ValOne == $ValTwo) ? " checked" : "");
 }
@@ -200,7 +200,8 @@ $AF->setPageTitle("OAI-PMH Server - Edit Format");
           <?PHP } ?>
           <img class="cw-form-instructions" style="vertical-align: sub;"
             src="<?= $AF->gUIFile("help.png"); ?>" alt="?"
-            title="Metavus can auto-generate an XSD schema based on your OAI export settings. See the Help on OAI for details and caveats."/>
+               title="Metavus can auto-generate an XSD schema based on your OAI export settings.
+                      See the Help on OAI for details and caveats."/>
         </td>
       </tr>
       <tr>

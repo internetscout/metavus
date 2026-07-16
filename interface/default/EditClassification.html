@@ -10,30 +10,82 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\HtmlOptionList;
 use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_ChildClasses)) {
-    $H_ChildClasses = null;
+
+if (!User::requirePrivilege(PRIV_CLASSADMIN)) {
+    return;
 }
-if (!isset($H_Class)) {
-    throw new Exception("H_Class not defined.");
+
+# assume we're editing and not deleting until told otherwise
+$ConfirmDelete = false;
+
+# retrieve class info from DB, as well as it's associated Field ID and list of qualifiers to display
+$ClassId = StdLib::getFormValue("ClassificationId", StdLib::getFormValue("F_ClassificationId"));
+$Class = new Classification($ClassId);
+$Field = MetadataField::getField($Class->fieldId());
+
+# instantiate form fields
+$FormFields = [
+    "FullName" => [
+        "Label" => "Full Name",
+        "ReadOnly" => true,
+        "Type" => FormUI::FTYPE_TEXT,
+        "Value" => $Class->fullName(),
+    ],
+    "SegmentName" => [
+        "Label" => "Segment Name",
+        "Required" => true,
+        "Type" => FormUI::FTYPE_TEXT,
+        "Value" => $Class->segmentName(),
+    ],
+];
+
+# if classification uses qualifiers, add that part of the form to the form fields
+if ($Field->usesQualifiers()) {
+    $QualifierField = [
+        "Label" => "Qualifier",
+        "Value" => "None",
+    ];
+
+    if ($Field->hasItemLevelQualifiers()) {
+        $QualifierField["Type"] = FormUI::FTYPE_OPTION;
+        $QualifierField["Options"] =
+            ["None" => "(none)"] + $Field->associatedQualifierList();
+
+        $Value = $Class->qualifierId();
+        if ($Value !== false && !Qualifier::itemExists($Value)) {
+            $Value = $Field->defaultQualifier();
+        }
+
+        if ($Value !== false && Qualifier::itemExists($Value)) {
+            $QualifierField["Value"] = $Value;
+        }
+    } else {
+        $QualifierField["ReadOnly"] = true;
+        $QualifierField["Type"] = FormUI::FTYPE_TEXT;
+
+        $Value = $Field->defaultQualifier();
+        if ($Value !== false && Qualifier::itemExists($Value)) {
+            $QualifierField["Value"] = (new Qualifier($Value))->name();
+        }
+    }
+
+    $FormFields["Qualifier"] = $QualifierField;
 }
-if (!isset($H_ClassId)) {
-    throw new Exception("H_ClassId not defined.");
-}
-if (!isset($H_ConfirmDelete)) {
-    throw new Exception("H_ConfirmDelete not defined.");
-}
-if (!isset($H_FormUI)) {
-    throw new Exception("H_FormUI not defined.");
-}
-if (!isset($H_JumpParams)) {
-    throw new Exception("H_JumpParams not defined.");
-}
+
+# create form and add hidden field for classification id
+$FormUI = new FormUI($FormFields);
+$FormUI->addHiddenField("ClassificationId", strval($Class->id()));
+
+# generate link parameters with previous information using old logic
+$JumpParams =
+    ((isset($_GET["SQ"])) ? ("&SQ=".urlencode($_GET["SQ"])) : "")
+    .((isset($_GET["SL"])) ? ("&SL=".urlencode($_GET["SL"])) : "")
+    .((isset($_GET["ParentId"])) ? ("&ParentId=".intval($_GET["ParentId"])) : "")
+    .((isset($_GET["FieldId"])) ? ("&FieldId=".intval($_GET["FieldId"])) : "");
 
 $AF = ApplicationFramework::getInstance();
 
@@ -58,35 +110,92 @@ $CancelButton->setSize(HtmlButton::SIZE_SMALL);
 $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
+# ----- PROCESSING -----------------------------------------------------------
+
+switch (StdLib::getFormValue("Submit")) {
+    case "Save Changes":
+        # check values and bail out if any are invalid
+        if ($FormUI->validateFieldInput() !== 0) {
+            break;
+        }
+
+        # retrieve values from form
+        $NewValues = $FormUI->getNewValuesFromForm();
+
+        # set segment name - don't need to check length since it's required in the form
+        $Class->segmentName($NewValues["SegmentName"]);
+
+        # if qualifier is set, set qualifier
+        if ($Field->usesQualifiers()) {
+            $QualifierId = ($NewValues["Qualifier"] == "None") ?
+                false : intval($NewValues["Qualifier"]);
+            $Class->qualifierId($QualifierId);
+        }
+
+        $Class->recalcDepthAndFullName();
+
+        # go back to EditClassifications
+        $AF->setJumpToPage("EditClassifications".$JumpParams);
+        return;
+    case "Delete Classification":
+        # display confirm delete page
+        $ChildClasses = [];
+        if ($Class->childCount() > 0) {
+            foreach ($Class->childList() as $ChildId) {
+                $ChildClasses[] = (new Classification($ChildId))->fullName();
+            }
+        }
+        $ConfirmDelete = true;
+        break;
+    case "Confirm Delete Classification":
+        # user was warned so we're deleting everything like we said
+        $ChildList = $Class->childList();
+        foreach ($ChildList as $ChildId) {
+            $Child = new Classification($ChildId);
+            $Child->destroy(false, true, true);
+        }
+        $Class->destroy(false, true, true);
+        $AF->setJumpToPage("EditClassifications".$JumpParams);
+        return;
+    case "Cancel":
+        # if we're cancelling deletion, go back to EditClassification
+        # rather than EditClassifications
+        if (array_key_exists("F_ClassificationId", $_POST)) {
+            break;
+        }
+        $AF->setJumpToPage("EditClassifications".$JumpParams);
+        return;
+}
+
 # ----- DISPLAY --------------------------------------------------------------
-$AF->setPageTitle($H_ConfirmDelete ? "Confirm Delete Classification" : "Edit Classification");
+$AF->setPageTitle($ConfirmDelete ? "Confirm Delete Classification" : "Edit Classification");
 ?>
 
-<?PHP if ($H_ConfirmDelete) { ?>
-<h1>Confirm Delete <i><?= $H_Class->FullName() ?></i>
-</h1>
-    <?PHP if ($H_Class->ChildCount()) { ?>
-<p>The following classifications below <i><?= $H_Class->FullName() ?></i>
-    will also be deleted:</p>
-        <?= implode("<br/>", $H_ChildClasses) ?>
+<?PHP if ($ConfirmDelete) { ?>
+    <h1>Confirm Delete <i><?= $Class->fullName() ?></i></h1>
+    <?PHP if (isset($ChildClasses) && count($ChildClasses) > 0) { ?>
+        <p>The following classifications below <i><?= $Class->fullName() ?></i>
+            will also be deleted:</p>
+        <?= implode("<br/>", $ChildClasses) ?>
     <?PHP } ?>
 
-<p><strong>Caution:</strong> Removing a classifier and its descendants cannot
-    be undone.</p>
+    <p>
+        <strong>Caution:</strong>
+        Removing a classifier and its descendants cannot be undone.
+    </p>
 
-<form method="post" action="index.php?P=EditClassification<?= $H_JumpParams ?>">
-    <input type="hidden" name="F_ClassificationId" value="<?= $H_ClassId ?>"/>
+    <form method="post" action="index.php?P=EditClassification<?= $JumpParams ?>">
+        <input type="hidden" name="F_ClassificationId" value="<?= $ClassId ?>"/>
         <?= $ConfirmButton->getHtml() ?>
-        <?= $CancelButton->getHtml() ?>    
-</form>
+        <?= $CancelButton->getHtml() ?>
+    </form>
 <?PHP } else { ?>
-<h1>Edit Classification</h1>
-
-    <?PHP $H_FormUI->displayErrorBlock(); ?>
-<form method="post" action="index.php?P=EditClassification<?= $H_JumpParams ?>">
-    <?PHP $H_FormUI->displayFormTable(); ?>
-    <?= $SaveButton->getHtml() ?>
-    <?= $DeleteButton->getHtml() ?>
-    <?= $CancelButton->getHtml() ?>
-</form>
+    <h1>Edit Classification</h1>
+    <?PHP $FormUI::displayErrorBlock(); ?>
+    <form method="post" action="index.php?P=EditClassification<?= $JumpParams ?>">
+        <?PHP $FormUI->displayFormTable(); ?>
+        <?= $SaveButton->getHtml() ?>
+        <?= $DeleteButton->getHtml() ?>
+        <?= $CancelButton->getHtml() ?>
+    </form>
 <?PHP } ?>

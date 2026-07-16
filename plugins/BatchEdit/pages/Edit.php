@@ -43,7 +43,7 @@ ksort($H_Schemas);
 # iterate over our schemas, constructing an editing interface for each
 #  of them
 $H_Editors = [];
-foreach ($H_Schemas as $SchemaId => $Schema) {
+foreach (array_keys($H_Schemas) as $SchemaId) {
     $H_Editors[$SchemaId] = new ChangeSetEditingUI(
         "FEUI".$SchemaId,
         $SchemaId
@@ -60,7 +60,7 @@ if (isset($_POST["Submit"]) && $_POST["Submit"] == "Apply All Changes") {
     # data for each
     $ChangeData = [];
     $ErrorCount = 0;
-    foreach ($H_Schemas as $SchemaId => $Schema) {
+    foreach (array_keys($H_Schemas) as $SchemaId) {
         $ErrorCount += $H_Editors[$SchemaId]->validateFieldInput();
         $ChangeData[$SchemaId] =
                 $H_Editors[$SchemaId]->GetValuesFromFormData();
@@ -77,7 +77,7 @@ if (isset($_POST["Submit"]) && $_POST["Submit"] == "Apply All Changes") {
         $Resource = new Record($ResourceId);
 
         # if we have any changes for resources in this schema
-        if (count($ChangeData[$Resource->getSchemaId()])) {
+        if (count($ChangeData[$Resource->getSchemaId()]) !== 0) {
             # apply them to this resource
             $ResourceWasChanged = $Resource->applyListOfChanges(
                 $ChangeData[$Resource->getSchemaId()],

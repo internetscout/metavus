@@ -79,7 +79,7 @@ class OAIServer
 
         # find highest current format ID
         $HighestFormatId = 0;
-        foreach ($this->FormatDescrs as $FormatName => $FormatDescr) {
+        foreach ($this->FormatDescrs as $FormatDescr) {
             if ($FormatDescr["FormatId"] > $HighestFormatId) {
                 $HighestFormatId = $FormatDescr["FormatId"];
             }
@@ -108,7 +108,7 @@ class OAIServer
      * Get the list of formats.
      * @return array of supported format names, keyed by FormatId.
      */
-    public function formatList()
+    public function formatList(): array
     {
         $FList = array();
         foreach ($this->FormatDescrs as $FormatName => $FormatDescr) {
@@ -269,7 +269,7 @@ class OAIServer
      * Process Identify request.
      * @return string XML data.
      */
-    private function processIdentify()
+    private function processIdentify(): string
     {
         # initialize response
         $Response = $this->GetResponseBeginTags();
@@ -348,7 +348,7 @@ class OAIServer
      * Process a GetRecord request.
      * @return string XML data.
      */
-    private function processGetRecord()
+    private function processGetRecord(): string
     {
         # initialize response
         $Response = $this->GetResponseBeginTags();
@@ -411,7 +411,7 @@ class OAIServer
      *     just get record identifiers.
      * @return string XML data.
      */
-    private function processListRecords($IncludeMetadata)
+    private function processListRecords(bool $IncludeMetadata): string
     {
         # set request type
         if ($IncludeMetadata) {
@@ -519,7 +519,7 @@ class OAIServer
                         );
 
                         # if search parameters found
-                        if ($SearchParams->parameterCount()) {
+                        if ($SearchParams->parameterCount() !== 0) {
                             # perform search for items that match OAI-SQ request
                             $ItemIds = $this->ItemFactory->SearchForItems(
                                 $SearchParams,
@@ -622,7 +622,7 @@ class OAIServer
      * Handle a ListMetadataFormats request.
      * @return string XML response.
      */
-    private function processListMetadataFormats()
+    private function processListMetadataFormats(): string
     {
         # initialize response
         $Response = $this->GetResponseBeginTags();
@@ -684,7 +684,7 @@ class OAIServer
      * Handle a ListSets request.
      * @return string XML response.
      */
-    private function processListSets()
+    private function processListSets(): string
     {
         # initialize response
         $Response = $this->GetResponseBeginTags();
@@ -745,7 +745,7 @@ class OAIServer
      * Get the tags that begin an OAI response.
      * @return string XML tags.
      */
-    private function getResponseBeginTags()
+    private function getResponseBeginTags(): string
     {
         # start with XML declaration
         $Tags = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?" . ">\n";
@@ -767,7 +767,7 @@ class OAIServer
      * Get the tag to end an OAI response.
      * @return string OAI ending tag
      */
-    private function getResponseEndTags()
+    private function getResponseEndTags(): string
     {
         # close out OAI-PMH root element
         $Tags = "</OAI-PMH>\n";
@@ -785,9 +785,9 @@ class OAIServer
      */
     private function getRequestTag(
         $RequestType = null,
-        $ReqArgList = null,
-        $OptArgList = null
-    ) {
+        ?array $ReqArgList = null,
+        ?array $OptArgList = null
+    ): string {
 
         # build attribute array
         $AttributeList = array();
@@ -826,7 +826,7 @@ class OAIServer
      * @param string $ErrorMessage Error message to output.
      * @return string XML error message.
      */
-    private function getErrorTag($ErrorCode, $ErrorMessage)
+    private function getErrorTag(string $ErrorCode, string $ErrorMessage): string
     {
         return $this->FormatTag("error", $ErrorMessage, array("code" => $ErrorCode));
     }
@@ -839,7 +839,7 @@ class OAIServer
      *     to just get ItemIds (OPTIONAL, default TRUE).
      * @return string XML data.
      */
-    private function getRecordTags($Item, $MetadataFormat, $IncludeMetadata = true)
+    private function getRecordTags($Item, $MetadataFormat, $IncludeMetadata = true): string
     {
         # if more than identifiers requested
         if ($IncludeMetadata) {
@@ -913,7 +913,7 @@ class OAIServer
 
             # if there is additional search info about this item
             $SearchInfo = $Item->GetSearchInfo();
-            if (count($SearchInfo)) {
+            if (count($SearchInfo) !== 0) {
                 # open about and search info tags
                 $Tags .= $this->FormatTag("about");
                 $Attribs = array(
@@ -956,7 +956,7 @@ class OAIServer
      * @param string $ItemId ItemId to encode.
      * @return string ItemId value
      */
-    private function encodeIdentifier($ItemId)
+    private function encodeIdentifier($ItemId): string
     {
         # return encoded value to caller
         return "oai:" . $this->RepDescr["IDDomain"]
@@ -1007,7 +1007,7 @@ class OAIServer
         $EndingDate,
         $MetadataFormat,
         $SetSpec,
-        $ListStartPoint
+        int $ListStartPoint
     ): string {
 
         # concatenate values to create token
@@ -1061,7 +1061,7 @@ class OAIServer
      * @param string $Date String to test.
      * @return bool TRUE if format is invalid, FALSE otherwise
      */
-    private function dateIsInvalid($Date)
+    private function dateIsInvalid($Date): bool
     {
         # if date is null or matches required format
         if (empty($Date) || preg_match("/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/", $Date)) {
@@ -1131,7 +1131,7 @@ class OAIServer
                 $IndentLevel++;
 
                 # add tag to open tag stack
-                array_push($OpenTagStack, $Name);
+                $OpenTagStack[] = $Name;
             }
         } else {
             # decrease indent level
@@ -1166,7 +1166,7 @@ class OAIServer
         $MetadataFormat,
         $LocalFieldName,
         $OAIFieldName
-    ) {
+    ): string {
 
         # retrieve content for field
         $Content = $Item->GetValue($LocalFieldName);
@@ -1281,7 +1281,7 @@ class OAIServer
      * @param string $SetString OAI set requested.
      * @return bool TRUE for OAI-SQ queries, FALSE otherwise.
      */
-    private function isOaisqQuery($SetString)
+    private function isOaisqQuery($SetString): bool
     {
         return ((strpos($SetString, "OAI-SQ|") === 0)
             || (strpos($SetString, "OAI-SQ!") === 0)
@@ -1298,8 +1298,9 @@ class OAIServer
      */
     private function translateOaisqEscapes($Pieces)
     {
-        $EscFunc = function ($Matches) {
-            for ($Index = 0; $Index < count($Matches); $Index++) {
+        $EscFunc = function ($Matches): string {
+            $Counter = count($Matches);
+            for ($Index = 0; $Index < $Counter; $Index++) {
                 $Replacements = chr(intval(substr($Matches[$Index], 1, 2), 16));
             }
             return $Replacements;
@@ -1326,7 +1327,7 @@ class OAIServer
      * @param string $FormatName OAI metadataPrefix in use.
      * @return SearchParameterSet with parameters from OAI-SQ string
      */
-    private function parseOaisqQuery($SetString, $FormatName)
+    private function parseOaisqQuery($SetString, $FormatName): \ScoutLib\SearchParameterSet
     {
         # create SearchParameterSet to add parameters to
         $SearchParams = new SearchParameterSet();

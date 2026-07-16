@@ -36,15 +36,6 @@ $AF->suppressStandardPageStartAndEnd();
 $H_OwnerList = [];
 
 $FolderIds = $Plugin->getFolderList();
-if ($User->isLoggedIn()) {
-    $UserFolderIds = (new FolderFactory($User->id()))
-        ->getResourceFolder()
-        ->getItemIds();
-    $FolderIds = array_merge(
-        $UserFolderIds,
-        $FolderIds
-    );
-}
 
 $Options = [];
 foreach ($FolderIds as $Id) {

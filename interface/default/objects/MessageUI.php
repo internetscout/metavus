@@ -79,7 +79,7 @@ class MessageUI
         $SafeBody = SystemConfiguration::getInstance()->getBool("CommentsAllowHTML")
                 ? StripXSSThreats($Message->body())
                 : nl2br(defaulthtmlentities($Message->body()));
-        $SafePosterName = strlen($Message->posterName())
+        $SafePosterName = strlen($Message->posterName()) !== 0
                 ? defaulthtmlentities($Message->posterName())
                 : "[deleted&nbsp;account]";
         $SafeDatePosted = StdLib::getPrettyTimestamp($DatePosted);
@@ -159,8 +159,8 @@ class MessageUI
      */
     private static function obfuscateEmailAddress(string $String): string
     {
-        $FuzzOne = substr(md5((string)mt_rand()), 0, rand(8, 32));
-        $FuzzTwo = substr(md5((string)mt_rand()), 0, rand(8, 32));
+        $FuzzOne = substr(md5((string)mt_rand()), 0, random_int(8, 32));
+        $FuzzTwo = substr(md5((string)mt_rand()), 0, random_int(8, 32));
         return '<span class="EMungeAddr">'.preg_replace(
             '/@/',
             '<span style="display:none;"> '.htmlentities($FuzzOne).' </span>'

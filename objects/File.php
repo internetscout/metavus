@@ -65,8 +65,8 @@ class File extends Item
         }
 
         # generate secret string (used to protect from unauthorized download)
-        srand(intval((double)microtime() * 1000000));
-        $SecretString = sprintf("%04X", rand(1, 30000));
+        mt_srand(intval((double)microtime() * 1000000));
+        $SecretString = sprintf("%04X", random_int(1, 30000));
 
         # get next file ID by adding file to database
         $DB = new Database();
@@ -137,6 +137,7 @@ class File extends Item
         }
         $Copy->resourceId($this->resourceId());
         $Copy->fieldId($this->fieldId());
+        $Copy->comment($this->comment());
         return $Copy;
     }
 
@@ -194,7 +195,7 @@ class File extends Item
      */
     public function getMimeType(): string
     {
-        return strlen($this->getType()) ? $this->getType() : "application/octet-stream";
+        return strlen($this->getType()) !== 0 ? $this->getType() : "application/octet-stream";
     }
 
     /**

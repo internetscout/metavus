@@ -1,13 +1,32 @@
-User-agent: *
-Crawl-delay: 5
-Disallow: /sh/
+# block common AI crawlers
+# (see https://momenticmarketing.com/blog/ai-search-crawlers-bots for a list)
+User-agent: anthropic-ai
+User-agent: cohere-ai
+User-agent: Google-Extended
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: PerplexityBot
+User-agent: ClaudeBot
+User-agent: YouBot
+User-agent: AI2Bot
+User-agent: PanguBot
+User-agent: CCBot
+User-agent: xAI-Bot
+Disallow: /
 
+# rules for google (uses wildcards that not all bots support)
 User-agent: googlebot
 Disallow: /index.php?P=AdvancedSearch
-Disallow: /index.php?P=SearchResults
-Disallow: /index.php?P=Login
-Disallow: /index.php?P=RequestAccount
-Disallow: /index.php?P=ForgottenPassword
-Disallow: /index.php?P=LeaveFeedback
 Disallow: /index.php?P=GoTo&ID=
+Disallow: /index.php?P=SearchResults
 Disallow: /g*/f*
+Disallow: /sh/
+
+# rules for UAs that have no matching block above
+User-agent: *
+Crawl-delay: 5
+Content-Signal: ai-train=no, search=yes, ai-input=no
+Disallow: /index.php?P=AdvancedSearch
+Disallow: /index.php?P=GoTo&ID=
+Disallow: /index.php?P=SearchResults
+Disallow: /sh/

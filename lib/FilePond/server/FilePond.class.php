@@ -35,7 +35,7 @@ function fetch($url) {
             'ref' => $out, // need this so the file is not automatically removed
         );
     }
-    catch(Exception $e) {
+    catch(\Exception $e) {
         return false;
     }
 }
@@ -43,12 +43,15 @@ function fetch($url) {
 function sanitize_filename($filename) {
     $info = pathinfo($filename);
     $name = sanitize_filename_part($info['filename']);
+    if (!isset($info['extension']) || strlen($info['extension']) == 0) {
+        return (strlen($name) > 0 ? $name : '_');
+    }
     $extension = sanitize_filename_part($info['extension']);
     return (strlen($name) > 0 ? $name : '_') . '.' . $extension;
 }
 
 function sanitize_filename_part($str) {
-    return preg_replace("/[^a-zA-Z0-9\_\s]/", "", $str);
+    return preg_replace('/[^a-zA-Z0-9._\(\)\h-]/', '', $str);
 }
 
 function remove_directory($path) {
@@ -98,7 +101,10 @@ function write_file($path, $data, $filename) {
 }
 
 function is_url($str) {
-    return filter_var($str, FILTER_VALIDATE_URL);
+    if (!filter_var($str, FILTER_VALIDATE_URL)) return false;
+    if (!in_array(parse_url($str, PHP_URL_SCHEME),['http', 'https', 'ftp'])) return false;
+    if (in_array(parse_url($str, PHP_URL_HOST),['localhost', '127.0.0.1', '::1'])) return false;
+    return true;
 }
 
 function echo_file($file) {

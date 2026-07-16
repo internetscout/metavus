@@ -6,15 +6,42 @@
 #   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
+# @scout:phpstan
 
 namespace Metavus;
 
-use Exception;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_Form)) {
-    throw new Exception("H_Form not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+    return;
 }
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Export Users");
+
+# if user clicked away while doing export, these variables would not get unset
+foreach (["FileName", "UserCount", "ExportPath"] as $Val) {
+    if (isset($_SESSION[$Val])) {
+        unset($_SESSION[$Val]);
+    }
+}
+
+$PFactory = new PrivilegeFactory();
+$FormFields = [
+    "UserPrivs" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "Label" => "User Privileges",
+        "AllowMultiple" => true,
+        "Rows" => 15,
+        "Options" => $PFactory->getPrivilegeOptions(),
+        "Help" => "Determines the users that will be exported based on "
+            ."assigned privileges. <b>To export all users, select none.</b>"
+    ]
+];
+
+$Form = new FormUI($FormFields);
 
 $ExportButton = new HtmlButton("Export Users");
 $ExportButton->setIcon("FileExport.svg");
@@ -60,7 +87,7 @@ assigned to the user. An exported file will be in the following format:</p>
 provided. Click it to download the exported user file.</p>
 
 <form method="post" action="index.php?P=ExportUsersExecute">
-    <?PHP $H_Form->DisplayFormTable(); ?>
+    <?PHP $Form->displayFormTable(); ?>
     <?= $ExportButton->getHtml() ?>
     <?= $CancelButton->getHtml() ?>
 </form>

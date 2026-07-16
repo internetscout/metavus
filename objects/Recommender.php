@@ -32,11 +32,11 @@ class Recommender extends \ScoutLib\Recommender
         $this->Schema = new MetadataSchema();
         $Fields = $this->Schema->getFields();
         foreach ($Fields as $Field) {
-            if ($Field->Enabled() && $Field->IncludeInKeywordSearch()) {
-                $FieldName = $Field->Name();
-                $FieldInfo[$FieldName]["DBFieldName"] = $Field->DBFieldName();
-                $FieldInfo[$FieldName]["Weight"] = $Field->SearchWeight();
-                switch ($Field->Type()) {
+            if ($Field->enabled() && $Field->includeInKeywordSearch()) {
+                $FieldName = $Field->name();
+                $FieldInfo[$FieldName]["DBFieldName"] = $Field->dBFieldName();
+                $FieldInfo[$FieldName]["Weight"] = $Field->searchWeight();
+                switch ($Field->type()) {
                     case MetadataSchema::MDFTYPE_TEXT:
                     case MetadataSchema::MDFTYPE_PARAGRAPH:
                     case MetadataSchema::MDFTYPE_USER:
@@ -116,9 +116,7 @@ class Recommender extends \ScoutLib\Recommender
 
             # if cached resource limit exceeded
             if (count(self::$RecordCache) > 100) {
-                # dump oldest resource
-                reset(self::$RecordCache);
-                $DumpedItemId = key(self::$RecordCache);
+                $DumpedItemId = array_key_first(self::$RecordCache);
                 unset(self::$RecordCache[$DumpedItemId]);
             }
         }
@@ -246,7 +244,7 @@ class Recommender extends \ScoutLib\Recommender
         if ($Index >= $TargetCount) {
             # periodically prune correlations if enough time remaining
             if (($AF->getSecondsBeforeTimeout() > 20)
-                && (rand(1, 10) == 1)) {
+                && (random_int(1, 10) == 1)) {
                 $Recommender->pruneCorrelations();
             }
         } else {

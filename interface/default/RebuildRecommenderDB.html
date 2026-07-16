@@ -3,48 +3,150 @@
 #   FILE:  RebuildRecommenderDB.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+use Metavus\Recommender;
+use Metavus\RecordFactory;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
+use ScoutLib\StdLib;
 
-if (!isset($H_RebuildIsComplete)) {
-    throw new Exception("Variable \$H_RebuildIsComplete not set.");
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Process segment of recommender DB rebuild.
+ * @param int|null $StartingResourceId ID of first resource in chunk.
+ * @return int ID of first resource in next chunk.
+ */
+function processResourceChunk($StartingResourceId): int
+{
+    # number of resources to update in each pass
+    $RebuildChunkSize = 500;
+
+    # if starting resource ID is set
+    $Recommender = new Recommender();
+    if (isset($StartingResourceId)) {
+        # process (update recommender data for) current chunk of resources
+        $EndResourceId = $Recommender->updateForItems(
+            $StartingResourceId,
+            $RebuildChunkSize
+        );
+    } else {
+        # initialize starting resource ID
+        $NewStartingResourceId = 0;
+        $EndResourceId = -1;
+    }
+
+    # if we have processed all resources
+    $RFactory = new RecordFactory();
+    $LastResourceId = $RFactory->getHighestItemId();
+    if ($EndResourceId >= $LastResourceId) {
+        # set flag to indicate we're done
+        $NewStartingResourceId = -1;
+
+        # do end maintenance to recommender DB
+        $Recommender->pruneCorrelations();
+    } else {
+        # set new starting resource ID
+        $NewStartingResourceId = $EndResourceId + 1;
+    }
+
+    # return new starting resource ID to caller
+    return $NewStartingResourceId;
 }
 
-if ($H_RebuildIsComplete) { ?>
-<h1>Recommender Database Rebuild Complete</h1>
+# ----- SETUP ----------------------------------------------------------------
 
-<p>The recommender database has been rebuilt successfully.</p>
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
 
-    <?PHP return;
-}
-if (!isset($H_PercentRebuildComplete)) {
-    throw new Exception("Variable \$H_PercentRebuildComplete not set.");
-}
-if (!isset($H_EstimatedTimeRemaining)) {
-    throw new Exception("Variable \$H_EstimatedTimeRemaining not set.");
-}
-if (!isset($H_EstimatedTimeOfCompletion)) {
-    throw new Exception("Variable \$H_EstimatedTimeOfCompletion not set.");
-}?>
-<h1>Rebuilding Recommender Database</h1>
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Rebuilding Recommender Database");
 
-<table class="table table-striped">
-    <tbody>
-        <tr>
-            <th>Percent Complete</th>
-            <td><?= $H_PercentRebuildComplete;  ?>%</td>
-        </tr>
-        <tr>
-            <th>Time Remaining</th>
-            <td><?= $H_EstimatedTimeRemaining; ?> (estimated)</td>
-        </tr>
-        <tr>
-            <th>Time of Completion</th>
-            <td><?= $H_EstimatedTimeOfCompletion; ?> (estimated)</td>
-        </tr>
-    </tbody>
-</table>
+# save page generation timestamp
+$StartingId = $_GET["RSDStartingResourceId"] ?? null;
+
+# process rebuild chunk
+$StartingResourceId = processResourceChunk($StartingId);
+
+# check if rebuild is complete
+$RebuildIsComplete = ($StartingResourceId == -1);
+
+# calculate percent complete
+$RFactory = new RecordFactory();
+$TotalResources = $RFactory->getItemCount();
+$ResourcesProcessed = $RFactory->getItemCount("RecordId < ".$StartingResourceId);
+$PercentRebuildComplete = sprintf(
+    "%.1f",
+    ($ResourcesProcessed * 100) / max(1, $TotalResources)
+);
+
+# calculate estimated time of completion
+$Elapsed = StdLib::getFormValue("RSDElapsed", 0);
+if ($PercentRebuildComplete < 2) {
+    $EstimatedTimeOfCompletion = "-:--";
+    $EstimatedTimeRemaining = "-:--";
+} else {
+    # calculate estimated time remaining on rebuild
+    $EstimatedTotalTime = ($Elapsed * 100) / $PercentRebuildComplete;
+    # (adjust for rebuild speeding up toward end)
+    $EstimatedTotalTime = $EstimatedTotalTime
+        * (1 - ((100 - $PercentRebuildComplete) / 300));
+    $EstimatedTimeRemainingInSeconds = $EstimatedTotalTime - $Elapsed;
+
+    if ($EstimatedTimeRemainingInSeconds > (12 * 60 * 60)) {
+        $EstimatedTimeOfCompletion = date(
+            "D g:ia",
+            intval(microtime(true) + $EstimatedTimeRemainingInSeconds)
+        );
+    } else {
+        $EstimatedTimeOfCompletion = date(
+            "g:ia",
+            intval(microtime(true) + $EstimatedTimeRemainingInSeconds)
+        );
+    }
+    $EstimatedTimeRemaining = sprintf(
+        "%d:%02d:%02d",
+        intval($EstimatedTimeRemainingInSeconds / 3600),
+        (intval($EstimatedTimeRemainingInSeconds / 60) % 60),
+        (intval($EstimatedTimeRemainingInSeconds) % 60)
+    );
+}
+
+# set up page auto-refresh
+if ($StartingResourceId != -1) {
+    # calculate elapsed based on previous time plus current execution time,
+    # plus 2 more seconds to account for network/browser time
+    $ElapsedTime = round(($Elapsed + $AF->getElapsedExecutionTime() + 2), 2);
+    $AF->slowPageLoadThreshold(60);
+    $AF->setJumpToPage(
+        "index.php?P=RebuildRecommenderDB"
+        ."&RSDStartingResourceId=".$StartingResourceId
+        ."&RSDElapsed=".$ElapsedTime,
+        1
+    );
+}
+
+if (!$RebuildIsComplete) {
+    $CompletionInfoTable = new HtmlTable();
+    $CompletionInfoTable->addRowsWithHeaders([
+        ["Percent Complete", $PercentRebuildComplete."%"],
+        ["Time Remaining", $EstimatedTimeRemaining." (estimated)"],
+        ["Time of Completion", $EstimatedTimeOfCompletion." (estimated)"]
+    ]);
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+
+if ($RebuildIsComplete) { ?>
+    <h1>Recommender Database Rebuild Complete</h1>
+    <p>The recommender database has been rebuilt successfully.</p>
+<?PHP } else { ?>
+    <h1>Rebuilding Recommender Database</h1>
+    <?= $CompletionInfoTable->getHtml(); ?>
+<?PHP } ?>

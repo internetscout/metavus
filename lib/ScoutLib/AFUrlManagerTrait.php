@@ -369,7 +369,7 @@ trait AFUrlManagerTrait
 
             # sort clean URL mappings in order
             $CleanUrlMappings = $this->CleanUrlMappings;
-            $SortFunc = function ($A, $B) {
+            $SortFunc = function ($A, $B): int {
                 return $A["Order"] <=> $B["Order"];
             };
             usort($CleanUrlMappings, $SortFunc);

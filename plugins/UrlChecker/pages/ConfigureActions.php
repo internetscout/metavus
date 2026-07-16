@@ -31,7 +31,7 @@ foreach ($Actions as $Action) {
     $H_ActionUIs[$Action] = [];
 
     $Configuration = $MyPlugin->getConfigSetting($Action."Configuration");
-    foreach ($H_Schemas as $SchemaId => $Schema) {
+    foreach (array_keys($H_Schemas) as $SchemaId) {
         $H_ActionUIs[$Action][$SchemaId] = new ChangeSetEditingUI($Action."_".$SchemaId, $SchemaId);
         if (isset($Configuration[$SchemaId])) {
             $H_ActionUIs[$Action][$SchemaId]->LoadConfiguration($Configuration[$SchemaId]);

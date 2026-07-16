@@ -11,49 +11,39 @@
 namespace Metavus;
 
 use Exception;
-use ScoutLib\HtmlOptionList;
-use ScoutLib\SearchEngine;
-use ScoutLib\StdLib;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+use UnexpectedValueException;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 /**
  * Get the first error from the given list of errors.
- * @param array $Errors List of errors
- * @return string|null the first error or NULL if none exist
+ * @param array $Errors List of errors.
+ * @return string|null The first error or NULL if none exist.
  */
-function GetFirstError(array $Errors)
+function getFirstError(array $Errors): ?string
 {
     reset($Errors);
     return current($Errors) !== false ? current($Errors) : null;
 }
 
 /**
- * Get an array of options available for a flag value.The array keys are values
+ * Get an array of options available for a flag value. The array keys are values
  * for the form and the values are the labels for the form.
- * @return array array of flag options
+ * @return array Array of flag options.
  */
-function GetFlagOptions()
+function getFlagOptions(): array
 {
     return [0 => "No", 1 => "Yes"];
 }
 
 /**
- * Get an array of options available for a privilege value.The array keys are
- * values for the form and the values are the labels for the form.
- * @return array array of privilege options
+ * Get an array of options available for SearchGroupLogic.
+ * @return array Array of options.
  */
-function GetPrivilegeOptions()
-{
-    $PrivilegeFactory = new PrivilegeFactory();
-    return ["--" => "--"] + $PrivilegeFactory->getPrivileges(true, false);
-}
-
-/**
-* Get an array of options available for SearchGroupLogic.
-* @return array of options
-*/
-function GetSearchGroupLogicOptions()
+function getSearchGroupLogicOptions(): array
 {
     return [
         SearchEngine::LOGIC_OR => "OR",
@@ -63,13 +53,13 @@ function GetSearchGroupLogicOptions()
 
 /**
  * Get the escaped option text and value for a flag value.
- * @param int $State TRUE if the flag is on and FALSE if the flag is OFF
- * @return array the first value is the text, the second is the value
+ * @param int $State TRUE if the flag is on and FALSE if the flag is OFF.
+ * @return array The first value is the text, the second is the value.
  */
-function GetSafeFlagOption($State)
+function getSafeFlagOption($State): array
 {
     return [
-        defaulthtmlentities(StdLib::getArrayValue(GetFlagOptions(), $State ? 1 : 0)),
+        defaulthtmlentities(StdLib::getArrayValue(getFlagOptions(), $State ? 1 : 0)),
         defaulthtmlentities($State ? 1 : 0)
     ];
 }
@@ -77,14 +67,14 @@ function GetSafeFlagOption($State)
 /**
  * Transform an array of field type enumerations to an array of human-readable
  * strings.
- * @param array $Types Array of field type enumerations
- * @return array array of field human-readable strings
+ * @param array $Types Array of field type enumerations.
+ * @return array Array of field human-readable strings.
  */
-function MakeTypesHumanReadable(array $Types)
+function makeTypesHumanReadable(array $Types): array
 {
     $Strings = MetadataField::$FieldTypeHumanEnums;
 
-    foreach ($Types as $Constant => $Type) {
+    foreach (array_keys($Types) as $Constant) {
         $Types[$Constant] = StdLib::getArrayValue($Strings, $Constant, "Unknown");
     }
 
@@ -93,13 +83,13 @@ function MakeTypesHumanReadable(array $Types)
 
 /**
  * Print the type field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintTypeField(array $Data, $Error)
+function printTypeField(array $Data, ?string $Error): void
 {
-    $AllowedTypes = MakeTypesHumanReadable($Data["AllowedTypes"]);
+    $AllowedTypes = makeTypesHumanReadable($Data["AllowedTypes"]);
     $HasNoAllowedTypes = !count($AllowedTypes);
     $SafeType = defaulthtmlentities($Data["Type"]);
     $SafeTypeName = defaulthtmlentities(MetadataField::$FieldTypeHumanEnums[$Data["Type"]]);
@@ -112,9 +102,10 @@ function PrintTypeField(array $Data, $Error)
       <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Type">Type</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"] || $Data["IsStandard"] || $HasNoAllowedTypes) { ?>
+      <?PHP if (($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"])
+          || $Data["IsStandard"] || $HasNoAllowedTypes) { ?>
         <input type="hidden" id="F_Type" name="F_Type" value="<?= $SafeType; ?>" />
-            <?= $SafeTypeName; ?>
+                 <?= $SafeTypeName; ?>
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList("F_Type", $AllowedTypes, $Data["Type"]))->printHtml(); ?>
       <?PHP } ?>
@@ -125,11 +116,11 @@ function PrintTypeField(array $Data, $Error)
 }
 
 /**
-* Print the name of the schema associated with a field.
-* @param MetadataSchema $Schema Schema to print
-* @return void
-*/
-function PrintSchemaName($Schema)
+ * Print the name of the schema associated with a field.
+ * @param MetadataSchema $Schema Schema to print.
+ * @return void
+ */
+function printSchemaName(MetadataSchema $Schema): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-generic mfe-field-type mfe-type-text mfe-type-paragraph
@@ -145,16 +136,15 @@ function PrintSchemaName($Schema)
 
 /**
  * Print the name field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintNameField(array $Data, $Error)
+function printNameField(array $Data, ?string $Error): void
 {
-    $SafeId = defaulthtmlentities($Data["Id"]);
     $SafeValue = defaulthtmlentities($Data["Name"]);
     ?>
-    <?PHP if (!$Data["HasOwner"]) { ?>
+    <?PHP if (!$Data["IsOwnedByCore"] && !$Data["IsOwnedByPlugin"]) { ?>
     <tr class="mfe mfe-value mfe-group-generic mfe-field-name mfe-type-text mfe-type-paragraph
         mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
         mfe-type-controlledname mfe-type-option mfe-type-user mfe-type-image mfe-type-file
@@ -187,11 +177,11 @@ function PrintNameField(array $Data, $Error)
 
 /**
  * Print the label field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintLabelField(array $Data, $Error)
+function printLabelField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities($Data["Label"]);
     ?>
@@ -212,11 +202,11 @@ function PrintLabelField(array $Data, $Error)
 
 /**
  * Print the description field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintDescriptionField(array $Data, $Error)
+function printDescriptionField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities($Data["Description"]);
     ?>
@@ -238,11 +228,11 @@ function PrintDescriptionField(array $Data, $Error)
 
 /**
  * Print the instructions field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintInstructionsField(array $Data, $Error)
+function printInstructionsField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities($Data["Instructions"]);
     ?>
@@ -264,13 +254,13 @@ function PrintInstructionsField(array $Data, $Error)
 
 /**
  * Print the enabled field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintEnabledField(array $Data, $Error)
+function printEnabledField(array $Data, ?string $Error): void
 {
-    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["Enabled"]);
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["Enabled"]);
     ?>
   <tr class="mfe mfe-value mfe-group-generic mfe-field-enabled mfe-type-text mfe-type-paragraph
       mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
@@ -288,7 +278,7 @@ function PrintEnabledField(array $Data, $Error)
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList(
               "F_Enabled",
-              GetFlagOptions(),
+              getFlagOptions(),
               $Data["Enabled"]
           ))->printHtml(); ?>
       <?PHP } ?>
@@ -300,14 +290,14 @@ function PrintEnabledField(array $Data, $Error)
 
 /**
  * Print the editable field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintEditableField(array $Data, $Error)
+function printEditableField(array $Data, ?string $Error): void
 {
     $IsAddedById = $Data["Name"] == "Added By Id";
-    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["Editable"]);
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["Editable"]);
     ?>
   <tr class="mfe mfe-value mfe-group-generic mfe-field-editable mfe-type-text mfe-type-paragraph
       mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
@@ -317,13 +307,13 @@ function PrintEditableField(array $Data, $Error)
       <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Editable">Editable</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"] && !$IsAddedById) { ?>
+      <?PHP if (($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) && !$IsAddedById) { ?>
         <input type="hidden" name="F_Editable" value="<?= $SafeValue; ?>" />
             <?= $SafeText; ?>
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList(
               "F_Editable",
-              GetFlagOptions(),
+              getFlagOptions(),
               $Data["Editable"]
           ))->printHtml(); ?>
       <?PHP } ?>
@@ -335,13 +325,13 @@ function PrintEditableField(array $Data, $Error)
 
 /**
  * Print the optional field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintOptionalField(array $Data, $Error)
+function printOptionalField(array $Data, ?string $Error): void
 {
-    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["Optional"]);
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["Optional"]);
     ?>
   <tr class="mfe mfe-value mfe-group-generic mfe-field-optional mfe-type-text mfe-type-paragraph
       mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-tree mfe-type-controlledname
@@ -351,13 +341,13 @@ function PrintOptionalField(array $Data, $Error)
       <label <?= $Error ? 'class="alert alert-danger" ' : '' ?>for="F_Optional">Optional</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" name="F_Optional" value="<?= $SafeValue; ?>" />
             <?= $SafeText; ?>
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList(
               "F_Optional",
-              GetFlagOptions(),
+              getFlagOptions(),
               $Data["Optional"]
           ))->printHtml(); ?>
       <?PHP } ?>
@@ -374,13 +364,13 @@ function PrintOptionalField(array $Data, $Error)
 
 /**
  * Print the uses qualifiers field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintUsesQualifiersField(array $Data, $Error)
+function printUsesQualifiersField(array $Data, ?string $Error): void
 {
-    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["UsesQualifiers"]);
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["UsesQualifiers"]);
     ?>
   <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-usesqualifiers mfe-type-text
       mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
@@ -391,14 +381,14 @@ function PrintUsesQualifiersField(array $Data, $Error)
         for="F_UsesQualifiers">Uses Qualifiers</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_UsesQualifiers" name="F_UsesQualifiers"
             value="<?= $SafeValue; ?>" />
             <?= $SafeText; ?>
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList(
               "F_UsesQualifiers",
-              GetFlagOptions(),
+              getFlagOptions(),
               $Data["UsesQualifiers"]
           ))->printHtml(); ?>
       <?PHP } ?>
@@ -415,13 +405,13 @@ function PrintUsesQualifiersField(array $Data, $Error)
 
 /**
  * Print the has item level qualifiers field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintHasItemLevelQualifiersField(array $Data, $Error)
+function printHasItemLevelQualifiersField(array $Data, ?string $Error): void
 {
-    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["HasItemLevelQualifiers"]);
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["HasItemLevelQualifiers"]);
     ?>
   <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-hasitemlevelqualifiers mfe-type-text
       mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag
@@ -432,14 +422,14 @@ function PrintHasItemLevelQualifiersField(array $Data, $Error)
         for="F_HasItemLevelQualifiers">Has Item Level Qualifiers</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_HasItemLevelQualifiers" name="F_HasItemLevelQualifiers"
             value="<?= $SafeValue; ?>" />
             <?= $SafeText; ?>
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList(
               "F_HasItemLevelQualifiers",
-              GetFlagOptions(),
+              getFlagOptions(),
               $Data["HasItemLevelQualifiers"]
           ))->printHtml(); ?>
       <?PHP } ?>
@@ -455,14 +445,12 @@ function PrintHasItemLevelQualifiersField(array $Data, $Error)
 }
 
 /**
-* Print HTML elements for the CopyOnResourceDuplication field.
-* @param array $Data metadata field data
-* @param array $Schema metadata schema for this field
-* @param string|null $Error field error, if one exists
-*/
-function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error): void
+ * Print HTML elements for the CopyOnResourceDuplication field.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ */
+function printCopyOnResourceDuplicationField(array $Data, ?string $Error): void
 {
-    list($SafeTex, $SaveValue) = GetSafeFlagOption($Data["CopyOnResourceDuplication"]);
     ?>
   <tr class="mfe mfe-value mfe-group-generic mfe-field-copy mfe-type-text mfe-type-paragraph
       mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-tree
@@ -475,7 +463,7 @@ function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error): void
     <td>
         <?PHP (new HtmlOptionList(
             "F_CopyOnResourceDuplication",
-            GetFlagOptions(),
+            getFlagOptions(),
             $Data["CopyOnResourceDuplication"]
         ))->printHtml(); ?>
     </td>
@@ -486,10 +474,10 @@ function PrintCopyOnResourceDuplicationField(array $Data, $Schema, $Error): void
 
 /**
  * Print HTML elements for the ObfuscateValueForAnonymousUsers field.
- * @param array $Data metadata field data
- * @param array $Error field
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists
  */
-function printObfuscateValueForAnonymousUsersField(array $Data, $Error): void
+function printObfuscateValueForAnonymousUsersField(array $Data, ?string $Error): void
 {
     ?>
 <tr class="mfe mfe-value mfe-group-generic mfe-field-obfuscate mfe-type-email">
@@ -500,7 +488,7 @@ function printObfuscateValueForAnonymousUsersField(array $Data, $Error): void
   <td>
     <?PHP (new HtmlOptionList(
         "F_ObfuscateValueForAnonymousUsers",
-        GetFlagOptions(),
+        getFlagOptions(),
         $Data["ObfuscateValueForAnonymousUsers"]
     ))->printHtml(); ?>
   </td>
@@ -510,13 +498,39 @@ function printObfuscateValueForAnonymousUsersField(array $Data, $Error): void
 }
 
 /**
+ * Print HTML elements for the VocabularyEditable field.
+ * @param array $Data Metadata field data.
+ * @param ?string $Error Field error, if one exists.
+ */
+function printVocabularyEditableField(array $Data, ?string $Error): void
+{
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["VocabularyEditable"]);
+    ?>
+    <tr class="mfe mfe-value mfe-group-generic mfe-type-tree
+        mfe-type-controlledname mfe-type-option">
+        <th>
+            <label <?= $Error ? 'class="alert alert-danger" ' : ''
+            ?>for="F_VocabularyEditable">Vocabulary Editable</label>
+        </th>
+        <td>
+            <input type="hidden" name="F_VocabularyEditable" value="<?= $SafeValue; ?>" />
+            <?= $SafeText; ?>
+        </td>
+        <td class="mfe mfe-appliesto">
+            <i>Tree</i>, <i>Controlled Name</i>, and <i>Option</i> fields.
+        </td>
+    </tr>
+    <?PHP
+}
+
+/**
  * Print the default qualifier field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
- * @param array $QualifierList array of available qualifiers
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ * @param array $QualifierList Array of available qualifiers.
  * @return void
  */
-function PrintDefaultQualifierField(array $Data, $Error, $QualifierList)
+function printDefaultQualifierField(array $Data, ?string $Error, array $QualifierList): void
 {
     # get the options
     $Options = array_intersect_key(
@@ -552,16 +566,18 @@ function PrintDefaultQualifierField(array $Data, $Error, $QualifierList)
 
 /**
  * Print the allowed qualifiers field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @param array $Options Array of options for HtmlOptionList, with form values
  *       for the array index and labels for the array values.
  * @return void
  */
-function PrintAssociatedQualifierListField(array $Data, $Error, $Options)
+function printAssociatedQualifierListField(array $Data, ?string $Error, array $Options): void
 {
-    # get the options
     $Selected = $Data["AssociatedQualifierList"];
+    $OptList = new HtmlOptionList("F_AssociatedQualifierList[]", $Options, $Selected);
+    $OptList->size(8);
+    $OptList->multipleAllowed(true);
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-qualifiers mfe-field-allowedqualifiers
       mfe-type-text mfe-type-paragraph mfe-type-number mfe-type-date mfe-type-timestamp
@@ -572,12 +588,7 @@ function PrintAssociatedQualifierListField(array $Data, $Error, $Options)
         for="F_AssociatedQualifierList">Allowed Qualifiers</label>
     </th>
     <td>
-      <?PHP
-          $OptList = new HtmlOptionList("F_AssociatedQualifierList[]", $Options, $Selected);
-          $OptList->size(8);
-          $OptList->multipleAllowed(true);
-          $OptList->printHtml();
-        ?>
+      <?PHP $OptList->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto">
       <i>Text</i>, <i>Paragraph</i>, <i>Number</i>, <i>Date</i>,
@@ -591,11 +602,11 @@ function PrintAssociatedQualifierListField(array $Data, $Error, $Options)
 
 /**
  * Print the show qualifiers field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintShowQualifiersField(array $Data, $Error)
+function printShowQualifiersField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-qualifiers mfe-field-showqualifiers
@@ -607,7 +618,7 @@ function PrintShowQualifiersField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_ShowQualifiers",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["ShowQualifiers"]
       ))->printHtml(); ?>
       &nbsp;&nbsp;&nbsp;&nbsp;<i>(on the full record page)</i>
@@ -624,11 +635,11 @@ function PrintShowQualifiersField(array $Data, $Error)
 
 /**
  * Print the include in keyword search field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintIncludeInKeywordSearchField(array $Data, $Error)
+function printIncludeInKeywordSearchField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-search mfe-field-includeinkeywordsearch mfe-type-text
@@ -641,7 +652,7 @@ function PrintIncludeInKeywordSearchField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_IncludeInKeywordSearch",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["IncludeInKeywordSearch"]
       ))->printHtml(); ?>
     </td>
@@ -655,12 +666,12 @@ function PrintIncludeInKeywordSearchField(array $Data, $Error)
 }
 
 /**
- * Print the include in advanced search field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * Print the "include in advanced search" field for the given metadata field data.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintIncludeInAdvancedSearchField(array $Data, $Error)
+function printIncludeInAdvancedSearchField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-search mfe-field-includeinadvancedsearch mfe-type-text
@@ -674,7 +685,7 @@ function PrintIncludeInAdvancedSearchField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_IncludeInAdvancedSearch",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["IncludeInAdvancedSearch"]
       ))->printHtml(); ?>
     </td>
@@ -690,11 +701,11 @@ function PrintIncludeInAdvancedSearchField(array $Data, $Error)
 
 /**
  * Print the include in faceted search field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintIncludeInFacetedSearchField(array $Data, $Error)
+function printIncludeInFacetedSearchField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-search mfe-field-includeinfacetedsearch
@@ -706,7 +717,7 @@ function PrintIncludeInFacetedSearchField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_IncludeInFacetedSearch",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["IncludeInFacetedSearch"]
       ))->printHtml(); ?>
     </td>
@@ -719,11 +730,11 @@ function PrintIncludeInFacetedSearchField(array $Data, $Error)
 
 /**
  * Print the include in sort options field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintIncludeInSortOptionsField(array $Data, $Error)
+function printIncludeInSortOptionsField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-search mfe-field-includeinsortoptions mfe-type-text
@@ -735,7 +746,7 @@ function PrintIncludeInSortOptionsField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_IncludeInSortOptions",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["IncludeInSortOptions"]
       ))->printHtml(); ?>
     </td>
@@ -749,11 +760,11 @@ function PrintIncludeInSortOptionsField(array $Data, $Error)
 
 /**
  * Print the search weight field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintSearchWeightField(array $Data, $Error)
+function printSearchWeightField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities($Data["SearchWeight"]);
     ?>
@@ -781,11 +792,11 @@ function PrintSearchWeightField(array $Data, $Error)
 }
 
 /**
-* Print the SearchGroupLogic setting for the given field.
-* @param array $Data Metadata field data
-* @param string|null $Error Field error, if one exists
-*/
-function PrintSearchGroupLogic(array $Data, $Error): void
+ * Print the SearchGroupLogic setting for the given field.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ */
+function printSearchGroupLogic(array $Data, ?string $Error): void
 {
     $SafeValue = intval($Data["SearchGroupLogic"]);
     ?>
@@ -797,8 +808,8 @@ function PrintSearchGroupLogic(array $Data, $Error): void
     </th>
     <td> <?PHP (new HtmlOptionList(
         "F_SearchGroupLogic",
-        GetSearchGroupLogicOptions(),
-        $Data["SearchGroupLogic"]
+        getSearchGroupLogicOptions(),
+        $SafeValue
     ))->printHtml(); ?>
       <i>(determines how multiple selections for this field are combined)</i>
     </td>
@@ -814,7 +825,7 @@ function PrintSearchGroupLogic(array $Data, $Error): void
  * @param array $Data Metadata field data
  * @param string|null $Error Field error, if one exists
  */
-function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error): void
+function printFacetsShowOnlyTermsUsedInResults(array $Data, ?string $Error): void
 {
     $SafeValue = intval($Data["FacetsShowOnlyTermsUsedInResults"]);
     ?>
@@ -826,8 +837,8 @@ function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error): void
     </th>
     <td> <?PHP (new HtmlOptionList(
         "F_FacetsShowOnlyTermsUsedInResults",
-        GetFlagOptions(),
-        $Data["FacetsShowOnlyTermsUsedInResults"]
+        getFlagOptions(),
+        $SafeValue
     ))->printHtml(); ?>
       <i>(determines if search facets will show all top-level terms for the given field rather
         than only those associated with the current set of search results)</i>
@@ -840,11 +851,11 @@ function PrintFacetsShowOnlyTermsUsedInResults(array $Data, $Error): void
 }
 
 /**
-* Print the option list threshold field for the given metadata field data.
-* @param array $Data Metadata field data.
-* @param string $Error A field error, if one exists.
-*/
-function PrintOptionListThresholdField(array $Data, $Error): void
+ * Print the option list threshold field for the given metadata field data.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error A field error, if one exists.
+ */
+function printOptionListThresholdField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["OptionListThreshold"] ?? MetadataField::getDefaultValue("OptionListThreshold")
@@ -869,11 +880,11 @@ function PrintOptionListThresholdField(array $Data, $Error): void
 }
 
 /**
-* Print the AJAX threshold field for the given metadata field data.
-* @param array $Data Metadata field data.
-* @param string $Error A field error, if one exists.
-*/
-function PrintAjaxThresholdField(array $Data, $Error): void
+ * Print the AJAX threshold field for the given metadata field data.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error A field error, if one exists.
+ */
+function printAjaxThresholdField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["AjaxThreshold"] ?? MetadataField::getDefaultValue("AjaxThreshold")
@@ -899,11 +910,11 @@ function PrintAjaxThresholdField(array $Data, $Error): void
 
 /**
  * Print the number of AJAX results field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintNumAjaxResultsField(array $Data, $Error)
+function printNumAjaxResultsField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["NumAjaxResults"] ?? MetadataField::getDefaultValue("NumAjaxResults")
@@ -929,11 +940,11 @@ function PrintNumAjaxResultsField(array $Data, $Error)
 
 /**
  * Print the use for OAI sets field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintUseForOaiSetsField(array $Data, $Error)
+function printUseForOaiSetsField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-oai mfe-field-useforoaisets mfe-type-tree
@@ -945,7 +956,7 @@ function PrintUseForOaiSetsField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_UseForOaiSets",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["UseForOaiSets"]
       ))->printHtml(); ?>
     </td>
@@ -958,11 +969,11 @@ function PrintUseForOaiSetsField(array $Data, $Error)
 
 /**
  * Print the Display as list for advanced search setting for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintDisplayAsListForAdvancedSearch(array $Data, $Error)
+function printDisplayAsListForAdvancedSearch(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-oai mfe-field-displayaslistforadvancedsearch mfe-type-tree">
@@ -973,7 +984,7 @@ function PrintDisplayAsListForAdvancedSearch(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_DisplayAsListForAdvancedSearch",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["DisplayAsListForAdvancedSearch"] ?? false
       ))->printHtml(); ?>
     </td>
@@ -985,11 +996,11 @@ function PrintDisplayAsListForAdvancedSearch(array $Data, $Error)
 }
 
 /**
-* Print the Maximum Depth for Advanced Search setting for the given metadata field.
-* @param array $Data metadata field data
-* @param string|null $Error field error, if one exists
-*/
-function PrintMaxDepthForAdvancedSearch(array $Data, $Error): void
+ * Print the Maximum Depth for Advanced Search setting for the given metadata field.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ */
+function printMaxDepthForAdvancedSearch(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities($Data["MaxDepthForAdvancedSearch"] ?? 1);
     ?>
@@ -1015,11 +1026,11 @@ function PrintMaxDepthForAdvancedSearch(array $Data, $Error): void
 
 /**
  * Print the text field size field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintTextFieldSizeField(array $Data, $Error)
+function printTextFieldSizeField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["TextFieldSize"] ?? MetadataField::getDefaultValue("TextFieldSize")
@@ -1045,11 +1056,11 @@ function PrintTextFieldSizeField(array $Data, $Error)
 
 /**
  * Print the maximum length field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintMaxLengthField(array $Data, $Error)
+function printMaxLengthField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["MaxLength"] ?? MetadataField::getDefaultValue("MaxLength")
@@ -1059,11 +1070,11 @@ function PrintMaxLengthField(array $Data, $Error)
       mfe-type-url mfe-type-email mv-content-tallrow">
     <th>
       <label class="<?= $Error ? 'alert alert-danger ' : '' ?>
-        <?= $Data["HasOwner"] ? '' : 'mv-form-requiredfield' ?>"
+        <?= ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) ? '' : 'mv-form-requiredfield' ?>"
         for="F_MaxLength">Max Length</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_MaxLength" name="F_MaxLength"
             value="<?= $SafeValue; ?>" />
             <?= $SafeValue; ?> characters
@@ -1087,17 +1098,17 @@ function PrintMaxLengthField(array $Data, $Error)
 
 /**
  * Print the default value field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintDefaultValueField(array $Data, $Error)
+function printDefaultValueField(array $Data, ?string $Error): void
 {
     $Value = is_array($Data["DefaultValue"]) ? null : $Data["DefaultValue"];
     $SafeValue = defaulthtmlentities($Value);
     $SafeDisplayValue = $SafeValue;
 
-    if ($Data["HasOwner"] && !strlen($SafeValue)) {
+    if (($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) && !strlen($SafeValue)) {
         $SafeDisplayValue = "<i>None</i>";
     }
     ?>
@@ -1107,7 +1118,7 @@ function PrintDefaultValueField(array $Data, $Error)
         for="F_DefaultValue[Generic]">Default Value</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_DefaultValue[Generic]" name="F_DefaultValue[Generic]"
             value="<?= $SafeValue; ?>" />
             <?= $SafeDisplayValue; ?>
@@ -1129,17 +1140,18 @@ function PrintDefaultValueField(array $Data, $Error)
 
 /**
  * Print the default value field as a number for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintNumericDefaultValueField(array $Data, $Error)
+function printNumericDefaultValueField(array $Data, ?string $Error): void
 {
     $Value = is_array($Data["DefaultValue"]) ? null : $Data["DefaultValue"];
     $SafeValue = defaulthtmlentities($Value);
+    $SafeDisplayValue = $SafeValue;
 
-    if ($Data["HasOwner"] && !strlen($SafeValue)) {
-        $SafeValue = "<i>None</i>";
+    if (($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) && !strlen($SafeValue)) {
+        $SafeDisplayValue = "<i>None</i>";
     }
     ?>
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-defaultvaluenumeric mfe-type-number">
@@ -1148,10 +1160,10 @@ function PrintNumericDefaultValueField(array $Data, $Error)
         for="F_DefaultValue[Numeric]">Default Value</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_DefaultValue[Numeric]" name="F_DefaultValue[Numeric]"
             value="<?= $SafeValue; ?>" />
-            <?= $SafeValue; ?>
+            <?= $SafeDisplayValue; ?>
       <?PHP } else { ?>
         <input type="number" size="5" id="F_DefaultValue[Numeric]" name="F_DefaultValue[Numeric]"
             value="<?= $SafeValue; ?>" />
@@ -1170,11 +1182,11 @@ function PrintNumericDefaultValueField(array $Data, $Error)
 
 /**
  * Print the default value field for flags for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintFlagDefaultValueField(array $Data, $Error)
+function printFlagDefaultValueField(array $Data, ?string $Error): void
 {
     $Value = is_array($Data["DefaultValue"]) ? null : $Data["DefaultValue"];
     $Options = [
@@ -1190,7 +1202,7 @@ function PrintFlagDefaultValueField(array $Data, $Error)
         for="F_DefaultValue[Flag]">Default Value</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_DefaultValue[Flag]" name="F_DefaultValue[Flag]"
             value="<?= $SafeValue; ?>" />
             <?= $SafeText; ?>
@@ -1209,24 +1221,27 @@ function PrintFlagDefaultValueField(array $Data, $Error)
 
 /**
  * Print the default value field for points for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintPointDefaultValueField(array $Data, $Error)
+function printPointDefaultValueField(array $Data, ?string $Error): void
 {
     $Value = $Data["DefaultValue"];
-    $DefaultValue = (is_array($Value) && isset($Value["X"]) && isset($Value["Y"])) ?
-                     $Value : ["X" => null, "Y" => null];
+    $DefaultValue = (is_array($Value) && isset($Value["X"]) && isset($Value["Y"]))
+        ? $Value
+        : ["X" => null, "Y" => null];
     $SafeValue = defaulthtmlentities($DefaultValue["X"]);
     $SafeValue2 = defaulthtmlentities($DefaultValue["Y"]);
+    $SafeDisplayValue = $SafeValue;
+    $SafeDisplayValue2 = $SafeValue2;
 
-    if ($Data["HasOwner"]) {
-        if (!strlen($SafeValue)) {
-            $SafeValue = "<i>None</i>";
+    if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) {
+        if (strlen($SafeValue) === 0) {
+            $SafeDisplayValue = "<i>None</i>";
         }
-        if (!strlen($SafeValue2)) {
-            $SafeValue2 = "<i>None</i>";
+        if (strlen($SafeValue2) === 0) {
+            $SafeDisplayValue2 = "<i>None</i>";
         }
     }
     ?>
@@ -1236,8 +1251,8 @@ function PrintPointDefaultValueField(array $Data, $Error)
         for="F_DefaultValue[Point1]">Default Value</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
-        X: <?= $SafeValue; ?>, Y: <?= $SafeValue2; ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
+        X: <?= $SafeDisplayValue; ?>, Y: <?= $SafeDisplayValue2; ?>
         <input type="hidden" id="F_DefaultValue[Point1]" name="F_DefaultValue[Point1]"
             value="<?= $SafeValue; ?>" />
         <input type="hidden" id="F_DefaultValue[Point2]" name="F_DefaultValue[Point2]"
@@ -1264,11 +1279,11 @@ function PrintPointDefaultValueField(array $Data, $Error)
 
 /**
  * Print the allow HTML field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintAllowHtmlField(array $Data, $Error)
+function printAllowHtmlField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-allowhtml
@@ -1280,7 +1295,7 @@ function PrintAllowHtmlField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_AllowHTML",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["AllowHTML"] ?? MetadataField::getDefaultValue("AllowHTML")
       ))->printHtml(); ?>
     </td>
@@ -1291,11 +1306,11 @@ function PrintAllowHtmlField(array $Data, $Error)
 
 /**
  * Print the minimum value field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintMinValueField(array $Data, $Error)
+function printMinValueField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["MinValue"] ?? MetadataField::getDefaultValue("MinValue")
@@ -1307,7 +1322,7 @@ function PrintMinValueField(array $Data, $Error)
         for="F_MinValue">Min Value</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_MinValue" name="F_MinValue"
             value="<?= $SafeValue; ?>" />
             <?= $SafeValue; ?>
@@ -1323,11 +1338,11 @@ function PrintMinValueField(array $Data, $Error)
 
 /**
  * Print the maximum value field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintMaxValueField(array $Data, $Error)
+function printMaxValueField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["MaxValue"] ?? MetadataField::getDefaultValue("MaxValue")
@@ -1339,7 +1354,7 @@ function PrintMaxValueField(array $Data, $Error)
         for="F_MaxValue">Max Value</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_MaxValue" name="F_MaxValue"
             value="<?= $SafeValue; ?>" />
             <?= $SafeValue; ?>
@@ -1355,22 +1370,24 @@ function PrintMaxValueField(array $Data, $Error)
 
 /**
  * Print the point precision field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintPointPrecisionField(array $Data, $Error)
+function printPointPrecisionField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["PointPrecision"] ?? MetadataField::getDefaultValue("PointPrecision")
     );
     ?>
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-pointprecision mfe-type-point">
-    <th><label <?PHP if (!$Data["HasOwner"]) {
-        ?>class="mv-form-requiredfield"<?PHP
-               } ?> for="F_PointPrecision">Point Precision</label></th>
+    <th>
+      <label class="<?= ($Error ? 'alert alert-danger ' : '').
+        (($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) ? '' : 'mv-form-requiredfield'); ?>"
+        for="F_PointPrecision">Point Precision</label>
+    </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
             <?= $SafeValue; ?> digits to the left of the decimal point
         <input type="hidden" id="F_PointPrecision" name="F_PointPrecision"
             value="<?= $SafeValue; ?>" />
@@ -1387,11 +1404,11 @@ function PrintPointPrecisionField(array $Data, $Error)
 
 /**
  * Print the decimal digits field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintDecimalDigitsField(array $Data, $Error)
+function printDecimalDigitsField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["PointDecimalDigits"] ?? MetadataField::getDefaultValue("PointDecimalDigits")
@@ -1400,11 +1417,11 @@ function PrintDecimalDigitsField(array $Data, $Error)
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-pointdecimaldigits mfe-type-point">
     <th>
       <label class="<?= $Error ? 'alert alert-danger ' : '' ?>
-        <?= $Data["HasOwner"] ? '' : 'mv-form-requiredfield' ?>"
+        <?= ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) ? '' : 'mv-form-requiredfield' ?>"
         for="F_PointDecimalDigits">Decimal Digits in Point</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
             <?= $SafeValue; ?> digits to the right of the decimal point
         <input type="hidden" id="F_PointDecimalDigits" name="F_PointDecimalDigits"
             value="<?= $SafeValue; ?>" />
@@ -1421,15 +1438,15 @@ function PrintDecimalDigitsField(array $Data, $Error)
 
 /**
  * Print the update method field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintUpdateMethodField(array $Data, $Error)
+function printUpdateMethodField(array $Data, ?string $Error): void
 {
     $SafeUpdateMethod = null;
 
-    if ($Data["HasOwner"]) {
+    if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) {
         $UpdateMethod = MetadataField::$UpdateTypes[$Data["UpdateMethod"]];
         $SafeUpdateMethod = defaulthtmlentities($UpdateMethod);
     }
@@ -1460,11 +1477,11 @@ function PrintUpdateMethodField(array $Data, $Error)
 
 /**
  * Print the paragraph rows field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintParagraphRowsField(array $Data, $Error)
+function printParagraphRowsField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["ParagraphRows"] ?? MetadataField::getDefaultValue("ParagraphRows")
@@ -1486,11 +1503,11 @@ function PrintParagraphRowsField(array $Data, $Error)
 
 /**
  * Print the paragraph columns field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintParagraphColsField(array $Data, $Error)
+function printParagraphColsField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["ParagraphCols"] ?? MetadataField::getDefaultValue("ParagraphCols")
@@ -1512,11 +1529,11 @@ function PrintParagraphColsField(array $Data, $Error)
 
 /**
  * Print the use WYSIWYG editor field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintUseWysiwygEditorField(array $Data, $Error)
+function printUseWysiwygEditorField(array $Data, ?string $Error): void
 {
     ?>
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-usewysiwygeditor mfe-type-paragraph">
@@ -1527,7 +1544,7 @@ function PrintUseWysiwygEditorField(array $Data, $Error)
     <td>
       <?PHP (new HtmlOptionList(
           "F_UseWysiwygEditor",
-          GetFlagOptions(),
+          getFlagOptions(),
           $Data["UseWysiwygEditor"] ?? MetadataField::getDefaultValue("UseWysiwygEditor")
       ))->printHtml(); ?>
     </td>
@@ -1538,11 +1555,11 @@ function PrintUseWysiwygEditorField(array $Data, $Error)
 
 /**
  * Print the flag on label field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintFlagOnLabelField(array $Data, $Error)
+function printFlagOnLabelField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["FlagOnLabel"] ?? MetadataField::getDefaultValue("FlagOnLabel")
@@ -1564,11 +1581,11 @@ function PrintFlagOnLabelField(array $Data, $Error)
 
 /**
  * Print the flag off label field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintFlagOffLabelField(array $Data, $Error)
+function printFlagOffLabelField(array $Data, ?string $Error): void
 {
     $SafeValue = defaulthtmlentities(
         $Data["FlagOffLabel"] ?? MetadataField::getDefaultValue("FlagOffLabel")
@@ -1590,13 +1607,13 @@ function PrintFlagOffLabelField(array $Data, $Error)
 
 /**
  * Print the allow multiple field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintAllowMultipleField(array $Data, $Error)
+function printAllowMultipleField(array $Data, ?string $Error): void
 {
-    list($SafeText, $SafeValue) = GetSafeFlagOption($Data["AllowMultiple"]);
+    list($SafeText, $SafeValue) = getSafeFlagOption($Data["AllowMultiple"]);
     ?>
   <tr class="mfe mfe-value mfe-group-typespecific mfe-field-allowmultiple mfe-type-option
       mfe-type-user mfe-type-tree mfe-type-file mfe-type-image mfe-type-reference">
@@ -1605,14 +1622,14 @@ function PrintAllowMultipleField(array $Data, $Error)
         for="F_AllowMultiple">Allow Multiple</label>
     </th>
     <td>
-      <?PHP if ($Data["HasOwner"]) { ?>
+      <?PHP if ($Data["IsOwnedByCore"] || $Data["IsOwnedByPlugin"]) { ?>
         <input type="hidden" id="F_AllowMultiple" name="F_AllowMultiple"
             value="<?= $SafeValue; ?>" />
             <?= $SafeText; ?>
       <?PHP } else { ?>
           <?PHP (new HtmlOptionList(
               "F_AllowMultiple",
-              GetFlagOptions(),
+              getFlagOptions(),
               $Data["AllowMultiple"]
           ))->printHtml(); ?>
       <?PHP } ?>
@@ -1624,15 +1641,18 @@ function PrintAllowMultipleField(array $Data, $Error)
 
 /**
  * Print the user privilege restrictions field for the given metadata field data.
- * @param array $Data metadata field data
- * @param string|null $Error field error, if one exists
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
  * @return void
  */
-function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
+function printUserPrivilegeRestrictionsField(array $Data, ?string $Error): void
 {
     $PrivilegeFactory = new PrivilegeFactory();
     $Privileges = $PrivilegeFactory->getPrivileges(true, false);
     $Selected = $Data["UserPrivilegeRestrictions"];
+    $OptList = new HtmlOptionList("F_UserPrivilegeRestrictions[]", $Privileges, $Selected);
+    $OptList->size(8);
+    $OptList->multipleAllowed(true);
     ?>
   <tr class="mv-content-tallrow mfe mfe-value mfe-group-typespecific
       mfe-field-userprivilegerestrictions mfe-type-user">
@@ -1641,10 +1661,7 @@ function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
         for="F_UserPrivilegeRestrictions">Restrict to Users With One of the Following</label>
     </th>
     <td>
-      <?PHP $OptList = new HtmlOptionList("F_UserPrivilegeRestrictions[]", $Privileges, $Selected);
-            $OptList->size(8);
-            $OptList->multipleAllowed(true);
-            $OptList->printHtml(); ?>
+      <?PHP $OptList->printHtml(); ?>
     </td>
     <td class="mfe mfe-appliesto"><i>User</i> fields.</td>
   </tr>
@@ -1652,12 +1669,12 @@ function PrintUserPrivilegeRestrictionsField(array $Data, $Error)
 }
 
 /**
-* Print the viewing privileges field for the given metadata field data.
-* @param array $Data Metadata field data.
-* @param mixed $Error Field error, if one exists.
-* @param MetadataSchema $Schema to use.
-*/
-function PrintViewingPrivilegesField(array $Data, $Error, $Schema): void
+ * Print the viewing privileges field for the given metadata field data.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ * @param MetadataSchema $Schema Schema to use.
+ */
+function printViewingPrivilegesField(array $Data, ?string $Error, MetadataSchema $Schema): void
 {
     $PrivsetUI = new PrivilegeEditingUI($Schema->id());
     $SchemaPrivs = $Schema->viewingPrivileges();
@@ -1687,12 +1704,12 @@ function PrintViewingPrivilegesField(array $Data, $Error, $Schema): void
 }
 
 /**
-* Print the authoring privileges field for the given metadata field data.
-* @param array $Data Metadata field data.
-* @param mixed $Error Field error, if one exists.
-* @param MetadataSchema $Schema to use.
-*/
-function PrintAuthoringPrivilegesField(array $Data, $Error, $Schema): void
+ * Print the authoring privileges field for the given metadata field data.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ * @param MetadataSchema $Schema Schema to use.
+ */
+function printAuthoringPrivilegesField(array $Data, ?string $Error, MetadataSchema $Schema): void
 {
     $SchemaPrivs = $Schema->authoringPrivileges();
     $PrivsetUI = new PrivilegeEditingUI($Schema->id());
@@ -1722,12 +1739,12 @@ function PrintAuthoringPrivilegesField(array $Data, $Error, $Schema): void
 }
 
 /**
-* Print the editing privileges field for the given metadata field data.
-* @param array $Data Metadata field data.
-* @param mixed $Error Field error, if one exists.
-* @param MetadataSchema $Schema to use.
-*/
-function PrintEditingPrivilegesField(array $Data, $Error, $Schema): void
+ * Print the editing privileges field for the given metadata field data.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ * @param MetadataSchema $Schema Schema to use.
+ */
+function printEditingPrivilegesField(array $Data, ?string $Error, MetadataSchema $Schema): void
 {
     $PrivsetUI = new PrivilegeEditingUI($Schema->id());
     $SchemaPrivs = $Schema->editingPrivileges();
@@ -1757,8 +1774,8 @@ function PrintEditingPrivilegesField(array $Data, $Error, $Schema): void
 }
 
 /**
- * Create and return HTML for button to edit a Metadata Schema
- * @param int $SchemaId The ID for the schema to link to.`
+ * Create and return HTML for button to edit a Metadata Schema.
+ * @param int $SchemaId The ID for the schema to link to.
  * @return string The HTML for the button.
  */
 function getSchemaEditButton(int $SchemaId): string
@@ -1766,22 +1783,22 @@ function getSchemaEditButton(int $SchemaId): string
     $EditButton = new HtmlButton("Edit");
     $EditButton->setIcon("Pencil.svg");
     $EditButton->setSize(HtmlButton::SIZE_SMALL);
-    $EditButton->setLink("index.php?P=EditMetadataSchema&SC=" . $SchemaId);
+    $EditButton->setLink("index.php?P=EditMetadataSchema&SC=".$SchemaId);
     return $EditButton->getHtml();
 }
 
 /**
-* Display the option list of referenceable schema ids.
-* @param array $Data Metadata field data.
-* @param mixed $Error Field error, if one exists
-*/
-function PrintReferenceableSchemaIds(array $Data, $Error): void
+ * Display the option list of referenceable schema ids.
+ * @param array $Data Metadata field data.
+ * @param string|null $Error Field error, if one exists.
+ */
+function printReferenceableSchemaIds(array $Data, ?string $Error): void
 {
     $Schemas = MetadataSchema::getAllSchemas();
 
     $OptionValues = [];
     foreach ($Schemas as $Schema) {
-        $OptionValues[$Schema->Id()] = $Schema->Name();
+        $OptionValues[$Schema->id()] = $Schema->name();
     }
 
     $OptionList = new HtmlOptionList(
@@ -1809,11 +1826,11 @@ function PrintReferenceableSchemaIds(array $Data, $Error): void
 }
 
 /**
-* Generate a read-only human-friendly description of a privilege set
-* @param PrivilegeSet $PrivilegeSet The privilege set to describe.
-* @return string containing HTML description
-*/
-function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
+ * Generate a read-only human-friendly description of a privilege set.
+ * @param PrivilegeSet $PrivilegeSet The privilege set to describe.
+ * @return string String containing HTML description.
+ */
+function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet): string
 {
     $Logic = $PrivilegeSet->usesAndLogic() ? "AND" : "OR";
     $Conditions = $PrivilegeSet->getConditions();
@@ -1845,12 +1862,11 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
         try {
             # get the field
             $Field = MetadataField::getField($Condition["FieldId"]);
-            $Prefix = $AllSchemas[$Field->schemaId()]->AbbreviatedName();
-            $SafeName = defaulthtmlentities("[".$Prefix."] "
-                    .$Field->getDisplayName());
+            $Prefix = $AllSchemas[$Field->schemaId()]->abbreviatedName();
+            $SafeName = defaulthtmlentities("[".$Prefix."] ".$Field->getDisplayName());
             $SafeOperator = $OpNames[ $Condition["Operator"] ];
 
-            # proper dislpay of 'current user' tests against user fields
+            # proper display of 'current user' tests against user fields
             if ($Field->type() == MetadataSchema::MDFTYPE_USER &&
                 is_null($Condition["Value"])) {
                 $SafeValue = "current user";
@@ -1876,7 +1892,7 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
                 # otherwise display the literal value
                 $SafeValue = defaulthtmlentities($Condition["Value"]);
             }
-        } catch (Exception $e) {
+        } catch (Exception $Exception) {
             # handle invalid (or deleted) fields
             $SafeName = "INVALID FIELD";
             $SafeValue = defaulthtmlentities($Condition["Value"]);
@@ -1899,37 +1915,1651 @@ function getPrivilegeDescriptionHtml(PrivilegeSet $PrivilegeSet)
     return implode(" ".$Logic."<br/>", $Elements);
 }
 
+/**
+ * Load the field with the given field ID, checking that the field is valid.
+ * @param int $Id Metadata field ID.
+ * @return MetadataField|null Metadata field object if successful, else NULL.
+ */
+function loadMetadataField($Id): ?MetadataField
+{
+    # the schema ID is unnecessary here
+    $Field = MetadataField::getField($Id);
+
+    # make sure the field is valid
+    if ($Field->status() !== MetadataSchema::MDFSTAT_OK) {
+        return null;
+    }
+
+    return $Field;
+}
+
+/**
+ * Load the qualifier with the given ID, checking that it is valid.
+ * @param int|false $Id Qualifier ID or FALSE if no qualifier available.
+ * @return Qualifier|null Qualifier object if successful, else NULL.
+ */
+function loadQualifier($Id): ?Qualifier
+{
+    # make sure the ID looks valid before attempting to load the qualifier
+    if (!$Id || $Id == "--" || !Qualifier::itemExists($Id)) {
+        return null;
+    }
+    return new Qualifier($Id);
+}
+
+/**
+ * Get the metadata field defaults for metadata fields with the given type.
+ * @param int $Type Field type to assume, text is used if invalid.
+ * @return array Metadata field defaults.
+ */
+function getFieldDefaults($Type): array
+{
+    # get the type-based defaults to use, defaulting to text ones if necessary
+    $TypeBasedDefaults = StdLib::getArrayValue(
+        MetadataField::$TypeBasedDefaults,
+        $Type,
+        MetadataField::$TypeBasedDefaults[MetadataSchema::MDFTYPE_TEXT]
+    );
+
+    # merge the lists
+    $Defaults = array_merge(MetadataField::$CommonDefaults, $TypeBasedDefaults);
+
+    # not a field per se because it requires additional actions
+    $Defaults["AssociatedQualifierList"] = [];
+    $Defaults["Type"] = MetadataSchema::MDFTYPE_TEXT;
+    $Defaults["Name"] = null;
+
+    # privileges
+    $Defaults["ViewingPrivilegesLogic"] = "AND";
+    $Defaults["ViewingPrivileges"] = new PrivilegeSet();
+    $Defaults["AuthoringPrivilegesLogic"] = "AND";
+    $Defaults["AuthoringPrivileges"] = new PrivilegeSet();
+    $Defaults["EditingPrivilegesLogic"] = "AND";
+    $Defaults["EditingPrivileges"] = new PrivilegeSet();
+
+    return $Defaults;
+}
+
+/**
+ * Extract the user-provided field values from the given array of values.
+ * Removes the "F_" prefix from the keys of the values.
+ * @param array $Values Array of values, a subset of which are the field values.
+ * @return array Extracted user-provided field values.
+ */
+function extractFieldInput(array $Values): array
+{
+    $Input = [];
+
+    # extract form values
+    foreach ($Values as $Key => $Value) {
+        if (substr($Key, 0, 2) == "F_") {
+            $Input[substr($Key, 2)] = $Value;
+        }
+    }
+
+    # pick the most appropriate value for the default value field
+    if (array_key_exists("DefaultValue", $Input)) {
+        $Type = StdLib::getArrayValue($Input, "Type");
+        $DefaultValues = StdLib::getArrayValue($Input, "DefaultValue", []);
+
+        switch ($Type) {
+            case MetadataSchema::MDFTYPE_NUMBER:
+                $Input["DefaultValue"] = StdLib::getArrayValue($DefaultValues, "Numeric");
+                break;
+            case MetadataSchema::MDFTYPE_FLAG:
+                $Input["DefaultValue"] = StdLib::getArrayValue($DefaultValues, "Flag");
+                break;
+            case MetadataSchema::MDFTYPE_POINT:
+                $Input["DefaultValue"] = [
+                    "X" => StdLib::getArrayValue($DefaultValues, "Point1"),
+                    "Y" => StdLib::getArrayValue($DefaultValues, "Point2")
+                ];
+                break;
+            default:
+                $Input["DefaultValue"] = StdLib::getArrayValue($DefaultValues, "Generic");
+                break;
+        }
+    }
+
+    $MayContainDoubleHyphen = [
+        "DefaultQualifier",
+        "TreeBrowsingPrivilege"
+    ];
+
+    # transform values that might not be set to NULL
+    foreach ($MayContainDoubleHyphen as $Key) {
+        if (array_key_exists($Key, $Input)) {
+            if (isFieldValueBlank($Input[$Key]) || $Input[$Key] == "--") {
+                $Input[$Key] = null;
+            }
+        }
+    }
+
+    # special handling for the user privilege restrictions field
+    if (array_key_exists("UserPrivilegeRestrictions", $Input)) {
+        $UserPrivilegeRestrictions = StdLib::getArrayValue($Input, "UserPrivilegeRestrictions");
+
+        # transform input that's not an array to a blank value
+        if (!is_array($UserPrivilegeRestrictions)) {
+            $Input["UserPrivilegeRestrictions"] = [];
+        }
+    }
+
+    # $Input doesn't contain AssociatedQualifierList if user deselects all options
+    # add AssociatedQualifierList entry with empty array when this is the case
+    if (!array_key_exists("AssociatedQualifierList", $Input)) {
+        $Input["AssociatedQualifierList"] = [];
+    }
+
+    return $Input;
+}
+
+/**
+ * Get the form data using the given field as a source.
+ * @param MetadataField $Field Metadata field.
+ * @return array Form data.
+ */
+function getFormDataFromField(MetadataField $Field): array
+{
+    $Schema = new MetadataSchema($Field->schemaId());
+
+    $FormData = [];
+
+    $DeprecatedMethods = [
+        "ViewingPrivilege", "EditingPrivilege",
+        "AuthoringPrivilege", "TreeBrowsingPrivilege"
+    ];
+
+    # start with the basic fields
+    foreach (array_keys(getFieldDefaults($Field->type())) as $Key) {
+        if (method_exists("Metavus\\MetadataField", $Key) &&
+            !in_array($Key, $DeprecatedMethods)) {
+            $FormData[$Key] = $Field->$Key();
+        }
+    }
+
+    # determine if the field can be populated
+    $CanPopulate = in_array($Field->type(), [MetadataSchema::MDFTYPE_TREE,
+        MetadataSchema::MDFTYPE_CONTROLLEDNAME, MetadataSchema::MDFTYPE_OPTION
+    ]);
+
+    # various other information
+    $FormData["Id"] = $Field->id();
+    $FormData["Type"] = $Field->type();
+    $FormData["Name"] = $Field->name();
+    $FormData["AllowedTypes"] = $Field->getAllowedConversionTypes();
+    $FormData["TypeAsName"] = $Field->typeAsName();
+    $FormData["AssociatedQualifierList"] = array_keys($Field->associatedQualifierList());
+    $FormData["MappedName"] = $Schema->fieldToStdNameMapping($Field->id());
+    $FormData["Owner"] = $Field->getOwner();
+    $FormData["IsOwnedByUser"] = $Field->isOwnedByUser();
+    $FormData["IsOwnedByCore"] = $Field->isOwnedByCore();
+    $FormData["IsOwnedByPlugin"] = $Field->isOwnedByPlugin();
+    $FormData["UsedByPrivsets"] = MetadataSchema::fieldUsedInPrivileges($Field->id());
+    $FormData["FieldExists"] = true;
+    $FormData["IsStandard"] = !is_null($Schema->fieldToStdNameMapping($Field->id()));
+    $FormData["CanPopulate"] = $CanPopulate;
+    $FormData["CanExport"] = $CanPopulate;
+    $FormData["ObfuscateValueForAnonymousUsers"] = $Field->obfuscateValueForAnonymousUsers();
+    $FormData["ReferenceableSchemaIds"] = $Field->referenceableSchemaIds();
+    $FormData["ViewingPrivileges"] = $Field->viewingPrivileges();
+    $FormData["AuthoringPrivileges"] = $Field->authoringPrivileges();
+    $FormData["EditingPrivileges"] = $Field->editingPrivileges();
+    $HasInactivePluginOwner = false;
+    if ($FormData["IsOwnedByPlugin"]) {
+        $PluginManager = PluginManager::getInstance();
+        $HasInactivePluginOwner = !in_array(
+            $Field->getOwner(),
+            $PluginManager->getActivePluginList()
+        );
+    }
+    $FormData["IsLastTreeField"] = $Field->type() == MetadataSchema::MDFTYPE_TREE
+        && count($Schema->getFields(MetadataSchema::MDFTYPE_TREE)) == 1;
+
+    if (InterfaceConfiguration::getInstance()->getBool("ResourceRatingsEnabled") &&
+        $Field->name() == "Cumulative Rating") {
+        $FormData["IsTogglable"] = false;
+    } else {
+        $FormData["IsTogglable"] = !$FormData["IsStandard"] &&
+            ((!$FormData["IsOwnedByCore"] && !$FormData["IsOwnedByPlugin"])
+                || !$HasInactivePluginOwner);
+    }
+
+    return $FormData;
+}
+
+/**
+ * Get the form data using the metadata field defaults.
+ * @param MetadataSchema $Schema Schema containing the field.
+ * @param int $Type Field type to assume (optional, defaults to text).
+ * @param array $Override Values to override the defaults and must be valid.
+ * @return array Form data.
+ */
+function getFormDataFromDefaults(
+    MetadataSchema $Schema,
+    $Type = MetadataSchema::MDFTYPE_TEXT,
+    array $Override = []
+): array {
+    $FormData = [];
+
+    # get the basic fields first
+    foreach (getFieldDefaults($Type) as $Key => $Value) {
+        if (method_exists("Metavus\\MetadataField", $Key)) {
+            $FormData[$Key] = StdLib::getArrayValue($Override, $Key, $Value);
+        }
+    }
+
+    $AssociatedQualifierList = StdLib::getArrayValue(
+        $Override,
+        "AssociatedQualifierList",
+        $FormData["AssociatedQualifierList"]
+    );
+
+    # various other information
+    $FormData["Id"] = null;
+    $FormData["Type"] = $Type;
+    $FormData["Name"] = StdLib::getArrayValue($Override, "Name");
+    $FormData["AllowedTypes"] = $Schema->getAllowedFieldTypes();
+    $FormData["TypeAsName"] = MetadataField::$FieldTypeHumanEnums[$Type];
+    $FormData["AssociatedQualifierList"] = $AssociatedQualifierList;
+    $FormData["MappedName"] = null;
+    $FormData["Owner"] = null;
+    $FormData["IsOwnedByCore"] = false;
+    $FormData["IsOwnedByPlugin"] = false;
+    $FormData["IsOwnedByUser"] = false;
+    $FormData["UsedByPrivsets"] = false;
+    $FormData["FieldExists"] = false;
+    $FormData["IsStandard"] = false;
+    $FormData["IsLastTreeField"] = false;
+    $FormData["CanPopulate"] = false;
+    $FormData["CanExport"] = false;
+    $FormData["ObfuscateValueForAnonymousUsers"] = false;
+    $FormData["ReferenceableSchemaIds"] = [MetadataSchema::SCHEMAID_DEFAULT];
+
+    return $FormData;
+}
+
+/**
+ * Validate the user-provided field values. If the type given is not
+ * valid, type-based checks will not be performed.
+ * @param array $Input User-provided field values.
+ * @param int $Type Metadata field type.
+ * @param MetadataSchema $Schema Metadata schema that contains the field being
+ *         edited or created.
+ * @return array An array of errors (field name => error message).
+ */
+function validateInput(array &$Input, $Type, MetadataSchema $Schema): array
+{
+    $Errors = [];
+
+    # the first block of fields that apply to every metadata field type
+    $Validation = [
+        "Type" => ["validateType", $Input],
+        "Name" => ["validateName", $Input, $Schema],
+        "Label" => ["validateLabel", $Input],
+        "Description" => ["validateNonempty", $Input, "Description", "Description"],
+        "Instructions" => null,
+        "Enabled" => ["validateBoolean", $Input, "Enabled", "Enabled"],
+        "Editable" => ["validateBoolean", $Input, "Editable", "Editable"],
+        "CopyOnResourceDuplication" => ["validateBoolean", $Input,
+            "CopyOnResourceDuplication", "Copy on Resource Duplication"
+        ]
+    ];
+
+    if ($Type == MetadataSchema::MDFTYPE_TEXT) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInSortOptions" => ["validateBoolean", $Input,
+                "IncludeInSortOptions", "Include In Sort Options"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "TextFieldSize" => ["validateNumeric", $Input, "TextFieldSize", "Field Size", 1],
+            "MaxLength" => ["validateNumeric", $Input, "MaxLength", "Max Length", 1],
+            "AllowHTML" => ["validateBoolean", $Input, "AllowHTML", "Allow HTML"]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_PARAGRAPH) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "ParagraphRows" => ["validateNumeric", $Input, "ParagraphRows", "Paragraph Rows", 1],
+            "ParagraphCols" => ["validateNumeric", $Input, "ParagraphCols", "Paragraph Columns", 1],
+            "AllowHTML" => ["validateBoolean", $Input, "AllowHTML", "Allow HTML"],
+            "UseWysiwygEditor" => ["validateBoolean", $Input,
+                "UseWysiwygEditor", "Use WYSIWYG Editor"
+            ]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_NUMBER) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInSortOptions" => ["validateBoolean", $Input,
+                "IncludeInSortOptions", "Include In Sort Options"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "TextFieldSize" => ["validateNumeric", $Input, "TextFieldSize", "Field Size", 1],
+            "MinValue" => ["validateNumeric", $Input, "MinValue", "Minimum Value"],
+            "MaxValue" => ["validateNumeric", $Input, "MaxValue", "Maximum Value"],
+            "DefaultValue" => ["validateNumeric", $Input,
+                "DefaultValue", "Default Value", null, null, false
+            ]
+        ];
+
+        # these fields need to be validated for the rating since they aren't saved
+        if (StdLib::getArrayValue($Input, "Name") == "Cumulative Rating") {
+            unset($Validation["TextFieldSize"]);
+            unset($Validation["DefaultValue"]);
+            unset($Validation["MinValue"]);
+            unset($Validation["MaxValue"]);
+        }
+    } elseif ($Type == MetadataSchema::MDFTYPE_DATE) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInSortOptions" => ["validateBoolean", $Input,
+                "IncludeInSortOptions", "Include In Sort Options"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "TextFieldSize" => ["validateNumeric", $Input, "TextFieldSize", "Field Size", 1]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_TIMESTAMP) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInSortOptions" => ["validateBoolean", $Input,
+                "IncludeInSortOptions", "Include In Sort Options"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "UpdateMethod" => ["validateUpdateMethod", $Input]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_FLAG) {
+        $Validation += [
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "FlagOnLabel" => ["validateNonempty", $Input, "FlagOnLabel", "Flag On Label"],
+            "FlagOffLabel" => ["validateNonempty", $Input, "FlagOffLabel", "Flag Off Label"],
+            "DefaultValue" => ["validateBoolean", $Input, "DefaultValue", "Default Value"]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_TREE) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInFacetedSearch" => ["validateBoolean", $Input,
+                "IncludeInFacetedSearch", "Include In Faceted Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "SearchGroupLogic" => ["validateNumeric", $Input,
+                "SearchGroupLogic", "Search Group Logic", 1, 2
+            ],
+            "FacetsShowOnlyTermsUsedInResults" => ["validateBoolean", $Input,
+                "FacetsShowOnlyTermsUsedInResults", "Facets Show All Terms"
+            ],
+            "OptionListThreshold" => ["validateOptionListThreshold", $Input],
+            "AjaxThreshold" => ["validateAjaxThreshold", $Input],
+            "NumAjaxResults" => ["validateNumeric", $Input,
+                "NumAjaxResults", "Maximum Number of Search Results", 10
+            ],
+            "UseForOaiSets" => ["validateBoolean", $Input, "UseForOaiSets", "Use for OAI Sets"],
+            "DisplayAsListForAdvancedSearch" => ["validateBoolean", $Input,
+                "DisplayAsListForAdvancedSearch", "Display As List For Advanced Search"
+            ],
+            "MaxDepthForAdvancedSearch" => ["validateNumeric", $Input,
+                "MaxDepthForAdvancedSearch", "Maximum Depth For Advanced Search"
+            ]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInFacetedSearch" => ["validateBoolean", $Input,
+                "IncludeInFacetedSearch", "Include In Faceted Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "SearchGroupLogic" => ["validateNumeric", $Input,
+                "SearchGroupLogic", "Search Group Logic", 1, 2
+            ],
+            "FacetsShowOnlyTermsUsedInResults" => ["validateBoolean", $Input,
+                "FacetsShowOnlyTermsUsedInResults", "Facets Show All Terms"
+            ],
+            "OptionListThreshold" => ["validateOptionListThreshold", $Input],
+            "AjaxThreshold" => ["validateAjaxThreshold", $Input],
+            "NumAjaxResults" => ["validateNumeric", $Input,
+                "NumAjaxResults", "Maximum Number of Search Results", 10
+            ],
+            "UseForOaiSets" => ["validateBoolean", $Input, "UseForOaiSets", "Use for OAI Sets"]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_OPTION) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInFacetedSearch" => ["validateBoolean", $Input,
+                "IncludeInFacetedSearch", "Include In Faceted Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "SearchGroupLogic" => ["validateNumeric", $Input,
+                "SearchGroupLogic", "Search Group Logic", 1, 2
+            ],
+            "FacetsShowOnlyTermsUsedInResults" => ["validateBoolean", $Input,
+                "FacetsShowOnlyTermsUsedInResults", "Facets Show All Terms"
+            ],
+            "UseForOaiSets" => ["validateBoolean", $Input, "UseForOaiSets", "Use for OAI Sets"],
+            "AllowMultiple" => ["validateBoolean", $Input, "AllowMultiple", "Allow Multiple"]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_USER) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "UserPrivilegeRestrictions" => ["validateUserPrivilegeRestrictions", $Input],
+            "AllowMultiple" => ["validateBoolean", $Input, "AllowMultiple", "Allow Multiple"],
+            "UpdateMethod" => ["validateUpdateMethod", $Input]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_IMAGE) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "AllowMultiple" => ["validateBoolean", $Input, "AllowMultiple", "Allow Multiple"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_FILE) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_URL) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "IncludeInKeywordSearch" => ["validateBoolean", $Input,
+                "IncludeInKeywordSearch", "Include In Keyword Search"
+            ],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "IncludeInSortOptions" => ["validateBoolean", $Input,
+                "IncludeInSortOptions", "Include In Sort Options"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "TextFieldSize" => ["validateNumeric", $Input, "TextFieldSize", "Field Size", 1],
+            "MaxLength" => ["validateNumeric", $Input, "MaxLength", "Max Length", 1]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_POINT) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "UsesQualifiers" => ["validateBoolean", $Input, "UsesQualifiers", "Uses Qualifiers"],
+            "HasItemLevelQualifiers" => ["validateBoolean", $Input,
+                "HasItemLevelQualifiers", "Has Item Level Qualifiers"
+            ],
+            "AssociatedQualifierList" => ["validateAssociatedQualifierList", $Input],
+            "DefaultQualifier" => ["validateDefaultQualifier", $Input],
+            "ShowQualifiers" => ["validateBoolean", $Input, "ShowQualifiers", "Show Qualifiers"],
+            "TextFieldSize" => ["validateNumeric", $Input, "TextFieldSize", "Field Size", 1],
+            "PointPrecision" => ["validateNumeric", $Input, "PointPrecision", "Point Precision", 1],
+            "PointDecimalDigits" => ["validateNumeric", $Input,
+                "PointDecimalDigits", "Decimal Digits in Point", 0
+            ],
+            "DefaultValue" => ["validatePointDefaultValue", $Input]
+        ];
+    } elseif ($Type == MetadataSchema::MDFTYPE_REFERENCE) {
+        $Validation += [
+            "Optional" => ["validateBoolean", $Input, "Optional", "Optional"],
+            "IncludeInAdvancedSearch" => ["validateBoolean", $Input,
+                "IncludeInAdvancedSearch", "Include In Advanced Search"
+            ],
+            "SearchWeight" => ["validateNumeric", $Input, "SearchWeight", "Search Weight", 1, 20],
+            "AjaxThreshold" => ["validateAjaxThreshold", $Input],
+            "NumAjaxResults" => ["validateNumeric", $Input,
+                "NumAjaxResults", "Maximum Number of Search Results", 10
+            ],
+            "AllowMultiple" => ["validateBoolean", $Input, "AllowMultiple", "Allow Multiple"],
+            "ReferenceableSchemaIds" => ["validateReferenceableSchemaIds", $Input]
+        ];
+    }
+
+    # attempt to validate the privilege sets
+    $PrivsetUI = new PrivilegeEditingUI($Schema->id());
+    try {
+        # if there's an error, this will throw an exception
+        $PrivsetUI->getPrivilegeSetsFromForm();
+    } catch (Exception $Exception) {
+        # inform the user about what went wrong
+        $Result = "One or more privilege settings is invalid: ".$Exception->getMessage();
+        foreach (["Viewing", "Authoring", "Editing"] as $PrivName) {
+            $Errors[$PrivName."Privileges"] = $Result;
+        }
+    }
+
+    # perform validation (validation functions return strings on error or NULL
+    # when no issues are found)
+    foreach ($Validation as $Name => $Callback) {
+        if ($Callback === null) {
+            # all fields need to be in validation array; a null callback
+            # signifies that we don't need actual validation
+            continue;
+        }
+        $Function = __NAMESPACE__."\\".array_shift($Callback);
+        if (!is_callable($Function)) {
+            throw new Exception("Provided callback was not valid.");
+        }
+        $Result = call_user_func_array($Function, $Callback);
+        if ($Result !== null) {
+            $Errors[$Name] = $Result;
+        }
+    }
+
+    # if there were no errors, remove extraneous, unvalidated parameters from
+    # $Input so that we aren't setting params that are invalid for our field
+    # type
+    if (count($Errors) == 0) {
+        foreach (array_keys($Input) as $Key) {
+            if (!array_key_exists($Key, $Validation)) {
+                unset($Input[$Key]);
+            }
+        }
+    }
+
+    return $Errors;
+}
+
+/**
+ * Determine if the given value is blank or empty if an array.
+ * @param mixed $Value Value to check for blankness.
+ * @return bool TRUE if the value is blank or FALSE otherwise.
+ */
+function isFieldValueBlank($Value): bool
+{
+    if (is_array($Value)) {
+        return !count($Value);
+    }
+
+    return is_null($Value) || !strlen(trim($Value));
+}
+
+/**
+ * Validate the user-provided field values.
+ * @param array $Input User-provided field values.
+ * @param MetadataField $Field Metadata field for validation.
+ * @return array an array of invalid fields and valid input.
+ */
+function validateInputForField(array $Input, MetadataField $Field): array
+{
+    $Type = StdLib::getArrayValue($Input, "Type");
+
+    $Schema = new MetadataSchema($Field->schemaId());
+    # do generic validation first
+    $Errors = validateInput($Input, $Type, $Schema);
+
+    # do custom checking of the type, name, and enabled given the field
+    $Errors["Type"] = validateTypeForField($Input, $Field);
+    $Errors["Name"] = validateNameForField($Input, $Field);
+    $Errors["Enabled"] = validateEnabledForField($Input, $Field);
+
+    # remove fields that don't have an error message and reset indices
+    return array_merge(array_filter($Errors));
+}
+
+/**
+ * Validate the field enabled within the context of the given field.
+ * @param array $Input User-provided input.
+ * @param MetadataField $Field Metadata field.
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validateEnabledForField(array $Input, MetadataField $Field): ?string
+{
+    $Enabled = StdLib::getArrayValue($Input, "Enabled");
+    $Id = $Field->id();
+    $Schema = new MetadataSchema($Field->schemaId());
+
+    # cannot disable fields used for privilege settings
+    if (!$Enabled && MetadataSchema::fieldUsedInPrivileges($Id)) {
+        return "Cannot disable fields used in privilege settings.";
+    }
+
+    # check if this field is currently mapped
+    if (!$Enabled && $Schema->fieldToStdNameMapping($Id) !== null) {
+        return "Cannot disable fields that are set "
+                ."as a standard field in System Configuration.";
+    }
+    return null;
+}
+
+/**
+ * Validate the field type.
+ * @param array $Input User-provided input.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateType(array $Input)
+{
+    $Type = StdLib::getArrayValue($Input, "Type");
+
+    # the field type field is required
+    if (isFieldValueBlank($Type)) {
+        throw new UnexpectedValueException("The Type field is required.");
+    }
+
+    # the field type must be valid
+    if (!isset(MetadataField::$FieldTypeDBEnums[$Type])) {
+        throw new UnexpectedValueException("The Type field is invalid.");
+    }
+    return null;
+}
+
+/**
+ * Validate the field type within the context of the given field.
+ * @param array $Input User-provided input.
+ * @param MetadataField $Field Metadata field.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateTypeForField(array $Input, MetadataField $Field)
+{
+    $Type = StdLib::getArrayValue($Input, "Type");
+
+    # use the checks from validateType()
+    $TypeError = validateType($Input);
+
+    # if there's an error already, just return it
+    if (!is_null($TypeError) && strlen($TypeError)) {
+        return $TypeError;
+    }
+
+    $AllowedConversionTypes = $Field->getAllowedConversionTypes();
+
+    # the (conversion) type must be okay
+    if ($Type != $Field->type() && !isset($AllowedConversionTypes[$Type])) {
+        # get the allowed conversion types as a human-readable string
+        $HumanField = new HumanMetadataField($Field);
+        $TypeString = $HumanField->getAllowedConversionTypes();
+
+        throw new Exception("The field must be one of the following types: ".$TypeString.".");
+    }
+    return null;
+}
+
+/**
+ * Validate the field name.
+ * @param array $Input User-provided input.
+ * @param MetadataSchema $Schema Metadata schema containing the field.
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validateName(array $Input, MetadataSchema $Schema)
+{
+    $Name = StdLib::getArrayValue($Input, "Name");
+
+    # the name field is required
+    if (isFieldValueBlank($Name)) {
+        return "The <i>Name</i> field is required.";
+    }
+
+    # there are restrictions on what can be put in a name
+    if (preg_match("/[^a-zA-Z0-9 \(\)]+/", $Name)) {
+        return "The <i>Name</i> field can only contain "
+                ."letters, numbers, spaces, and parentheses.";
+    }
+
+    # field name cannot be a number
+    if (is_numeric($Name)) {
+        return "The <i>Name</i> field value cannot be a number.";
+    }
+
+    # can't use reserved words
+    $NormalizedName = preg_replace("/[^a-z0-9]/i", "", strtolower($Name));
+    if (in_array($NormalizedName, MetadataField::RESERVED_NAMES)) {
+        return "The <i>Name</i> field can't be a form "
+                ."of <i>Resource ID</i> or <i>Schema ID</i>.";
+    }
+
+    # names must be unique when trailing space is removed
+    if ($Schema->fieldExists(trim($Name))) {
+        return "The <i>Name</i> field value given is already in use.";
+    }
+    return null;
+}
+
+/**
+ * Validate the field name in the context of the given field.
+ * @param array $Input User-provided input.
+ * @param MetadataField $Field Metadata field.
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validateNameForField(array $Input, MetadataField $Field)
+{
+    $Name = StdLib::getArrayValue($Input, "Name");
+
+    # the field name field is required
+    if (isFieldValueBlank($Name)) {
+        return "The <i>Name</i> field is required.";
+    }
+
+    # there are restrictions on what can be put in a name
+    if (preg_match("/[^a-zA-Z0-9 \(\)]+/", $Name)) {
+        return "The <i>Name</i> field can only contain "
+                ."letters, numbers, spaces, and parentheses.";
+    }
+
+    if ($Field->name() == trim($Name)) {
+        return null;
+    }
+
+    # names must be unique when trailing space is removed
+    if (!$Field->newNameForFieldIsValid($Name)) {
+        return "The <i>Name</i> field value given is already in use.";
+    }
+
+    return null;
+}
+
+/**
+ * Validate the field label.
+ * @param array $Input User-provided input.
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validateLabel(array $Input)
+{
+    $Label = StdLib::getArrayValue($Input, "Label");
+
+    # there are restrictions on what can be put in a label
+    if (preg_match("/[^a-zA-Z0-9 ]+/", $Label)) {
+        return "The <i>Display Name</i> field can only contain "
+                ."letters, numbers, and spaces.";
+    }
+    return null;
+}
+
+/**
+ * Validate the default qualifier.
+ * @param array $Input User-provided input.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateDefaultQualifier(array $Input)
+{
+    $DefaultQualifier = StdLib::getArrayValue($Input, "DefaultQualifier");
+
+    # it's okay if the default qualifier isn't set
+    if (isFieldValueBlank($DefaultQualifier)) {
+        return null;
+    }
+
+    $Qualifier = loadQualifier($DefaultQualifier);
+
+    # make sure the qualifier exists
+    if (!($Qualifier instanceof Qualifier)) {
+        throw new UnexpectedValueException("The Default Qualifier field must"
+                ." be a valid qualifier.");
+    }
+
+    $AssociatedQualifierList = StdLib::getArrayValue($Input, "AssociatedQualifierList");
+
+    # the default qualifier needs to be in the associated qualifier list
+    if (!in_array($DefaultQualifier, $AssociatedQualifierList)) {
+        throw new UnexpectedValueException("The Default Qualifier field must be"
+                ." set to a field that is selected in the Allowed Qualifiers field.");
+    }
+    return null;
+}
+
+/**
+ * Validate the user privilege restrictions.
+ * @param array $Input User-provided input.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateUserPrivilegeRestrictions(array $Input)
+{
+    $PrivilegeFactory = new PrivilegeFactory();
+    $UserPrivilegeRestrictions =
+        StdLib::getArrayValue($Input, "UserPrivilegeRestrictions", array());
+
+    # check each restriction
+    foreach ($UserPrivilegeRestrictions as $Restriction) {
+        if (!$PrivilegeFactory->privilegeValueExists($Restriction)) {
+            throw new UnexpectedValueException("The privileges given for the"
+                    ." Restrict to Users With One of the Following field are invalid.");
+        }
+    }
+    return null;
+}
+
+/**
+ * Validate the update method.
+ * @param array $Input User-provided input.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateUpdateMethod(array $Input)
+{
+    $ValidValues = array_keys(MetadataField::$UpdateTypes);
+    $UpdateMethod = StdLib::getArrayValue($Input, "UpdateMethod");
+
+    if (isset($Input["UpdateMethod"]) && !in_array($UpdateMethod, $ValidValues)) {
+        throw new UnexpectedValueException("The Update Method field is invalid.");
+    }
+    return null;
+}
+
+/**
+ * Validate the default value field for points.
+ * @param array $Input User-provided input.
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validatePointDefaultValue(array $Input)
+{
+    $DefaultValue = StdLib::getArrayValue($Input, "DefaultValue");
+    $DefaultValue1 = StdLib::getArrayValue($DefaultValue, "X");
+    $DefaultValue2 = StdLib::getArrayValue($DefaultValue, "Y");
+
+    if (strlen($DefaultValue1) || strlen($DefaultValue2)) {
+        if (!is_numeric($DefaultValue1)) {
+            return "The values for the <i>Default Value</i> field must be numbers.";
+        }
+
+        if (!is_numeric($DefaultValue2)) {
+            return "The values for the <i>Default Value</i> field must be numbers.";
+        }
+    }
+    return null;
+}
+
+/**
+ * Validate the associated qualifier list.
+ * @param array $Input User-provided input.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateAssociatedQualifierList(array $Input)
+{
+    $AssociatedQualifierList = StdLib::getArrayValue($Input, "AssociatedQualifierList");
+
+    # it's okay if there are none selected
+    if (isFieldValueBlank($AssociatedQualifierList)) {
+        return null;
+    }
+
+    $QualifierFactory = new QualifierFactory();
+    $QualifierList = $QualifierFactory->getItemNames();
+
+    # all the qualifiers must be valid
+    if (count(array_diff($AssociatedQualifierList, array_keys($QualifierList))) !== 0) {
+        throw new UnexpectedValueException("The Allowed Qualifiers field is invalid.");
+    }
+    return null;
+}
+
+/**
+ * Validate a boolean value.
+ * @param array $Input User-provided input.
+ * @param string $Key Field value key.
+ * @param string $Name Field name displayed to the user.
+ * @return null NULL on success or message on invalid input.
+ */
+function validateBoolean(array $Input, $Key, $Name)
+{
+    $Value = StdLib::getArrayValue($Input, $Key);
+
+    if ($Value != 1 && $Value != 0) {
+        throw new UnexpectedValueException("The ".$Name." field must be a yes or no value.");
+    }
+    return null;
+}
+
+/**
+ * Validate a numeric value.
+ * @param array $Input User-provided input.
+ * @param string $Key Field value key.
+ * @param string $Name Field name displayed to the user.
+ * @param int|null $Lower Lowest value the number can be (optional).
+ * @param int|null $Upper Highest value the number can be (optional).
+ * @param bool $Required Whether or not a value is required (optional).
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validateNumeric(
+    array $Input,
+    $Key,
+    $Name,
+    $Lower = null,
+    $Upper = null,
+    $Required = true
+) {
+    $MaxAllowedValue = 100000000;
+    $Value = StdLib::getArrayValue($Input, $Key);
+
+    # the field is not required and is blank
+    if (!$Required && isFieldValueBlank($Value)) {
+        return null;
+    }
+
+    # must be a number
+    if (!is_numeric($Value)) {
+        return "The <i>".$Name."</i> field must be a number.";
+    }
+
+    # must be greater than or equal to the lower bound, if specified
+    if (is_numeric($Lower) && $Value < $Lower) {
+        $Lower = number_format($Lower);
+        return "The <i>".$Name."</i> field must be at least ".$Lower.".";
+    }
+
+    # must be less than or equal to the lower bound, if specified
+    if (is_numeric($Upper) && $Value > $Upper) {
+        $Upper = number_format($Upper);
+        return "The <i>".$Name."</i> field must be no more than ".$Upper.".";
+    }
+
+    # must be less than a certain value because of technical limitations
+    if ($Value > $MaxAllowedValue) {
+        $MaxAllowedValue = number_format($MaxAllowedValue);
+        return "The <i>".$Name."</i> field must be no more than "
+                .$MaxAllowedValue.". This is for technical reasons.";
+    }
+    return null;
+}
+
+/**
+ * Validate a nonempty value.
+ * @param array $Input User-provided input.
+ * @param string $Key Field value key.
+ * @param string $Name Field name displayed to the user.
+ * @return null|string NULL on success or message on invalid input.
+ */
+function validateNonempty(array $Input, $Key, $Name)
+{
+    $Value = StdLib::getArrayValue($Input, $Key);
+
+    if (strlen($Value) === 0) {
+        return "The <i>".$Name."</i> field is required.";
+    }
+    return null;
+}
+
+/**
+ * Validate the option list threshold value.
+ * @param array $Input User-provided input.
+ * @return null|string Returns NULL on success or message on invalid input.
+ */
+function validateOptionListThreshold(array $Input)
+{
+    $MaxAllowedValue = 100000000;
+    $OptionListThreshold = StdLib::getArrayValue($Input, "OptionListThreshold");
+    $AjaxThreshold = StdLib::getArrayValue($Input, "AjaxThreshold");
+
+    # the field is required
+    if (isFieldValueBlank($OptionListThreshold)) {
+        return "The <i>Option List Threshold</i> field is required.";
+    }
+
+    # must be a number
+    if (!is_numeric($OptionListThreshold)) {
+        throw new UnexpectedValueException("The Option List Threshold field must be a number.");
+    }
+
+    # the field must be less than or equal to the AJAX threshold
+    if ($OptionListThreshold > $AjaxThreshold) {
+        return "The <i>Option List Threshold</i> field must be less than or "
+                ."equal to the <i>Incremental Search Field Threshold</i> field.";
+    }
+
+    # must be less than a certain value because of technical limitations
+    if ($OptionListThreshold > $MaxAllowedValue) {
+        $MaxAllowedValue = number_format($MaxAllowedValue);
+        return "The <i>Option List Threshold</i> field must be no more than "
+                .$MaxAllowedValue.". This is for technical reasons.";
+    }
+    return null;
+}
+
+/**
+ * Validate the AJAX threshold value.
+ * @param array $Input User-provided input.
+ * @return null|string Returns NULL on success or message on invalid input.
+ */
+function validateAjaxThreshold(array $Input)
+{
+    $MaxAllowedValue = 100000000;
+    $AjaxThreshold = StdLib::getArrayValue($Input, "AjaxThreshold");
+    $OptionListThreshold = StdLib::getArrayValue($Input, "OptionListThreshold");
+
+    # the field is required
+    if (isFieldValueBlank($AjaxThreshold)) {
+        return "The <i>Incremental Search Field Threshold</i> field is required.";
+    }
+
+    # must be a number
+    if (!is_numeric($AjaxThreshold)) {
+        throw new UnexpectedValueException("The Incremental Search Field"
+            ." Threshold field must be a number.");
+    }
+
+    # the field must be less than or equal to the AJAX threshold
+    if ($AjaxThreshold < $OptionListThreshold) {
+        return "The <i>Incremental Search Field Threshold</i> field must be greater than or "
+                ."equal to the <i>Option List Threshold</i> field.";
+    }
+
+    # must be less than a certain value because of technical limitations
+    if ($AjaxThreshold > $MaxAllowedValue) {
+        $MaxAllowedValue = number_format($MaxAllowedValue);
+        return "The <i>Incremental Search Field Threshold</i> field must be no more than "
+                .$MaxAllowedValue.". This is for technical reasons.";
+    }
+    return null;
+}
+
+/**
+ * Validate the ReferenceableSchemaIds value.
+ * @param array $Input User-provided input.
+ * @return null Returns NULL on success or message on invalid input.
+ */
+function validateReferenceableSchemaIds(array $Input)
+{
+    $ReferenceableSchemaIds = StdLib::getArrayValue($Input, "ReferenceableSchemaIds");
+
+    # must be an array
+    if (!is_array($ReferenceableSchemaIds)) {
+        throw new UnexpectedValueException("ReferenceableSchemaIds was not an array.");
+    }
+
+    # must be valid schemas
+    foreach ($ReferenceableSchemaIds as $Id) {
+        if (!is_numeric($Id) || !MetadataSchema::schemaExistsWithId((int)$Id)) {
+            throw new UnexpectedValueException("Invalid Referenceable Schemas.");
+        }
+    }
+    return null;
+}
+
+/**
+ * Save the given input to the given metadata field. The input must be validated
+ * at this point.
+ * @param MetadataField $Field Metadata field.
+ * @param array $Input User input where keys correspond either to method names in
+ *   MetadataField or one of (Viewing|Authoring|Editing)Privileges(Logic)?.
+ * @return array Warning or error messages, if any.
+ */
+function saveInput(MetadataField $Field, array $Input): array
+{
+    $Warnings = [];
+    $AF = ApplicationFramework::getInstance();
+
+    if (array_key_exists("Name", $Input)) {
+        $Input["Name"] = trim($Input["Name"]);
+    }
+
+    $AssociatedQualifierList = $Field->associatedQualifierList();
+
+    # remove association with any current qualifiers
+    foreach (array_keys($AssociatedQualifierList) as $Id) {
+        $Field->unassociateWithQualifier($Id);
+    }
+
+    $AssociateWith = StdLib::getArrayValue($Input, "AssociatedQualifierList", []);
+
+    # associated with any given qualifiers
+    foreach ($AssociateWith as $Id) {
+        $Field->addQualifier($Id);
+    }
+
+    # some fields can't be edited for the cumulative rating field
+    if ($Field->name() == "Cumulative Rating") {
+        unset($Input["TextFieldSize"]);
+        unset($Input["DefaultValue"]);
+        unset($Input["MinValue"]);
+        unset($Input["MaxValue"]);
+    }
+
+    # change type if needed
+    if (isset($Input["Type"])) {
+        $TypeChangeWarnings = $Field->checkIfTypeChangeWillModifyData($Input["Type"]);
+        if (count($TypeChangeWarnings) > 0) {
+            $WarningsField = StdLib::getArrayValue($_POST, "F_HasWarnings");
+            # display a warning if there isn't one yet, otherwise change the type
+            # given that the user confirmed the change by submitting again
+            if ($WarningsField === "0") {
+                foreach ($TypeChangeWarnings as $TypeChangeWarning) {
+                    $Warnings[] = $TypeChangeWarning;
+                }
+                $Warnings[] = "Please resubmit this form with the type change to confirm "
+                    ."that you want to change the field type anyway.";
+            } elseif ($WarningsField === "1") {
+                $Field->type($Input["Type"]);
+            }
+        } else {
+            $Field->type($Input["Type"]);
+        }
+    }
+
+    # handle the privileges separately
+    foreach (["view", "author", "edit"] as $PrivilegeType) {
+        $PrivilegeTypeName = $PrivilegeType."ingPrivileges";
+
+        # the privilege type is valid and it has a valid logic value
+        if (isset($Input[$PrivilegeTypeName])) {
+            if ($PrivilegeType == "view") {
+                # pull out the new and old privilege sets
+                $NewPrivs = $Input[$PrivilegeTypeName];
+                $OldPrivs = $Field->{$PrivilegeTypeName}();
+
+                # see which flags they look for
+                $NewFlagsChecked = $NewPrivs->privilegeFlagsChecked();
+                $OldFlagsChecked = $OldPrivs->privilegeFlagsChecked();
+
+                # sort both to be sure the order is consistent
+                sort($NewFlagsChecked);
+                sort($OldFlagsChecked);
+
+                # see which user fields they check
+                $NewUserFieldsChecked = array_unique(array_merge(
+                    $NewPrivs->fieldsWithUserComparisons("=="),
+                    $NewPrivs->fieldsWithUserComparisons("!=")
+                ));
+                $OldUserFieldsChecked = array_unique(array_merge(
+                    $OldPrivs->fieldsWithUserComparisons("=="),
+                    $OldPrivs->fieldsWithUserComparisons("!=")
+                ));
+
+                # sort for consistency
+                sort($NewUserFieldsChecked);
+                sort($OldUserFieldsChecked);
+
+                # if the fields checked or the flags checked have been
+                # modified, flush the user perms cache to remove
+                # potentially stale values
+                if ($NewFlagsChecked != $OldFlagsChecked ||
+                    $NewUserFieldsChecked != $OldUserFieldsChecked) {
+                    RecordFactory::clearViewingPermsCache();
+                }
+            }
+
+            # save the privileges
+            $Field->{$PrivilegeTypeName}($Input[$PrivilegeTypeName]);
+        }
+
+        # remove the privilege-related values so they aren't "saved" below
+        unset($Input[$PrivilegeTypeName]);
+        unset($Input[$PrivilegeTypeName."Logic"]);
+    }
+
+    $DeprecatedFunctions = [
+        "ViewingPrivilege", "EditingPrivilege",
+        "AuthoringPrivilege", "TreeBrowsingPrivilege"
+    ];
+
+    $ClearWhenEmpty = ["Label", "Instructions"];
+    $ClearWhenNull = ["DefaultQualifier"];
+    foreach ($Input as $Key => $Value) {
+        # do not call deprecated functions that happen to have the same
+        # names as some of our form fields
+        if (in_array($Key, $DeprecatedFunctions)) {
+            continue;
+        }
+
+        # type was already handled
+        if ($Key == "Type") {
+            continue;
+        }
+
+        # remove leading/trailing whitespace from strings
+        if (is_string($Value)) {
+            $Value = trim($Value);
+        }
+
+        # if no value was provided and this attribute should not be cleared, move on
+        if ($Value === "" && !in_array($Key, $ClearWhenEmpty)) {
+            continue;
+        }
+
+        # if NULL was provided and this attribute should be cleared when NULL, switch
+        # $Value to false so that Database::updateXXValue() methods will clear the
+        # current setting
+        if (is_null($Value) && in_array($Key, $ClearWhenNull)) {
+            $Value = false;
+        }
+
+        # otherwise, set the updated value
+        $Field->$Key($Value);
+
+        # check if last update threw an error
+        switch ($Field->status()) {
+            case MetadataSchema::MDFSTAT_DUPLICATENAME:
+                $Warnings[] = "Duplicate field name; name not updated.";
+                break;
+            case MetadataSchema::MDFSTAT_ILLEGALNAME:
+                $Warnings[] = "Illegal field name; name not updated.";
+                break;
+        }
+    }
+
+    if ($Field->type() == MetadataSchema::MDFTYPE_TREE) {
+        $DefaultQualifier = $Field->defaultQualifier();
+
+        if ($Field->usesQualifiers() && $DefaultQualifier) {
+            # percolate the default qualifier for tree fields
+            setQualifierIdForClassifications($Field, $DefaultQualifier);
+        }
+    }
+
+    if ($Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME) {
+        $DefaultQualifier = $Field->defaultQualifier();
+
+        if ($Field->usesQualifiers() && $DefaultQualifier) {
+            # set the default qualifier for controlled name fields
+            setQualifierIdForControlledNames($Field, $DefaultQualifier);
+        }
+    }
+
+    # save list of referenceable schemas for Reference fields.
+    if ($Field->type() == MetadataSchema::MDFTYPE_REFERENCE) {
+        $Field->referenceableSchemaIds($Input["ReferenceableSchemaIds"]);
+    }
+
+    # clear caches in case any of our changes affect page output
+    $AF->clearPageCache();
+    SearchFacetUI::clearCaches();
+
+    return array_unique($Warnings);
+}
+
+/**
+ * If checkbox is ticked, update values of fields to default value.
+ * @param MetadataField $Field Metadata field.
+ */
+function updateValues(MetadataField $Field): void
+{
+    # check if field is of valid type, if not, return
+    $TypesToUpdate = [
+        MetadataSchema::MDFTYPE_TEXT,
+        MetadataSchema::MDFTYPE_NUMBER,
+        MetadataSchema::MDFTYPE_POINT,
+    ];
+    if (!in_array($Field->type(), $TypesToUpdate)) {
+        return;
+    }
+    # set ResourceFactory using SchemaId from field to get resources fitting specified schema
+    $ResourceFactory = new RecordFactory($Field->schemaId());
+
+    # get resources where field to update is not set
+    $Resources = $ResourceFactory->getIdsOfMatchingRecords([$Field->id() => "NULL"]);
+    foreach ($Resources as $Index => $ResourceId) {
+        $Resources[$Index] = new Record($ResourceId);
+    }
+
+    # update field values
+    foreach ($Resources as $Resource) {
+        $Resource->set($Field->id(), $Field->defaultValue());
+    }
+}
+
+/**
+ * Set the default qualifier for the tree field at all levels if not already set
+ * to some other value.
+ * @param MetadataField $Field Tree metadata field.
+ * @param int $DefaultQualifier Default qualifier ID.
+ * @return void
+ */
+function setQualifierIdForClassifications(MetadataField $Field, int $DefaultQualifier): void
+{
+    $Factory = new ClassificationFactory();
+    $Ids = $Factory->getItemIds("FieldId = ".$Field->id());
+
+    foreach ($Ids as $Id) {
+        $Classification = new Classification($Id);
+        $OldQualifier = loadQualifier($Classification->qualifierId());
+
+        # if there is no old qualifier or the qualifier name is blank, set
+        # the default qualifier ID to the provided value
+        if (is_null($OldQualifier) || !$OldQualifier->name()) {
+            $Classification->qualifierId($DefaultQualifier);
+        }
+    }
+}
+
+/**
+ * Set the default qualifier for the controlled name field if not already set to
+ * some other value.
+ * @param MetadataField $Field Controlled name metadata field.
+ * @param int $DefaultQualifier Default qualifier ID.
+ * @return void
+ */
+function setQualifierIdForControlledNames(MetadataField $Field, int $DefaultQualifier): void
+{
+    $Factory = new ControlledNameFactory();
+    $Ids = $Factory->getItemIds("FieldId = ".$Field->id());
+
+    foreach ($Ids as $Id) {
+        $ControlledName = new ControlledName($Id);
+        $OldQualifier = loadQualifier($ControlledName->qualifierId());
+
+        # if there is no old qualifier or the qualifier name is blank, set
+        # the default qualifier ID to the provided value
+        if (is_null($OldQualifier) || !$OldQualifier->name()) {
+            $ControlledName->qualifierId($DefaultQualifier);
+        }
+    }
+}
+
+/**
+ * Delete the given field, reassigning the default browsing field and removing
+ * OAI field mappings as necessary.
+ * @param MetadataField $Field Metadata field.
+ * @throws Exception If the field being deleted is being used in privilege settings.
+ * @return void
+ */
+function deleteField(MetadataField $Field): void
+{
+    # caller should check if this field is used in privilege settings
+    if (MetadataSchema::fieldUsedInPrivileges($Field->id())) {
+        throw new Exception("Metadata fields used in privilege "
+            ."settings cannot be deleted.");
+    }
+
+    $Schema = new MetadataSchema($Field->schemaId());
+    $FieldId = $Field->id();
+    $IntConfig = InterfaceConfiguration::getInstance();
+
+    # re-assign browsing field ID if that is what is being deleted and the
+    # schema is the default one
+    if ($IntConfig->getInt("BrowsingFieldId") == $FieldId
+        && $Schema->id() == MetadataSchema::SCHEMAID_DEFAULT) {
+        $TreeFields = $Schema->getFields(MetadataSchema::MDFTYPE_TREE);
+
+        # remove the field to be deleted from the list
+        unset($TreeFields[$FieldId]);
+
+        # make sure at least one tree field exists for browsing
+        if (!count($TreeFields)) {
+            return;
+        }
+
+        # reassign the browsing field
+        $TreeField = array_shift($TreeFields);
+        $IntConfig->setInt("BrowsingFieldId", $TreeField->id());
+    }
+
+    # drop the field
+    $Schema->dropField($FieldId);
+
+    # clear page cache in case deleting the field affects page output
+    ApplicationFramework::getInstance()->clearPageCache();
+}
+
+/**
+ * Get the input from the list of user input that is valid, based on which ones
+ * are known to be invalid.
+ * @param array $Input User input giving new settings. Keys are either MetadataField method names
+ *   or one of (Viewing|Authoring|Editing)Privileges(Logic)?.
+ * @param array $InvalidInput List of invalid settings that the user attempted
+ *   to provide (array values give setting names that were invalid and
+ *   correspond to keys in the $Input array).
+ * @param PrivilegeEditingUI $PrivsetUI Privilege editing UI for the schema
+ *         that contains (or will contain) this field.
+ * @param ?MetadataField $MField Metadata field being modified or null when creating new fields.
+ * @return array Valid user input fields.
+ * @see getFieldDefaults()
+ */
+function getValidInput(
+    array $Input,
+    array $InvalidInput,
+    PrivilegeEditingUI $PrivsetUI,
+    ?MetadataField $MField = null
+): array {
+    $ValidInput = [];
+    $Defaults = getFieldDefaults($Input["Type"] ?? null);
+
+    $ValidFields = array_keys(array_diff_key($Defaults, array_flip($InvalidInput)));
+    $ValidFields = array_diff(
+        $ValidFields,
+        [
+            "ViewingPrivileges",
+            "ViewingPrivilegesLogic",
+            "AuthoringPrivileges",
+            "AuthoringPrivilegesLogic",
+            "EditingPrivileges",
+            "EditingPrivilegesLogic",
+        ]
+    );
+
+    # list of fields where NULL is a valid input value, rather than an
+    # indication that a default value should be used
+    $CanBeNull = ["DefaultQualifier"];
+
+    foreach ($ValidFields as $Key) {
+        # if NULL was explicitly provided in the input data and is a valid
+        # value for this field, pass NULL along
+        if (array_key_exists($Key, $Input) &&
+            is_null($Input[$Key]) && in_array($Key, $CanBeNull)) {
+            $ValidInput[$Key] = null;
+            continue;
+        }
+
+        # if no value or NULL provided, get value from current settings when
+        # we have a field or from defaults when no field is available
+        $ValidInput[$Key] = $Input[$Key] ??
+            (is_null($MField) ? $Defaults[$Key] : $MField->$Key() );
+    }
+
+    # handle the privileges separately
+    foreach ($PrivsetUI->getPrivilegeSetsFromForm() as $PrivType => $PrivData) {
+        $ValidInput[$PrivType] = $PrivData;
+    }
+
+    return $ValidInput;
+}
+
+/**
+ * Get the page with necessary parameters when returning to the DBEditor page.
+ * @param mixed $Value MetadataSchema object, MetadataField object, or a schema ID.
+ * @param bool $PromptDBRebuild Whether we want to prompt the user to run a search DB rebuild.
+ * @return string Returns the page to return to.
+ */
+function getReturnToPage($Value, bool $PromptDBRebuild = false): string
+{
+    $Suffix = "";
+
+    # get the suffix from a metadata schema if not using the default schema
+    if ($Value instanceof MetadataSchema) {
+        if ($Value->id() != MetadataSchema::SCHEMAID_DEFAULT) {
+            $Suffix = "&SC=".$Value->id();
+        }
+        # get the suffix from a metadata field if not using the default schema
+    } elseif ($Value instanceof MetadataField) {
+        if ($Value->schemaId() != MetadataSchema::SCHEMAID_DEFAULT) {
+            $Suffix = "&SC=".$Value->schemaId();
+        }
+        # use the value directly if not using the default schema
+    } elseif (!is_null($Value) && $Value != MetadataSchema::SCHEMAID_DEFAULT) {
+        $Suffix = "&SC=".urlencode($Value);
+    }
+
+    if ($PromptDBRebuild) {
+        # add a param to prompt search database rebuild
+        $Suffix .= "&PSDBR=1";
+    }
+
+    return "DBEditor".$Suffix;
+}
+
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_Errors)) {
-    throw new Exception("H_Errors not defined.");
-}
-if (!isset($H_FieldData)) {
-    throw new Exception("H_FieldData not defined.");
-}
-if (!isset($H_Qualifiers)) {
-    throw new Exception("H_Qualifiers not defined.");
-}
-if (!isset($H_Schema)) {
-    throw new Exception("H_Schema not defined.");
-}
-if (!isset($H_TypeBasedDefaults)) {
-    throw new Exception("H_TypeBasedDefaults not defined.");
-}
-if (!isset($H_Warnings)) {
-    throw new Exception("H_Warnings not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
 
-$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
-$SafeId = defaulthtmlentities($H_FieldData["Id"]);
-$SafeName = defaulthtmlentities($H_FieldData["Name"]);
-$SafeMappedName = defaulthtmlentities($H_FieldData["MappedName"]);
-$SafeTypeAsName = defaulthtmlentities($H_FieldData["TypeAsName"]);
-$SafeOwner = defaulthtmlentities($H_FieldData["Owner"]);
+$TypeBasedDefaults = MetadataField::$TypeBasedDefaults;
 
-$ExportFieldButton = new HtmlButton("Export Field");
-$ExportFieldButton->setIcon("FileExport.svg");
-$ExportFieldButton->setSize(HtmlButton::SIZE_SMALL);
-$ExportFieldButton->setLink("index.php?P=DBExportField&Id=" . $SafeId);
+$Warnings = [];
+
+# extract field
+$FieldIdGiven = StdLib::getArrayValue($_GET, "Id", false);
+$Field = $FieldIdGiven ? loadMetadataField($FieldIdGiven) : null;
+$SchemaId = ($Field !== null) ?
+    $Field->schemaId() :
+    StdLib::getArrayValue($_GET, "SC", StdLib::getArrayValue($_POST, "F_SchemaId"));
+$PrivsetUI = new PrivilegeEditingUI($SchemaId);
+$Operation = StdLib::getArrayValue($_POST, "Submit");
+$Input = extractFieldInput($_POST);
+$FieldRequiredFor = [
+    "Update Field", "Enable", "Disable", "Delete Field", "Populate Field..."
+];
+
+$QualifierFactory = new QualifierFactory();
+$Qualifiers = $QualifierFactory->getItemNames();
+
+$AF = ApplicationFramework::getInstance();
+
+$AF->setPageTitle(($FieldIdGiven ? "Edit" : "Add")." Metadata Field");
+
+# field ID given, but it's invalid. go back to the list of fields
+if ($FieldIdGiven && !($Field instanceof MetadataField)) {
+    $AF->setJumpToPage(getReturnToPage($SchemaId));
+    return;
+}
+
+# no field ID given, but one is required. go back to the list of fields
+if (!$FieldIdGiven && in_array($Operation, $FieldRequiredFor)) {
+    $AF->setJumpToPage(getReturnToPage($SchemaId));
+    return;
+}
+
+# cancel editing
+if ($Operation == "Cancel") {
+    $AF->setJumpToPage(getReturnToPage($SchemaId));
+    return;
+}
+
+# use the default schema ID if we couldn't get one from field or params
+if (is_null($SchemaId)) {
+    $SchemaId = MetadataSchema::SCHEMAID_DEFAULT;
+}
+
+# construct the schema object
+$Schema = new MetadataSchema($SchemaId);
 
 $PopulateFieldButton = new HtmlButton("Populate Field");
 $PopulateFieldButton->setIcon("MagicWand.svg");
@@ -1958,15 +3588,167 @@ $CancelButton->setSize(HtmlButton::SIZE_SMALL);
 $CancelButton->makeSubmitButton();
 $CancelButton->addSemanticClass("btn-danger");
 
-$AF = ApplicationFramework::getInstance();
+# ----- PROCESSING -----------------------------------------------------------
+
+switch ($Operation) {
+    case "Add Field":
+        # add a new field
+        # validate the user input
+        $Type = StdLib::getArrayValue($Input, "Type");
+
+        $Errors = validateInput($Input, $Type, $Schema);
+        $ValidInput = getValidInput($Input, array_keys($Errors), $PrivsetUI);
+
+        # at least one field value is invalid
+        if (count($Errors) !== 0) {
+            # load the data so the form can be displayed and the issues resolved
+            $FieldData = getFormDataFromDefaults($Schema, $Type, $ValidInput);
+        } else {
+            # create a new field
+            $Field = $Schema->addField("XTEMPFIELDNAMEX", $Type);
+
+            # MetadataField::create() failed, potentially due to invalid name
+            if ($Field === null) {
+                $Errors = ["Error creating field."];
+                $FieldData = getFormDataFromDefaults($Schema, $Type, $ValidInput);
+                break;
+            }
+
+            # save the input and make the field permanent
+            $Warnings = saveInput($Field, $ValidInput);
+            $Field->isTempItem(false);
+            $Field->setOwnerToUser(User::getCurrentUser());
+
+            # update values to default if necessary
+            if (isset($Input["UpdateValues"])) {
+                updateValues($Field);
+            }
+
+            # go back to the field list
+            $AF->setJumpToPage(getReturnToPage($Schema));
+            return;
+        }
+        break;
+    case "Update Field":
+        # update an existing field (field checks are above)
+        # validate the user input
+        $Errors = validateInputForField($Input, $Field);
+        $ValidInput = getValidInput(
+            $Input,
+            array_keys($Errors),
+            $PrivsetUI,
+            $Field
+        );
+        # save the valid fields, update values to default if update values is checked
+        $Warnings = saveInput($Field, $ValidInput);
+        if (isset($Input["UpdateValues"])) {
+            updateValues($Field);
+        }
+
+        $RecordFactory = new RecordFactory($Field->schemaId());
+        # search DB rebuild should be queued if the collection is not large
+        # we chose 2000 records to be the cutoff point for queue-able search DB rebuilds
+        if ($RecordFactory->getItemCount() < 2000) {
+            SearchEngine::queueDBRebuildForSchema($Field->schemaId());
+            $JmpToPage = getReturnToPage($Field);
+        } else {
+            # if the collection is large, prompt the user to do a search DB rebuild
+            $JmpToPage = getReturnToPage($Field, true);
+        }
+
+        # if there were no issues and no warnings, just go back to the field list
+        if (!count($Errors) && !count($Warnings)) {
+            $AF->setJumpToPage($JmpToPage);
+            return;
+        }
+
+        # otherwise load the data so the form can be displayed and the issues resolved
+        $FieldData = getFormDataFromField($Field);
+        break;
+    case "Delete Field":
+        # delete a field (field checks are above)
+        if (MetadataSchema::fieldUsedInPrivileges($Field->id())) {
+            $Errors["Enabled"] = "Cannot delete a metadata field used in privilege setting.";
+            $FieldData = getFormDataFromField($Field);
+        } else {
+            $Confirmation = StdLib::getArrayValue($_POST, "F_Confirmation", false);
+            if ($Confirmation) {
+                # delete if confirmed
+                $AF->setJumpToPage(getReturnToPage($Field));
+                deleteField($Field);
+            } else {
+                # otherwise request the user to confirm
+                # save valid user input in case the delete button was pressed accidentally
+                $Input = extractFieldInput($_POST);
+                $Errors = validateInputForField($Input, $Field);
+                $ValidInput = getValidInput($Input, array_keys($Errors), $PrivsetUI);
+                saveInput($Field, $ValidInput);
+                if (isset($Input["UpdateValues"])) {
+                    updateValues($Field);
+                }
+                $AF->setJumpToPage("ConfirmDeleteMetadataField&Id=".$Field->id());
+            }
+            return;
+        }
+        break;
+    case "Populate Field...":
+        # populate a tree field (field checks are above)
+        # save valid user input
+        $Input = extractFieldInput($_POST);
+        $Errors = validateInputForField($Input, $Field);
+        $ValidInput = getValidInput($Input, array_keys($Errors), $PrivsetUI);
+        saveInput($Field, $ValidInput);
+        if (isset($Input["UpdateValues"])) {
+            updateValues($Field);
+        }
+
+        $AF->setJumpToPage("PopulateField&ID=".$Field->id());
+        return;
+    case "Enable":
+        # enable a field through AJAX, so no redirect (field checks are above)
+        $Field->enabled(true);
+        $AF->clearPageCache();
+        $AF->suppressHtmlOutput();
+        return;
+    case "Disable":
+        # disable a field through AJAX, so no redirect (field checks are above)
+        if (validateEnabledForField($Input, $Field) === null) {
+            $Field->enabled(false);
+        }
+        $AF->clearPageCache();
+        $AF->suppressHtmlOutput();
+        return;
+    default:
+        $Errors = [];
+        if ($FieldIdGiven) {
+            # the form was not submitted and a field ID was given. setup for editing the field
+            if (isset($_GET["ERR"])) {
+                $Errors[] = $_GET["ERR"];
+            }
+            $FieldData = getFormDataFromField($Field);
+        } else {
+            # the form was not submitted and a field ID was not given. setup for adding a new field
+            $FieldData = getFormDataFromDefaults($Schema);
+        }
+        break;
+}
+
+$SafeSchemaId = defaulthtmlentities($Schema->id());
+$SafeId = defaulthtmlentities($FieldData["Id"]);
+$SafeMappedName = defaulthtmlentities($FieldData["MappedName"]);
+$SafeTypeAsName = defaulthtmlentities($FieldData["TypeAsName"]);
+$SafeOwner = defaulthtmlentities($FieldData["Owner"]);
+
+$ExportFieldButton = new HtmlButton("Export Field");
+$ExportFieldButton->setIcon("FileExport.svg");
+$ExportFieldButton->setSize(HtmlButton::SIZE_SMALL);
+$ExportFieldButton->setLink("index.php?P=DBExportField&Id=".$SafeId);
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <form method="post"
-      action="index.php?P=EditMetadataField<?PHP if ($H_FieldData["Id"]) {
-            print "&amp;Id=".$SafeId;
-                                           } ?>"
+      action="index.php?P=EditMetadataField<?= $FieldData["Id"] ? "&amp;Id=".$SafeId : ""; ?>"
       class="mfe-form priv-form"
       novalidate="novalidate">
   <input type="hidden" name="F_SchemaId" value="<?= $SafeSchemaId; ?>" />
@@ -1974,17 +3756,17 @@ $AF = ApplicationFramework::getInstance();
   <div class="container container-fluid">
   <div class="row">
     <div class="col-5 mv-metadata-field-header">
-      <h1><?= $H_FieldData["FieldExists"] ? "Edit" : "Add"; ?> Metadata Field</h1>
+      <h1><?= $FieldData["FieldExists"] ? "Edit" : "Add"; ?> Metadata Field</h1>
     </div>
     <div class="col">
         <p>(required fields are <span class="mv-form-requiredfield">circled</span>)</p>
     </div>
     <div class="col text-end">
         <?PHP
-        if ($H_FieldData["CanExport"]) {
+        if ($FieldData["CanExport"]) {
             print $ExportFieldButton->getHtml();
         }
-        if ($H_FieldData["CanPopulate"]) {
+        if ($FieldData["CanPopulate"]) {
             print $PopulateFieldButton->getHtml();
         }
         ?>
@@ -1992,32 +3774,33 @@ $AF = ApplicationFramework::getInstance();
   </div>
   </div>
 
-  <?PHP if (count($H_Errors) > 1) { ?>
+  <?PHP if (count($Errors) > 1) { ?>
     <ul class="alert alert-danger list-group list-group-flush">
-        <?PHP foreach ($H_Errors as $Error) { ?>
+        <?PHP foreach ($Errors as $Error) { ?>
         <li class="list-group-item"><?= $Error; ?></li>
         <?PHP } ?>
     </ul>
-  <?PHP } elseif (count($H_Errors) == 1) { ?>
-    <p class="alert alert-danger"><?= GetFirstError($H_Errors); ?></p>
+  <?PHP } elseif (count($Errors) == 1) { ?>
+    <p class="alert alert-danger"><?= getFirstError($Errors); ?></p>
   <?PHP } ?>
 
-  <input type="hidden" name="F_HasWarnings" value="<?= count($H_Warnings) == 0 ? '0' : '1' ?>" />
-  <?PHP if (count($H_Warnings) > 1) { ?>
+  <input type="hidden" name="F_HasWarnings" value="<?= count($Warnings) == 0 ? '0' : '1' ?>" />
+  <?PHP if (count($Warnings) > 1) { ?>
     <ul class="alert alert-warning list-group list-group-flush">
-        <?PHP foreach ($H_Warnings as $Warning) { ?>
+        <?PHP foreach ($Warnings as $Warning) { ?>
         <li class="list-group-item"><?= $Warning; ?></li>
         <?PHP } ?>
     </ul>
-  <?PHP } elseif (count($H_Warnings) == 1) { ?>
-    <p class="alert alert-warning"><?= GetFirstError($H_Warnings); ?></p>
+  <?PHP } elseif (count($Warnings) == 1) { ?>
+    <p class="alert alert-warning"><?= getFirstError($Warnings); ?></p>
   <?PHP } ?>
 
-  <?PHP if ($H_FieldData["IsStandard"] || $H_FieldData["HasOwner"] ||
-      $H_FieldData["IsLastTreeField"] || $H_FieldData["UsedByPrivsets"]) { ?>
+  <?PHP if ($FieldData["IsStandard"] || $FieldData["IsOwnedByCore"] ||
+      $FieldData["IsOwnedByPlugin"] || $FieldData["IsOwnedByUser"] ||
+      $FieldData["IsLastTreeField"] || $FieldData["UsedByPrivsets"]) { ?>
     <p class="alert alert-primary">
       <strong>Please Note:</strong>
-      <?PHP if ($H_FieldData["IsStandard"]) { ?>
+      <?PHP if ($FieldData["IsStandard"]) { ?>
         This field is currently designated the
         <i>Resource <?= $SafeMappedName; ?> Field</i>. Some field
         attributes cannot be modified and the field cannot be deleted until
@@ -2029,24 +3812,23 @@ $AF = ApplicationFramework::getInstance();
            >Edit Metadata Schema</a> page.
             <?PHP } ?>
       <?PHP } ?>
-      <?PHP if ($H_FieldData["HasOwner"]) { ?>
-            <?PHP if (($H_FieldData["Owner"] == "CWISCore")
-                    || ($H_FieldData["Owner"] == "MetavusCore")) { ?>
+      <?PHP if ($FieldData["IsOwnedByCore"]) { ?>
           This field was created by the core software. Some field attributes
           cannot be modified and the field cannot be deleted.
-            <?PHP } else { ?>
+      <?PHP } elseif ($FieldData["IsOwnedByPlugin"]) { ?>
           This field was created by the <i><?= $SafeOwner; ?></i> plugin.
           Some field attributes cannot be modified and the field
           cannot be deleted.
-            <?PHP } ?>
+      <?PHP } elseif ($FieldData["IsOwnedByUser"]) { ?>
+          This field was created by user <i><?= $SafeOwner; ?></i>.
       <?PHP } ?>
-      <?PHP if ($H_FieldData["IsLastTreeField"]) { ?>
+      <?PHP if ($FieldData["IsLastTreeField"]) { ?>
         This field cannot be deleted because at least one enabled tree field
         must exist to provide resource browsing functionality.To delete this
         field, create a new tree field or enable one that is currently
         disabled.
       <?PHP } ?>
-      <?PHP if ($H_FieldData["UsedByPrivsets"]) { ?>
+      <?PHP if ($FieldData["UsedByPrivsets"]) { ?>
         This field cannot be deleted because it is currently in use by the
         privileges system.
       <?PHP } ?>
@@ -2066,28 +3848,32 @@ $AF = ApplicationFramework::getInstance();
         <th colspan="2">Basic Information</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
-      <?PHP PrintTypeField($H_FieldData, StdLib::getArrayValue($H_Errors, "Type")); ?>
-      <?PHP PrintSchemaName($H_Schema); ?>
-      <?PHP PrintNameField($H_FieldData, StdLib::getArrayValue($H_Errors, "Name")); ?>
-      <?PHP PrintLabelField($H_FieldData, StdLib::getArrayValue($H_Errors, "Label")); ?>
-      <?PHP PrintDescriptionField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printTypeField($FieldData, StdLib::getArrayValue($Errors, "Type")); ?>
+      <?PHP printSchemaName($Schema); ?>
+      <?PHP printNameField($FieldData, StdLib::getArrayValue($Errors, "Name")); ?>
+      <?PHP printLabelField($FieldData, StdLib::getArrayValue($Errors, "Label")); ?>
+      <?PHP printDescriptionField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "Description"
       )); ?>
-      <?PHP PrintInstructionsField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printInstructionsField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "Instructions"
       )); ?>
-      <?PHP PrintEnabledField($H_FieldData, StdLib::getArrayValue($H_Errors, "Enabled")); ?>
-      <?PHP PrintEditableField($H_FieldData, StdLib::getArrayValue($H_Errors, "Editable")); ?>
-      <?PHP PrintOptionalField($H_FieldData, StdLib::getArrayValue($H_Errors, "Optional")); ?>
-      <?PHP PrintCopyOnResourceDuplicationField($H_FieldData, $H_Schema, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printEnabledField($FieldData, StdLib::getArrayValue($Errors, "Enabled")); ?>
+      <?PHP printEditableField($FieldData, StdLib::getArrayValue($Errors, "Editable")); ?>
+      <?PHP printOptionalField($FieldData, StdLib::getArrayValue($Errors, "Optional")); ?>
+      <?PHP printCopyOnResourceDuplicationField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "CopyOnResourceDuplication"
       )); ?>
-      <?PHP printObfuscateValueForAnonymousUsersField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printObfuscateValueForAnonymousUsersField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "ObfuscateValueForAnonymousUsers"
+      )); ?>
+      <?PHP printVocabularyEditableField($FieldData, StdLib::getArrayValue(
+          $Errors,
+          "VocabularyEditable"
       )); ?>
     </tbody>
     <tbody class="mfe mfe-group mfe-group-qualifiers mfe-type-text mfe-type-paragraph
@@ -2101,26 +3887,26 @@ $AF = ApplicationFramework::getInstance();
         <th colspan="2">Qualifiers</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
-      <?PHP PrintUsesQualifiersField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printUsesQualifiersField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "UsesQualifiers"
       )); ?>
-      <?PHP PrintHasItemLevelQualifiersField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printHasItemLevelQualifiersField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "HasItemLevelQualifiers"
       )); ?>
-      <?PHP PrintAssociatedQualifierListField(
-          $H_FieldData,
-          StdLib::getArrayValue($H_Errors, "AssociatedQualifierList"),
-          $H_Qualifiers
+      <?PHP printAssociatedQualifierListField(
+          $FieldData,
+          StdLib::getArrayValue($Errors, "AssociatedQualifierList"),
+          $Qualifiers
       ); ?>
-      <?PHP PrintDefaultQualifierField(
-          $H_FieldData,
-          StdLib::getArrayValue($H_Errors, "DefaultQualifier"),
-          $H_Qualifiers
+      <?PHP printDefaultQualifierField(
+          $FieldData,
+          StdLib::getArrayValue($Errors, "DefaultQualifier"),
+          $Qualifiers
       ); ?>
-      <?PHP PrintShowQualifiersField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printShowQualifiersField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "ShowQualifiers"
       )); ?>
       <tr class="mfe mfe-note mfe-group-qualifiers mfe-type-text mfe-type-paragraph mfe-type-number
@@ -2146,40 +3932,40 @@ $AF = ApplicationFramework::getInstance();
         <th colspan="2">Search</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
-      <?PHP PrintIncludeInKeywordSearchField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printIncludeInKeywordSearchField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "IncludeInKeywordSearch"
       )); ?>
-      <?PHP PrintIncludeInAdvancedSearchField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printIncludeInAdvancedSearchField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "IncludeInAdvancedSearch"
       )); ?>
-      <?PHP PrintDisplayAsListForAdvancedSearch($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printDisplayAsListForAdvancedSearch($FieldData, StdLib::getArrayValue(
+          $Errors,
           "DisplayAsListForAdvancedSearch"
       )); ?>
-      <?PHP PrintMaxDepthForAdvancedSearch($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printMaxDepthForAdvancedSearch($FieldData, StdLib::getArrayValue(
+          $Errors,
           "MaxDepthForAdvancedSearch"
       )); ?>
-      <?PHP PrintIncludeInFacetedSearchField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printIncludeInFacetedSearchField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "IncludeInFacetedSearch"
       )); ?>
-      <?PHP PrintIncludeInSortOptionsField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printIncludeInSortOptionsField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "IncludeInSortOptions"
       )); ?>
-      <?PHP PrintSearchWeightField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printSearchWeightField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "SearchWeight"
       )); ?>
-      <?PHP PrintSearchGroupLogic($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printSearchGroupLogic($FieldData, StdLib::getArrayValue(
+          $Errors,
           "SearchGroupLogic"
       )); ?>
-      <?PHP PrintFacetsShowOnlyTermsUsedInResults($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printFacetsShowOnlyTermsUsedInResults($FieldData, StdLib::getArrayValue(
+          $Errors,
           "FacetsShowOnlyTermsUsedInResults"
       )); ?>
     </tbody>
@@ -2190,16 +3976,16 @@ $AF = ApplicationFramework::getInstance();
         <th colspan="2">Resource Editing</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
-      <?PHP PrintOptionListThresholdField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printOptionListThresholdField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "OptionListThreshold"
       )); ?>
-      <?PHP PrintAjaxThresholdField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printAjaxThresholdField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "AjaxThreshold"
       )); ?>
-      <?PHP PrintNumAjaxResultsField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printNumAjaxResultsField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "NumAjaxResults"
       )); ?>
     </tbody>
@@ -2210,12 +3996,12 @@ $AF = ApplicationFramework::getInstance();
         <th colspan="2">OAI</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
-      <?PHP PrintUseForOaiSetsField($H_FieldData, StdLib::getArrayValue(
-          $H_Errors,
+      <?PHP printUseForOaiSetsField($FieldData, StdLib::getArrayValue(
+          $Errors,
           "UseForOaiSets"
       )); ?>
     </tbody>
-    <?PHP if ($H_FieldData["Name"] != "Cumulative Rating") { ?>
+    <?PHP if ($FieldData["Name"] != "Cumulative Rating") { ?>
       <tbody class="mfe mfe-group mfe-group-typespecific mfe-type-text mfe-type-paragraph
           mfe-type-number mfe-type-date mfe-type-timestamp mfe-type-flag mfe-type-option
           mfe-type-user mfe-type-image mfe-type-url mfe-type-point mfe-type-reference
@@ -2227,84 +4013,84 @@ $AF = ApplicationFramework::getInstance();
           <th colspan="2">Type-Specific Information</th>
           <th class="mfe mfe-appliesto">Applies To</th>
         </tr>
-        <?PHP PrintTextFieldSizeField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printTextFieldSizeField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "TextFieldSize"
         )); ?>
-        <?PHP PrintMaxLengthField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printMaxLengthField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "MaxLength"
         )); ?>
-        <?PHP PrintParagraphRowsField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printParagraphRowsField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "ParagraphRows"
         )); ?>
-        <?PHP PrintParagraphColsField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printParagraphColsField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "ParagraphCols"
         )); ?>
-        <?PHP PrintAllowHtmlField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printAllowHtmlField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "AllowHtml"
         )); ?>
-        <?PHP PrintUseWysiwygEditorField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printUseWysiwygEditorField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "UseWysiwygEditor"
         )); ?>
-        <?PHP PrintMinValueField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printMinValueField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "MinValue"
         )); ?>
-        <?PHP PrintMaxValueField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printMaxValueField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "MaxValue"
         )); ?>
-        <?PHP PrintUpdateMethodField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printUpdateMethodField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "UpdateMethod"
         )); ?>
-        <?PHP PrintFlagOnLabelField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printFlagOnLabelField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "FlagOnLabel"
         )); ?>
-        <?PHP PrintFlagOffLabelField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printFlagOffLabelField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "FlagOffLabel"
         )); ?>
-        <?PHP PrintAllowMultipleField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printAllowMultipleField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "AllowMultiple"
         )); ?>
-        <?PHP PrintUserPrivilegeRestrictionsField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printUserPrivilegeRestrictionsField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "UserPrivilegeRestrictions"
         )); ?>
-        <?PHP PrintPointPrecisionField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printPointPrecisionField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "PointPrecision"
         )); ?>
-        <?PHP PrintDecimalDigitsField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printDecimalDigitsField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "DecimalDigits"
         )); ?>
-        <?PHP PrintDefaultValueField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printDefaultValueField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "DefaultValue"
         )); ?>
-        <?PHP PrintReferenceableSchemaIds($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printReferenceableSchemaIds($FieldData, StdLib::getArrayValue(
+            $Errors,
             "ReferenceableSchemaIds"
         )); ?>
-        <?PHP PrintNumericDefaultValueField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printNumericDefaultValueField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "NumericDefaultValue"
         )); ?>
-        <?PHP PrintFlagDefaultValueField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printFlagDefaultValueField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "FlagDefaultValue"
         )); ?>
-        <?PHP PrintPointDefaultValueField($H_FieldData, StdLib::getArrayValue(
-            $H_Errors,
+        <?PHP printPointDefaultValueField($FieldData, StdLib::getArrayValue(
+            $Errors,
             "PointDefaultValue"
         )); ?>
       </tbody>
@@ -2322,32 +4108,32 @@ $AF = ApplicationFramework::getInstance();
         <th colspan="2">Privileges</th>
         <th class="mfe mfe-appliesto">Applies To</th>
       </tr>
-      <?PHP PrintViewingPrivilegesField(
-          $H_FieldData,
-          StdLib::getArrayValue($H_Errors, "ViewingPrivileges"),
-          $H_Schema
+      <?PHP printViewingPrivilegesField(
+          $FieldData,
+          StdLib::getArrayValue($Errors, "ViewingPrivileges"),
+          $Schema
       ); ?>
-      <?PHP PrintAuthoringPrivilegesField(
-          $H_FieldData,
-          StdLib::getArrayValue($H_Errors, "AuthoringPrivileges"),
-          $H_Schema
+      <?PHP printAuthoringPrivilegesField(
+          $FieldData,
+          StdLib::getArrayValue($Errors, "AuthoringPrivileges"),
+          $Schema
       ); ?>
-      <?PHP PrintEditingPrivilegesField(
-          $H_FieldData,
-          StdLib::getArrayValue($H_Errors, "EditingPrivileges"),
-          $H_Schema
+      <?PHP printEditingPrivilegesField(
+          $FieldData,
+          StdLib::getArrayValue($Errors, "EditingPrivileges"),
+          $Schema
       ); ?>
     </tbody>
   </table>
 
-  <?PHP if (!$H_FieldData["FieldExists"]) { ?>
+  <?PHP if (!$FieldData["FieldExists"]) { ?>
         <?= $AddButton->getHtml() ?>
   <?PHP } else { ?>
         <?= $UpdateButton->getHtml() ?>
   <?PHP } ?>
-  <?PHP if ($H_FieldData["FieldExists"] && !$H_FieldData["MappedName"] &&
-      !$H_FieldData["HasOwner"] && !$H_FieldData["IsLastTreeField"] &&
-      !$H_FieldData["UsedByPrivsets"]) { ?>
+  <?PHP if ($FieldData["FieldExists"] && !$FieldData["MappedName"] &&
+      !$FieldData["IsOwnedByCore"] && !$FieldData["IsOwnedByPlugin"] &&
+      !$FieldData["IsLastTreeField"] && !$FieldData["UsedByPrivsets"]) { ?>
       <?= $DeleteButton->getHtml() ?>
   <?PHP } ?>
       <?= $CancelButton->getHtml() ?>
@@ -2380,10 +4166,10 @@ $AF = ApplicationFramework::getInstance();
 
     <?PHP foreach (MetadataField::$FieldTypePHPEnums as $Type) { ?>
       typeBasedDefaults[<?= $Type; ?>] = {
-        "SearchWeight": "<?= $H_TypeBasedDefaults[$Type]["SearchWeight"]; ?>",
-        "TextFieldSize": "<?= $H_TypeBasedDefaults[$Type]["TextFieldSize"]
+        "SearchWeight": "<?= $TypeBasedDefaults[$Type]["SearchWeight"]; ?>",
+        "TextFieldSize": "<?= $TypeBasedDefaults[$Type]["TextFieldSize"]
                 ?? MetadataField::getDefaultValue("TextFieldSize"); ?>",
-        "MaxLength": "<?= $H_TypeBasedDefaults[$Type]["MaxLength"]
+        "MaxLength": "<?= $TypeBasedDefaults[$Type]["MaxLength"]
                 ?? MetadataField::getDefaultValue("MaxLength"); ?>",
       };
     <?PHP } ?>

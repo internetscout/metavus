@@ -38,7 +38,7 @@ if (!isset($_GET["ID"])) {
         # if delete was confirmed
         if (isset($_POST["Submit"]) && ($_POST["Submit"] == "Delete")) {
             # hook function to delete rule after HTML is displayed
-            $AF->addPostProcessingCall(function ($Id) {
+            $AF->addPostProcessingCall(function ($Id): void {
                         $Rule = new Rule($Id);
                         $Rule->destroy();
             }, $_GET["ID"]);

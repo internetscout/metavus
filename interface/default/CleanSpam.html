@@ -3,17 +3,43 @@
 #   FILE:  CleanSpam.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN, PRIV_USERADMIN)) {
+    return;
+}
+
+$PosterId = StdLib::getFormValue("PI");
+$ResourceId = StdLib::getFormValue("RI");
+
+if ($PosterId === null) {
+    $ErrorMessages[] = "No poster ID specified.";
+} elseif (!(new UserFactory())->userExists($PosterId)) {
+    $ErrorMessages[] = "Invalid poster ID specified.";
+}
+
+if ($ResourceId === null) {
+    $ErrorMessages[] = "No resource ID specified.";
+} elseif (!RecordFactory::recordExistsInAnySchema($ResourceId)) {
+    $ErrorMessages[] = "Invalid resource ID specified.";
+}
+
+$ErrorsExist = isset($ErrorMessages);
+
+if (!$ErrorsExist) {
+    $TgtUser = new User($PosterId);
+}
+
 $AF = ApplicationFramework::getInstance();
 
 $RemovePrivButton = new HtmlButton("Remove Post Privilege");
@@ -30,47 +56,39 @@ $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
 # ----- DISPLAY --------------------------------------------------------------
+
 $AF->setPageTitle("Moderate Spam");
 ?>
 
-<?PHP if (isset($H_ErrorMessages)) { ?>
+<?PHP if ($ErrorsExist) { ?>
 <h1>Error</h1>
 <ul class="mv-form-error">
-    <?PHP foreach ($H_ErrorMessages as $ErrorMessage) {  ?>
+    <?PHP foreach ($ErrorMessages as $ErrorMessage) {  ?>
         <li><?= $ErrorMessage; ?></li>
     <?PHP } ?>
 </ul>
     <?PHP return; ?>
 <?PHP } ?>
 
-<?PHP
-if (!isset($H_ResourceId)) {
-    throw new Exception("H_ResourceId not defined.");
-}
-if (!isset($H_TgtUser)) {
-    throw new Exception("H_TgtUser not defined.");
-}
-?>
-
 <h1>Moderate Spam</h1>
 
-<p class="alert alert-danger"><strong>Important:</strong> If you &quot;Clean Spam&quot;, it will
-delete all of <i><?= $H_TgtUser->Name(); ?></i>'s comments, remove
-their posting privilege, and disable their account.  </p>
+<p class="alert alert-danger"><strong>Important:</strong> If you &quot;Clean
+Spam&quot;, it will delete all of <i><?= $TgtUser->name(); ?></i>'s comments,
+remove their posting privilege, and disable their account.  </p>
 
-<p><i><?= $H_TgtUser->Name(); ?></i> had made the following comments:</p>
+<p><i><?= $TgtUser->name(); ?></i> had made the following comments:</p>
 
 <?PHP
-$Resource = new Record($H_ResourceId);
-$Comments = (new MessageFactory())->getMessagesPostedByUser($H_TgtUser->Id());
+$Resource = new Record($ResourceId);
+$Comments = (new MessageFactory())->getMessagesPostedByUser($TgtUser->id());
 foreach ($Comments as $Comment) {
     MessageUI::printForumMessage($Comment, $Resource);
 }
 ?>
 
 <form name="updatemessage" method="post" action="index.php?P=CleanSpamComplete" >
-    <input type="hidden" name="F_PosterId" value="<?= $H_TgtUser->Id(); ?>" />
-    <input type="hidden" name="F_ResourceId" value="<?= $H_ResourceId; ?>" />
+    <input type="hidden" name="F_PosterId" value="<?= $TgtUser->id(); ?>" />
+    <input type="hidden" name="F_ResourceId" value="<?= $ResourceId; ?>" />
     <?= $RemovePrivButton->getHtml() ?>
     <?= $CleanButton->getHtml() ?>
     <?= $CancelButton->getHtml() ?>

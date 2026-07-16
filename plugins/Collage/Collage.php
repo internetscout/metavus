@@ -402,7 +402,7 @@ class Collage extends Plugin
 
         $ExpirationTime = time()
                 - ($this->getConfigSetting("OrderPersistencePeriod") * 3600);
-        $FilterFunc = function ($Key) use ($CacheTimes, $ExpirationTime) {
+        $FilterFunc = function ($Key) use ($CacheTimes, $ExpirationTime): bool {
             return $CacheTimes[$Key] > $ExpirationTime;
         };
         $Cache = array_filter($Cache, $FilterFunc, ARRAY_FILTER_USE_KEY);

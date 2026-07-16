@@ -3,7 +3,7 @@
 #   FILE:  Developer.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -31,7 +31,8 @@ class Developer extends Plugin
     # ---- CONFIGURATION -----------------------------------------------------
 
     # database error messages to ignore when doing upgrades
-    # (IMPORTANT:  this list MUST match the one in installmv.php)
+    # (IMPORTANT: keep this list in sync with the lists in install/mvus
+    #       and in installmv.php)
     private static $SqlErrorsWeCanIgnore = [
         "/ALTER TABLE /i" => "/Table '[a-z0-9_.]+' already exists/i",
         "/ALTER TABLE [a-z0-9_]+ (CHANGE|MODIFY) COLUMN/i" => "/Unknown column/i",
@@ -365,7 +366,7 @@ class Developer extends Plugin
 
         # set the PHP error reporting level
         $ErrorFlags = $this->getConfigSetting("ErrorReportingFlags");
-        if (count($ErrorFlags)) {
+        if (count($ErrorFlags) !== 0) {
             $CurrentFlags = error_reporting();
             foreach ($ErrorFlags as $Flag) {
                 switch ($Flag) {
@@ -443,7 +444,7 @@ class Developer extends Plugin
         # set up file path fallback for images (if appropriate)
         if ($this->getConfigSetting("UseFileUrlFallbacks")) {
             $Prefix = $this->getConfigSetting("FileUrlFallbackPrefix");
-            if (strlen($Prefix)) {
+            if (strlen($Prefix) !== 0) {
                 Image::setFilePathFallbackPrefix($Prefix);
             }
         }
@@ -606,7 +607,7 @@ class Developer extends Plugin
         print "</div></td>";
 
         # list form variables
-        if (count($_POST)) {
+        if (count($_POST) !== 0) {
             print "<td><h3>Form Variables (POST)</h3><div>";
             foreach ($_POST as $VarName => $VarValue) {
                 $this->displayVariable($VarName, $VarValue, $VarIndex);
@@ -680,7 +681,7 @@ class Developer extends Plugin
             if ($Lines === false) {
                 throw new Exception("Unabled to read LASTSITEUPDATE file contents.");
             }
-            $Line = array_shift($Lines);
+            $Line = (string)array_shift($Lines);
             $LastUpdate = StdLib::getPrettyTimestamp(strtotime($Line));
         } else {
             $LastUpdate = "(unknown)";
@@ -742,10 +743,10 @@ class Developer extends Plugin
         # regex search/replace patterns to normalize queries for display
         $QueryReplacements = [
             "% IN \([0-9,-]+\)%" => " IN (...)",
-            "% VALUES (?:\([^)]+\),)*\([^)]+\)%" => " VALUES (...)",
-            "% SET Cfg = '.*' %s" => " SET Cfg = '...' ",
-            "%Callback = '[^']+' %" => "Callback = '...'",
-            "%Parameters = '[^']+'%" => "Parameters = '...'",
+            "% VALUES (?:\([^)]+\),)*\([^)]+\)%" => " VALUES (&mdash;)",
+            "% SET Cfg = '.*' %s" => " SET Cfg = '&mdash;' ",
+            "%Callback = '[^']+' %" => "Callback = '&mdash;'",
+            "%Parameters = '[^']+'%" => "Parameters = '&mdash;'",
         ];
 
         # regex search/replace to apply to backtraces
@@ -814,7 +815,7 @@ class Developer extends Plugin
             }
 
             # normalize query for display
-            $QueryString = preg_replace(
+            $QueryString = (string)preg_replace(
                 array_keys($QueryReplacements),
                 array_values($QueryReplacements),
                 $QueryString
@@ -822,8 +823,10 @@ class Developer extends Plugin
 
             # and ensure that the normalized version isn't excessively long
             if (strlen($QueryString) > 1024) {
-                $QueryString = substr($QueryString, 0, 1024)."...";
+                $QueryString = (string)substr($QueryString, 0, 1024)."...";
             }
+
+            $QueryString = str_replace(" ", "&centerdot;", $QueryString);
 
             # basic query info
             $BgColor = $QueryCounter % 2 == 1 ? 'ddd' : 'eee';
@@ -858,10 +861,10 @@ class Developer extends Plugin
                 $Location = str_replace(
                     "->",
                     "&rarr;",
-                    preg_replace(
+                    (string)preg_replace(
                         array_keys($LocationReplacements),
                         array_values($LocationReplacements),
-                        str_replace($BaseDir, "", (string)$Location)
+                        (string)str_replace($BaseDir, "", (string)$Location)
                     )
                 );
 
@@ -873,7 +876,7 @@ class Developer extends Plugin
             }
 
             # query profile when available
-            if (count($ExplainResults)) {
+            if (count($ExplainResults) !== 0) {
                 $Result .=
                     '<tr class="'.$DetailCssClass.'" style="display: none;">'
                     .'<td colspan=2 class="pl-2"><u>Explain</u></td>'
@@ -910,7 +913,7 @@ class Developer extends Plugin
 
         uasort(
             $ProfileData,
-            function ($a, $b) {
+            function ($a, $b): int {
                 return $b["wt"] <=> $a["wt"];
             }
         );
@@ -997,7 +1000,7 @@ class Developer extends Plugin
         # sort by average increase in peak mem usage
         uasort(
             $ProfileData,
-            function ($a, $b) {
+            function ($a, $b): int {
                 return ($b["pmu"] / $b["ct"]) <=> ($a["pmu"] / $a["ct"]);
             }
         );
@@ -1150,18 +1153,24 @@ class Developer extends Plugin
      */
     public static function checkForDatabaseUpgrades(): array
     {
-        $DB = new Database();
         $Messages = [];
+
+        # scan for changed upgrade files
+        $ChangedFiles = self::checkForChangedUpgradeFiles(self::DBUPGRADE_FILEPATTERN);
+        if (count($ChangedFiles) == 0) {
+            return $Messages;
+        }
 
         # get lock to prevent two upgrades from running simultaneously
         $AF = ApplicationFramework::getInstance();
         $AF->getLock();
 
-        # check for changed upgrade files
+        # rescan upgrade files in case a different thread has already run them
         $ChangedFiles = self::checkForChangedUpgradeFiles(self::DBUPGRADE_FILEPATTERN);
 
         # if changed files found
-        if (count($ChangedFiles)) {
+        if (count($ChangedFiles) !== 0) {
+            $DB = new Database();
             $DB->setQueryErrorsToIgnore(self::$SqlErrorsWeCanIgnore);
 
             # for each changed file
@@ -1172,7 +1181,12 @@ class Developer extends Plugin
                 $AF->logMessage(ApplicationFramework::LOGLVL_INFO, $Msg);
 
                 # execute queries in file
-                $Result = $DB->executeQueriesFromFile($FilePath);
+                try {
+                    $Result = $DB->executeQueriesFromFile($FilePath);
+                } catch (Exception $Ex) {
+                    $AF->releaseLock();
+                    throw $Ex;
+                }
 
                 # if queries succeeded
                 if ($Result !== null) {
@@ -1303,7 +1317,7 @@ class Developer extends Plugin
     {
         array_walk(
             $Whitelist,
-            function (&$Value) {
+            function (&$Value): void {
                 $Value = trim($Value);
                 $Length = strlen($Value);
                 if ($Length >= 2) {
@@ -1372,7 +1386,7 @@ class Developer extends Plugin
         # iterate through our indexes and remove those which cover the same
         #  set of columns with the same index type
         foreach ($IndexByContents as $Table => $IndexData) {
-            foreach ($IndexData as $IxCols => $IxNames) {
+            foreach ($IndexData as $IxNames) {
                 if (count($IxNames) > 1) {
                     # keep the last index (more likely to match naming conventions)
                     array_pop($IxNames);
@@ -1408,7 +1422,7 @@ class Developer extends Plugin
         $ChangedFiles = self::checkForChangedUpgradeFiles(self::SITEUPGRADE_FILEPATTERN);
 
         # if changed files found
-        if (count($ChangedFiles)) {
+        if (count($ChangedFiles) !== 0) {
             # set up environment for file
             global $G_MsgFunc;
             $G_MsgFunc = [__CLASS__, "msg"];
@@ -1509,7 +1523,11 @@ class Developer extends Plugin
             # strip any URL fingerprinting out of file name before looking for local copy
             $TestUrl = $Url;
             if ($UrlFingerprintingEnabled) {
-                $TestUrl = preg_replace('%\.[0-9A-F]{6}\.([A-Za-z]+)$%', '.\1', $Url);
+                $TestUrl = (string)preg_replace(
+                    '%\.[0-9A-F]{6}\.([A-Za-z]+)$%',
+                    '.\1',
+                    $Url
+                );
             }
 
             # if file could not be found locally
@@ -1686,7 +1704,7 @@ class Developer extends Plugin
             $SetMsgs[$FileName] = $FileSetMsgs;
 
             # record what file set each setting
-            foreach ($FileSetMsgs as $FullParam => $Msg) {
+            foreach (array_keys($FileSetMsgs) as $FullParam) {
                 # ($SetBy is needed because settings can be overridden by
                 #       entries encountered in a later config file, and we
                 #       want to display the file that set the final value)
@@ -2056,7 +2074,7 @@ class Developer extends Plugin
         }
 
         # add any error messages
-        if (count($this->SettingsErrorMsgs)) {
+        if (count($this->SettingsErrorMsgs) !== 0) {
             foreach ($this->SettingsErrorMsgs as $Msg) {
                 $this->SettingsInfoHtml .= "<b>ERROR:</b> ".$Msg."<br>\n";
             }
@@ -2064,7 +2082,7 @@ class Developer extends Plugin
         }
 
         # add any setting messages
-        if (count($SetMsgs)) {
+        if (count($SetMsgs) !== 0) {
             foreach ($SetMsgs as $SettingsFile => $Msgs) {
                 ksort($Msgs);
                 $this->SettingsInfoHtml .= "Values forced via ".$SettingsFile
@@ -2094,12 +2112,12 @@ class Developer extends Plugin
      */
     private static function sortUpgradeFileList(array $FileNames): array
     {
-        $VerExtractFunc = function (string $FileName) {
+        $VerExtractFunc = function (string $FileName): string {
             $FileName = pathinfo($FileName, PATHINFO_FILENAME);
-            $Version = preg_replace("/[A-Z]+--/i", "", $FileName);
+            $Version = (string)preg_replace("/[A-Z]+--/i", "", $FileName);
             return $Version;
         };
-        $SortFunc = function ($AFileName, $BFileName) use ($VerExtractFunc) {
+        $SortFunc = function ($AFileName, $BFileName) use ($VerExtractFunc): int {
             if ($AFileName == $BFileName) {
                 return 0;
             }
@@ -2137,7 +2155,7 @@ class Developer extends Plugin
         $AdjustFunc = function (string $Version): string {
             if (version_compare($Version, self::OLDEST_UPGRADABLE_VERSION, "<")) {
                 $Pieces = explode(".", $Version, 2);
-                $Version = ((string)((int)$Pieces[0] + 4)).".".$Pieces[1];
+                $Version = ((int)$Pieces[0] + 4).".".$Pieces[1];
             }
             return $Version;
         };

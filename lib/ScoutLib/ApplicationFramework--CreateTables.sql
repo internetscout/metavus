@@ -7,10 +7,11 @@ CREATE TABLE IF NOT EXISTS ApplicationFrameworkSettings (
     GenerateCompactCss              INT DEFAULT 1,
     HighMemoryUsageThreshold        INT DEFAULT 90,
     JavascriptMinimizationEnabled   INT DEFAULT 1,
-    LastTaskRunAt                   DATETIME DEFAULT NULL,
     LogHighMemoryUsage              INT DEFAULT 0,
     LogPhpNotices                   INT DEFAULT 0,
     LogDBCachePruning               INT DEFAULT 0,
+    LogDBLocking                    INT DEFAULT 0,
+    LongDBLockThreshold             INT DEFAULT 100,
     LogSlowPageLoads                INT DEFAULT 0,
     LoggingLevel                    INT DEFAULT 4,
     MaxExecTime                     INT DEFAULT 300,
@@ -37,9 +38,11 @@ CREATE TABLE IF NOT EXISTS TaskQueue (
     Parameters  MEDIUMBLOB DEFAULT NULL,
     Priority    INT DEFAULT 3,
     Description TEXT DEFAULT NULL,
+    RunAfter    DATETIME DEFAULT NULL,
     INDEX       Index_I (TaskId),
     INDEX       Index_PI (Priority, TaskId),
-    INDEX       Index_CM (Callback(64), Parameters(256))
+    INDEX       Index_CM (Callback(64), Parameters(256)),
+    INDEX       Index_RPT (RunAfter, Priority, TaskId)
 );
 
 -- (RunningTasks table must match TaskQueue table except for StartedAt and CrashInfo)
@@ -49,6 +52,7 @@ CREATE TABLE IF NOT EXISTS RunningTasks (
     Parameters  MEDIUMBLOB DEFAULT NULL,
     Priority    INT DEFAULT 3,
     Description TEXT DEFAULT NULL,
+    RunAfter    DATETIME DEFAULT NULL,
     StartedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CrashInfo   MEDIUMBLOB DEFAULT NULL,
     INDEX       (TaskId),
@@ -98,4 +102,3 @@ CREATE TABLE IF NOT EXISTS AF_Locks (
     INDEX       Index_N (LockName(16)),
     INDEX       Index_A (ObtainedAt)
 );
-

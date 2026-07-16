@@ -3,7 +3,7 @@
 #   FILE:  MetadataField.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -49,6 +49,9 @@ class MetadataField
     const EVENT_CLEAR = 2;
     const EVENT_ADD = 4;
     const EVENT_REMOVE = 8;
+
+    # reserved field names that user can't set field to
+    public const RESERVED_NAMES = ["resourceid", "schemaid", "xtempfieldnamex"];
 
     /**
      * Get current error status of object.
@@ -210,7 +213,7 @@ class MetadataField
     /**
      * Get/set name of field.  Field names are limited to alphanumerics, spaces,
      * and parentheses.
-     * @param string $NewName New field name.  (OPTIONAL)
+     * @param ?string $NewName New field name.  (OPTIONAL)
      * @return string Current field name.
      */
     public function name(?string $NewName = null): string
@@ -227,7 +230,7 @@ class MetadataField
             if (!preg_match("/^[[:alnum:] \(\)]+$/", $NewName)) {
                 # set error status to indicate illegal name
                 $this->ErrorStatus = MetadataSchema::MDFSTAT_ILLEGALNAME;
-            } elseif ($NormalizedName == "resourceid" || $NormalizedName == "schemaid") {
+            } elseif (in_array($NormalizedName, self::RESERVED_NAMES)) {
                 # if the new name is a reserved word
                 # set error status to indicate illegal name
                 $this->ErrorStatus = MetadataSchema::MDFSTAT_ILLEGALNAME;
@@ -500,7 +503,11 @@ class MetadataField
         # if new privileges supplied
         if ($NewValue !== null) {
             # store new privileges in database
-            $this->DB->updateValue("AuthoringPrivileges", $NewValue->data());
+            $PrivilegeData = $NewValue->data();
+            $this->DB->updateValue("AuthoringPrivileges", $PrivilegeData);
+            if (self::$FieldCache !== null) {
+                self::$FieldCache[$this->Id]["AuthoringPrivileges"] = $PrivilegeData;
+            }
             $this->AuthoringPrivileges = $NewValue;
         }
 
@@ -518,7 +525,11 @@ class MetadataField
         # if new privileges supplied
         if ($NewValue !== null) {
             # store new privileges in database
-            $this->DB->updateValue("EditingPrivileges", $NewValue->data());
+            $PrivilegeData = $NewValue->data();
+            $this->DB->updateValue("EditingPrivileges", $PrivilegeData);
+            if (self::$FieldCache !== null) {
+                self::$FieldCache[$this->Id]["EditingPrivileges"] = $PrivilegeData;
+            }
             $this->EditingPrivileges = $NewValue;
         }
 
@@ -536,7 +547,11 @@ class MetadataField
         # if new privileges supplied
         if ($NewValue !== null) {
             # store new privileges in database
-            $this->DB->updateValue("ViewingPrivileges", $NewValue->data());
+            $PrivilegeData = $NewValue->data();
+            $this->DB->updateValue("ViewingPrivileges", $PrivilegeData);
+            if (self::$FieldCache !== null) {
+                self::$FieldCache[$this->Id]["ViewingPrivileges"] = $PrivilegeData;
+            }
             $this->ViewingPrivileges = $NewValue;
         }
 
@@ -588,13 +603,74 @@ class MetadataField
     }
 
     /**
-     * Get/set field owner.
-     * @param string $NewValue Updated owner.  (OPTIONAL)
+     * Get the owner value (translated to user name if applicable).
+     * @return string The owner of the field. If the owner is a user that
+     *         doesn't exist, returns "INVALID USER".
+     */
+    public function getOwner(): string
+    {
+        $Owner = $this->DB->updateValue("Owner");
+        if ($this->isOwnedByUser()) {
+            $UserPrefixLength = strlen(self::OWNER_USER_PREFIX);
+            $UserId = (int)substr($Owner, $UserPrefixLength);
+            if (User::itemExists($UserId)) {
+                $User = new User($UserId);
+                $Owner = $User->name();
+            } else {
+                $Owner = "INVALID USER";
+            }
+        }
+        return $Owner;
+    }
+
+    /**
+     * Get whether the owner is a user.
+     * @return bool Whether the owner of the field is a user.
+     */
+    public function isOwnedByUser(): bool
+    {
+        $Owner = $this->DB->updateValue("Owner");
+        $UserPrefixLength = strlen(self::OWNER_USER_PREFIX);
+        return substr($Owner, 0, $UserPrefixLength) === self::OWNER_USER_PREFIX;
+    }
+
+    /**
+     * Get whether the owner is the core software.
+     * @return bool Whether the owner of the field is core.
+     */
+    public function isOwnedByCore(): bool
+    {
+        $Owner = $this->DB->updateValue("Owner");
+        return in_array($Owner, ["CWISCore", "MetavusCore"]);
+    }
+
+    /**
+     * Get whether the owner is a plugin.
+     * @return bool Whether the owner of the field is a plugin.
+     */
+    public function isOwnedByPlugin(): bool
+    {
+        $Owner = $this->DB->updateValue("Owner");
+        return $Owner && !$this->isOwnedByUser() && !$this->isOwnedByCore();
+    }
+
+    /**
+     * Set field owner.
+     * @param string $NewValue Updated owner.
      * @return string Current owner.
      */
-    public function owner(?string $NewValue = null): string
+    public function setOwner(string $NewValue): string
     {
         return $this->DB->updateValue("Owner", $NewValue);
+    }
+
+    /**
+     * Set field's owner to given user.
+     * @param User $User The user to set as owner.
+     */
+    public function setOwnerToUser(User $User): void
+    {
+        $this->setOwner(self::OWNER_USER_PREFIX.$User->id());
     }
 
     /**
@@ -616,7 +692,7 @@ class MetadataField
      * @return bool Current setting.
      * @see MetadataSchema::normalizeOwnedFields()
      */
-    public function enableOnOwnerReturn(?bool $NewValue = null)
+    public function enableOnOwnerReturn(?bool $NewValue = null): bool
     {
         return $this->DB->updateBoolValue("EnableOnOwnerReturn", $NewValue);
     }
@@ -829,7 +905,7 @@ class MetadataField
     }
 
     /**
-     * Get/set whether to duplciate this field when a resource is duplicated.
+     * Get/set whether to duplicate this field when a resource is duplicated.
      * @param bool $NewValue Update setting.
      * @return bool Current setting.
      */
@@ -980,7 +1056,7 @@ class MetadataField
         if (!is_null($NewValue) && $NewValue !== false &&
             !Qualifier::itemExists($NewValue)) {
             throw new InvalidArgumentException(
-                "Invalid qualifier ID provided."
+                "Invalid qualifier ID provided: '".$NewValue."'."
             );
         }
         return $this->DB->updateIntValue("DefaultQualifier", $NewValue);
@@ -1089,17 +1165,24 @@ class MetadataField
     {
         switch ($this->type()) {
             case MetadataSchema::MDFTYPE_POINT:
-                # valid value given
-                if (($NewValue !== null) && isset($NewValue["X"]) && isset($NewValue["Y"])) {
-                    $NewValue = $NewValue["X"] ."," .$NewValue["Y"];
-                # invalid value given
-                } else {
-                    $NewValue = null;
+                if ($NewValue !== null) {
+                    # convert X/Y array to comma separated pair, accept
+                    # strings containing comma a separated pair of numbers,
+                    # ignore other values
+                    if (is_array($NewValue)
+                            && isset($NewValue["X"]) && is_numeric($NewValue["X"])
+                            && isset($NewValue["Y"]) && is_numeric($NewValue["Y"]) ) {
+                        $NewValue = $NewValue["X"].",".$NewValue["Y"];
+                    } elseif (!is_string($NewValue)
+                              || !preg_match('%^(\S+),(\S+)$%', $NewValue, $Matches)
+                              || !is_numeric($Matches[1])
+                              || !is_numeric($Matches[2])) {
+                        $NewValue = null;
+                    }
                 }
-
                 $Value = $this->DB->updateValue("DefaultValue", $NewValue);
 
-                if (strlen($Value)) {
+                if (strlen($Value) !== 0) {
                     $tmp = explode(",", $Value);
 
                     if (count($tmp) == 2) {
@@ -1195,7 +1278,7 @@ class MetadataField
                 $Restrictions = $this->userPrivilegeRestrictions();
                 $PossibleValues = [];
 
-                if (count($Restrictions)) {
+                if (count($Restrictions) !== 0) {
                     $PossibleValues = $UserFactory->getUsersWithPrivileges(
                         $Restrictions
                     );
@@ -1638,7 +1721,7 @@ class MetadataField
     /**
      * Get/set whether field uses item-level qualifiers.
      * @param bool $NewValue Updated value (OPTIONAL).
-     * @return bool TRUE if this field users item-lvel qualifiers,
+     * @return bool TRUE if this field users item-level qualifiers,
      *     FALSE otherwise.
      */
     public function hasItemLevelQualifiers(?bool $NewValue = null): bool
@@ -1715,7 +1798,7 @@ class MetadataField
 
     /**
      * Associate qualifier with field.
-     * @param mixed $Qualifier Qualifer ID, name, or object.
+     * @param mixed $Qualifier Qualifier ID, name, or object.
      * @return void
      * @throws InvalidArgumentException If unknown name supplied.
      */
@@ -1854,15 +1937,29 @@ class MetadataField
     /**
      * Get/set the list of SchemaIds that provide allowable values for
      * a reference field.
-     * @param int|array $Ids SchemaId or array/ of SchemaIds that are allowed (OPTIONAL).
+     * @param int|array $Ids SchemaId or array of SchemaIds that are allowed (OPTIONAL).
      * @return array List of allowed SchemaIds.
+     * @throws InvalidArgumentException If invalid SchemaIds provided
      */
     public function referenceableSchemaIds($Ids = null): array
     {
         # if a new value was provided, convert it to a string
         if ($Ids !== null) {
             if (is_array($Ids)) {
+                foreach ($Ids as $Id) {
+                    if (!MetadataSchema::schemaExistsWithId($Id)) {
+                        throw new InvalidArgumentException(
+                            "No schema exists with Id ".$Id
+                        );
+                    }
+                }
                 $Ids = implode(",", $Ids);
+            } else {
+                if (!MetadataSchema::schemaExistsWithId($Ids)) {
+                    throw new InvalidArgumentException(
+                        "No schema exists with Id ".$Ids
+                    );
+                }
             }
         }
 
@@ -1884,13 +1981,13 @@ class MetadataField
     {
         # new value
         if ($NewValue !== null) {
-            $NewValue = serialize((array) $NewValue);
+            $NewValue = serialize($NewValue);
         }
 
         $Value = $this->DB->updateValue("UserPrivilegeRestrictions", $NewValue);
 
         # value set
-        if (strlen($Value)) {
+        if (strlen($Value) !== 0) {
             $Value = (array) unserialize($Value);
         } else {
             $Value = $this->userPrivilegeRestrictions([]);
@@ -1937,6 +2034,17 @@ class MetadataField
     {
         $Args = [ $Event, $RecordId, $this, $Value ];
         $this->notifyObserversWithArgs($Event, $Args, $this->Id);
+    }
+
+    /**
+     * Get/set whether the vocabulary should be editable for that field
+     * (relevant for Option, Tree, and ControlledName field types).
+     * @param ?bool $NewValue Whether or not the vocabulary should be editable.
+     * @return bool Current setting.
+     */
+    public function vocabularyEditable(?bool $NewValue = null): bool
+    {
+        return $this->DB->updateBoolValue("VocabularyEditable", $NewValue);
     }
 
     # ---- PUBLIC INTERFACE: UI Functions ------------------------------------
@@ -2154,9 +2262,15 @@ class MetadataField
                         .$AttribName."\" for field \"".$this->name()."\".");
             }
 
+            # get value for export
+            if ($Value === false && ($AttribInfo["ExportFalse"] ?? false)) {
+                $Value = "FALSE";
+            } else {
+                $Value = (string)$Value;
+            }
+
             # add attribute to XML
-            $Value = (string)$Value;
-            if (strlen($Value)) {
+            if (strlen($Value) !== 0) {
                 $XOut->writeElement($AttribName, $Value);
             }
         }
@@ -2199,7 +2313,7 @@ class MetadataField
      */
     public static function getFieldAttributeList(): array
     {
-        $PrivFunc = function ($Field, $AttribName, $XOut) {
+        $PrivFunc = function ($Field, $AttribName, $XOut): string {
             $RetrievalFunc = [$Field, $AttribName];
             if (!is_callable($RetrievalFunc)) {
                 throw new Exception("Privilege retrieval method \""
@@ -2221,17 +2335,21 @@ class MetadataField
             "Name" => [
             ],
             "Type" => [
-                "GetFunction" => function (MetadataField $Field) {
+                "GetFunction" => function (MetadataField $Field): string {
                     $ConstantName = StdLib::getConstantName(
                         "Metavus\\MetadataSchema",
                         $Field->type()
                     );
+                    if ($ConstantName === null) {
+                        throw new Exception("Unable to retrieve constant for field \""
+                                .$Field->name()."\".");
+                    }
                     return substr($ConstantName, strlen("MDFTYPE_"));
                 },
             ],
             "Owner" => [
-                "GetFunction" => function (MetadataField $Field) {
-                    $Owner = $Field->owner();
+                "GetFunction" => function (MetadataField $Field): string {
+                    $Owner = $Field->getOwner();
                     return (($Owner != "CWISCore") && ($Owner != "MetavusCore"))
                             ? $Owner : "";
                 },
@@ -2242,8 +2360,8 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_TREE,
             ],
             "AllowHTML" => [
-                "IncludedTypes" => MetadataSchema::MDFTYPE_PARAGRAPH
-                    | MetadataSchema::MDFTYPE_TEXT,
+                "IncludedTypes" => MetadataSchema::MDFTYPE_PARAGRAPH,
+                "ExportFalse" => true,
             ],
             "AllowMultiple" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_FILE
@@ -2252,11 +2370,13 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_REFERENCE
                     | MetadataSchema::MDFTYPE_TREE
                     | MetadataSchema::MDFTYPE_USER,
+                "ExportFalse" => true,
             ],
             "AuthoringPrivileges" => [
                 "GetFunction" => $PrivFunc,
             ],
             "CopyOnResourceDuplication" => [
+                "ExportFalse" => true,
             ],
             "DateFormat" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_DATE
@@ -2287,8 +2407,10 @@ class MetadataField
             ],
             "DisplayAsListForAdvancedSearch" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_TREE,
+                "ExportFalse" => true,
             ],
             "Editable" => [
+                "ExportFalse" => true,
             ],
             "EditingPrivileges" => [
                 "GetFunction" => $PrivFunc,
@@ -2296,11 +2418,13 @@ class MetadataField
             "EnableOnOwnerReturn" => [
             ],
             "Enabled" => [
+                "ExportFalse" => true,
             ],
             "FacetsShowOnlyTermsUsedInResults" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_CONTROLLEDNAME
                     | MetadataSchema::MDFTYPE_OPTION
                     | MetadataSchema::MDFTYPE_TREE,
+                "ExportFalse" => true,
             ],
             "FlagOffLabel" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_FLAG,
@@ -2312,15 +2436,18 @@ class MetadataField
                 "ExcludedTypes" => MetadataSchema::MDFTYPE_REFERENCE
                     | MetadataSchema::MDFTYPE_SEARCHPARAMETERSET
                     | MetadataSchema::MDFTYPE_USER,
+                "ExportFalse" => true,
             ],
             "IncludeInAdvancedSearch" => [
                 "ExcludedTypes" => MetadataSchema::MDFTYPE_POINT
                     | MetadataSchema::MDFTYPE_SEARCHPARAMETERSET,
+                "ExportFalse" => true,
             ],
             "IncludeInFacetedSearch" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_CONTROLLEDNAME
                     | MetadataSchema::MDFTYPE_OPTION
                     | MetadataSchema::MDFTYPE_TREE,
+                "ExportFalse" => true,
             ],
             "IncludeInKeywordSearch" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_CONTROLLEDNAME
@@ -2334,6 +2461,7 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_TREE
                     | MetadataSchema::MDFTYPE_URL
                     | MetadataSchema::MDFTYPE_USER,
+                "ExportFalse" => true,
             ],
             "IncludeInRecommender" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_CONTROLLEDNAME
@@ -2345,7 +2473,9 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_PARAGRAPH
                     | MetadataSchema::MDFTYPE_TEXT
                     | MetadataSchema::MDFTYPE_TREE
-                    | MetadataSchema::MDFTYPE_URL
+                    | MetadataSchema::MDFTYPE_URL,
+                "ExportFalse" => true,
+
             ],
             "IncludeInSortOptions" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_DATE
@@ -2354,6 +2484,7 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_TEXT
                     | MetadataSchema::MDFTYPE_TIMESTAMP
                     | MetadataSchema::MDFTYPE_URL,
+                "ExportFalse" => true,
             ],
             "Instructions" => [
             ],
@@ -2387,6 +2518,7 @@ class MetadataField
             ],
             "Optional" => [
                 "ExcludedTypes" => MetadataSchema::MDFTYPE_FLAG,
+                "ExportFalse" => true,
             ],
             "ParagraphCols" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_PARAGRAPH,
@@ -2413,7 +2545,7 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_URL
             ],
             "ReferenceableSchemaIds" => [
-                "GetFunction" => function ($Field, $AttribName, $XOut) {
+                "GetFunction" => function ($Field, $AttribName, $XOut): string {
                     $SchemaIds = $Field->referenceableSchemaIds();
                     if (count($SchemaIds) == 0) {
                         return "";
@@ -2442,6 +2574,7 @@ class MetadataField
                 "ExcludedTypes" => MetadataSchema::MDFTYPE_REFERENCE
                     | MetadataSchema::MDFTYPE_SEARCHPARAMETERSET
                     | MetadataSchema::MDFTYPE_USER,
+                "ExportFalse" => true,
             ],
             "TextFieldSize" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_TEXT
@@ -2450,6 +2583,9 @@ class MetadataField
                     | MetadataSchema::MDFTYPE_POINT
                     | MetadataSchema::MDFTYPE_DATE,
             ],
+            "TriggersAutoUpdates" => [
+                "ExportFalse" => true,
+            ],
             "UpdateMethod" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_TIMESTAMP,
             ],
@@ -2457,12 +2593,14 @@ class MetadataField
                 "IncludedTypes" => MetadataSchema::MDFTYPE_CONTROLLEDNAME
                     | MetadataSchema::MDFTYPE_OPTION
                     | MetadataSchema::MDFTYPE_TREE,
+                "ExportFalse" => true,
             ],
             "UseWysiwygEditor" => [
                 "IncludedTypes" => MetadataSchema::MDFTYPE_PARAGRAPH,
+                "ExportFalse" => true,
             ],
             "UserPrivilegeRestrictions" => [
-                "GetFunction" => function ($Field, $AttribName, $XOut) {
+                "GetFunction" => function ($Field, $AttribName, $XOut): string {
                     $PrivIds = $Field->userPrivilegeRestrictions();
                     if (count($PrivIds) == 0) {
                         return "";
@@ -2470,9 +2608,14 @@ class MetadataField
                     $PFactory = new PrivilegeFactory();
                     $XOut->startElement($AttribName);
                     foreach ($PrivIds as $PrivId) {
+                        # use constant names when available, privilege names otherwise
+                        $PrivName = $PFactory->getPrivilegeConstantName($PrivId);
+                        if ($PrivName === false) {
+                            $PrivName = (new Privilege($PrivId))->name();
+                        }
                         $XOut->writeElement(
                             "Privilege",
-                            $PFactory->getPrivilegeConstantName($PrivId)
+                            $PrivName
                         );
                     }
                     $XOut->endElement();
@@ -2484,9 +2627,16 @@ class MetadataField
                 "ExcludedTypes" => MetadataSchema::MDFTYPE_REFERENCE
                     | MetadataSchema::MDFTYPE_SEARCHPARAMETERSET
                     | MetadataSchema::MDFTYPE_USER,
+                "ExportFalse" => true,
             ],
             "ViewingPrivileges" => [
                 "GetFunction" => $PrivFunc,
+            ],
+            "VocabularyEditable" => [
+                "IncludedTypes" =>  MetadataSchema::MDFTYPE_CONTROLLEDNAME
+                    | MetadataSchema::MDFTYPE_OPTION
+                    | MetadataSchema::MDFTYPE_TREE,
+                "ExportFalse" => true,
             ],
         ];
     }
@@ -2520,6 +2670,8 @@ class MetadataField
      * Storage for metadata field information to reduce repeated DB queries.
      */
     private static $FieldCache = null;
+
+    private const OWNER_USER_PREFIX = "UserID:";
 
     /**
      * A map of metadata field types to human-readable strings.
@@ -2678,7 +2830,7 @@ class MetadataField
                 ." '" .addslashes($FieldName) ."',"
                 ." '" .self::$FieldTypeDBEnums[$FieldType] ."', "
                 .intval($UserId) .", "
-                .($Optional ? "1" : "0") .","
+                .($Optional === true ? "1" : "0") .","
                 ."'" .$DB->escapeString($PrivData) ."',"
                 ."'" .$DB->escapeString($PrivData) ."',"
                 ."'" .$DB->escapeString($PrivData) ."')");
@@ -2753,7 +2905,7 @@ class MetadataField
     }
 
     /**
-     * Object contstructor, used to load an existing metadata field.  To create
+     * Object constructor, used to load an existing metadata field.  To create
      * new fields, use
      * @param int $FieldId ID of metadata field to load.
      * @return object New MetadataField object.
@@ -2790,7 +2942,7 @@ class MetadataField
         );
 
         # if privileges have not yet been initialized
-        if (!strlen(strval($this->DB->updateValue("AuthoringPrivileges")))) {
+        if (strlen(strval($this->DB->updateValue("AuthoringPrivileges"))) === 0) {
             # set default values for privileges from metadata schema
             $Schema = new MetadataSchema($Row["SchemaId"]);
             $this->authoringPrivileges($Schema->authoringPrivileges());
@@ -2842,6 +2994,7 @@ class MetadataField
         "UseForOaiSets" => false,
         "UserPrivilegeRestrictions" => [],
         "UsesQualifiers" => false,
+        "VocabularyEditable" => true,
     ];
 
     /**
@@ -2900,6 +3053,7 @@ class MetadataField
             "OptionListThreshold" => 25,
             "SearchWeight" => 1,
             "TextFieldSize" => 50,
+            "VocabularyEditable" => true,
         ],
         MetadataSchema::MDFTYPE_CONTROLLEDNAME  => [
             "AjaxThreshold" => 50,
@@ -2910,12 +3064,14 @@ class MetadataField
             "OptionListThreshold" => 25,
             "SearchWeight" => 3,
             "TextFieldSize" => 50,
+            "VocabularyEditable" => true,
         ],
         MetadataSchema::MDFTYPE_OPTION  => [
             "DisplayAsListForAdvancedSearch" => false,
             "FacetsShowOnlyTermsUsedInResults" => false,
             "SearchWeight" => 3,
             "TextFieldSize" => 50,
+            "VocabularyEditable" => true,
         ],
         MetadataSchema::MDFTYPE_USER  => [
             "DisplayAsListForAdvancedSearch" => false,
@@ -2952,6 +3108,8 @@ class MetadataField
             "ReferenceableSchemaIds" => [MetadataSchema::SCHEMAID_DEFAULT],
             "SearchWeight" => 1,
             "TextFieldSize" => 50,
+            "AjaxThreshold" => 50,
+            "NumAjaxResults" => 50,
         ],
         MetadataSchema::MDFTYPE_EMAIL => [
             "MaxLength" => 100,
@@ -3000,17 +3158,13 @@ class MetadataField
     {
         # check for any type-specific values; prefer the first one found since
         # we don't actually know the field type yet
-        foreach (self::$TypeBasedDefaults as $Type => $Values) {
+        foreach (self::$TypeBasedDefaults as $Values) {
             if (isset($Values[$ParamName])) {
                 return $Values[$ParamName];
             }
         }
 
-        if (isset(self::$CommonDefaults[$ParamName])) {
-            return self::$CommonDefaults[$ParamName];
-        }
-
-        return null;
+        return self::$CommonDefaults[$ParamName] ?? null;
     }
 
     /**
@@ -3151,6 +3305,11 @@ class MetadataField
 
         # if new field name supplied
         if ($NewName !== null) {
+            # check if column already exists
+            if (!$this->newNameForFieldIsValid($NewName)) {
+                throw new Exception("The Record column trying to be added already exists.");
+            }
+
             # cache the old name for options and controllednames below
             $OldName = $DB->updateValue("FieldName");
 
@@ -3395,6 +3554,12 @@ class MetadataField
         $DB = $this->DB;
         $BaseColName = $this->dBFieldName();
 
+        # check if column already exists
+        $Schema = new MetadataSchema($this->schemaId());
+        if ($Schema->fieldExists($BaseColName)) {
+            throw new Exception("The Record column trying to be added already exists.");
+        }
+
         # set up field(s) based on field type
         $Queries = [];
         $ColumnTypes = [];
@@ -3620,12 +3785,12 @@ class MetadataField
         }
 
         # if values left to insert, insert them
-        if (count($SelectQueryValues)) {
+        if (count($SelectQueryValues) !== 0) {
             $DB->query($SelectQueryBase .implode(",", $SelectQueryValues) .")");
         }
         $Associations = array_merge($Associations, $DB->fetchRows());
 
-        # iterate over the assocations using mapping
+        # iterate over the associations using mapping
         $NewAssociations = [];
         foreach ($Associations as $Association) {
             $NewAssociations[] = [
@@ -3663,7 +3828,7 @@ class MetadataField
         }
 
         # if values left to insert, insert them
-        if (count($InsertQueryValues)) {
+        if (count($InsertQueryValues) !== 0) {
             $DB->query($InsertQueryBase .implode(",", $InsertQueryValues));
         }
 
@@ -3694,7 +3859,7 @@ class MetadataField
         }
 
         # if values left to insert, insert them
-        if (count($DeleteQueryValues)) {
+        if (count($DeleteQueryValues) !== 0) {
             $DB->query($DeleteQueryBase .implode(",", $DeleteQueryValues) .")");
         }
 
@@ -3763,6 +3928,7 @@ class MetadataField
             "CanBeEditedWithIncrementalSearch" => [
                 MetadataSchema::MDFTYPE_TREE,
                 MetadataSchema::MDFTYPE_CONTROLLEDNAME,
+                MetadataSchema::MDFTYPE_REFERENCE,
             ],
             "CanBeObfuscated" => [
                 MetadataSchema::MDFTYPE_EMAIL,

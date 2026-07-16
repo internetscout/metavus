@@ -217,9 +217,13 @@ function GoogleMaps_ToggleFullSizeMap() {
 
         // otherwise, log an error to the console and POST it to our
         // error report URL
-        var msg = "Unable to load KML layer from " + url +
+        var msg = "Unable to load KML layer from " + NewKmlLayer.getUrl() +
             " Status was " + NewKmlLayer.getStatus() +
-            " (IT=" + RetryCount + ")";
+            " (retried " + RetryCount + " times)." +
+            " Does htaccess allow Kml-Google to load GetKML?" +
+            " If not, see the plugin configuration page for Google Maps " +
+            " for instructions to fix that.";
+
         console.log(msg);
         $.ajax({
             url: ErrorReportUrl,

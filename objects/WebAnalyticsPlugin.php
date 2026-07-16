@@ -30,7 +30,7 @@ abstract class WebAnalyticsPlugin extends Plugin
     {
         $Domain = ApplicationFramework::getCurrentDomain();
 
-        return strlen($this->configSetting($SettingName."_".$Domain) ?? "") ?
+        return strlen($this->configSetting($SettingName."_".$Domain) ?? "") !== 0 ?
             $this->configSetting($SettingName."_".$Domain) :
             $this->configSetting($SettingName);
     }

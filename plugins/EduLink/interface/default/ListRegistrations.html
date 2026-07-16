@@ -9,7 +9,6 @@
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 
 # ----- SETUP ----------------------------------------------------------------
@@ -32,6 +31,5 @@ if (!isset($H_Registrations)) {
 }
 
 # ----- DISPLAY --------------------------------------------------------------
-
 $H_RegistrationListUI->heading("<h1>Authorized LMSes</h2>");
 $H_RegistrationListUI->display($H_Registrations, $H_NumRegistrations);

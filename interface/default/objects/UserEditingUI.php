@@ -108,7 +108,7 @@ class UserEditingUI extends RecordEditingUI
     public static function displayStatusBlock(): void
     {
         # display any status messages
-        if (count(self::$StatusMessages)) {
+        if (count(self::$StatusMessages) !== 0) {
             print "<ul class='alert alert-primary'>";
             foreach (self::$StatusMessages as $Message) {
                 print "<li>".$Message."</li>";

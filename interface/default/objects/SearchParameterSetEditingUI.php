@@ -227,7 +227,7 @@ class SearchParameterSetEditingUI
         } else {
             # set up our result
             $GroupStack = [];
-            array_push($GroupStack, new SearchParameterSet());
+            $GroupStack[] = new SearchParameterSet();
 
             # extract the array of data associated with our EditFormName
             $FormData = $_POST[$this->EditFormName];
@@ -243,7 +243,7 @@ class SearchParameterSetEditingUI
 
                 if ($FieldId == "X-BEGIN-SUBGROUP-X") {
                     # add a new subgroup to our stack of subgroups
-                    array_push($GroupStack, new SearchParameterSet());
+                    $GroupStack[] = new SearchParameterSet();
                     # extract and set the search logic
                     $Logic = array_shift($FormData);
                     end($GroupStack)->logic($Logic);
@@ -523,7 +523,7 @@ class SearchParameterSetEditingUI
         $Result[] = ["Logic" => $SearchParams->logic()];
 
         $KeywordStrings = $SearchParams->getKeywordSearchStrings();
-        if (count($KeywordStrings)) {
+        if (count($KeywordStrings) !== 0) {
             $Result[] = [
                 "FieldId" => "X-KEYWORD-X",
                 "Values" => $KeywordStrings
@@ -553,7 +553,7 @@ class SearchParameterSetEditingUI
         }
 
         $Subgroups = $SearchParams->getSubgroups();
-        if (count($Subgroups)) {
+        if (count($Subgroups) !== 0) {
             foreach ($Subgroups as $Subgroup) {
                 if ($Subgroup->parameterCount() == 0) {
                     continue;
@@ -680,7 +680,7 @@ class SearchParameterSetEditingUI
      * @param array $Values Stored values to normalize.
      * @return array Normalized values.
      */
-    private function normalizeCNameValues($Field, $Values)
+    private function normalizeCNameValues($Field, $Values): array
     {
         $ValidFieldTypes = [
             MetadataSchema::MDFTYPE_CONTROLLEDNAME,
@@ -721,7 +721,7 @@ class SearchParameterSetEditingUI
      * @return bool TRUE for facet-style 'is or begins with' subgroups, FALSE
      *         otherwise.
      */
-    private function isTreeFacetSubgroup(SearchParameterSet $SearchParams)
+    private function isTreeFacetSubgroup(SearchParameterSet $SearchParams): bool
     {
         if ($SearchParams->logic() != "OR") {
             return false;

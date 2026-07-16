@@ -3,7 +3,7 @@
 #   FILE:  ChangeResourceNote.html (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -13,36 +13,15 @@ namespace Metavus;
 use Exception;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_FolderId)) {
-    throw new Exception("H_FolderId not set.");
+if (!isset($H_Form) || !($H_Form instanceof FormUI)) {
+    throw new Exception("Variable \$H_Form not set or is the wrong type.");
 }
-if (!isset($H_ItemId)) {
-    throw new Exception("H_ItemId not set.");
-}
-if (!isset($H_Note)) {
-    throw new Exception("H_Note not set.");
-}
-
-$SafeFolderId = defaulthtmlentities($H_FolderId);
-$SafeItemId = defaulthtmlentities($H_ItemId);
-$SafeNote = defaulthtmlentities($H_Note);
-
-$ChangeResourceNoteButton = new HtmlButton("Change Resource Note");
-$ChangeResourceNoteButton->setIcon("Pencil.svg");
-
-$CancelButton = new HtmlButton("Cancel");
-$CancelButton->setIcon("Cross.svg");
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 <h1>Change Resource Note</h1>
-<form method="get" action="index.php">
-  <input type="hidden" name="P" value="P_Folders_UpdateResourceNote" />
-  <input type="hidden" name="FolderId" value="<?= $SafeFolderId; ?>" />
-  <input type="hidden" name="ItemId" value="<?= $SafeItemId; ?>" />
-  <p>
-    <textarea class="mv-folders-noteinput" name="ResourceNote"><?= $SafeNote; ?></textarea>
-  </p>
-  <?= $ChangeResourceNoteButton->getHtml(); ?>
-  <?= $CancelButton->getHtml(); ?>
+<form method="POST" action="index.php?P=P_Folders_ChangeResourceNote">
+  <?PHP $H_Form->displayFormTable(); ?>
+  <?= $H_Form->getSubmitButtonHtml("Change Resource Note", "Pencil.svg"); ?>
+  <?= $H_Form->getSubmitButtonHtml("Cancel"); ?>
 </form>

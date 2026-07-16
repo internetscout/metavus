@@ -10,8 +10,15 @@
 
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 $AF = ApplicationFramework::getInstance();
+
+# a list of pages that user should not be returned to on logout
+$DoNotReturnTo = [
+    "404", "ActivateAccount", "Login", "LoginError", "RequestAccount",
+    "ResendAccountActivation", "ResetPassword", "UserLogin"
+];
 
 # retrieve user currently logged in
 $User = User::getCurrentUser();
@@ -25,8 +32,16 @@ if ($User->isLoggedIn() == true) {
     $User->logout();
 }
 
-# return to page where user logged out
-$ReturnPage = isset($_SERVER["HTTP_REFERER"]) ? $_SERVER["HTTP_REFERER"] : "Home";
+# return to page where user logged out if it's not in blacklist; otherwise home
+$ReturnPage = "Home";
+if (isset($_SERVER["HTTP_REFERER"])
+        && strpos($_SERVER["HTTP_REFERER"], ApplicationFramework::baseUrl()) === 0) {
+    $Referer = $AF->getUncleanRelativeUrlWithParamsForPath($_SERVER["HTTP_REFERER"]);
+    $Page = StdLib::getQueryParamFromUrl("P", $Referer);
+    if (!in_array($Page, $DoNotReturnTo)) {
+        $ReturnPage = $_SERVER["HTTP_REFERER"];
+    }
+}
 
 # pass logout return address through any hooked filters via signal
 $SignalResult = $AF->signalEvent(

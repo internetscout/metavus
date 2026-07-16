@@ -138,7 +138,7 @@ class TrendingResources extends Plugin
         }
         arsort($ViewCounts);
              # get the resources from the viewcount
-        foreach ($ViewCounts as $RecordId => $ViewCount) {
+        foreach (array_keys($ViewCounts) as $RecordId) {
             # skip record if it no longer exists
             if (!Record::itemExists($RecordId)) {
                 continue;

@@ -88,7 +88,7 @@ class Image extends Item
      * Check if the original image is valid and can be read by PHP.
      * @return bool TRUE for valid images, FALSE otherwise
      */
-    public function originalImageFileIsValid()
+    public function originalImageFileIsValid(): bool
     {
         $FileName = $this->getFullPathForOriginalImage();
         try {
@@ -351,7 +351,7 @@ class Image extends Item
      * Create a new copy of this image.
      * @return Image Duplicate image.
      */
-    public function duplicate()
+    public function duplicate(): \Metavus\Image
     {
         return self::create($this->getFullPathForOriginalImage());
     }
@@ -401,7 +401,7 @@ class Image extends Item
      */
     public static function create(
         string $FileName
-    ) {
+    ): self {
         # if file does not exist or is not readable
         $IsReadable = @is_readable($FileName);
         if ($IsReadable !== true) {
@@ -636,10 +636,7 @@ class Image extends Item
                 return (string)$ImageSize;
             }
         }
-
-        # if no size is larger, get largest size
-        end($ImageSizeAreas);
-        return (string)key($ImageSizeAreas);
+        return (string)array_key_last($ImageSizeAreas);
     }
 
     /**
@@ -672,10 +669,7 @@ class Image extends Item
                 return (string)$ImageSize;
             }
         }
-
-        # if no size is larger, get smallest size
-        reset($ImageSizeAreas);
-        return (string)key($ImageSizeAreas);
+        return (string)array_key_first($ImageSizeAreas);
     }
 
     /**
@@ -732,7 +726,7 @@ class Image extends Item
         if ($ScalingGoal > 0) {
             $OptionsSuffix .= "s".$ScalingGoal;
         }
-        if (strlen($OptionsSuffix)) {
+        if (strlen($OptionsSuffix) !== 0) {
             $OptionsSuffix = "_".$OptionsSuffix;
         }
 
@@ -772,7 +766,7 @@ class Image extends Item
         }
 
         # if options for scaling/cropping to fit were supplied
-        if (count($Options)) {
+        if (count($Options) !== 0) {
             if ($CroppingMethod > 0) {
                 $Image->setCroppingMethod($CroppingMethod);
             }

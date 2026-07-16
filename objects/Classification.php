@@ -3,7 +3,7 @@
 #   FILE:  Classification.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -33,35 +33,66 @@ class Classification extends Item
      *       Segment name can be used if a parent ID is also supplied, otherwise
      *       full name is assumed.
      * @param int $FieldId MetadataField ID for new Classification.
-     * @param int $ParentId ID of parent in hierachy of for new Classification.
+     * @param ?int $ParentId ID of parent in hierachy of for new Classification.
      *       Use Classification::NOPARENT for new Classification with no parent
      *       (i.e. at top level of hierarchy).  (OPTIONAL - only required if
      *       full classification name is not supplied)
-     * @return Classification
+     * @param bool $TestRun Whether to exercise creation without adding any
+     *       Classifications.  (OPTIONAL, defaults to FALSE)
+     * @return Classification|null Newly-created Classification, or NULL when
+     *       performing a test run.
+     * @throws InvalidArgumentException If a name segment is empty or a parent
+     *       ID is invalid.
+     * @throws Exception If the name is a duplicate or creation information
+     *       cannot be retrieved.
+     * @see Classification::getClassificationsCreated()
      */
-    public static function create(string $Name, int $FieldId, ?int $ParentId = null): Classification
-    {
+    public static function create(
+        string $Name,
+        int $FieldId,
+        ?int $ParentId = null,
+        bool $TestRun = false
+    ): ?Classification {
         # initialize state for creation
-        self::$SegmentsCreated = 0;
+        self::$ClassificationsCreated = [];
 
         # if parent class supplied
         $DB = new Database();
         if ($ParentId !== null) {
+            # normalize and validate the supplied segment name
+            $Name = trim($Name);
+            if ($Name === "") {
+                throw new InvalidArgumentException(
+                    "Empty classification name segment supplied."
+                );
+            }
+
             # error out if parent ID is invalid
             if ($ParentId != self::NOPARENT) {
-                if ($DB->query(
+                $NumberFound = $DB->queryValue(
                     "SELECT COUNT(*) AS NumberFound"
-                        ." FROM Classifications"
-                        ." WHERE ClassificationId = ".intval($ParentId),
+                            ." FROM Classifications"
+                            ." WHERE ClassificationId = ".$ParentId
+                            ." AND FieldId = ".$FieldId,
                     "NumberFound"
-                ) < 1) {
-                    throw new InvalidArgumentException("Invalid parent ID"
-                    ." specified (".$ParentId.").");
+                );
+                if ($NumberFound < 1) {
+                    if ($DB->query(
+                        "SELECT COUNT(*) AS NumberFound"
+                            ." FROM Classifications"
+                            ." WHERE ClassificationId = ".$ParentId,
+                        "NumberFound"
+                    ) < 1) {
+                        throw new InvalidArgumentException("Invalid parent ID"
+                                ." specified (".$ParentId.").");
+                    } else {
+                        throw new InvalidArgumentException("Parent ID from a"
+                                ." different field specified (".$ParentId.").");
+                    }
                 }
             }
 
             # error out if name already exists
-            $Name = trim($Name);
             $Count = $DB->queryValue(
                 "SELECT COUNT(*) AS NumberFound"
                     ." FROM Classifications"
@@ -94,7 +125,7 @@ class Classification extends Item
                 $NewDepth = $ParentInfo["Depth"] + 1;
             }
 
-            # add classification to database
+            # assemble values for the new classification
             $InitialValues = [
                 "FieldId" => $FieldId,
                 "ParentId" => $ParentId,
@@ -103,15 +134,30 @@ class Classification extends Item
                 "Depth" => $NewDepth,
                 "ClassificationName" => $NewName
             ];
-            $NewItem = self::createWithValues($InitialValues);
 
-            # we have created one segment
-            self::$SegmentsCreated++;
+            # add classification to database unless this is a test run
+            $NewItem = $TestRun ? null : static::createWithValues($InitialValues);
+
+            # track the full name for the new classification
+            self::$ClassificationsCreated[] = $NewName;
         } else {
             # parse classification name into separate segments
-            $Segments = preg_split("/--/", $Name);
-            if ($Segments === false) {
+            $SplitSegments = preg_split("/--/", $Name);
+            if ($SplitSegments === false) {
                 throw new Exception("Error splitting classification name.");
+            }
+
+            # normalize and validate all segments before creating anything
+            $Segments = [];
+            foreach ($SplitSegments as $Segment) {
+                $NormalizedSegment = trim($Segment);
+                if ($NormalizedSegment === "") {
+                    throw new InvalidArgumentException(
+                        "Classification name with empty segment supplied"
+                                ." (\"".$Name."\")."
+                    );
+                }
+                $Segments[] = $NormalizedSegment;
             }
 
             # start out with top as parent
@@ -124,15 +170,11 @@ class Classification extends Item
             $CurrentDepth = -1;
             $CurrentFullName = "";
             foreach ($Segments as $Segment) {
-                # track segment depth and full classification name for use
-                #       in adding new entries
-                $Segment = trim($Segment);
+                # track segment depth for use in adding new entries
                 $CurrentDepth++;
-                $CurrentFullName .= (($CurrentFullName == "") ? "" : " -- ").$Segment;
 
                 # if we have added classifications
-                $Segment = addslashes($Segment);
-                if (self::$SegmentsCreated > 0) {
+                if (count(self::$ClassificationsCreated) > 0) {
                     # we know that current segment will not be found
                     $ClassId = null;
                 } else {
@@ -140,21 +182,33 @@ class Classification extends Item
                     if (!isset(self::$IdCache[$FieldId][$ParentId][$Segment])) {
                         $Query = "SELECT ClassificationId FROM Classifications "
                                 ."WHERE ParentId = ".intval($ParentId)
-                                ." AND SegmentName = '".addslashes($Segment)."'";
+                                ." AND LOWER(SegmentName) = '"
+                                        .addslashes(strtolower($Segment))."'";
                         # (only need to include field ID in query if no parent
                         #       because field is implied by parent)
                         if ($ParentId == self::NOPARENT) {
                             $Query .= " AND FieldId = ".intval($FieldId);
                         }
-                        self::$IdCache[$FieldId][$ParentId][$Segment] =
-                                $DB->queryValue($Query, "ClassificationId");
+                        $ClassId = $DB->queryValue($Query, "ClassificationId");
+                        if (!$TestRun) {
+                            self::$IdCache[$FieldId][$ParentId][$Segment] = $ClassId;
+                        }
+                    } else {
+                        $ClassId = self::$IdCache[$FieldId][$ParentId][$Segment];
                     }
-                    $ClassId = self::$IdCache[$FieldId][$ParentId][$Segment];
                 }
 
-                # if classification not found
-                if ($ClassId === null) {
-                    # add new classification
+                # if classification was found
+                if ($ClassId !== null) {
+                    # use stored capitalization for full name
+                    $ExistingClassification = new static($ClassId);
+                    $CurrentFullName = $ExistingClassification->fullName();
+                } else {
+                    # append the new segment to the canonical existing name
+                    $CurrentFullName .=
+                            (($CurrentFullName === "") ? "" : " -- ").$Segment;
+
+                    # assemble values for the new classification
                     $InitialValues = [
                         "FieldId" => $FieldId,
                         "ParentId" => $ParentId,
@@ -163,12 +217,18 @@ class Classification extends Item
                         "Depth" => $CurrentDepth,
                         "ClassificationName" => $CurrentFullName
                     ];
-                    $NewItem = self::createWithValues($InitialValues);
-                    $ClassId = $NewItem->id();
-                    self::$IdCache[$FieldId][$ParentId][$Segment] = $ClassId;
 
-                    # track total number of new classification segments created
-                    self::$SegmentsCreated++;
+                    # add classification to database unless this is a test run
+                    if ($TestRun) {
+                        $ClassId = -(count(self::$ClassificationsCreated) + 2);
+                    } else {
+                        $NewItem = static::createWithValues($InitialValues);
+                        $ClassId = $NewItem->id();
+                        self::$IdCache[$FieldId][$ParentId][$Segment] = $ClassId;
+                    }
+
+                    # track the full name for the new classification
+                    self::$ClassificationsCreated[] = $CurrentFullName;
                 }
 
                 # set parent to created or found class
@@ -176,7 +236,7 @@ class Classification extends Item
             }
 
             # if it wasn't actually necessary to create anything
-            if ($NewItem === null) {
+            if (count(self::$ClassificationsCreated) === 0) {
                 throw new Exception(
                     "Duplicate name specified for"
                     ." new classification (".$Name.")."
@@ -184,8 +244,13 @@ class Classification extends Item
             }
         }
 
+        # test runs do not have a newly-created classification to return
+        if ($TestRun) {
+            return null;
+        }
+
         # return new classification to caller
-        return new self($NewItem->id());
+        return new static($NewItem->id());
     }
 
     /**
@@ -213,9 +278,11 @@ class Classification extends Item
 
     /**
      * Get variant name of classification, if any.
-     * @return string|false Variant name, or FALSE if no variant name.
+     * @return bool Variant name, or FALSE if no variant name. (Currently
+     *         always false as variant names are unsupported on
+     *         Classifications).
      */
-    public function variantName()
+    public function variantName(): bool
     {
         return false;
     }
@@ -251,13 +318,13 @@ class Classification extends Item
     }
 
     /**
-     * Get number of new segments (Classifications) generated when creating
-     * a new Classification with a full name.
-     * @return int Number of new segments generated.
+     * Get names of Classifications generated by the most recent create() call.
+     * @return array Full names of new Classifications, in creation order.
+     * @see Classification::create()
      */
-    public static function segmentsCreated()
+    public static function getClassificationsCreated(): array
     {
-        return self::$SegmentsCreated;
+        return self::$ClassificationsCreated;
     }
 
     /**
@@ -409,7 +476,7 @@ class Classification extends Item
      * ClassificationName) is accurate.
      * @return Array of IDs of the Classifications that were updated.
      */
-    public function recalcResourceCount()
+    public function recalcResourceCount(): array
     {
         # get all non-temp records associated with this class or any children
         $this->DB->query(
@@ -480,7 +547,7 @@ class Classification extends Item
      * (parent, grandparent, great-grandparent, etc).
      * @return Array of child/grandchild/etc Classification IDs.
      */
-    public function childList()
+    public function childList(): array
     {
         $ChildList = [];
 
@@ -578,8 +645,8 @@ class Classification extends Item
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+    private static $ClassificationsCreated = [];
+    private static $FieldSchemaIds = [];
     private static $IdCache = [];
     private static $RFactories = [];
-    private static $FieldSchemaIds = [];
-    private static $SegmentsCreated = 0;
 }

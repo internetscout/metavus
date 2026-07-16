@@ -2,6 +2,162 @@
 Metavus Change Log
 ==================
 
+Version 1.3.0 - July 15, 2026
+
+ADDED
+- Add "generator" meta-tag to HTML.  [EA]
+- Extend EditUser page to support uploading user avatars.  [CRH]
+- Add support for user created schemas.  [AL]
+- Add "Strict Search URLs" setting. When enabled, requests for the
+	SearchResults page that do not have a session cookie and that have
+	re-ordered the URL parameters will get a 'permission denied' error.
+	This blocks a significant amount of automated crawling while having
+	a low probability of affecting actual humans.  [CRH]
+- Extend Plugin system to support per-user settings.  [EA]
+- Add "Vocabulary Editable" setting for Tree, Controlled Name, and Option
+	metadata fields.  [AL]
+- Add schema-level "Deleting Permissions" setting for records.  [CRH]
+- Extend background task queue to support scheduling tasks for a specific
+	future run time.  [EA]
+- Add "Run At" column to the Task Queue page.  [EA]
+- Make schema used for the photo collage on the home page configurable.  [CRH]
+- Add "Screenshots Link To" interface configuration option to adjust the target
+	of linked screenshots.  [CRH]
+- Add interface configuration setting that allows users to customize the title
+	of the News section on the home page.  [AL]
+- Add interface configuration setting to specify the ordering of collections
+	on the List Collections page.  [CRH]
+- Add a minimum size for SVG images in the CSS to prevent them from collapsing
+	when the SVG file does not contain size information.  [CRH]
+- Blog plugin: Add ability to send test emails for unpublished entries.  [CRH]
+- Captcha plugin: Add configuration options to support presenting a captcha to
+	users with no cookies set.  [CRH]
+- EduLink plugin: Add "Internal" flag to LMS Registration information.  [CRH]
+- EduLink plugin: Add metrics dashboard.  [CRH]
+- PhotoLibrary plugin: Add generated "Image File Name" metadata field for
+	photos, with upgrade logic to populate and keep values in sync when titles,
+	images, or filename-related settings change.  [EA]
+- GoogleMaps plugin: Added support for multiple marker shapes.  [CRH]
+
+CHANGED
+- Revise robots.txt to add entries that try to discourage scraping for AI
+    model training.  [CRH]
+- Rename ResourceExporter plugin to RecordExporter (it handles more than just
+	Resources).  [CRH]
+- Revise bootstrap procedure to minimize database locking, allowing more
+	requests to be processed in parallel.  [CRH]
+- Revise SearchResults page to load search facets via AJAX.  [CRH]
+- Simplify the logic used to redirect a user to the previous page after they
+	have logged out.  [AL]
+- Revise all pages that were using the D3-backed Graph.php or were using D3
+	directly to use an XChart.php helper instead.  [CRH]
+- Drop bundled C3/D3 as they are no longer used.  [CRH]
+- Improve error message on ActivateAccout when users repeatedly click an
+	activation link.  [CRH]
+- Have Database explicitly set a timezone when connecting to the database to
+	prevent issues caused by different timezone settings between PHP and
+	MySQL.  [EA]
+- AddThis plugin: Dropped, as the service no longer exists.  [AL]
+- Captcha plugin: Revise to use Cloudflare Turnstile rather than (the now
+	unmaintained) securimage.  [CRH]
+- EduLink plugin: Revise logging for LTILogin page to avoid logging access by
+	automated crawlers.  [CRH]
+- Folders plugin: Revise resource note editing to use a single FormUI-based
+	page for editing and saving notes.  [AL]
+- Folders plugin: Revise folder transfer username autocomplete to use the
+	standard user quick-search callback.  [AL]
+- Folders plugin: Revise handling of folder sorting so that only the folder
+	owner can change the stored sort order.  [CRH]
+- PhotoLibrary plugin: Apply the same bot blocking measures on the
+	DisplayGallery page that are used on the SearchResults page.  [CRH]
+- Revise primary navigation to collapse into a hamburger menu on small
+	screens.  [CRH]
+- Revise background task runner to reduce database queries and database lock
+	duration.  [EA]
+- Remove obsolete LastTaskRunAt ApplicationFramework setting.  [EA]
+- EditUser: When manually enabling a user, also activate their account.  [CRH]
+- MySearches plugin: Do not build recent searches box when MetricsRecorder is
+	unavailable.  [EA]
+- MyResourceViews plugin: Do not build recent views box when MetricsRecorder is
+	unavailable.  [EA]
+- Pages plugin:  Revise page editing to support drag&drop uploading of files
+    and chunked upload of large files.  [CRH]
+- PhotoLibrary plugin: Improve display layout for photo metadata fields.  [AL]
+- PhotoLibrary plugin: Revise image download file name generation so direct
+	original-image downloads and folder Zip downloads use shared naming logic
+	with record and image IDs.  [EA]
+- Rules plugin: Do not generate email for users with disabled accounts.  [AL]
+- mvus utility: Improve error reporting and return nonzero exit status when
+	database dump, database reload, upgrade, boot, or command parsing fails.  [EA]
+- mvus utility: Use the current directory name in autogenerated database dump
+	filenames when no portal name has been set.  [EA]
+- mvus utility: Allow upgrade to apply current DBUpgrade SQL directly when a
+    pending database change prevents normal boot.  [EA]
+
+FIXED
+- Fix several bugs in SearchFacetUI that could cause facets to be erroneously
+	hidden.  [CRH]
+- Fix RebuildSearchDB to work for non-Resource schemas.  [AL]
+- On BrowseResources, fix error when sorting by Date fields.  [CRH]
+- On EditResource, in the controlled vocabulary editing popup, fix bug that
+	caused the max items per page setting to be ignored.  [CRH]
+- Fix a bug in the SecureLogin feature used to encrypt passwords when sending
+	them over plain http connections.  [CRH]
+- Fix bug that cause a meta refresh to be used when a redirect was set with
+	`setJumpToPage()` from an `.html` file rather than using an HTTP 3xx
+	redirect.  [CRH]
+- Fix bug that prevented large JS files from being minified.  [EA]
+- BotDetector plugin: Fix bug in setting client-side cache lifetime.  [CRH]
+- EduLink plugin: Fix bug in underlying lti-1-3-php-library causing it to skip
+	validation of nonces.  [CRH]
+- EduLink plugin: Fix bug in pagination on LMS Registration List page.  [CRH]
+- Folders plugin: Fix bug causing 'add note' to appear on public folders when
+	no user was logged in.  [CRH]
+- Folders plugin: Fix bug causing 'clear' to appear on folders the current user
+	does not own.  [CRH]
+- Folders plugin: Fix bug that prevented users from re-ordering their folders.  [AL]
+- MLPHPList plugin: Fix error handling when REST requests fail so that it won't
+	leave a stale lock.  [CRH]
+- Pages plugin: Fix bugs in handling of URLs that selected a particular
+	jquery-ui tab on the page.  [CRH]
+- Fix privilege checks and visibility caching for records affected by user
+	comparisons.  [CRH]
+- Developer plugin: Release the ApplicationFramework lock when database upgrade
+	query execution throws an exception.  [EA]
+- mvus utility: Fix listing privileges for a user and listing metadata fields
+	for field types that have no fields.  [EA]
+
+DEVELOPER
+- Revise {Bar,Pie,MultiDate}Chart helpers to use Plotly.js rather than the now
+	unmaintained C3.js.  [CRH]
+- For back-end pages not intended to be customized, merge HTML and PHP files
+	together to simplify static analysis and reduce the amount of boilerplate
+	code required.  [AL]
+- Standardize generation of HTML tables throughout the software to use the
+	HtmlTable helper class.  [AL]
+- Revise htaccess files and NGINX example example configuration to provide an
+    explicit whitelist of PHP files that server is allowed to execute.  [CRH]
+- Add option to log DB locks that were held for a long time.  [CRH]
+- Before launching background tasks under PMP-FPM, check that workers are free
+	to continue handling requests for pages to avoid worker exhaustion.  [CRH]
+- Update Record::set() to return whether the field value was changed.  [EA]
+- Add HtmlTable::addClassForColumn() for assigning CSS classes to table
+	columns.  [EA]
+- Add DatabaseQueryException and refine Database exception types.  [EA]
+- In HtmlButton helper add alt="" for decorative images.  [CRH]
+- Improve Plugin::getInstance() exception messages to include the plugin name.  [EA]
+- FormUI: Do not run custom validation functions for empty required fields
+	before reporting the required-field error.  [EA]
+- FormUI: Fix server-side DisplayIf validation to match browser-side visibility
+	rules for fields with multiple conditions.  [EA]
+- FormUI: Reject invalid or unsafe FilePond upload transfer identifiers.  [EA]
+- FormUI: Fix unique-key error checks when no errors have been logged for that
+	key.  [EA]
+- FormUI: Allow optional User fields to validate cleanly when no value is
+	submitted.  [EA]
+- FormUI: Fix duplicate HTML IDs generated for Point field inputs.  [EA]
+
+
 Version 1.2.1 - Jul 1, 2025
 
 ADDED
@@ -384,4 +540,3 @@ FIXED
 Version 1.0.0 - July 19, 2022
 
 Initial release.
-

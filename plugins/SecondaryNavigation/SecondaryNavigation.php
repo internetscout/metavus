@@ -103,7 +103,7 @@ class SecondaryNavigation extends Plugin
                         $InvalidLinks[] = trim($Link);
                     }
                 }
-                return (count($InvalidLinks) ? "Link(s) not found in offered "
+                return (count($InvalidLinks) !== 0 ? "Link(s) not found in offered "
                         ."navigation item list: ".implode(", ", $InvalidLinks) : null);
             },
             "Default" => "index.php?P=SysAdmin\nindex.php?P=UserList\nindex.php?P=MDHome"
@@ -116,7 +116,7 @@ class SecondaryNavigation extends Plugin
                 ."For example: 'Administration|index.php?P=SysAdmin|PRIV_SYSADMIN,"
                 ."PRIV_COLLECTIONADMIN,PRIV_USERADMIN|View and change system settings.'",
             "Height" => 10,
-            "ValidateFunction" => function ($FieldName, $FieldValue) {
+            "ValidateFunction" => function ($FieldName, $FieldValue): ?string {
                 if (trim($FieldValue) == "") {
                     return null;
                 }
@@ -159,7 +159,7 @@ class SecondaryNavigation extends Plugin
         NavItem::create($OwnerId, "Filler Item", "");
 
         # create NavItems for default links (if user has privileges)
-        $DefaultItems = strlen($this->getConfigSetting("DefaultNavigation")) ?
+        $DefaultItems = strlen($this->getConfigSetting("DefaultNavigation")) !== 0 ?
             explode("\n", $this->getConfigSetting("DefaultNavigation")) : [];
         $OfferedItems = $this->getOfferedNavItems();
         foreach ($DefaultItems as $Link) {
@@ -182,9 +182,6 @@ class SecondaryNavigation extends Plugin
      */
     public function getSidebarContent(): string
     {
-        $UseSecureLogin = isset($_SERVER["HTTPS"]) ? false : true;
-        $PubKeyParams = SecureLoginHelper::getCryptKey();
-
         # retrieve user currently logged in
         $User = User::getCurrentUser();
 
@@ -386,7 +383,7 @@ class SecondaryNavigation extends Plugin
                 "Description" => $Item["Description"]
             ];
         }
-        uasort($Items, function ($a, $b) {
+        uasort($Items, function ($a, $b): int {
             return strcmp($a["Label"], $b["Label"]);
         });
         return $Items;
@@ -470,6 +467,15 @@ class SecondaryNavigation extends Plugin
                 $NavItem->destroy();
             }
         }
+    }
+
+    /**
+     * Delete all NavItems that match the given link.
+     * @param string $Link The link to match against.
+     */
+    public function removeItemFromNavForAllUsers(string $Link): void
+    {
+        NavMenu::deleteAnyItemsWithLink($Link);
     }
 
     /**

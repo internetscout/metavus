@@ -9,19 +9,61 @@
 #   @scout:phpstan
 
 use Metavus\ItemListUI;
+use Metavus\Message;
+use Metavus\MessageFactory;
 use Metavus\Record;
 use Metavus\RecordFactory;
+use Metavus\TransportControlsUI;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
 
-if (!isset($H_ListChecksum)) {
-    throw new Exception("Required variable \$H_ListChecksum is not initialized");
+# ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+    return;
 }
-$BaseLink = "index.php?P=TrackUserComments&amp;CK=".$H_ListChecksum;
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Track User Comments");
+
+# retrieve list of MessageIds, reversed as to show most recent
+$MFactory = new MessageFactory();
+$MessageIds = $MFactory->getItemIds(
+    "ParentId > 0 AND ParentType = ".Message::PARENTTYPE_RESOURCE,
+    false,
+    "MessageId",
+    false
+);
+
+# get total count of Messages
+$MessageCount = count($MessageIds);
+
+# get current Message index
+$StartingIndex = StdLib::getFormValue(TransportControlsUI::PNAME_STARTINGINDEX, 0);
+
+# calculate ID array checksum and reset paging if list has changed
+$ListChecksum = md5(serialize($MessageIds));
+if ($ListChecksum != StdLib::getFormValue("CK")) {
+    $StartingIndex = 0;
+}
+
+# prune message IDs down to currently-selected segment
+$ItemsPerPage = 25;
+$MessageIds = array_slice($MessageIds, $StartingIndex, $ItemsPerPage);
+
+# load messages from IDs
+$Messages = [];
+foreach ($MessageIds as $MessageId) {
+    $Messages[$MessageId] = new Message($MessageId);
+}
+
+$BaseLink = "index.php?P=TrackUserComments&amp;CK=".$ListChecksum;
 $EditLink = "index.php?P=AddResourceComment&amp;MI=\$ID";
 
 $Fields = [
     "Date" => [
-        "ValueFunction" => function ($Item) {
+        "ValueFunction" => function ($Item): string {
             return StdLib::getPrettyTimestamp($Item->datePosted());
         }
     ],
@@ -34,13 +76,13 @@ $Fields = [
     ],
     "PosterName" => [
         "Heading" => "Posted by",
-        "ValueFunction" => function ($Item) {
+        "ValueFunction" => function ($Item): string {
             return $Item->posterName()." (".$Item->posterEmail().")";
         }
     ],
     "Resource" => [
         "Heading" => "About",
-        "ValueFunction" => function ($Item) {
+        "ValueFunction" => function ($Item): string {
             if (!RecordFactory::recordExistsInAnySchema($Item->parentId())) {
                 return "(unavailable)";
             }
@@ -52,31 +94,24 @@ $Fields = [
 ];
 
 $ListUI = new ItemListUI($Fields);
-$ListUI->noItemsMessage("There are no new user comments.");
-$ListUI->baseLink($BaseLink);
+$ListUI->setNoItemsMessage("There are no new user comments.");
+$ListUI->setBaseLink($BaseLink);
 $ListUI->addActionButton("Edit/Delete", $EditLink, "pencil.png");
-$SpammerLinkFunc = function ($Item) {
+$SpammerLinkFunc = function ($Item): string {
         return "index.php?P=CleanSpam&amp;PI=".$Item->posterId()
                 ."&amp;RI=".$Item->parentId();
 };
 $ListUI->addActionButton("Spammer", $SpammerLinkFunc, "cross.png");
-$ListUI->heading("Track User Comments");
-if (!isset($H_ItemsPerPage)) {
-    throw new Exception("Required variable \$H_ItemsPerPage is not initialized");
-}
-$ListUI->itemsPerPage($H_ItemsPerPage);
+$ListUI->setHeading("Track User Comments");
+$ListUI->setItemsPerPage($ItemsPerPage);
 $ListUI->fieldsSortableByDefault(false);
-if (!isset($H_Messages)) {
-    throw new Exception("Required variable \$H_Messages is not initialized");
-}
-if (!isset($H_MessageCount)) {
-    throw new Exception("Required variable \$H_MessageCount is not initialized");
-}
-if (!isset($H_StartingIndex)) {
-    throw new Exception("Required variable \$H_StartingIndex is not initialized");
-}
-$ListUI->display($H_Messages, $H_MessageCount, $H_StartingIndex);
+$ListUI->setItems($Messages);
+$ListUI->setTotalItemCount($MessageCount);
+$ListUI->setStartingIndex($StartingIndex);
 
+# ----- DISPLAY --------------------------------------------------------------
+
+print $ListUI->getHtml();
 ?>
 
 <p>Flagging a user as a spammer with the <kbd>Spammer</kbd> button

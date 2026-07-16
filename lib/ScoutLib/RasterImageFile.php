@@ -764,7 +764,7 @@ class RasterImageFile extends ImageFile
         }
 
         # rotate image
-        $RotatedImage = imagerotate($Image, 0 - $Rotation, $Background);
+        $RotatedImage = imagerotate($Image, -$Rotation, $Background);
         if ($RotatedImage === false) {
             throw new Exception("Image rotation failed.");
         }
@@ -835,20 +835,20 @@ class RasterImageFile extends ImageFile
 
         switch ($Format) {
             case self::IMGTYPE_JPEG:
-                return (imagetypes() & IMG_JPG) ? true : false;
+                return ((imagetypes() & IMG_JPG) !== 0) ? true : false;
 
             case self::IMGTYPE_GIF:
-                return (imagetypes() & IMG_GIF) ? true : false;
+                return ((imagetypes() & IMG_GIF) !== 0) ? true : false;
 
             case self::IMGTYPE_BMP:
                 if (defined("IMG_BMP")) {
-                    return (imagetypes() & IMG_BMP) ? true : false;
+                    return ((imagetypes() & IMG_BMP) !== 0) ? true : false;
                 } else {
                     return false;
                 }
 
             case self::IMGTYPE_PNG:
-                return (imagetypes() & IMG_PNG) ? true : false;
+                return ((imagetypes() & IMG_PNG) !== 0) ? true : false;
 
             default:
                 return false;

@@ -50,11 +50,6 @@ class TabbedContentUI
             $this->endTab();
         }
 
-        # set default active tab if no active tab already set
-        if (!isset($this->ActiveTab)) {
-            $this->ActiveTab = $TabLabel;
-        }
-
         # beginning buffering content for new tab
         $this->CurrentTab = $TabLabel;
         ob_start();
@@ -123,7 +118,8 @@ class TabbedContentUI
         }
 
         # check to make sure active tab is valid
-        if (!isset($this->TabContent[$this->ActiveTab])) {
+        if ($this->ActiveTab !== null
+                && !isset($this->TabContent[$this->ActiveTab])) {
             throw new Exception("Active tab (.\"".$this->ActiveTab."\") is invalid.");
         }
 
@@ -145,7 +141,7 @@ class TabbedContentUI
         foreach ($this->TabContent as $Label => $Content) {
             # add navigation for tab
             $Suffix = self::getIdSuffix($Label);
-            ?><li><a href="#mv-tabs-<?= $Suffix ?>"><b><?=
+            ?><li><a href="#<?= $Suffix ?>"><b><?=
                     htmlspecialchars($Label) ?></b></a></li><?PHP
         }
 
@@ -155,11 +151,12 @@ class TabbedContentUI
 
         # for each tab
         $TabIndex = 0;
-        $ActiveTabIndex = 0;
+        $ActiveTabIndex = null;
         foreach ($this->TabContent as $Label => $Content) {
             # add content section for tab
             $Suffix = self::getIdSuffix($Label);
-            ?><div id="mv-tabs-<?= $Suffix ?>"><?= $Content ?></div>
+            ?>
+                <div id="<?= $Suffix ?>"><?= $Content ?></div>
             <?PHP
 
             # if tab is active save tab index for later use
@@ -173,12 +170,29 @@ class TabbedContentUI
         ?></div></div>
         <?PHP
 
-        # add JavaScript to select active tab
+        $BaseUrl = $AF->baseUrl().$AF->getCleanRelativeUrl();
+        # trim trailing slash
+        if (substr($BaseUrl, -1) == "/") {
+            $BaseUrl = substr($BaseUrl, 0, -1);
+        }
+
+        # set up options for our jquery-ui tabs instance
+        $Options = [];
+        if ($ActiveTabIndex !== null) {
+            $Options["active"] = $ActiveTabIndex;
+        }
+
+        # create a jquery-ui tabs widget
         ?><script type='text/javascript'>
             jQuery(document).ready(function() {
-                    jQuery('#<?= $Id ?>').tabs({active: '<?= $ActiveTabIndex ?>'}); });
-        </script>
-        <?PHP
+                jQuery('#<?= $Id ?>').tabs(<?= json_encode($Options, JSON_FORCE_OBJECT) ?>);
+                jQuery('#<?= $Id ?>').on('tabsactivate', function(event, ui) {
+                    var TabName = $(ui.newTab).attr('aria-controls');
+                    var TabUrl = "<?= $BaseUrl ?>#" + TabName;
+                    history.pushState({}, "", TabUrl);
+                });
+            });
+        </script><?PHP
 
         # return generated HTML to caller
         $Html = ob_get_clean();
@@ -199,7 +213,7 @@ class TabbedContentUI
     * @param string $Text String to use to generate suffix.
     * @return string Suffix string.
     */
-    private static function getIdSuffix($Text)
+    private static function getIdSuffix($Text): string
     {
         return strtolower(preg_replace("/[^a-z]+/i", "", $Text));
     }

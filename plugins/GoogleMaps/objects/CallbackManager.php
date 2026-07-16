@@ -34,7 +34,7 @@ class CallbackManager
      * @param array $Params Callback parameters.
      * @return string Id of callback
      */
-    public function registerCallback($Callback, $Params)
+    public function registerCallback($Callback, $Params): string
     {
         $EnvData = self::getEnvironmentSignature();
 

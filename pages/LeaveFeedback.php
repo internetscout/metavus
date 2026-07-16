@@ -42,7 +42,7 @@ function GetUserName(User $User)
  * @param User $User User.
  * @return string Real name or appropriate string if not logged in.
  */
-function GetUserRealName(User $User)
+function GetUserRealName(User $User): string
 {
     if ($User->isLoggedIn()) {
         $RealName = $User->get("RealName");
@@ -50,7 +50,7 @@ function GetUserRealName(User $User)
             return "(not set)";
         }
         $TrimmedRealName = trim($User->get("RealName"));
-        return $TrimmedRealName ? $TrimmedRealName : "(not set)";
+        return $TrimmedRealName !== '' && $TrimmedRealName !== '0' ? $TrimmedRealName : "(not set)";
     }
 
     return "(not logged in)";
@@ -62,7 +62,7 @@ function GetUserRealName(User $User)
  * @param string $Secondary A secondary e-mail address to try.
  * @return string The best e-mail address available to use as the sender.
  */
-function GetSenderEmail(User $User, $Secondary = null)
+function GetSenderEmail(User $User, $Secondary = null): string
 {
     $IntConfig = InterfaceConfiguration::getInstance();
 
@@ -306,7 +306,7 @@ $ButtonPushed = StdLib::getFormValue("Submit", false);
 if ($ButtonPushed) {
     switch ($ButtonPushed) {
         case "Submit Feedback":
-            if ($H_FormUI->validateFieldInput()) {
+            if ($H_FormUI->validateFieldInput() !== 0) {
                 return;
             }
 

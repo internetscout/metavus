@@ -38,7 +38,7 @@ class PluginUpgrade_2_0_6 extends PluginUpgrade
 
         $ParagraphFields = $Schema->getFields(MetadataSchema::MDFTYPE_PARAGRAPH);
         foreach ($ParagraphFields as $Field) {
-            $Field->allowHTML(true);
+            $Field->allowHtml(true);
         }
 
         return null;

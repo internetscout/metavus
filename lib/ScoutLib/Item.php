@@ -108,7 +108,7 @@ abstract class Item
      */
     public function name(?string $NewValue = null): string
     {
-        $NameColumn = strlen($this->ItemNameColumnName)
+        $NameColumn = strlen($this->ItemNameColumnName) !== 0
             ? $this->ItemNameColumnName
             : "Name";
         return $this->DB->updateValue($NameColumn, $NewValue);
@@ -264,7 +264,7 @@ abstract class Item
         $Query = "INSERT INTO `" . self::$ItemTableNames[$ClassName] . "`";
 
         # add initial values to query if supplied
-        if (count($Values)) {
+        if (count($Values) !== 0) {
             $Query .= " SET ";
             $Assignments = [];
             foreach ($Values as $Column => $Value) {

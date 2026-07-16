@@ -216,7 +216,7 @@ abstract class ResourceSummary
     */
     protected function highlightTerms($Value)
     {
-        if (count($this->TermsToHighlight)) {
+        if (count($this->TermsToHighlight) !== 0) {
             $Patterns = [];
             $Replacements = [];
             foreach ($this->TermsToHighlight as $Term) {

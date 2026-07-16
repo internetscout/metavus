@@ -39,7 +39,7 @@ function ownerSelectionButtons(string $LaunchId, array $OwnerIds) : string
  * @param int $OwnerId Owner to display.
  * @return string HTML.
  */
-function ownerTile(string $LaunchId, int $OwnerId)
+function ownerTile(string $LaunchId, int $OwnerId): string
 {
     static $UserImageField = false;
     static $SelectFolderUrl = false;
@@ -74,7 +74,7 @@ function ownerTile(string $LaunchId, int $OwnerId)
     $FoundImage = false;
     if (!is_null($UserImageField)) {
         $Avatar = $Owner->get($UserImageField);
-        if (count($Avatar)) {
+        if (count($Avatar) !== 0) {
             $FoundImage = true;
             $Result .= (new Image($Avatar[0]))
                 ->getHtml("mv-image-preview");

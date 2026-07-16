@@ -92,7 +92,8 @@ class RestHelper
 
         # set target endpoint URL for calls
         $EndpointUrl = $this->Url.$UrlSuffix;
-        if (empty($EndpointUrl) || !filter_var($EndpointUrl, FILTER_VALIDATE_URL)) {
+        if ($EndpointUrl === '' || $EndpointUrl === '0' ||
+            !filter_var($EndpointUrl, FILTER_VALIDATE_URL)) {
             throw new Exception("Target endpoint URL appears invalid (\""
                     .$EndpointUrl."\").");
         }

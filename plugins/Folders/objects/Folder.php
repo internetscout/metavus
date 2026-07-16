@@ -10,6 +10,8 @@
 
 namespace Metavus\Plugins\Folders;
 
+use Metavus\MetadataSchema;
+use Metavus\Record;
 use ScoutLib\ApplicationFramework;
 
 /**
@@ -20,26 +22,51 @@ class Folder extends \Metavus\Folder
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /**
-     * Get sharing (viewing) URL for folder.  A clean URL will be returned if
-     * support for them is available.
-     * @return string URL for viewing folder.
+     * Get the safe, i.e., OK to print to HTML, version of the given resource's
+     * title.
+     * @param Record $Resource Resource object.
+     * @return string Safe resource title.
      */
-    public function getSharingUrl() : string
+    public static function getSafeResourceTitle(Record $Resource): string
+    {
+        static $Schema;
+        if (!isset($Schema)) {
+            $Schema = new MetadataSchema();
+        }
+
+        $TitleField = $Schema->getFieldByMappedName("Title");
+        $SafeTitle = $Resource->getMapped("Title");
+
+        if (!is_null($TitleField) && !$TitleField->allowHtml()) {
+            $SafeTitle = defaulthtmlentities($SafeTitle);
+        }
+
+        return $SafeTitle;
+    }
+
+    /**
+     * Get the share URL for the given folder.
+     * @param Folder $Folder Folder to get URL for.
+     * @return string Share URL for the folder.
+     */
+    public static function getShareUrl(Folder $Folder): string
     {
         $AF = ApplicationFramework::getInstance();
 
-        # if clean URL support is available
+        $Id = $Folder->id();
+        $ShareUrl = ApplicationFramework::baseUrl()."index.php"
+            ."?P=P_Folders_ViewFolder&FolderId=".$Id;
+
+        # make the share URL prettier if .htaccess support exists
+        # (folders/folder_id/normalized_folder_name)
         if ($AF->cleanUrlSupportAvailable()) {
-            # assemble clean URL
-            $Url = ApplicationFramework::baseUrl()."folders/".sprintf("%04d", $this->id())
-                    ."/".$this->normalizedName();
-        } else {
-            # assemble regular URL
-            $Url = ApplicationFramework::rootUrl().$_SERVER["SCRIPT_NAME"]
-                    ."?P=P_Folders_ViewFolder&FolderId=".$this->id();
+            $PaddedId = str_pad((string)$Id, 4, "0", STR_PAD_LEFT);
+            $NormalizedName = $Folder->normalizedName();
+
+            $ShareUrl = ApplicationFramework::baseUrl() . "folders/";
+            $ShareUrl .= $PaddedId . "/" . $NormalizedName;
         }
 
-        # return assembled URL to caller
-        return $Url;
+        return $ShareUrl;
     }
 }

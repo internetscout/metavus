@@ -3,7 +3,7 @@
 #   FILE:  PrivilegeSet.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -71,7 +71,7 @@ class PrivilegeSet
 
         # serialize current data and return to caller
         $Data = [];
-        if (count($this->Privileges)) {
+        if (count($this->Privileges) !== 0) {
             foreach ($this->Privileges as $Priv) {
                 $Data["Privileges"][] = ($Priv instanceof self)
                         ? ["SUBSET" => $Priv->data()]
@@ -87,8 +87,9 @@ class PrivilegeSet
      * this PrivilegeSet.  Typically used to determine if a user should
      * be allowed access to a particular piece of data.
      * @param User $User User object to use in comparisons.
-     * @param mixed $Resource Resource object to used for comparison, for
-     *       sets that include user conditions.  (OPTIONAL)
+     * @param Record|int|self::NO_RESOURCE $Resource Record object or Record
+     *       ID to used for comparison, for sets that include user conditions.
+     *       (OPTIONAL)
      * @return bool TRUE if privileges in set are greater than or equal to
      *       privileges in specified set, otherwise FALSE.
      */
@@ -138,6 +139,7 @@ class PrivilegeSet
                 $this->Privileges[] = $Privilege;
             }
         }
+        $this->sortPrivileges();
     }
 
     /**
@@ -279,6 +281,7 @@ class PrivilegeSet
         if (!$this->isInPrivilegeData($Condition)) {
             # add condition to privilege set
             $this->Privileges[] = $Condition;
+            $this->sortPrivileges();
             return true;
         }
         return false;
@@ -396,6 +399,7 @@ class PrivilegeSet
         if (!$this->isInPrivilegeData($Set)) {
             # add subgroup to privilege set
             $this->Privileges[] = $Set;
+            $this->sortPrivileges();
         }
     }
 
@@ -593,15 +597,56 @@ class PrivilegeSet
 
     /**
      * Create a new PrivilegeSet from an XML file.
-     * @param iterable $Xml Element containing privilege XML.
+     * @param \SimpleXMLElement $Xml Element containing privilege XML.
      * @param MetadataSchema $Schema the $Schema that invoked the PrivilegeSet creation.
      * @throws Exception if conversion fails.
      * @return PrivilegeSet Resulting PrivilegeSet upon conversion success.
      */
-    public static function createFromXml($Xml, $Schema)
+    public static function createFromXml($Xml, $Schema): \Metavus\PrivilegeSet
     {
+        static $Privileges;
+
         # create new privilege set
         $PrivSet = new PrivilegeSet();
+
+        # if currrent element has no children
+        if ($Xml->count() == 0) {
+            # get value of element
+            $Value = (array)$Xml;
+
+            if (count($Value) == 0) {
+                return $PrivSet;
+            }
+
+            if (count($Value) != 1) {
+                throw new Exception(
+                    "Multiple values found for a scalar privilege setting."
+                        ." (should be impossible)"
+                );
+            }
+            $Value = array_shift($Value);
+
+            if (!isset($Privileges)) {
+                $PFactory = new PrivilegeFactory();
+                $Privileges = $PFactory->getPrivileges(true, false);
+            }
+
+            if (is_numeric($Value) && isset($Privileges[$Value])) {
+                // no conversion needed
+            } elseif (defined($Value)) {
+                $Value = constant($Value);
+            } elseif (in_array($Value, $Privileges)) {
+                $Value = array_search($Value, $Privileges);
+            } else {
+                throw new Exception(
+                    "Invalid privilege value in XML: ".$Value
+                );
+            }
+
+            $PrivSet->addPrivilege($Value);
+
+            return $PrivSet;
+        }
 
         # for each XML child
         foreach ($Xml as $Tag => $Value) {
@@ -638,7 +683,7 @@ class PrivilegeSet
                                 break;
 
                             case "Value":
-                                $ConditionValue = (string)$ParamValue;
+                                $ConditionValue = $ParamValue;
 
                                 if ($ConditionValue == "NULL") {
                                     $ConditionValue = null;
@@ -650,7 +695,7 @@ class PrivilegeSet
                                 break;
 
                             case "Operator":
-                                $ConditionOperator = (string)$ParamValue;
+                                $ConditionOperator = $ParamValue;
                                 break;
 
                             default:
@@ -712,7 +757,6 @@ class PrivilegeSet
                             $Value = false;
                         # convert privilege flag names if needed and appropriate
                         } elseif (preg_match("/Privilege$/", $Tag)) {
-                            static $Privileges;
                             if (!isset($Privileges)) {
                                 $PFactory = new PrivilegeFactory();
                                 $Privileges = $PFactory->getPrivileges(true, false);
@@ -756,10 +800,11 @@ class PrivilegeSet
         $PFactory = new PrivilegeFactory();
         foreach ($this->Privileges as $Priv) {
             if (is_numeric($Priv)) {
-                $PrivConst = $PFactory->getPrivilegeConstantName((int)$Priv);
-                if ($PrivConst !== false) {
-                    $XOut->writeElement("AddPrivilege", $PrivConst);
+                $PrivName = $PFactory->getPrivilegeConstantName((int)$Priv);
+                if ($PrivName === false) {
+                    $PrivName = (new Privilege((int)$Priv))->name();
                 }
+                $XOut->writeElement("AddPrivilege", $PrivName);
             }
         }
 
@@ -857,6 +902,32 @@ class PrivilegeSet
         if (array_key_exists("Logic", $Data)) {
             $this->Logic = $Data["Logic"];
         }
+
+        $this->sortPrivileges();
+    }
+
+    /**
+     * Sort privileges in order of how computationally expensive they are to
+     * check. Simplest are user privilege flags, followed by conditions based
+     * on metadata fields, with nested groups last because they are the most
+     * complex.
+     */
+    private function sortPrivileges() : void
+    {
+        $Flags = [];
+        $Conditions = [];
+        $Subgroups = [];
+        foreach ($this->Privileges as $Priv) {
+            if ($Priv instanceof self) {
+                $Subgroups[] = $Priv;
+            } elseif (is_array($Priv)) {
+                $Conditions[] = $Priv;
+            } else {
+                $Flags[] = $Priv;
+            }
+        }
+
+        $this->Privileges = array_merge($Flags, $Conditions, $Subgroups);
     }
 
     /**
@@ -864,8 +935,9 @@ class PrivilegeSet
      * PrivilegeSet without resetting the $ExpirationDate; this version should be
      * used for recursive and class internal calls.
      * @param User $User User object to use in comparisons.
-     * @param Record|string $Resource Resource object to used for comparison, for
-     *       sets that include user conditions.  (OPTIONAL)
+     * @param Record|int|self::NO_RESOURCE $Resource Resource object to
+     *       used for comparison, for sets that include user conditions.
+     *       (OPTIONAL)
      * @return bool TRUE if privileges in set are greater than or equal to
      *       privileges in specified set, otherwise FALSE.
      */
@@ -912,7 +984,8 @@ class PrivilegeSet
      * Check whether this privilege set meets the specified condition.
      * @param array $Condition Condition to check, with "FieldId", "Operator",
      *      and "Value" entries..
-     * @param Record|string $Resource Resource to use when checking.
+     * @param int|Record|self::NO_RESOURCE $Resource Resource or Resource ID to
+     *      use when checking.
      * @param User $User User to use when checking.
      * @return bool TRUE if condition is met, otherwise FALSE.
      */
@@ -955,47 +1028,48 @@ class PrivilegeSet
                 $Value
             );
             return $Count > 0 ? true : false;
-        # else if resource is valid
-        } elseif ($Resource instanceof Record) {
-            # if this field is from a different schema than our resource
-            # and also this field is not from the User schema, then there's
-            # no comparison for us to do
-            if ($Field->schemaId() != $Resource->getSchemaId() &&
-                $Field->schemaId() != MetadataSchema::SCHEMAID_USER) {
-                # return a result that in effect ignores the condition
-                return ($this->Logic == "AND") ? true : false;
-            }
-
-            # normalize the incoming value for comparison
-            $Value = $this->normalizeTargetValue($Field->Type(), $User, $Value);
-            $FieldValue = $this->getNormalizedFieldValue($Field, $Resource, $User);
-
-            # if comparison involves a date/time type and a target value that
-            # is relative to 'now'
-            $DateTypes = [MetadataSchema::MDFTYPE_TIMESTAMP, MetadataSchema::MDFTYPE_DATE];
-            if (in_array($Field->type(), $DateTypes) &&
-                StdLib::isRelativeDateString($Condition["Value"])) {
-                # determine the offset between field value and target value
-                $Offset = ($FieldValue - $Value);
-
-                # if values will be equal in the future
-                if ($Offset >= 0) {
-                    # get timestamp when that will happen
-                    $ExpirationDate = strtotime("now +".$Offset." seconds");
-
-                    # update our stored ExpirationDate if needed
-                    $this->ExpirationDate = $this->ExpirationDate === false ?
-                        $ExpirationDate :
-                        min($this->ExpirationDate, $ExpirationDate);
-                }
-            }
-
-            # perform comparison, returning result
-            return $this->compareNormalizedFieldValues($FieldValue, $Operator, $Value);
-        } else {
-            # error out because resource was illegal
-            throw new Exception("Invalid Resource passed in for privilege set comparison.");
         }
+
+        # load record if needed
+        if (!$Resource instanceof Record) {
+            $Resource = Record::getRecord((int)$Resource);
+        }
+
+        # if this field is from a different schema than our resource
+        # and also this field is not from the User schema, then there's
+        # no comparison for us to do
+        if ($Field->schemaId() != $Resource->getSchemaId() &&
+            $Field->schemaId() != MetadataSchema::SCHEMAID_USER) {
+            # return a result that in effect ignores the condition
+            return ($this->Logic == "AND") ? true : false;
+        }
+
+        # normalize the incoming value for comparison
+        $Value = $this->normalizeTargetValue($Field->Type(), $User, $Value);
+        $FieldValue = $this->getNormalizedFieldValue($Field, $Resource, $User);
+
+        # if comparison involves a date/time type and a target value that
+        # is relative to 'now'
+        $DateTypes = [MetadataSchema::MDFTYPE_TIMESTAMP, MetadataSchema::MDFTYPE_DATE];
+        if (in_array($Field->type(), $DateTypes) &&
+            StdLib::isRelativeDateString($Condition["Value"])) {
+            # determine the offset between field value and target value
+            $Offset = ($FieldValue - $Value);
+
+            # if values will be equal in the future
+            if ($Offset >= 0) {
+                # get timestamp when that will happen
+                $ExpirationDate = strtotime("now +".$Offset." seconds");
+
+                # update our stored ExpirationDate if needed
+                $this->ExpirationDate = $this->ExpirationDate === false ?
+                    $ExpirationDate :
+                    min($this->ExpirationDate, $ExpirationDate);
+            }
+        }
+
+        # perform comparison, returning result
+        return $this->compareNormalizedFieldValues($FieldValue, $Operator, $Value);
     }
 
     /**
@@ -1038,7 +1112,7 @@ class PrivilegeSet
      * @param mixed $Value Target value for the comparison.
      * @return mixed Normalized value
      */
-    private function normalizeTargetValue(int $FieldType, $User, $Value)
+    private function normalizeTargetValue(int $FieldType, \Metavus\User $User, $Value)
     {
         switch ($FieldType) {
             case MetadataSchema::MDFTYPE_DATE:

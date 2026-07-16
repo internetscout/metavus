@@ -26,8 +26,9 @@ require_once("lib/ScoutLib/StdLib.php");
  *
  * The following global variables may be set before instantiating this class,
  * to change its behavior:
- *      StartUpOpt_CLEAR_AF_CACHES - When set to TRUE, all ApplicationFramework
- *          caches will be cleared right after $GLOBALS["AF"] is loaded.
+ *      StartUpOpt_CLEAR_BOOT_CACHES - When set to TRUE, all ApplicationFramework
+ *          and PluginManger caches will be cleared right after $GLOBALS["AF"]
+ *          is loaded.
  *      StartUpOpt_DO_NOT_LOAD_PLUGINS - When set to TRUE, plugins will not
  *          be loaded at all.(Though PluginManager will still be created.)
  *      StartUpOpt_FORCE_PLUGIN_CONFIG_LOAD - When set to TRUE, all plugins will
@@ -59,6 +60,7 @@ class Bootloader
         "lib/CKEditor/",
         "lib/D3/",
         "lib/C3/",
+        "lib/plotly/",
         "lib/jsbn/",
         "lib/jquery/",
         "lib/jquery-ui/",
@@ -66,6 +68,7 @@ class Bootloader
         "lib/Bootstrap/js/",
         "lib/FilePond/js/",
         "lib/FilePond/css/",
+        "lib/htmx/",
     ];
 
     # standard hookable events
@@ -235,7 +238,7 @@ class Bootloader
     public function filterPageTitle(?string $Title): ?string
     {
         $PortalName = InterfaceConfiguration::getInstance()->getString("PortalName");
-        if (strlen($PortalName)) {
+        if (strlen($PortalName) !== 0) {
             if (($Title !== null) && strlen($Title)) {
                 return $PortalName . " - " . $Title;
             }
@@ -333,17 +336,25 @@ class Bootloader
         $GLOBALS["AF"] = $this->AF;
 
         # clear AF caches if requested
-        if (array_key_exists("StartUpOpt_CLEAR_AF_CACHES", $GLOBALS) &&
-            $GLOBALS["StartUpOpt_CLEAR_AF_CACHES"]) {
+        if (array_key_exists("StartUpOpt_CLEAR_BOOT_CACHES", $GLOBALS) &&
+            $GLOBALS["StartUpOpt_CLEAR_BOOT_CACHES"]) {
             $this->AF->clearTemplateLocationCache();
             $this->AF->clearObjectLocationCache();
             $this->AF->clearPageCache();
+            require_once("lib/ScoutLib/PluginManager.php");
+            \ScoutLib\PluginManager::clearCaches();
         }
 
         $this->AF->logFile("local/logs/metavus.log");
         $this->AF->registerEvent($this->HookableEvents);
         $this->AF->addIncludeDirectories($this->IncludeDirectories);
         $this->AF->doNotUrlFingerprint("%lib/CKEditor%");
+
+        if ($this->AF->logDBLocking()) {
+            Database::setLockLoggingFn(
+                ["\\ScoutLib\\ApplicationFramework", "logDBLock"]
+            );
+        }
 
         # hook fallback image keyword handler
         $this->AF->registerInsertionKeywordCallback(
@@ -489,7 +500,7 @@ class Bootloader
             $this->AF->DoNotCacheCurrentPage();
 
             # set up hook to clear login before running background tasks
-            $LoginClearFunc = function () {
+            $LoginClearFunc = function (): void {
                 $User = User::getAnonymousUser();
                 User::setCurrentUser($User);
             };
@@ -558,7 +569,9 @@ class Bootloader
     }
 
     /**
-     * Load software version number and set software version constants.
+     * Load software version number and set software version constants.  This
+     * method also tells ApplicationFramework to add a "generator" meta tag to
+     * the HTML page header to convey the software name and version.
      * @return void
      */
     private function setSoftwareVersion(): void
@@ -581,13 +594,20 @@ class Bootloader
         if (!defined("CWIS_VERSION")) {
             if (METAVUS_VERSION != "--") {
                 $SplitMVVersion = explode(".", METAVUS_VERSION, 2);
-                $NewCWISVersion = (string)(((int) $SplitMVVersion[0]) + 4)
+                $NewCWISVersion = ((int) $SplitMVVersion[0]) + 4
                         .".".$SplitMVVersion[1];
                 define("CWIS_VERSION", $NewCWISVersion);
             } else {
                 define("CWIS_VERSION", "--");
             }
         }
+
+        # add meta tag to HTML header indicating the software name and version
+        $AF = ApplicationFramework::getInstance();
+        $AF->addMetaTag([
+            "name" => "generator",
+            "content" => "Metavus ".METAVUS_VERSION,
+        ]);
     }
 
     /**
@@ -850,13 +870,6 @@ class Bootloader
                 ]),
                 "View and edit user accounts."
             );
-            $Schema = new MetadataSchema();
-            $SecondaryNav->offerNavItem(
-                "Add Resource",
-                str_replace('$ID', "NEW", $Schema->getEditPage())."&SC=".$Schema->id(),
-                $Schema->authoringPrivileges(),
-                "Create a new resource record."
-            );
             $EmptyPrivilegeSet = new PrivilegeSet([]);
             $SecondaryNav->offerNavItem(
                 "Advanced Search",
@@ -870,6 +883,18 @@ class Bootloader
                 $EmptyPrivilegeSet,
                 "List collections of items."
             );
+            foreach (MetadataSchema::getAllSchemas() as $Schema) {
+                if ($Schema->resourceName() === "User") {
+                    # we don't have an "Add User" page
+                    continue;
+                }
+                $SecondaryNav->offerNavItem(
+                    "Add ".$Schema->resourceName(),
+                    str_replace('$ID', "NEW", $Schema->getEditPage())."&SC=".$Schema->id(),
+                    $Schema->authoringPrivileges(),
+                    "Create a new ".$Schema->name()." record."
+                );
+            }
         }
     }
 

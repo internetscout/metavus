@@ -28,7 +28,7 @@ if (strlen($H_UserName) && (new UserFactory())->userNameExists($H_UserName)) {
     $H_UserName = User::normalizeUserName($H_UserName);
     $TargetUser = new User($H_UserName);
     $H_NumUsersFound = 1;
-} elseif (strlen($H_EMailAddress)) {
+} elseif (strlen($H_EMailAddress) !== 0) {
 # else if e-mail address was supplied
 
     # attempt to find user with specified e-mail address

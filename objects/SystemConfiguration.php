@@ -164,7 +164,7 @@ class SystemConfiguration extends Configuration
             "ForceDefaultActiveUI" => [
                 "Type" => FormUI::FTYPE_FLAG,
                 "Label" => "Set All Users to Default Interface",
-                "GetFunction" => function (string $SettingName) {
+                "GetFunction" => function (string $SettingName): bool {
                     return false;
                 },
                 "SetFunction" => [ $this, "setAllUserInterfacesToDefault" ],
@@ -313,12 +313,38 @@ class SystemConfiguration extends Configuration
                 "Type" => FormUI::FTYPE_NUMBER,
                 "Label" => "System Load Cutoff for Anonymous Searches",
                 "MinVal" => 1,
-                "DefaultFunction" => function () {
+                "DefaultFunction" => function (): int {
                     $CoreCount = StdLib::getNumberOfCpuCores();
                     return ($CoreCount > 0) ? (int)($CoreCount * 1.2) : 8;
                 },
                 "Help" => "When the system laod is above this level, searches"
                         ." by anonymous users will not be allowed.",
+            ],
+            "StrictSearchUrls" => [
+                "Type" => FormUI::FTYPE_FLAG,
+                "Label" => "Strict Search URLs",
+                "Default" => false,
+                "GetFunction" =>  function (string $SettingName): bool {
+                    return file_exists("tmp/htaccess_strict_searches");
+                },
+                "SetFunction" => function (string $SettingName, $Value): void {
+                    $SearchFlagFile = "tmp/htaccess_strict_searches";
+                    if ($Value) {
+                        if (!file_exists($SearchFlagFile)) {
+                            touch($SearchFlagFile);
+                        }
+                    } else {
+                        if (file_exists($SearchFlagFile)) {
+                            unlink($SearchFlagFile);
+                        }
+                    }
+                },
+                "Help" => "Determines if search requests from clients "
+                    ."that have no session cookie and have re-arranged "
+                    ."the order of URL paramters will be blocked. This "
+                    ."can catch automated crawlers that have never visited "
+                    ."any non-search pages on the site and that have sorted "
+                    ."the parameters in the URL."
             ],
             # -------------------------------------------------
             "HEADING-Recommender" => [
@@ -548,6 +574,26 @@ class SystemConfiguration extends Configuration
                                 ." database cache pruning activity will"
                                 ." be logged.",
             ],
+            "LogDBLocking" => [
+                "Type" => FormUI::FTYPE_FLAG,
+                "Label" => "Log Database Locking",
+                "GetFunction" => [$this, "getAFSetting"],
+                "SetFunction" => [$this, "setAFSetting"],
+                "Help" => "When enabled and the current logging level is"
+                                ." set to <i>Info</i> or above, details about"
+                                ." database locking activity will"
+                                ." be logged.",
+            ],
+            "LongDBLockThreshold" => [
+                "Type" => FormUI::FTYPE_NUMBER,
+                "Label" => "Long DB Lock Threshold",
+                "Units" => "milliseconds",
+                "GetFunction" => [$this, "getAFSetting"],
+                "SetFunction" => [$this, "setAFSetting"],
+                "Help" => "DB locks held longer than this will be logged"
+                                ." if <i>Log Database Locking</i> is enabled.",
+                "MinVal" => 1,
+            ],
             "DatabaseSlowQueryThresholdForForeground" => [
                 "Type" => FormUI::FTYPE_NUMBER,
                 "Label" => "Database Slow Query Threshold (Foreground)",
@@ -584,10 +630,10 @@ class SystemConfiguration extends Configuration
                 "Units" => "minutes",
                 "MinVal" => 5,
                 "RecVal" => 30,
-                "GetFunction" => function (string $SettingName) {
+                "GetFunction" => function (string $SettingName): float {
                     return (ApplicationFramework::getInstance())->sessionLifetime() / 60;
                 },
-                "SetFunction" => function (string $SettingName, $Value) {
+                "SetFunction" => function (string $SettingName, $Value): void {
                     (ApplicationFramework::getInstance())->sessionLifetime($Value * 60);
                 },
                 "Help" => "Length of time the site will remember a given user's "
@@ -602,7 +648,7 @@ class SystemConfiguration extends Configuration
                 "GetFunction" => function (string $SettingName) {
                     return (ApplicationFramework::getInstance())->maxTasks();
                 },
-                "SetFunction" => function (string $SettingName, $Value) {
+                "SetFunction" => function (string $SettingName, $Value): void {
                     (ApplicationFramework::getInstance())->maxTasks($Value);
                 },
                 "Help" => "The maximum number of tasks to run in "
@@ -614,10 +660,10 @@ class SystemConfiguration extends Configuration
                 "Units" => "minutes",
                 "MinVal" => 1,
                 "RecVal" => 5,
-                "GetFunction" => function (string $SettingName) {
+                "GetFunction" => function (string $SettingName): float {
                     return (ApplicationFramework::getInstance())->maxExecutionTime() / 60;
                 },
-                "SetFunction" => function (string $SettingName, $Value) {
+                "SetFunction" => function (string $SettingName, $Value): void {
                     (ApplicationFramework::getInstance())->maxExecutionTime($Value * 60);
                 },
             ],

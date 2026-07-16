@@ -66,7 +66,7 @@ class PluginCaller
      * Get full method name as a text string.
      * @return string Method name, including plugin class name.
      */
-    public function getCallbackAsText()
+    public function getCallbackAsText(): string
     {
         return $this->PluginName . "::" . $this->MethodName;
     }

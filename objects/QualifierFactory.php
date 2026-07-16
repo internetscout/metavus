@@ -40,7 +40,7 @@ class QualifierFactory extends ItemFactory
     * @return array IDs of any new qualifiers that were added.
     * @throws InvalidArgumentException If unable to open file.
     */
-    public function importQualifiersFromXmlFile(string $FileName)
+    public function importQualifiersFromXmlFile(string $FileName): array
     {
         $In = new XMLReader();
         $Result = $In->open($FileName);

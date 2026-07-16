@@ -12,75 +12,292 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+/**
+ * Handle post-processing after a page load.
+ * Post-processing task: clear import file and session variables.
+ * @param resource $FilePointer Active file descriptor.
+ * @param bool $ImportComplete True when import is complete.
+ */
+function postProcessingFn($FilePointer, bool $ImportComplete): void
+{
+    if ($ImportComplete) {
+        fclose($FilePointer);
+        # remove temporary uploaded file
+        foreach ([
+            "UserCount", "FSeek", "TempFile", "LineCount", "ErrorMessages",
+            "LastUserName", "DuplicateEntries", "UsersProcessed", "PrivNotFound", "Encrypt"
+        ] as $Var) {
+            unset($_SESSION[$Var]);
+        }
+    }
+}
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_DuplicateEntries)) {
-    throw new Exception("H_DuplicateEntries not defined.");
-}
-if (!isset($H_ErrorMessages)) {
-    throw new Exception("H_ErrorMessages not defined.");
-}
-if (!isset($H_ImportComplete)) {
-    throw new Exception("H_ImportComplete not defined.");
-}
-if (!isset($H_PrivNotFound)) {
-    throw new Exception("H_PrivNotFound not defined.");
-}
-if (!isset($H_UserCount)) {
-    throw new Exception("H_UserCount not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN)) {
+    return;
 }
 
 $AF = ApplicationFramework::getInstance();
 
-$Header = ($H_ImportComplete) ? "Import Completed" : "Importing Users";
-
 $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setIcon("Cross.svg");
 
+# ----- PROCESSING -----------------------------------------------------------
+# initialize variables
+$FSeek = StdLib::getArrayValue($_SESSION, "FSeek", 0);
+$TempFile = StdLib::getFormValue("TF", StdLib::getArrayValue($_SESSION, "TempFile", null));
+$UserCount = StdLib::getArrayValue($_SESSION, "UserCount", 0);
+$ErrorMessages = StdLib::getArrayValue($_SESSION, "ErrorMessages", []);
+$DuplicateEntries = StdLib::getArrayValue($_SESSION, "DuplicateEntries", []);
+$PrivNotFound = StdLib::getArrayValue($_SESSION, "PrivNotFound", []);
+$UsersProcessed = StdLib::getArrayValue($_SESSION, "UsersProcessed", []);
+$LineCount = StdLib::getArrayValue($_SESSION, "LineCount", 0);
+$LastUserName = StdLib::getArrayValue($_SESSION, "LastUserName", null);
+$ImportComplete = false;
+$Encrypt = StdLib::getFormValue("EN", StdLib::getArrayValue($_SESSION, "Encrypt", null));
+
+$FilePointer = fopen($TempFile, 'r');
+if ($FilePointer === false) {
+    throw new Exception("Unable to open import file");
+}
+
+# seek to the next line
+if ($FSeek > 0) {
+    fseek($FilePointer, $FSeek);
+}
+
+# begin import
+$PrivDescriptions = (new PrivilegeFactory())->getPrivileges(true, false);
+$LocalLineCount = 0;
+
+while (!feof($FilePointer) && $LocalLineCount < 500) {
+    # read in line from import file
+    $Line = fgets($FilePointer, 4096);
+    if ($Line === false || strlen($Line) === 0) {
+        continue;
+    }
+
+    # update variables
+    $LocalLineCount++;
+    $LineCount++;
+    $_SESSION["LineCount"] = $LineCount;
+    $FSeek += strlen($Line);
+    $_SESSION["FSeek"] = $FSeek;
+
+    # parse line from import file
+    $Vars = explode("\t", $Line);
+
+    if (feof($FilePointer)) {
+        $ImportComplete = true;
+        break;
+    }
+
+    # should be 14 variables per line
+    if (count($Vars) != 14) {
+        $ErrorMessage = "Error: Wrong number of fields on Line ".$LineCount;
+        $_SESSION["ErrorMessage"] = $ErrorMessage;
+
+        # clean up file pointer, temp file
+        fclose($FilePointer);
+        unlink($TempFile);
+
+        # jump back and display error message
+        $AF->setJumpToPage("ImportUsers");
+        return;
+    }
+
+    # initial the vars
+    $UserName = trim(addslashes($Vars[0]));
+    $UserPassword = $Vars[1];
+    $Email = addslashes($Vars[2]);
+    $WebSite = addslashes($Vars[3]);
+    $RealName = addslashes($Vars[4]);
+    $AddressLineOne = addslashes($Vars[5]);
+    $AddressLineTwo = addslashes($Vars[6]);
+    $City = addslashes($Vars[7]);
+    $State = addslashes($Vars[8]);
+    $Country = addslashes($Vars[9]);
+    $ZipCode = $Vars[10];
+    $ActiveUI = $Vars[11];
+    $BrowsingField = trim($Vars[12]);
+    $PrivDescription = trim($Vars[13]);
+
+    # default UserPassword to UserName if blank
+    if (empty($UserPassword)) {
+        $UserPassword = $UserName;
+    }
+
+    # encrypt the password
+    if ($Encrypt) {
+        $UserPassword = password_hash($UserPassword, PASSWORD_BCRYPT);
+    }
+
+    # check if this is a privilege line
+    if ($LastUserName == $UserName && !empty($PrivDescription)) {
+        # if this privilege line belongs to a duplicate entry,
+        #       save this line as a duplicate entry as well
+        if (isset($UsersProcessed[$UserName]) && $UsersProcessed[$UserName] === 1) {
+            $DuplicateEntries[$LineCount] = $Line;
+        } elseif (!array_key_exists($UserName, $ErrorMessages)) {
+            # if this user was not created, its privilege lines should also be skipped
+            $Privilege = array_search($PrivDescription, $PrivDescriptions);
+
+            # if a privilege is not found in the privilege factory,
+            #       notify admin about this failure
+            if ($Privilege === false) {
+                $PrivNotFound[$LineCount] = $Line;
+            } else {
+                $ThisUser = new User($UserName);
+                $ThisUser->grantPriv((int)$Privilege);
+            }
+        }
+        continue;
+    }
+
+    # cache username for privileges
+    $LastUserName = $UserName;
+
+    # only process the 1st entry if there are duplicate entries (same username)
+    if (array_key_exists($UserName, $UsersProcessed)) {
+        $DuplicateEntries[$LineCount] = $Line;
+        $UsersProcessed[$UserName] = 1;
+        continue;
+    } else {
+        $UsersProcessed[$UserName] = 0;
+    }
+
+    # attempt to create user
+    $UserFactory = new UserFactory();
+    $User = $UserFactory->createNewUser(
+        $UserName,
+        $UserPassword,
+        $UserPassword,
+        $Email,
+        $Email
+    );
+
+    # check if user creation succeeded, if failed, save error messages to print
+    if (!($User instanceof User)) {
+        $ErrorMessages[$UserName]["LineNumber"] = $LineCount;
+        foreach ($User as $ErrorCode) {
+            $ErrorMessages[$UserName]["Messages"][] =
+                User::getStatusMessageForCode($ErrorCode);
+        }
+        continue;
+    }
+
+    $User->set("WebSite", isset($Website) ? $Website : "");
+    $User->set("AddressLineOne", $AddressLineOne);
+    $User->set("AddressLineTwo", $AddressLineTwo);
+    $User->set("City", $City);
+    $User->set("State", $State);
+    $User->set("ZipCode", $ZipCode);
+    $User->set("Country", $Country);
+    $User->set("RealName", $RealName);
+    $User->set("ActiveUI", $ActiveUI);
+
+    $User->isActivated(true);
+
+    if (!isset($_POST["F_PasswordFlag"]) || $_POST["F_PasswordFlag"] != 1) {
+        $User->setEncryptedPassword($UserPassword);
+    }
+
+    # add in privilege if set
+    if (!empty($PrivDescription)) {
+        $Privilege = array_search($PrivDescription, $PrivDescriptions);
+        # if a privilege is not found in the privilege factory,
+        #       notify admin about this failure
+        if ($Privilege === false) {
+            $PrivNotFound[$LineCount] = $Line;
+        }
+
+        $ThisUser = new User($UserName);
+        $ThisUser->grantPriv((int)$Privilege);
+    }
+
+    # keep track of number of users added
+    $UserCount++;
+    $_SESSION["UserCount"] = $UserCount;
+}
+
+# end of file reached?
+if (feof($FilePointer)) {
+    $ImportComplete = true;
+
+    # annihilate uploaded file
+    $ToDelete = new File($_SESSION["FileId"]);
+    $ToDelete->destroy();
+    unset($_SESSION["FileId"]);
+}
+$_SESSION["UserCount"] = $UserCount;
+$_SESSION["FSeek"] = $FSeek;
+$_SESSION["TempFile"] = $TempFile;
+$_SESSION["ErrorMessages"] = $ErrorMessages;
+$_SESSION["UsersProcessed"] = $UsersProcessed;
+$_SESSION["DuplicateEntries"] = $DuplicateEntries;
+$_SESSION["PrivNotFound"] = $PrivNotFound;
+$_SESSION["LastUserName"] = $LastUserName;
+$_SESSION["Encrypt"] = $Encrypt;
+#  Time to auto-refresh?
+if (!$ImportComplete) {
+    $AF->setJumpToPage("index.php?P=ImportUsersExecute", 1);
+}
+
+# register post-processing function with the application framework
+$AF->addPostProcessingCall(
+    __NAMESPACE__."\\postProcessingFn",
+    $FilePointer,
+    $ImportComplete
+);
+
+$Header = $ImportComplete ? "Import Completed" : "Importing Users";
+
 # ----- DISPLAY --------------------------------------------------------------
+$AF->setPageTitle("Import Users");
 ?>
 
 <h1><?= $Header ?></h1>
 
-<p><b><?= $H_UserCount ?> users added successfully</b>.</p>
+<p><b><?= $UserCount ?> users added successfully</b>.</p>
 
-<?PHP if (count($H_ErrorMessages)) { ?>
+<?PHP if (count($ErrorMessages) !== 0) { ?>
     <h3>These users were not imported because an error(s) has occurred:</h3>
-    <?PHP foreach ($H_ErrorMessages as $UserName => $Info) { ?>
+    <?PHP foreach ($ErrorMessages as $UserName => $Info) { ?>
         <p><em><?= $UserName." (Line ".$Info["LineNumber"].")" ?></em></p>
         <ul>
-
-        <?PHP foreach ($Info["Messages"] as $Message) { ?>
-            <li><?= $Message ?></li>
-        <?PHP } ?>
-
+            <?PHP foreach ($Info["Messages"] as $Message) { ?>
+                <li><?= $Message ?></li>
+            <?PHP } ?>
         </ul>
 
     <?PHP } ?>
 <?PHP } ?>
 
-<?PHP if (count($H_DuplicateEntries)) { ?>
+<?PHP if (count($DuplicateEntries) !== 0) { ?>
     <h3>Duplicate lines (same username) detected in this file.
         Only the first occurrence was processed. These lines were not processed:</h3>
     <ul>
-        <?PHP foreach ($H_DuplicateEntries as $LineNumber => $Entry) { ?>
+        <?PHP foreach ($DuplicateEntries as $LineNumber => $Entry) { ?>
             <li><?= "Line ".$LineNumber." | ".$Entry ?></li>
         <?PHP } ?>
     </ul>
 <?PHP } ?>
 
-<?PHP if (count($H_PrivNotFound)) { ?>
+<?PHP if (count($PrivNotFound) !== 0) { ?>
     <h3>These privilege lines were not used because the privilege was not found:</h3>
     <ul>
-        <?PHP foreach ($H_PrivNotFound as $LineNumber => $Entry) { ?>
+        <?PHP foreach ($PrivNotFound as $LineNumber => $Entry) { ?>
             <li><?= "Line ".$LineNumber." | ".$Entry ?></li>
         <?PHP } ?>
     </ul>
 <?PHP } ?>
 
-<?PHP if (!$H_ImportComplete) { ?>
-<form name="importusers" method="post" action="index.php?P=ImportUsersExecute">
-    <?= $CancelButton->getHtml(); ?>
-</form>
-
+<?PHP if (!$ImportComplete) { ?>
+    <form name="importusers" method="post" action="index.php?P=ImportUsersExecute">
+        <?= $CancelButton->getHtml(); ?>
+    </form>
 <?PHP } ?>

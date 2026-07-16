@@ -2,13 +2,14 @@
 #
 #   FILE:  Page.php (Pages plugin)
 #
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu/cwis/
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\Pages;
 use Exception;
+use Metavus\File;
 use Metavus\Image;
 use Metavus\ImageFactory;
 use Metavus\MetadataField;
@@ -17,10 +18,10 @@ use Metavus\Plugins\Pages;
 use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\TabbedContentUI;
+use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
-use ScoutLib\User;
 
 /**
  * Class representing individual pages in the Pages plugin.
@@ -83,13 +84,15 @@ class Page extends Record
      * @param bool $Reset When TRUE Controlled Names, Classifications,
      *       and Options will be set to contain *ONLY* the contents of
      *       NewValue, rather than appending $NewValue to the current value.
+     * @return bool TRUE if the value for the field was changed in some fashion,
+     *      otherwise FALSE.
      * @throws \Exception When attempting to set a value for a field that is
      *       part of a different schema than the resource.
      * @throws \InvalidArgumentException When attempting to set a controlled
      *       name with an invalid ID.
      * @see Record::set().
      */
-    public function set($Field, $NewValue, bool $Reset = false)
+    public function set($Field, $NewValue, bool $Reset = false): bool
     {
         $Field = $this->normalizeFieldArgument($Field);
 
@@ -98,12 +101,60 @@ class Page extends Record
             $NewValue = ImageFactory::convertUrlsToKeywords($NewValue);
         }
 
-        parent::set($Field, $NewValue, $Reset);
+        if ($Field->type() == MetadataSchema::MDFTYPE_FILE) {
+            $PreviousValue = parent::get($Field);
+        }
+
+        $ValueWasChanged = parent::set($Field, $NewValue, $Reset);
+
+        # if no changes, nothing else to do
+        if ($ValueWasChanged === false) {
+            return $ValueWasChanged;
+        }
 
         if ($Field->name() == "Clean URL") {
             Pages::getInstance(true)
                 ->clearCaches();
         }
+
+        # handle updates to file fields
+        if ($Field->type() == MetadataSchema::MDFTYPE_FILE) {
+            # normalize incoming value
+            $NewValue = $this->normalizeValueToItemIds($NewValue, $Field);
+
+            # Record::set() duplicates files, so the FileIDs saved in the record
+            # won't match the ones created when the file was uploaded and we need
+            # to figure out the new IDs to update any links to the uploaded files
+            # in the Content field
+
+            # get the FileIDs of new uploaded files
+            $UpdatedValue = parent::get($Field);
+            $AddedFileIds = array_diff($NewValue, array_keys($UpdatedValue));
+
+            # if there were no new files, nothing to do
+            if (count($AddedFileIds) == 0) {
+                return $ValueWasChanged;
+            }
+
+            # match up the files by name (assumption here is that if two files
+            # have the same name they are probably duplicates of the
+            # same file and so it does not matter which one we link to)
+            $FileNameMap = array_flip($UpdatedValue);
+            $Content = $this->get("Content");
+            foreach ($AddedFileIds as $FileId) {
+                $UploadedFile = new File($FileId);
+                $RecordFile = new File($FileNameMap[$UploadedFile->name()]);
+                $Content = str_replace(
+                    $UploadedFile->getLink(),
+                    $RecordFile->getLink(),
+                    $Content
+                );
+            }
+
+            $this->set("Content", $Content);
+        }
+
+        return $ValueWasChanged;
     }
 
     /**
@@ -155,7 +206,7 @@ class Page extends Record
      *       event will be allowed to change the result.
      * @return bool TRUE if the user can view the page and FALSE otherwise
      */
-    public function userCanView(User $User, bool $AllowHooksToModify = true): bool
+    public function userCanView($User, bool $AllowHooksToModify = true): bool
     {
         # construct a key to use for our permissions cache
         $CacheKey = "UserCanView".$User->id();
@@ -303,15 +354,20 @@ class Page extends Record
             if (preg_match('%<h2 class="mv-tab-start">(.*)</h2>%', $Line, $Matches)) {
                 # start a new tab set if we do not have one open
                 $TabUI = $TabUI ?? new TabbedContentUI();
+                $TabTitle = strip_tags($Matches[1]);
+                $TabIndex = strtolower(
+                    preg_replace("/[^A-Za-z0-9]/", "", $TabTitle)
+                );
 
                 # begin new tab section
-                $TabUI->beginTab(strip_tags($Matches[1]));
+                $TabUI->beginTab($TabTitle);
             # else if this is a tab end marker
             } elseif (preg_match('%<h4 class="mv-tab-end">(.*)</h4>%', $Line, $Matches)) {
                 # if we have an open tab set
                 if (isset($TabUI)) {
                     # output tab set content
                     $TabSetIndex++;
+
                     $TabUI->display("mv-tabset-".$TabSetIndex);
 
                     # close tab set

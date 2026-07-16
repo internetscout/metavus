@@ -349,7 +349,7 @@ class OAIPMHServer extends Plugin
         $Array = [];
 
         $Value = trim((string)$Xml);
-        if (!strlen($Value)) {
+        if (strlen($Value) === 0) {
             $Value = null;
         }
 
@@ -437,17 +437,17 @@ class OAIPMHServer extends Plugin
                 throw new Exception("Failed to read legacy OAI configuration from the database.");
             }
 
-            if (strlen(trim($OldConfig["OaiIdDomain"]))) {
+            if (strlen(trim($OldConfig["OaiIdDomain"])) !== 0) {
                 $RepDescr["IDDomain"] = $OldConfig["OaiIdDomain"];
             }
-            if (strlen(trim($OldConfig["OaiIdPrefix"]))) {
+            if (strlen(trim($OldConfig["OaiIdPrefix"])) !== 0) {
                 $RepDescr["IDPrefix"] = $OldConfig["OaiIdPrefix"];
             }
             if (($OldConfig["OaiDateGranularity"] == "DATE")
                     || ($OldConfig["OaiDateGranularity"] == "DATETIME")) {
                 $RepDescr["DateGranularity"] = $OldConfig["OaiDateGranularity"];
             }
-            if (strlen(trim($OldConfig["OaiEarliestDate"]))) {
+            if (strlen(trim($OldConfig["OaiEarliestDate"])) !== 0) {
                 $RepDescr["EarliestDate"] = $OldConfig["OaiEarliestDate"];
             }
             $this->setConfigSetting("RepositoryDescr", $RepDescr);
@@ -606,11 +606,11 @@ class OAIPMHServer extends Plugin
      * @param string $FormatNameSuffix Format name suffix.
      * @param string $BaseUrl OAI Base Url.
      */
-    private function addNativeFormat($FormatNameSuffix, $BaseUrl): void
+    private function addNativeFormat(string $FormatNameSuffix, string $BaseUrl): void
     {
         # set up format description
         $FormatNameSuffix = trim($FormatNameSuffix);
-        if (!strlen($FormatNameSuffix)) {
+        if (strlen($FormatNameSuffix) === 0) {
             $FormatNameSuffix = "xxx";
         }
         $Format["FormatName"] = "native_".$FormatNameSuffix;
@@ -630,7 +630,7 @@ class OAIPMHServer extends Plugin
         $Fields = $Schema->getFields();
         foreach ($Fields as $FieldId => $Field) {
             # normalize metadata field name to create OAI element name
-            $ElementName = preg_replace("/[^a-zA-Z0-9]/", "", $Field->Name());
+            $ElementName = preg_replace("/[^a-zA-Z0-9]/", "", $Field->name());
             $ElementName = lcfirst($ElementName);
 
             # add element mapping to format
@@ -650,7 +650,7 @@ class OAIPMHServer extends Plugin
      * @param array $Element Associative array with element info.
      * @return array Recommended mappings.
      */
-    private function getRecommendedMappingForElement($Element) : array
+    private function getRecommendedMappingForElement(array $Element) : array
     {
         if (!isset($Element["recommendedMapping"])) {
             return [];

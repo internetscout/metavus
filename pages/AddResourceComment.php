@@ -156,9 +156,9 @@ switch ($ButtonPushed) {
     case "Add Comment":
         # if "F_Body" is set, we came from Preview and it was already validated
         # otherwise validate form inputs and bail if any are invalid
-        if (strlen(StdLib::getFormValue("F_Body", ""))) {
+        if (strlen(StdLib::getFormValue("F_Body", "")) !== 0) {
             $CommentBody = StdLib::getFormValue("F_Body");
-        } elseif ($H_FormUI->validateFieldInput()) {
+        } elseif ($H_FormUI->validateFieldInput() !== 0) {
             return;
         } else {
             $CommentBody = $H_FormUI->getNewValuesFromForm()["Comment"];
@@ -176,7 +176,7 @@ switch ($ButtonPushed) {
         return;
     case "Preview":
         # validate form inputs and bail if any are invalid
-        if ($H_FormUI->validateFieldInput()) {
+        if ($H_FormUI->validateFieldInput() !== 0) {
             return;
         }
         $H_Body = $H_FormUI->getNewValuesFromForm()["Comment"];
@@ -187,9 +187,9 @@ switch ($ButtonPushed) {
     case "Update Comment":
         # if "F_Body" is set, we came from Preview and it was already validated
         # otherwise validate form inputs and bail if any are invalid
-        if (strlen(StdLib::getFormValue("F_Body", ""))) {
+        if (strlen(StdLib::getFormValue("F_Body", "")) !== 0) {
             $CommentBody = StdLib::getFormValue("F_Body");
-        } elseif ($H_FormUI->validateFieldInput()) {
+        } elseif ($H_FormUI->validateFieldInput() !== 0) {
             return;
         } else {
             $CommentBody = $H_FormUI->getNewValuesFromForm()["Comment"];

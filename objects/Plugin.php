@@ -3,7 +3,7 @@
 #   FILE:  Plugin.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -14,7 +14,7 @@ use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
 /**
- * This class extends the base Plugin class with CWIS-specific functionality.
+ * This class extends the base Plugin class with Metavus-specific functionality.
  */
 abstract class Plugin extends \ScoutLib\Plugin
 {
@@ -91,7 +91,7 @@ abstract class Plugin extends \ScoutLib\Plugin
         }
 
         # sort menus by plugin name
-        uksort($AllEntries, function ($A, $B) use ($PluginMgr) {
+        uksort($AllEntries, function ($A, $B) use ($PluginMgr): int {
             return $PluginMgr->getPlugin((string)$A)->getName()
                     <=> $PluginMgr->getPlugin((string)$B)->getName();
         });
@@ -193,7 +193,7 @@ abstract class Plugin extends \ScoutLib\Plugin
         # for each field in schema
         foreach ($Schema->getFields() as $FieldId => $Field) {
             # drop field if we own it
-            if ($Field->owner() == static::getBaseName()) {
+            if ($Field->isOwnedByPlugin() && $Field->getOwner() == static::getBaseName()) {
                 $Schema->dropField($FieldId);
             }
         }

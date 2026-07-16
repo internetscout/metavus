@@ -57,7 +57,7 @@ if (!in_array($Field->type(), $ValidTypes)) {
 $NumResults = StdLib::getFormValue("N", $NumberOfResults);
 $StartIndex = StdLib::getFormValue("SI", 0);
 $Exclusions = StdLib::getFormValue("EX", "");
-$Exclusions = strlen($Exclusions) ? explode("-", $Exclusions) : [];
+$Exclusions = strlen($Exclusions) !== 0 ? explode("-", $Exclusions) : [];
 
 $SearchString = StdLib::getFormValue("SS", "");
 

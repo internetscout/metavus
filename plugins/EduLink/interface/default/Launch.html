@@ -163,7 +163,7 @@ function printRecord(
     }
 
     # otherwise, embed each file
-    foreach ($Files as $Id => $File) {
+    foreach ($Files as $File) {
         $MimeType = $File->getMimeType();
         $FileUrl = $AF->baseUrl().$File->getLink();
 

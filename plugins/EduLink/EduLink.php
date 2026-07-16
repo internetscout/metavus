@@ -3,7 +3,7 @@
 #   FILE:  EduLink.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -22,13 +22,16 @@ use Metavus\Plugins\EduLink\LTIDatabase;
 use Metavus\Plugins\Folders\Folder;
 use Metavus\Plugins\Folders\FolderFactory;
 use Metavus\Plugins\MetricsRecorder;
+use Metavus\PrivilegeSet;
 use Metavus\Record;
 use Metavus\RecordFactory;
 use Metavus\SearchParameterSet;
 use Metavus\User;
 use Metavus\UserFactory;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\CachingHttpClient;
 use ScoutLib\Database;
+use ScoutLib\StdLib;
 
 /**
  * Plugin to support LTI Deep Linking, a protocol for embedding learning
@@ -86,7 +89,7 @@ final class EduLink extends Plugin
     public function register(): void
     {
         $this->Name = "EduLink";
-        $this->Version = "1.1.0";
+        $this->Version = "1.1.5";
         $this->Description = "Expose resources to Learning Management Systems using "
             ."the Learning Tools Interopability Deep Linking standard.";
         $this->Author = "Internet Scout Research Group";
@@ -94,6 +97,7 @@ final class EduLink extends Plugin
         $this->Email = "support@metavus.net";
         $this->Requires = [
             "MetavusCore" => "1.2.0",
+            "BotDetector" => "1.4.0",
             "MetricsRecorder" => "1.2.16",
         ];
         $this->EnabledByDefault = false;
@@ -248,6 +252,14 @@ final class EduLink extends Plugin
             "Default" => [PRIV_SYSADMIN],
         ];
 
+        $this->CfgSetup["ViewMetricsPrivs"] = [
+            "Type" => FormUI::FTYPE_PRIVILEGES,
+            "Label" => "View Metrics Privileges",
+            "Help" => "Privileges required to access EduLink registration and "
+                ."metrics pages.",
+            "Default" => PRIV_COLLECTIONADMIN,
+        ];
+
         $this->CfgSetup["CacheTTL"] = [
             "Type" => FormUI::FTYPE_NUMBER,
             "Label" => "Cache Lifetime",
@@ -300,7 +312,7 @@ final class EduLink extends Plugin
             $this->setConfigSetting("PublicKey", $KeyDetails["key"]);
         }
 
-        return $this->createMissingTables($this->SqlTables);
+        return $this->createMissingTables(self::SQL_TABLES);
     }
 
     /**
@@ -310,7 +322,7 @@ final class EduLink extends Plugin
      */
     public function uninstall(): ?string
     {
-        return $this->dropTables($this->SqlTables);
+        return $this->dropTables(self::SQL_TABLES);
     }
 
     /**
@@ -354,8 +366,14 @@ final class EduLink extends Plugin
 
         $this->addAdminMenuEntry(
             "ListRegistrations",
-            "Learning Tools Interoperability (LTI) Registrations",
-            [ PRIV_SYSADMIN, PRIV_COLLECTIONADMIN ]
+            "EduLink Registrations",
+            array_merge([PRIV_SYSADMIN], $this->getViewMetricsPrivs())
+        );
+
+        $this->addAdminMenuEntry(
+            "Metrics",
+            "EduLink Metrics",
+            array_merge([PRIV_SYSADMIN], $this->getViewMetricsPrivs())
         );
 
         return null;
@@ -369,6 +387,7 @@ final class EduLink extends Plugin
     {
         return [
             "EVENT_FIELD_VIEW_PERMISSION_CHECK" => "fieldViewCheck",
+            "EVENT_DAILY" => "performDailyMaintenance",
         ];
     }
 
@@ -413,6 +432,24 @@ final class EduLink extends Plugin
         return ["CanView" => $CanView];
     }
 
+    /**
+     * Perform daily maintenance.
+     */
+    public function performDailyMaintenance(): void
+    {
+        $DB = new Database();
+
+        # delete nonces older than one day
+        # IMS Security Framework sect 5.1.3 item 9 specifies that
+        # the time window for retaining nonces is tool defined
+        # @see https://www.imsglobal.org/spec/security/v1p0/#authentication-response-validation
+        $ExpirationDate = date(StdLib::SQL_DATE_FORMAT, strtotime("24 hours ago"));
+        $DB->query(
+            "DELETE FROM EduLink_Nonces WHERE CreatedAt < '".$ExpirationDate."'"
+        );
+    }
+
+
     # ---- CALLABLE METHODS --------------------------------------------------
 
     /**
@@ -440,30 +477,85 @@ final class EduLink extends Plugin
     }
 
     /**
-     * Get the list of folders that should be displayed to all users.
+     * Get privileges required to access EduLink metrics/admin pages.
+     * @return array<int> Privilege IDs.
+     */
+    public function getViewMetricsPrivs() : array
+    {
+        $Privs = $this->getConfigSetting("ViewMetricsPrivs");
+        if ($Privs instanceof PrivilegeSet) {
+            return $Privs->getPrivileges();
+        }
+        if ($Privs === null) {
+            return [PRIV_COLLECTIONADMIN];
+        }
+        return is_array($Privs) ? $Privs : [$Privs];
+    }
+
+    /**
+     * Get the list of folders that should be displayed.
      * @return array Folder IDs.
      */
     public function getFolderList() : array
     {
         $Privs = $this->getConfigSetting("FolderPublisherPrivs")->getPrivileges();
-        if (count($Privs) == 0) {
-            return [];
+        $CacheTTL = 60 * $this->getConfigSetting("CacheTTL");
+        $Cache = self::getDataCache();
+
+        $CacheKey = "getFolderList-FolderIds";
+
+        # get the list of public folders owned by people with the
+        # publisher privs
+        $FolderIds = $Cache->get($CacheKey);
+        if ($FolderIds === null) {
+            # if no privs were configured that enable publishing, then
+            # then nobody can publish
+            if (count($Privs) == 0) {
+                $FolderIds = [];
+            } else {
+                $UserIds = array_keys(
+                    (new UserFactory())->getUsersWithPrivileges($Privs)
+                );
+
+                # if no users have the specified privs, then no
+                # folders to list
+                if (count($UserIds) == 0) {
+                    $FolderIds = [];
+                } else {
+                    $FolderIds = FolderFactory::getSharedFoldersOwnedByUsers(
+                        $UserIds
+                    );
+
+                    $FolderIds = $this->filterOutFoldersWithNoUsableItems(
+                        $FolderIds
+                    );
+                }
+            }
+
+            $Cache->set($CacheKey, $FolderIds, $CacheTTL);
         }
 
-        $UserIds = array_keys(
-            (new UserFactory())->getUsersWithPrivileges($Privs)
-        );
-        if (count($UserIds) == 0) {
-            return [];
+        # if a user is logged in, include their folders as well
+        $User = User::getCurrentUser();
+        if ($User->isLoggedIn()) {
+            $CacheKey = "getFolderList-FolderIds-".$User->id();
+
+            $UserFolderIds = $Cache->get($CacheKey);
+            if ($UserFolderIds === null) {
+                $UserFolderIds = (new FolderFactory($User->id()))
+                    ->getResourceFolder()
+                    ->getItemIds();
+                $UserFolderIds = $this->filterOutFoldersWithNoUsableItems(
+                    $UserFolderIds
+                );
+                $Cache->set($CacheKey, $UserFolderIds, $CacheTTL);
+            }
+
+            $FolderIds = array_merge(
+                $FolderIds,
+                $UserFolderIds
+            );
         }
-
-        $FolderIds = FolderFactory::getSharedFoldersOwnedByUsers(
-            $UserIds
-        );
-
-        $FolderIds = $this->filterOutFoldersWithNoUsableItems(
-            $FolderIds
-        );
 
         return $FolderIds;
     }
@@ -590,7 +682,7 @@ final class EduLink extends Plugin
      * @param array $FolderIds List of folders.
      * @return array Folders that contain public items.
      */
-    public function filterOutFoldersWithNoUsableItems(array $FolderIds)
+    public function filterOutFoldersWithNoUsableItems(array $FolderIds): array
     {
         $Result = [];
         $RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
@@ -700,7 +792,7 @@ final class EduLink extends Plugin
      * Get the LTI_Message_Launch object that represents a newly started LTI request.
      * @return \IMSGlobal\LTI\LTI_Message_Launch LTI object.
      */
-    public function getNewLaunch()
+    public function getNewLaunch(): \IMSGlobal\LTI\LTI_Message_Launch
     {
         $this->loadLtiLibraries();
         return \IMSGlobal\LTI\LTI_Message_Launch::new(
@@ -741,11 +833,12 @@ final class EduLink extends Plugin
      * Get the LTI_OIDC_Login object that represents an OpenId Connect Login request.
      * @return \IMSGlobal\LTI\LTI_OIDC_Login OIDC object.
      */
-    public function getLogin()
+    public function getLogin(): \IMSGlobal\LTI\LTI_OIDC_Login
     {
         $this->loadLtiLibraries();
         return \IMSGlobal\LTI\LTI_OIDC_Login::new(
-            new LTIDatabase()
+            new LTIDatabase(),
+            new LTICache()
         );
     }
 
@@ -891,23 +984,8 @@ final class EduLink extends Plugin
             return null;
         }
 
-        $DB = new Database();
-        $CacheTTL = $this->getConfigSetting("CacheTTL");
-
-        $DB->query(
-            "DELETE FROM Edulink_SearchResultsCache "
-            ."WHERE CachedAt < (NOW() - INTERVAL ".$CacheTTL." MINUTE)"
-        );
-
-        $CacheKey = md5($Params->data());
-
-        $Data = $DB->queryValue(
-            "SELECT Content FROM EduLink_SearchResultsCache "
-            ."WHERE Fingerprint='".$CacheKey."'",
-            "Content"
-        );
-
-        return !is_null($Data) ? unserialize($Data) : null;
+        $CacheKey = "SearchResults-".md5($Params->data());
+        return $this->getDataCache()->get($CacheKey);
     }
 
     /**
@@ -920,21 +998,9 @@ final class EduLink extends Plugin
         SearchParameterSet $Params,
         array $SearchResults
     ) : void {
-        $CacheKey = md5($Params->data());
-        $Data = serialize($SearchResults);
-
-        $DB = new Database();
-
-        $DB->query("LOCK TABLES EduLink_SearchResultsCache WRITE");
-        $DB->query(
-            "DELETE FROM EduLink_SearchResultsCache WHERE Fingerprint = '".$CacheKey."'"
-        );
-
-        $DB->query(
-            "INSERT INTO EduLink_SearchResultsCache (Fingerprint, Content, CachedAt)"
-            ." VALUES ('".$CacheKey."','".$DB->escapeString($Data)."', NOW())"
-        );
-        $DB->query("UNLOCK TABLES");
+        $CacheKey = "SearchResults-".md5($Params->data());
+        $CacheTTL = 60 * $this->getConfigSetting("CacheTTL");
+        $this->getDataCache()->set($CacheKey, $SearchResults, $CacheTTL);
     }
 
     /**
@@ -1087,13 +1153,8 @@ final class EduLink extends Plugin
      */
     public function commandClearCaches(array $Args) : void
     {
-        $DB = new Database();
-        $DB->query(
-            "DELETE FROM EduLink_SearchResultsCache"
-        );
-        $DB->query(
-            "DELETE FROM EduLink_HtmlCache"
-        );
+        $this->getDataCache()->clear();
+
         print "Caches for EduLink cleared.\n";
     }
 
@@ -1127,20 +1188,8 @@ final class EduLink extends Plugin
             return null;
         }
 
-        $DB = new Database();
-        $CacheTTL = $this->getConfigSetting("CacheTTL");
-
-        $DB->query(
-            "DELETE FROM EduLink_HtmlCache "
-                ."WHERE CachedAt < (NOW() - INTERVAL ".$CacheTTL." MINUTE)"
-        );
-
-        $CacheKey = $this->getCacheKey($CacheType, $RecordList);
-        return $DB->queryValue(
-            "SELECT Content FROM EduLink_HtmlCache "
-                ."WHERE Fingerprint='".$CacheKey."'",
-            "Content"
-        );
+        $CacheKey = "HTML-".$this->getCacheKey($CacheType, $RecordList);
+        return $this->getDataCache()->get($CacheKey);
     }
 
     /**
@@ -1154,18 +1203,9 @@ final class EduLink extends Plugin
         array $RecordList,
         string $Html
     ) : void {
-        $CacheKey = $this->getCacheKey($CacheType, $RecordList);
-
-        $DB = new Database();
-        $DB->query("LOCK TABLES EduLink_HtmlCache WRITE");
-        $DB->query(
-            "DELETE FROM EduLink_HtmlCache WHERE Fingerprint = '".$CacheKey."'"
-        );
-        $DB->query(
-            "INSERT INTO EduLink_HtmlCache (Fingerprint, Content, CachedAt)"
-            ." VALUES ('".$CacheKey."','".$DB->escapeString($Html)."', NOW())"
-        );
-        $DB->query("UNLOCK TABLES");
+        $CacheKey = "HTML-".$this->getCacheKey($CacheType, $RecordList);
+        $CacheTTL = 60 * $this->getConfigSetting("CacheTTL");
+        $this->getDataCache()->set($CacheKey, $Html, $CacheTTL);
     }
 
     /**
@@ -1238,7 +1278,7 @@ final class EduLink extends Plugin
      * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
      * phpcs:enable
      */
-    private function checkEmbeddingHttpHeaders($Url): bool
+    private function checkEmbeddingHttpHeaders(string $Url): bool
     {
         $Context = curl_init();
 
@@ -1369,6 +1409,15 @@ final class EduLink extends Plugin
         foreach ($LibLoaders as $Loader) {
             require_once(__DIR__."/lib/".$Loader);
         }
+
+        $CachingHttpClient = new CachingHttpClient(
+            "EduLink/".$this->getVersion()
+            ." Metavus/".METAVUS_VERSION
+        );
+
+        \IMSGlobal\LTI\LTI_Message_Launch::set_fetch_url_callback(
+            [$CachingHttpClient, "fetchUrl"]
+        );
     }
 
     /**
@@ -1390,16 +1439,18 @@ final class EduLink extends Plugin
         }
     }
 
-    private $SqlTables = [
+    public const SQL_TABLES = [
         "Registrations" => "CREATE TABLE EduLink_Registrations (
             Id INT NOT NULL AUTO_INCREMENT,
             LMS TEXT,
+            InstitutionName TEXT,
             ContactEmail TEXT,
             Issuer TEXT,
             ClientId TEXT,
             AuthLoginUrl TEXT,
             AuthTokenUrl TEXT,
             KeySetUrl TEXT,
+            IsInternal INT DEFAULT 0,
             SearchParameters BLOB,
             INDEX Index_Id (Id),
             INDEX Index_Is (Issuer(32))
@@ -1417,8 +1468,10 @@ final class EduLink extends Plugin
             Id INT NOT NULL AUTO_INCREMENT,
             Nonce TEXT,
             SeenAt TIMESTAMP,
+            CreatedAt TIMESTAMP,
             INDEX Index_I (Id),
             INDEX Index_SA (SeenAt),
+            INDEX Index_CA (CreatedAt),
             UNIQUE UIndex_N (Nonce(32))
         )",
         "CanEmbedUrl" => "CREATE TABLE EduLink_CanEmbedUrl (
@@ -1429,24 +1482,6 @@ final class EduLink extends Plugin
             INDEX Index_I (Id),
             INDEX Index_CA (CheckedAt),
             UNIQUE UIndex_U (Url(32))
-        )",
-        "HtmlCache" => "CREATE TABLE EduLink_HtmlCache (
-            Id INT NOT NULL AUTO_INCREMENT,
-            Fingerprint TEXT,
-            Content MEDIUMBLOB,
-            CachedAt TIMESTAMP,
-            INDEX Index_I (Id),
-            INDEX Index_CA (CachedAt),
-            UNIQUE UIndex_F (Fingerprint(32))
-        )",
-        "SearchResultsCache" => "CREATE TABLE EduLink_SearchResultsCache (
-            Id INT NOT NULL AUTO_INCREMENT,
-            Fingerprint TEXT,
-            Content MEDIUMBLOB,
-            CachedAt TIMESTAMP,
-            INDEX Index_I (Id),
-            INDEX Index_CA (CachedAt),
-            UNIQUE UIndex_F (Fingerprint(32))
         )",
     ];
 

@@ -138,7 +138,7 @@ class Blog extends Plugin
     public function register()
     {
         $this->Name = "Blog";
-        $this->Version = "1.0.26";
+        $this->Version = "1.0.28";
         $this->Description = "Adds blog functionality.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "http://metavus.net";
@@ -352,6 +352,20 @@ class Blog extends Plugin
             [$this, "resourceEdited"]
         );
 
+        $Mailer = Mailer::getInstance();
+
+        $Templates = [
+            "NotificationTemplate",
+            "SubscriptionConfirmationTemplate",
+            "UnsubscriptionConfirmationTemplate",
+        ];
+        foreach ($Templates as $Template) {
+            $TemplateId = $this->getConfigSetting($Template);
+            if ($TemplateId != -1) {
+                $Mailer->addTemplateUser($TemplateId, $this->Name);
+            }
+        }
+
         # report success
         return null;
     }
@@ -364,7 +378,7 @@ class Blog extends Plugin
     {
         $IntConfig = InterfaceConfiguration::getInstance();
 
-        # setup the default privileges for authoring and editing
+        # set up the default privileges for authoring and editing
         $DefaultPrivs = new PrivilegeSet();
         $DefaultPrivs->addPrivilege(PRIV_NEWSADMIN);
         $DefaultPrivs->addPrivilege(PRIV_SYSADMIN);
@@ -384,6 +398,7 @@ class Blog extends Plugin
         );
         $Schema->setItemClassName("Metavus\\Plugins\\Blog\\Entry");
         $Schema->setEditPage("index.php?P=EditResource&ID=\$ID");
+        $Schema->setOwnerToPlugin($this);
         $this->setConfigSetting("MetadataSchemaId", $Schema->id());
 
         # populate our new schema with fields from XML file
@@ -409,7 +424,7 @@ class Blog extends Plugin
             );
         }
 
-        # disable the subscribe field until an notification e-mail template is
+        # disable the subscribe field until a notification e-mail template is
         # selected
         $SubscribeField = $UserSchema->getField(self::SUBSCRIPTION_FIELD_NAME);
         $SubscribeField->enabled(false);
@@ -607,7 +622,7 @@ class Blog extends Plugin
      * Get list of blogs that can be used for email notifications.
      * @return array List of blogs.
      */
-    public function getNotificationBlogOptions()
+    public function getNotificationBlogOptions(): array
     {
         $Options = $this->getAvailableBlogs()
             + [-1 => "(do not send email)"];
@@ -645,7 +660,7 @@ class Blog extends Plugin
             $SubscribeField = $UserSchema->getField(self::SUBSCRIPTION_FIELD_NAME);
 
             # if a non-blank name is given
-            if (strlen(trim($NewValue))) {
+            if (strlen(trim($NewValue)) !== 0) {
                 # change the subscribe field's label to reflect the blog name
                 $SubscribeField->label("Subscribe to ".$NewValue);
             # otherwise clear the label
@@ -882,7 +897,7 @@ class Blog extends Plugin
         }
 
         # tack on the GET parameters, if necessary
-        if (count($Get)) {
+        if (count($Get) !== 0) {
             $Url .= "?".http_build_query($Get);
         }
 
@@ -1131,12 +1146,15 @@ class Blog extends Plugin
      * Determine if notifications could be sent out.
      * @param Entry $Entry Optional blog entry to use as context.
      * @param User $User Optional user to use as context.
+     * @param bool $MustBePublished TRUE to require that entries be published
+     *      in order to send notifications. (OPTIONAL, default TRUE).
      * @return bool Returns TRUE if notifications could be sent out and FALSE
      *      otherwise.
      */
     public function notificationsCouldBeSent(
         ?Entry $Entry = null,
-        ?User $User = null
+        ?User $User = null,
+        ?bool $MustBePublished = true
     ): bool {
         # the template has to be set
         if (!is_numeric($this->getConfigSetting("NotificationTemplate"))
@@ -1157,7 +1175,7 @@ class Blog extends Plugin
             $PublicationDate = $Entry->get(self::PUBLICATION_DATE_FIELD_NAME);
 
             # the blog has to be published
-            if (time() < strtotime($PublicationDate)) {
+            if ($MustBePublished && time() < strtotime($PublicationDate)) {
                 return false;
             }
 
@@ -1190,7 +1208,8 @@ class Blog extends Plugin
     {
         $this->sendNotificationEmail(
             $Entry,
-            [User::getCurrentUser()->id()]
+            [User::getCurrentUser()->id()],
+            false
         );
     }
 
@@ -1269,21 +1288,6 @@ class Blog extends Plugin
     }
 
     /**
-     * Get the XML representation for a field from a file with a given path.
-     * @param string $Name Name of the field of which to fetch the XML
-     *      representation.
-     * @return string|null Returns the XML representation string or NULL if
-     *      an error occurs.
-     */
-    protected function getFieldXml($Name)
-    {
-        $Path = dirname(__FILE__)."/".self::FIELD_XML_PATH."/".$Name.".xml";
-        $Xml = @file_get_contents($Path);
-
-        return $Xml !== false ? $Xml : null;
-    }
-
-    /**
      * Get the path to the default tags file.
      * @return string path to the default tags file
      */
@@ -1295,7 +1299,7 @@ class Blog extends Plugin
     }
 
     /**
-     * Insert a new nav item before another existing nav item.The new nav item
+     * Insert a new nav item before another existing nav item. The new nav item
      * will be placed at the end of the list if the nav item it should be placed
      * before doesn't exist.
      * @param array $NavItems Existing nav items.
@@ -1343,7 +1347,7 @@ class Blog extends Plugin
      */
     public function extendEditResourceCompleteAccessList(array $AccessList): array
     {
-        array_push($AccessList, "/P=P_Blog_ListEntries/i");
+        $AccessList[] = "/P=P_Blog_ListEntries/i";
         return ["AllowList" => $AccessList];
     }
 
@@ -1452,11 +1456,13 @@ class Blog extends Plugin
             }
 
             # check if clean url prefix is set, create one if not
-            if (strlen(trim($NewSettings["CleanUrlPrefix"])) == 0) {
+            if (!array_key_exists("CleanUrlPrefix", $NewSettings)
+                    || $NewSettings["CleanUrlPrefix"] === null
+                    || strlen(trim($NewSettings["CleanUrlPrefix"])) == 0) {
                 # check if name is null in case created via blog config template
                 if (!is_null($NewSettings["BlogName"])) {
                     $NewSettings["CleanUrlPrefix"] =
-                    $this->generateCleanUrlPrefix($NewSettings["BlogName"]);
+                            $this->generateCleanUrlPrefix($NewSettings["BlogName"]);
                 }
             }
 
@@ -1592,9 +1598,15 @@ class Blog extends Plugin
      */
     private function sendNotificationEmail(
         Entry $Entry,
-        array $UserIds
+        array $UserIds,
+        ?bool $MustBePublished = true
     ): bool {
-        if (!$this->notificationsCouldBeSent($Entry, User::getCurrentUser())) {
+        $ShouldSendEmail = $this->notificationsCouldBeSent(
+            $Entry,
+            User::getCurrentUser(),
+            $MustBePublished
+        );
+        if (!$ShouldSendEmail) {
             return false;
         }
 
@@ -1706,7 +1718,7 @@ class Blog extends Plugin
      * @param string $Html HTML to trim.
      * @return string Returns the trimmed HTML.
      */
-    private function leftTrimHtml($Html)
+    private function leftTrimHtml($Html): string
     {
         # remove whitespace from the beginning
         $Html = ltrim($Html);

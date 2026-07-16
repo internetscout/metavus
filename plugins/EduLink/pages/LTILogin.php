@@ -14,8 +14,10 @@
 namespace Metavus;
 
 use Exception;
+use Metavus\Plugins\BotDetector;
 use Metavus\Plugins\EduLink;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
 
 # ----- MAIN -----------------------------------------------------------------
 
@@ -33,15 +35,22 @@ if ($_SERVER['REQUEST_METHOD'] == "GET" && count($_GET) == 0) {
     $H_Error = "Request was not a valid LTI login "
         ."(GET with no parameters provided).";
 
-    # log a message about it (at INFO level because it's almost certainly an
-    # invalid request from the client rather than an issue we can do anything
-    # about)
-    $AF->logMessage(
-        ApplicationFramework::LOGLVL_INFO,
-        $H_Error
-        ." IP: " . ($_SERVER["REMOTE_ADDR"] ?? "(unknown)")
-        ." User-Agent: '".($_SERVER["HTTP_USER_AGENT"] ?? "(unknown)") ."'"
-    );
+    $PluginMgr = PluginManager::getInstance();
+    $IsBot = $PluginMgr->pluginReady("BotDetector") ?
+        BotDetector::getInstance()->checkForBot() :
+        false;
+
+    if (!$IsBot) {
+        # log a message about it (at INFO level because it's almost certainly an
+        # invalid request from the client rather than an issue we can do anything
+        # about)
+        $AF->logMessage(
+            ApplicationFramework::LOGLVL_INFO,
+            $H_Error
+            ." IP: " . ($_SERVER["REMOTE_ADDR"] ?? "(unknown)")
+            ." User-Agent: '".($_SERVER["HTTP_USER_AGENT"] ?? "(unknown)") ."'"
+        );
+    }
     return;
 }
 

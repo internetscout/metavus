@@ -20,7 +20,7 @@ use ScoutLib\UserFactory;
  * @param string $Term The term which to insert <b> tags to
  * @return string The term with the highlighted search string
  */
-function HighlightSearchString($SS, $Term)
+function HighlightSearchString($SS, $Term): string
 {
     $Result = "";
     # used to track which letter in the $SS are we currently matching

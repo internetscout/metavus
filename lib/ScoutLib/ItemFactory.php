@@ -202,7 +202,7 @@ abstract class ItemFactory
         # if temp items are to be excluded
         if (!$IncludeTempItems) {
             # if a condition was previously set
-            if (strlen($ConditionString)) {
+            if (strlen($ConditionString) !== 0) {
                 # add in condition to exclude temp items
                 $ConditionString .= " AND (" . $this->ItemIdColumnName . " >= 0)";
             } else {
@@ -213,13 +213,13 @@ abstract class ItemFactory
 
         # add class-wide condition if set
         if ($this->SqlCondition) {
-            $ConditionString .= (strlen($ConditionString) ? " AND " : " WHERE ")
+            $ConditionString .= (strlen($ConditionString) !== 0 ? " AND " : " WHERE ")
                 .$this->SqlCondition;
         }
 
         # add exclusions
-        if (count($Exclusions)) {
-            $ConditionString .= (strlen($ConditionString) ? " AND " : " WHERE ")
+        if (count($Exclusions) !== 0) {
+            $ConditionString .= (strlen($ConditionString) !== 0 ? " AND " : " WHERE ")
                 .$this->ItemIdColumnName." NOT IN "
                 ."(".implode(",", $Exclusions).")";
         }
@@ -237,7 +237,7 @@ abstract class ItemFactory
             $Exclusions = array_flip($Exclusions);
             $Names = array_filter(
                 $this->getItemNames($Condition),
-                function ($ItemId) use ($Exclusions, $IncludeTempItems) {
+                function ($ItemId) use ($Exclusions, $IncludeTempItems): bool {
                     if (!$IncludeTempItems && $ItemId < 0) {
                         return false;
                     }
@@ -301,7 +301,7 @@ abstract class ItemFactory
 
         # add class-wide condition if set
         if ($this->SqlCondition) {
-            if (strlen($ConditionString)) {
+            if (strlen($ConditionString) !== 0) {
                 $ConditionString .= " AND " . $this->SqlCondition;
             } else {
                 $ConditionString = " WHERE " . $this->SqlCondition;
@@ -454,17 +454,17 @@ abstract class ItemFactory
 
         # query database for item names
         $Condition = "";
-        if ($SqlCondition) {
+        if ($SqlCondition !== null && $SqlCondition !== '' && $SqlCondition !== '0') {
             $Condition = "WHERE " . $SqlCondition;
         }
 
         if ($this->SqlCondition) {
-            $Condition .= (strlen($Condition) ? " AND " : " WHERE ")
+            $Condition .= (strlen($Condition) !== 0 ? " AND " : "WHERE ")
                 .$this->SqlCondition;
         }
 
-        if (count($Exclusions)) {
-            $Condition .= (strlen($Condition) ? " AND " : " WHERE ")
+        if (count($Exclusions) !== 0) {
+            $Condition .= (strlen($Condition) !== 0 ? " AND " : "WHERE ")
                 .$this->ItemIdColumnName." NOT IN "
                 ."(".implode(",", $Exclusions).")";
         }
@@ -472,8 +472,8 @@ abstract class ItemFactory
         $Query = "SELECT " . $this->ItemIdColumnName
             . ", " . $this->ItemNameColumnName
             . " FROM " . $this->ItemTableName . " "
-            . $Condition
-            . " ORDER BY " . $this->ItemNameColumnName
+            . $Condition.(strlen($Condition) > 0 ? " " : "")
+            . "ORDER BY " . $this->ItemNameColumnName
             . (!is_null($Limit) ? " LIMIT ".$Limit : "" )
             . (($Offset > 0) ? " OFFSET ".$Offset : "" );
 
@@ -486,7 +486,7 @@ abstract class ItemFactory
             $Exclusions = array_flip($Exclusions);
             $Names = array_filter(
                 $this->getItemNames($SqlCondition),
-                function ($ItemId) use ($Exclusions) {
+                function ($ItemId) use ($Exclusions): bool {
                     return !isset($Exclusions[$ItemId]);
                 },
                 ARRAY_FILTER_USE_KEY
@@ -575,7 +575,7 @@ abstract class ItemFactory
         }
 
         # return no results if empty search string passed in
-        if (!strlen(trim($SearchString))) {
+        if (strlen(trim($SearchString)) === 0) {
             return array();
         }
 
@@ -661,7 +661,7 @@ abstract class ItemFactory
         array $NameExclusions = array()
     ): int {
         # return no results if empty search string passed in
-        if (!strlen(trim($SearchString))) {
+        if (strlen(trim($SearchString)) === 0) {
             return 0;
         }
 
@@ -905,7 +905,7 @@ abstract class ItemFactory
 
         # add class-wide condition if set
         if ($this->SqlCondition) {
-            if (strlen($ConditionString)) {
+            if (strlen($ConditionString) !== 0) {
                 $ConditionString .= " AND " . $this->SqlCondition;
             } else {
                 $ConditionString = " WHERE " . $this->SqlCondition;
@@ -951,8 +951,8 @@ abstract class ItemFactory
         string $SearchString,
         bool $IncludeVariants = false,
         bool $UseBooleanMode = true,
-        $IdExclusions = array(),
-        $NameExclusions = array()
+        array $IdExclusions = array(),
+        array $NameExclusions = array()
     ): string {
         $MinWordLen = Database::getFullTextSearchMinWordLength();
 
@@ -1020,7 +1020,7 @@ abstract class ItemFactory
             #  +" -> quoted string explicitly required
             #  -" -> quoted string explicitly forbidden
             $InQuotedString |= preg_match('/^[+-]?"/', $Token);
-            if ($InQuotedString) {
+            if ($InQuotedString !== 0) {
                 $NewSearchString .= $Token . " ";
                 # we're still in a quoted string when our token
                 # doesn't end with a quote
@@ -1064,7 +1064,7 @@ abstract class ItemFactory
             $NewSearchString .= '"';
         }
 
-        if (strlen($NewSearchString)) {
+        if (strlen($NewSearchString) !== 0) {
             # build onto our query string by appending the boolean search
             # conditions
             $Condition .= "MATCH (" . $this->ItemNameColumnName . ")"
@@ -1084,8 +1084,8 @@ abstract class ItemFactory
                 . " NOT REGEXP '(^| )" . addslashes(preg_quote($Word)) . "'";
         }
 
-        if (count($OtherConditions)) {
-            if (strlen($Condition)) {
+        if (count($OtherConditions) !== 0) {
+            if (strlen($Condition) !== 0) {
                 $Condition .= " AND ";
             }
             $Condition .= implode(" AND ", $OtherConditions);

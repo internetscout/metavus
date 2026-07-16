@@ -36,7 +36,7 @@ class ControlledNameFactory extends ItemFactory
             "ControlledNameId",
             "ControlledName",
             false,
-            ($FieldId ? "FieldId = ".intval($FieldId) : null)
+            ($FieldId !== null && $FieldId !== 0 ? "FieldId = ".intval($FieldId) : null)
         );
     }
 
@@ -74,7 +74,7 @@ class ControlledNameFactory extends ItemFactory
     ): array {
 
         # return no results if empty search string passed in
-        if (!strlen(trim($SearchString))) {
+        if (strlen(trim($SearchString)) === 0) {
             return [];
         }
 
@@ -86,7 +86,7 @@ class ControlledNameFactory extends ItemFactory
         $ValueExclusionSql = (count($ValueExclusions) > 0)
                 ? "AND ControlledName NOT IN ("
                         .implode(',', array_map(
-                            function ($v) {
+                            function ($v): string {
                                 return "'".addslashes($v)."'";
                             },
                             $ValueExclusions
@@ -160,7 +160,7 @@ class ControlledNameFactory extends ItemFactory
     ) : array {
         $Result = [];
         $DB = new Database();
-        if (!empty($FieldIds)) {
+        if ($FieldIds !== []) {
             $QueryBase = "SELECT"
                 ." RN.RecordId AS RecordId,"
                 ." RN.ControlledNameId AS ControlledNameId"
@@ -198,7 +198,7 @@ class ControlledNameFactory extends ItemFactory
      * @return array Array keyed by Controlled Name Id where values give the
      *   associated Field Id
      */
-    public static function getFieldIds(array $CNameIds)
+    public static function getFieldIds(array $CNameIds): array
     {
         $DB = new Database();
 

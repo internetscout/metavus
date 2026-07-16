@@ -1,0 +1,755 @@
+<?PHP
+#
+#   FILE:  Export.html (RecordExporter plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use Exception;
+use Metavus\FormUI;
+use Metavus\MetadataSchema;
+use Metavus\Plugins\Folders\Folder;
+use Metavus\Plugins\Folders\FolderFactory;
+use Metavus\Plugins\RecordExporter;
+use Metavus\Record;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlOptionList;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Retrieve list of available folders of resources to export.
+ * @return array Array with Folder names for the values and Folder IDs for
+ *       the index, plus an entry for all resources with -1 as the index.
+ */
+function GetAvailableSources(): array
+{
+    $PluginMgr = PluginManager::getInstance();
+
+    # start with empty list of sources
+    $Sources = [];
+
+    # if Folders plugin is available
+    if ($PluginMgr->pluginReady("Folders")) {
+        # retrieve folders
+        $Folders = [];
+        $FFactory = new FolderFactory(User::getCurrentUser()->id());
+        $ResourceFolder = $FFactory->getResourceFolder();
+        $FolderIds = $ResourceFolder->getItemIds();
+        foreach ($FolderIds as $Id) {
+            $Folders[$Id] = new Folder($Id);
+        }
+
+        # assemble source list from folder names
+        foreach ($Folders as $Id => $Folder) {
+            $FolderItemCount = $Folder->getItemCount();
+            $Sources[$Id] = $Folder->name()." (".$FolderItemCount." item"
+                    .(($FolderItemCount == 1) ? "" : "s").")";
+        }
+    }
+
+    # add option list selection for all resources
+    foreach (MetadataSchema::getAllSchemas() as $Id => $Schema) {
+        $Sources[-1 - $Id] = "ALL ".strtoupper($Schema->name());
+    }
+
+    # return sources to caller
+    return $Sources;
+}
+
+/**
+ * Retrieve list of schemas corresponding to each source.
+ * @param array $AvailableSources List of available sources.
+ * @return array Array keyed by SourceId as returned by
+ * GetAvailableSources(), where values are arrays of relevant
+ * SchemaIds.
+ */
+function GetSourceSchemas(array $AvailableSources): array
+{
+    $Result = [];
+
+    foreach (array_keys($AvailableSources) as $Id) {
+        if ($Id >= 0) {
+            # if result was a folder, iterate over all the folder
+            # Items and collect their SchemaIds
+            $Folder = new Folder($Id);
+
+            $FolderSchemas = [];
+            foreach ($Folder->getItemIds() as $ItemId) {
+                $Resource = new Record($ItemId);
+                $FolderSchemas[$Resource->getSchemaId()] = true;
+            }
+
+            $Result[$Id] = array_keys($FolderSchemas);
+        } else {
+            # otherwise result was a schema, and it just contains itself
+            $Result[$Id] = [ -($Id + 1) ];
+        }
+    }
+    return $Result;
+}
+
+/**
+ * Retrieve list of resource folders that should not be used for export.
+ * @param array $AvailableSources Available folders of resources to export.
+ * @return array Array with Folder names for the values and Folder IDs
+ *       for the index.
+ */
+function GetDisabledSources($AvailableSources): array
+{
+    # start out assuming no sources will be disabled
+    $DisabledSources = [];
+
+    # for each available source
+    foreach ($AvailableSources as $Id => $SourceName) {
+        # if source is a folder
+        if ($Id >= 0) {
+            # if folder has no resources
+            $Folder = new Folder($Id);
+            if ($Folder->getItemCount() == 0) {
+                # add source to disabled list
+                $DisabledSources[$Id] = $SourceName;
+            }
+        }
+    }
+
+    # return list of disabled sources to caller
+    return $DisabledSources;
+}
+
+
+/**
+ * Get the list of FieldIds currently selected.
+ * @return array|null Array of FieldIds or NULL when no fields are checked.
+ */
+function GetSelectedFields()
+{
+    $FieldIds = null;
+
+    # iterate over all fields in all schemas, checking each to see if
+    # it should be included in the export
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
+        $Fields = $Schema->getFields();
+        foreach ($Fields as $Field) {
+            if (array_key_exists("F_ExportField_".$Field->id(), $_POST)) {
+                $FieldIds[] = $Field->id();
+            }
+        }
+    }
+
+    return $FieldIds;
+}
+
+
+/**
+ * Get format parameters from POST data.
+ * @return array List of format parameters.
+ */
+function GetFormatParameters(): array
+{
+    $Plugin = RecordExporter::getInstance();
+
+    if (!($Plugin instanceof \Metavus\Plugins\RecordExporter)) {
+        throw new Exception("Retrieved plugin is not RecordExporter (should be impossible).");
+    }
+
+    $FormatParameterValues = [];
+    $FormatParameters = $Plugin->getExportParameters();
+
+    foreach ($FormatParameters as $FormatName => $FormatParams) {
+        if (is_array($FormatParams) && count($FormatParams)) {
+            $CfgUI = new FormUI($FormatParams, [], $FormatName);
+            $FormatParameterValues[$FormatName] = $CfgUI->getNewValuesFromForm();
+        }
+    }
+
+    return $FormatParameterValues;
+}
+
+# ----- MAIN -----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+# retrieve user currently logged in
+$User = User::getCurrentUser();
+
+$AF = ApplicationFramework::getInstance();
+$PluginMgr = PluginManager::getInstance();
+
+$AF->requireUIFile(
+    "jquery.cookie.js",
+    ApplicationFramework::ORDER_FIRST
+);
+
+$Plugin = RecordExporter::getInstance();
+
+if (!($Plugin instanceof \Metavus\Plugins\RecordExporter)) {
+    throw new Exception("Retrieved plugin is not RecordExporter (should be impossible).");
+}
+
+$UserId = $User->id();
+
+$FieldSetName = StdLib::getArrayValue(
+    $_COOKIE,
+    "RecordExporter_FieldSetName",
+    ""
+);
+
+# determine which action we are currently taking
+$Action = strtoupper(StdLib::getFormValue("F_Submit", "SETUP"));
+
+if ($Action == "CANCEL") {
+    $AF->setJumpToPage("SysAdmin");
+    return;
+}
+
+if (!in_array($Action, ["SETUP", "EXPORT", "SAVE", "DELETE"])) {
+    $Action = "UNKNOWN";
+}
+
+$AvailableFields = [];
+$FormatParameters = [];
+$ExportedResourceCount = null;
+$ExportedFileName = null;
+$ExportedFileSecret = null;
+
+# if we're saving a new fieldset
+if ($Action == "SAVE") {
+    $FieldSetName = StdLib::getFormValue("F_FieldSetName", "");
+    $Format = StdLib::getFormValue("F_Format");
+    $FieldIds = GetSelectedFields();
+    if ($FieldIds === null) {
+        $ErrorMessages[] = "No metadata fields were selected.";
+    } elseif (strlen($FieldSetName) == 0) {
+        $ErrorMessages[] = "No name provided for saved settings.";
+    } elseif (!$Plugin->isRegisteredFormat($Format)) {
+        $ErrorMessages[] = "Export format was not recognized.";
+    } else {
+        $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
+        $ExportConfigs[$UserId][$FieldSetName] = [
+            "FieldIds" => $FieldIds,
+            "Format" => $Format,
+            "FormatParams" => GetFormatParameters(),
+        ];
+        $Plugin->setConfigSetting("ExportConfigs", $ExportConfigs);
+    }
+
+    $Action = "SETUP";
+# if we're deleting a fieldset
+} elseif ($Action == "DELETE") {
+    $SelectedFieldSet = StdLib::getFormValue("F_FieldSetName");
+
+    $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
+    if (array_key_exists($UserId, $ExportConfigs)) {
+        if (array_key_exists($SelectedFieldSet, $ExportConfigs[$UserId])) {
+            unset($ExportConfigs[$UserId][$SelectedFieldSet]);
+            $Plugin->setConfigSetting("ExportConfigs", $ExportConfigs);
+            unset($_POST["F_FieldSetName"]);
+            unset($_COOKIE["RecordExporter_FieldSetName"]);
+            $FieldSetName = "";
+        } else {
+            $ErrorMessages[] =
+                "Cannot delete saved selections because provided name was invalid.";
+        }
+    }
+
+    # clear selected format parameters
+    $Formats = $Plugin->getFormats();
+    $FormatParameters = $Plugin->getExportParameters();
+    foreach ($FormatParameters as $FormatName => $FormatParams) {
+        if (is_array($FormatParams)) {
+            foreach (array_keys($FormatParams) as $FieldName) {
+                $Key = "F_".$FormatName."_".$FieldName;
+                if (isset($_POST[$Key])) {
+                    unset($_POST[$Key]);
+                }
+            }
+        }
+    }
+
+    $Action = "SETUP";
+# if we are at the data export stage
+} elseif ($Action == "EXPORT") {
+    # retrieve ID of folder with resources to be exported
+    $SourceFolderId = isset($_POST["F_ResourceSource"]) ?
+        $_POST["F_ResourceSource"] : null;
+
+    # retrieve and check list of metadata fields to export
+    $FieldIds = null;
+
+    # iterate over all fields in all schemas, checking each to see if
+    # it should be included in the export
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
+        $Fields = $Schema->getFields();
+        foreach ($Fields as $Field) {
+            if (array_key_exists("F_ExportField_".$Field->id(), $_POST)) {
+                $FieldIds[] = $Field->id();
+            }
+        }
+    }
+
+    if ($FieldIds === null) {
+        $ErrorMessages[] = "No metadata fields were selected for export.";
+    }
+
+    # retrieve and check export format
+    $Format = $_POST["F_Format"];
+    if (!$Plugin->isRegisteredFormat($Format)) {
+        $ErrorMessages[] = "Export format was not recognized.";
+    } else {
+        $Formats = $Plugin->getConfigSetting("SelectedFormats");
+        $Formats[$UserId] = $Format;
+        $Plugin->setConfigSetting("SelectedFormats", $Formats);
+    }
+
+    # retrieve and save export format parameters
+    $Formats = $Plugin->getFormats();
+    $FormatParameterValues = GetFormatParameters();
+
+    # if errors were found
+    if (isset($ErrorMessages)) {
+        # switch to setup mode
+        $Action = "SETUP";
+    } else {
+        # export data
+        $ExportedResourceCount = $Plugin->exportData(
+            $Format,
+            $SourceFolderId,
+            $FieldIds,
+            isset($FormatParameterValues[$Format])
+                        ? $FormatParameterValues[$Format]
+            : []
+        );
+
+        # if export succeeded
+        if ($ExportedResourceCount !== null) {
+            # set values for display in HTML
+            $ExportedFileName = $Plugin->lastExportFileName();
+            $ExportedFileSecret = $Plugin->lastExportFileSecret();
+        } else {
+            # retrieve error messages
+            $Errors = $Plugin->lastExportErrorMessages();
+            foreach ($Errors as $ErrMsg) {
+                $ErrorMessages[] = $ErrMsg;
+            }
+
+            # switch to setup mode
+            $Action = "SETUP";
+        }
+    }
+}
+
+# if we are at the export setup stage
+if ($Action == "SETUP") {
+    $AvailableSources = GetAvailableSources();
+    $SourceToSchemaMap = GetSourceSchemas($AvailableSources);
+    $DisabledSources = GetDisabledSources($AvailableSources);
+
+    $SelectedSource = StdLib::getFormValue("F_ResourceSource");
+
+    $AvailableFormats = $Plugin->getFormats();
+
+    if (is_null($SelectedSource)) {
+        # if folders is enabled, use the current user's selected folder
+        # otherwise use the first available source
+        if ($PluginMgr->pluginReady("Folders")) {
+            $FFactory = new FolderFactory($User->id());
+            $SelectedSource = $FFactory->getSelectedFolder()->id();
+        } else {
+            $PossibleValueIds = array_keys($AvailableSources);
+            $SelectedSource = reset($PossibleValueIds);
+        }
+    }
+
+    # construct list of all possible fields
+    $SchemaNames = [];
+    foreach (MetadataSchema::getAllSchemas() as $SchemaId => $Schema) {
+        $AvailableFields[$SchemaId] = $Schema->getFields(
+            null,
+            MetadataSchema::MDFORDER_ALPHABETICAL
+        );
+        $SchemaNames[$SchemaId] = $Schema->name();
+    }
+
+    $ExportConfigs = $Plugin->getConfigSetting("ExportConfigs");
+    if (is_array($ExportConfigs) && array_key_exists($UserId, $ExportConfigs)) {
+        $FieldSets = $ExportConfigs[$UserId];
+        $AvailableFieldSets[-1] = "--";
+        $AvailableFieldSets += array_keys($FieldSets);
+        $SelectedFormat = isset($FieldSets[$FieldSetName]) ?
+            $FieldSets[$FieldSetName]["Format"] :
+            reset($AvailableFormats);
+    } else {
+        $FieldSets = [];
+        $AvailableFieldSets = [
+            -1 => "--",
+        ];
+        $SelectedFormat = reset($AvailableFormats);
+    }
+
+    $ExportedDataTypes = $Plugin->getExportedDataTypes();
+
+    # construct list of standard field mappings
+    $StandardFields = [];
+    foreach (MetadataSchema::getAllSchemas() as $SchemaId => $Schema) {
+        # select standard fields
+        $StandardFieldNames = [
+            "Title",
+            "Description",
+            "Url"
+        ];
+
+        $StandardFields[$SchemaId] = [];
+        foreach ($StandardFieldNames as $Name) {
+            $Id = $Schema->getFieldIdByMappedName($Name);
+            if ($Id !== null) {
+                $StandardFields[$SchemaId][] = $Id;
+            }
+        }
+    }
+
+    # retrieve values for format list
+    $FormatParameters = $Plugin->getExportParameters();
+    $FormatParameterValues = $Plugin->getConfigSetting("FormatParameterValues");
+}
+
+if ($Action == "SETUP") {
+    ?>
+<h1>Export Resources</h1>
+    <?PHP
+    if (isset($ErrorMessages)) {
+        ?><ul class="mv-form-error"><?PHP
+foreach ($ErrorMessages as $ErrorMessage) {
+    print "<li>".$ErrorMessage."</li>\n";
+}
+?></ul><?PHP
+    }
+
+    if (count($AvailableFormats) === 0) {
+        ?>
+<div class="mv-form-error">
+<p>No export formats are available.  Please install and/or enable an export
+format plugin to export resources.</p>
+</div>
+    <?PHP  } else {  ?>
+<form method="POST" action="index.php?P=P_RecordExporter_Export">
+<table class="table table-striped">
+<tr>
+    <th><label for="">Source</label></th>
+    <td><?PHP
+           $OptList = new HtmlOptionList("F_ResourceSource", $AvailableSources);
+           $OptList->disabledOptions($DisabledSources);
+           $OptList->selectedValue($SelectedSource);
+           $OptList->printHtml();
+    ?></td>
+</tr><?PHP
+
+$Count = 0;
+foreach ($AvailableFields as $SchemaId => $Fields) {
+    $SchemaName = $SchemaNames[$SchemaId];
+    ?>
+<tr class="mv-form-schemaid-<?= $SchemaId ?>">
+      <th><label for=""><?= $SchemaName; ?> Fields</label></th>
+      <td>
+        <div style="float:right; text-align: right;">
+          <span data-schemaid="<?= $SchemaId ?>" class="CheckAllFields smalleditbutton"
+                >Check All</span>
+          <br/>
+          <br/>
+          <span data-schemaid="<?= $SchemaId ?>" class="UncheckAllFields smalleditbutton"
+                >Uncheck All</span>
+        </div>
+
+        <?PHP
+        foreach ($Fields as $Id => $Field) {
+            $FieldIsDisabled = !in_array(
+                $Field->type(),
+                $ExportedDataTypes[$SelectedFormat]
+            );
+            $Disabled = $FieldIsDisabled ? "disabled" : "";
+            $SpanClass = $FieldIsDisabled ? "class=\"cw-content-disabled\"" : "";
+            ?><span style="display: inline-block; width: 30ex;"<?PHP
+                        print $SpanClass;  ?>>
+                <input type="checkbox" class="FieldCheckbox"
+                        data-schemaid="<?= $SchemaId ?>"
+                        name="F_ExportField_<?= $Id;  ?>" <?PHP
+                        print $Disabled;  ?> /><?PHP
+                        print htmlspecialchars($Field->name());  ?>
+            </span><?PHP
+        }
+        ?>
+    </td>
+</tr>
+<?PHP } ?>
+<tr>
+    <th><label for="">Format</label></th>
+    <td><?PHP
+        $Formats = [];
+    foreach ($AvailableFormats as $FormatName) {
+        $Formats[$FormatName] = $FormatName;
+    }
+        $OptList = new HtmlOptionList("F_Format", $Formats, $SelectedFormat);
+        $OptList->printHtml();
+    ?></td>
+</tr>
+</table>
+        <?PHP
+    # if any of the export formats have parameter settings defined
+        if (count($FormatParameters) !== 0) {
+            # for each format
+            foreach ($FormatParameters as $FormatName => $FormatParams) {
+                # if there are parameters for this format
+                if (is_array($FormatParams) && count($FormatParams)) {
+                    # display settings UI for format
+                    $TableId = "cw-content-paramstable-"
+                    .preg_replace("/[^a-zA-Z0-9]/", "", $FormatName);
+                    $Values = isset($FormatParameterValues[$FormatName]) ?
+                    $FormatParameterValues[$FormatName] : [];
+                    $CfgUI = new FormUI($FormatParams, $Values, $FormatName);
+                    $CfgUI->displayFormTable(
+                        $TableId,
+                        (($FormatName != $SelectedFormat) ? "display: none;" : null)
+                    );
+                }
+            }
+        }
+        ?>
+<button type="submit" name="F_Submit" value="Export"
+    class="btn btn-primary mv-button-iconed"><img
+    src="<?= $AF->gUIFile('FileExport.svg'); ?>" alt=""
+    class="mv-button-icon" /> Export</button>
+<button type="submit" name="F_Submit" value="Cancel"
+    class="btn btn-danger mv-button-iconed"><img
+    src="<?= $AF->gUIFile('Cross.svg'); ?>" alt=""
+    class="mv-button-icon" /> Cancel</button>
+<span style="float: right;">
+  Save As: <input type="text" id="F_FieldSetName" name="F_FieldSetName"
+      value="<?= $FieldSetName ?>">
+  <button type="submit" name="F_Submit" value="Save"
+    class="btn btn-primary btn-sm mv-button-iconed"><img
+    src="<?= $AF->gUIFile('Disk.svg'); ?>" alt="" class="mv-button-icon" /> Save</button>
+  <span style="display: inline-block; width: 3ex;">&nbsp;</span>
+  Saved Settings:
+        <?PHP (new HtmlOptionList("F_FieldSet", $AvailableFieldSets, -1))->printHtml() ?>
+  <span id="cw-load" class="btn btn-primary btn-sm mv-button-iconed"><img
+        src="<?= $AF->gUIFile('Check.svg'); ?>" alt="" class="mv-button-icon" /> Load</span>
+  <button class="btn btn-danger btn-sm mv-button-iconed" type="submit" name="F_Submit"
+        value="Delete"><img src="<?= $AF->gUIFile('Delete.svg'); ?>" alt=""
+        class="mv-button-icon" /> Delete</button>
+</span>
+</form>
+
+<script type="text/javascript">
+var source_schemas = <?= json_encode($SourceToSchemaMap); ?>;
+var fieldsets = <?= json_encode($FieldSets); ?>;
+var standard_fields = <?= json_encode($StandardFields); ?> ;
+
+$(document).ready(function() {
+    // for each .CheckAllFields button, set up a click handler that
+    // will check all fields where the schemaid on the checkbox
+    // matches the schemaid on the button
+    $('.CheckAllFields').click(function(event) {
+        var tgt_section = $(this).data('schemaid');
+        $('.FieldCheckbox').each(function() {
+            if ($(this).data('schemaid') == tgt_section &&
+                this.disabled == false) {
+                this.checked = true;
+            }
+        });
+    });
+
+    // for each .UncheckAllFields button, set up a click handler that
+    // will uncheck all fields where the schemaid on the checkbox
+    // matches the schemaid on the button
+    $('.UncheckAllFields').click(function(event) {
+        var tgt_section = $(this).data('schemaid');
+        $('.FieldCheckbox').each(function() {
+            if ($(this).data('schemaid') == tgt_section) {
+                this.checked = false;
+            }
+        });
+    });
+
+    // if none of the displayed fields are selected, select any
+    // standard mapped fields that are shown
+    function SelectStandardFieldsWhenNoneSelected() {
+        if ($('.FieldCheckbox:checked').filter(':visible').length == 0) {
+            $.each(standard_fields, function(scid, fields) {
+                $.each(fields, function(ix, field_id) {
+                    var tgt = $('.FieldCheckbox[name="F_ExportField_'+field_id+'"]');
+                    if (tgt.is(':visible')) {
+                        tgt.prop("checked", true);
+                    }
+                });
+            });
+        }
+    }
+
+    // function to toggle the display of elements based on which schemas they belong to
+    // @param tgt_schemas array of schemaids that we wish to display
+    function ToggleFieldDisplay(tgt_schemas) {
+        // iterate over all the tr elements, as these contain the fields we care about
+        $('tr').each(function(){
+            // attempt to extract the css clas for this element
+            var css_class = $(this).attr('class');
+            if (css_class != null && css_class != undefined) {
+                // if it had a class, see if it describes a schema
+                var res = $(this).attr('class').match(/mv-form-schemaid-([0-9]+)/);
+                if (res) {
+                    // if so, pull out which schema and hide or show it as necessary
+                    var schemaid = parseInt(res[1]);
+                    if (jQuery.inArray(schemaid, tgt_schemas) == -1) {
+                        $(this).hide();
+                    } else {
+                        $(this).show();
+                    }
+                }
+            }
+        });
+
+        SelectStandardFieldsWhenNoneSelected();
+    }
+
+    // load saved settings
+    function LoadSettings(tgt_name) {
+        if (tgt_name in fieldsets) {
+            $('#F_Format option:selected').prop('selected', false);
+            $('#F_Format option:contains("'+fieldsets[tgt_name]["Format"]+'")').prop(
+                'selected', true);
+            $('#F_Format').change();
+
+            $('.FieldCheckbox:checked').prop("checked", false);
+            $.each(fieldsets[tgt_name]["FieldIds"], function(ix, field_id) {
+                $('.FieldCheckbox[name="F_ExportField_'+field_id+'"]').prop("checked", true);
+            });
+
+            // for each format that has parameters
+            $.each(fieldsets[tgt_name]["FormatParams"], function(fmt_name, fmt_params){
+                // for each parameter that has values
+                $.each(fmt_params, function(p_name, p_vals) {
+                    // get the name of our form element
+                    var el_id = 'F_' + fmt_name + '_' + p_name;
+                    // if this is a multi-select element
+                    if (Array.isArray(p_vals)) {
+                        // deselect anything currently selected
+                        $('#' + el_id + '\\[\\] option:selected').prop('selected', false);
+
+                        // then select each of our values
+                        $.each(p_vals, function(p_ix, p_val) {
+                            $('#' + el_id + '\\[\\] option[value="'+p_val+'"]')
+                                .prop('selected', true);
+                        });
+                    } else {
+                        // fos single-value elements, just set the value
+                        $('#' + el_id).val(p_vals);
+                    }
+                });
+            });
+        }
+    }
+
+    // toggle the field display appropriately for the initially selected source
+    ToggleFieldDisplay( source_schemas[ $('#F_ResourceSource').val() ] );
+
+    // and set up a change handler so that we'll toggle again when new
+    // sources are selected
+    $('#F_ResourceSource').on('change', function() {
+        ToggleFieldDisplay( source_schemas[ $(this).val() ]);
+    });
+
+    // and set event handler to keep them updated
+    $('#F_Format').on('change', function() {
+        var FormatIds = {};
+            <?PHP
+            foreach ($AvailableFormats as $FormatName) {
+                $TableId = "cw-content-paramstable-"
+                        .preg_replace("/[^a-zA-Z0-9]/", "", $FormatName);
+                print 'FormatIds["'.$FormatName.'"] = "#'.$TableId.'";'."\n";
+            }
+            ?>
+
+            for (var Format in FormatIds) {
+                if (this.value === Format) {
+                    $(FormatIds[Format]).show();
+                } else {
+                    $(FormatIds[Format]).hide();
+                }
+            }
+        });
+
+    // add click handler to 'Load' button to load saved settings
+    $('#cw-load').on('click', function() {
+        var cur_set_name = $('#F_FieldSet option:selected').text();
+
+        if (cur_set_name != "--") {
+            $('#F_FieldSetName').val(cur_set_name);
+            $.cookie("RecordExporter_FieldSetName", cur_set_name);
+        } else {
+            $('#F_FieldSetName').val("");
+            $.cookie("RecordExporter_FieldSetName", "");
+        }
+
+        LoadSettings(cur_set_name);
+        SelectStandardFieldsWhenNoneSelected();
+    });
+
+    // if a name was provided, load that fieldset
+    if ($('#F_FieldSetName').val().length > 0) {
+        var tgt_name = $('#F_FieldSetName').val();
+        LoadSettings(tgt_name);
+
+        // and set our selector value
+        $('#F_FieldSet option:selected').prop('selected', false);
+        $('#F_FieldSet option:contains("' + tgt_name + '")').prop(
+            'selected', true);
+    }
+
+    // if the user pushes 'enter' in the FieldSetName, we want to 'save'
+    $('#F_FieldSetName').on('keypress', function(ev) {
+        if (ev.keyCode == 13) {
+            $('input[type=submit][value="Save"]').click();
+            return false;
+        } else {
+            return true;
+        }
+    });
+
+    // if the user pushes 'delete', load the selected fieldset
+    $('input[type=submit][value="Delete"]').on('click', function(){
+        $('#F_FieldSetName').val($('#F_FieldSet option:selected').text());
+    });
+ });
+</script>
+    <?PHP  }  ?>
+    <?PHP
+} elseif ($Action == "EXPORT") {
+    ?>
+<h1>Export Complete</h1>
+<p><?= $ExportedResourceCount;  ?> resources exported to
+<i><?= basename($ExportedFileName);  ?></i>.</p>
+<p>
+    <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=P_RecordExporter_Download&FS=<?=
+        $ExportedFileSecret; ?>">
+        <img class="mv-button-icon" alt=""
+            src="<?= $AF->gUIFile('Download.svg') ?>"/>Download</a>
+    <a class="btn btn-primary mv-button-iconed"
+        href="index.php?P=P_RecordExporter_Export">
+        <img class="mv-button-icon" alt=""
+            src="<?= $AF->gUIFile('RefreshArrow.svg') ?>"/>Again</a>
+</p>
+
+<?PHP  } else {  ?>
+<h1>Export Resources - Error</h1>
+<p>UNKNOWN ACTION</p>
+
+<?PHP  }  ?>

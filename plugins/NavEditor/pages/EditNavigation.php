@@ -58,7 +58,7 @@ $ButtonPushed = StdLib::getFormValue("Submit");
 switch ($ButtonPushed) {
     case "Save":
         # check values and bail out if any are invalid
-        if ($H_FormUI->validateFieldInput()) {
+        if ($H_FormUI->validateFieldInput() !== 0) {
             return;
         }
 

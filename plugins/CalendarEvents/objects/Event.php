@@ -77,7 +77,7 @@ class Event extends Record
         }
 
         # tack on the GET parameters, if necessary
-        if (count($Get)) {
+        if (count($Get) !== 0) {
             $Url .= "?" . http_build_query($Get);
         }
 
@@ -118,7 +118,7 @@ class Event extends Record
         }
 
         # tack on the GET parameters, if necessary
-        if (count($Get)) {
+        if (count($Get) !== 0) {
             $Url .= "?" . http_build_query($Get);
         }
 
@@ -816,7 +816,7 @@ class Event extends Record
         $BestName = $User->getBestName();
 
         # blank best name
-        if (!strlen($BestName)) {
+        if (strlen($BestName) === 0) {
             return "-";
         }
 

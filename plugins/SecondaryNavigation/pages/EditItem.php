@@ -67,7 +67,7 @@ $Fields = [
         "Type" => FormUI::FTYPE_TEXT,
         "Value" => $Link,
         "MaxLength" => 2083,
-        "ValidateFunction" => function ($FieldName, $Link) {
+        "ValidateFunction" => function ($FieldName, $Link): ?string {
             return SecondaryNavigation::urlLooksValid($Link) ? null :
             "Link must be valid relative or absolute URL.";
         }
@@ -94,7 +94,7 @@ if ($ButtonPushed) {
             }
 
             # validate form input
-            if ($H_FormUI->validateFieldInput()) {
+            if ($H_FormUI->validateFieldInput() !== 0) {
                 return;
             }
 
@@ -123,7 +123,7 @@ if ($ButtonPushed) {
             }
 
             # validate form input
-            if ($H_FormUI->validateFieldInput()) {
+            if ($H_FormUI->validateFieldInput() !== 0) {
                 return;
             }
 

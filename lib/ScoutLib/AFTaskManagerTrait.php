@@ -3,7 +3,7 @@
 #   FILE:  AFTaskManagerTrait.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -44,21 +44,42 @@ trait AFTaskManagerTrait
         int $Priority = self::PRIORITY_LOW,
         string $Description = ""
     ): void {
-        # make sure priority is within bounds
-        $Priority = min(
-            self::PRIORITY_BACKGROUND,
-            max(self::PRIORITY_HIGH, $Priority)
+        $this->queueTaskWithRunAfter(
+            $Callback,
+            $Parameters,
+            $Priority,
+            $Description,
+            null
         );
+    }
 
-        # pack task info and write to database
-        if ($Parameters === null) {
-            $Parameters = array();
-        }
-        $this->DB->query("INSERT INTO TaskQueue"
-            . " (Callback, Parameters, Priority, Description)"
-            . " VALUES ('" . addslashes(serialize($Callback)) . "', '"
-            . addslashes(serialize($Parameters)) . "', " . intval($Priority) . ", '"
-            . addslashes($Description) . "')");
+    /**
+     * Add task to queue to run at a specific time.  If $Callback refers to a
+     * function (rather than an object method) that function must be available
+     * in a global scope on all pages.
+     * If $Priority is out-of-bounds, it wil be normalized to be within bounds.
+     * @param callable $Callback Function or method to call to perform task.
+     * @param int $RunAt Absolute UNIX timestamp for the earliest execution time.
+     * @param array $Parameters Array containing parameters to pass to function or
+     *       method.  (OPTIONAL, pass NULL for no parameters)
+     * @param int $Priority Priority to assign to task.  (OPTIONAL, defaults
+     *       to PRIORITY_LOW)
+     * @param string $Description Text description of task.  (OPTIONAL)
+     */
+    public function queueTaskToRunAt(
+        $Callback,
+        int $RunAt,
+        ?array $Parameters = null,
+        int $Priority = self::PRIORITY_LOW,
+        string $Description = ""
+    ): void {
+        $this->queueTaskWithRunAfter(
+            $Callback,
+            $Parameters,
+            $Priority,
+            $Description,
+            $this->getSqlDateTimeFromTimestamp($RunAt)
+        );
     }
 
     /**
@@ -83,30 +104,49 @@ trait AFTaskManagerTrait
         int $Priority = self::PRIORITY_LOW,
         string $Description = ""
     ): bool {
-        $this->beginAtomicTaskOperation();
-        $TaskId = $this->getTaskId($Callback, $Parameters);
-        if ($TaskId !== false) {
-            $TaskInfo = $this->getTask($TaskId);
-            if ($TaskInfo !== null) {
-                # make sure priority is within bounds
-                $Priority = min(
-                    self::PRIORITY_BACKGROUND,
-                    max(self::PRIORITY_HIGH, $Priority)
-                );
+        return $this->queueUniqueTaskWithRunAfter(
+            $Callback,
+            $Parameters,
+            $Priority,
+            $Description,
+            null
+        );
+    }
 
-                if ($TaskInfo["Priority"] > $Priority) {
-                    $this->DB->query("UPDATE TaskQueue"
-                            ." SET Priority = ".$Priority
-                            ." WHERE TaskId = ".$TaskId);
-                }
-            }
-            $Result = false;
-        } else {
-            $this->queueTask($Callback, $Parameters, $Priority, $Description);
-            $Result = true;
-        }
-        $this->endAtomicTaskOperation();
-        return $Result;
+    /**
+     * Add task to queue to run at a specific time if not already in queue or
+     * currently running.
+     * If task is already in queue with a lower priority than specified, the task's
+     * priority will be increased to the new value.
+     * If task is already in queue with a later run time than specified, the
+     * task's run time will be changed to the earlier time.
+     * If $Callback refers to a function (rather than an object method) that function
+     * must be available in a global scope on all pages.
+     * If $Priority is out-of-bounds, it wil be normalized to be within bounds.
+     * @param callable $Callback Function or method to call to perform task.
+     * @param int $RunAt Absolute UNIX timestamp for the earliest execution time.
+     * @param array $Parameters Array containing parameters to pass to function or
+     *       method.  (OPTIONAL, pass NULL for no parameters)
+     * @param int $Priority Priority to assign to task.  (OPTIONAL, defaults
+     *       to PRIORITY_LOW)
+     * @param string $Description Text description of task.  (OPTIONAL)
+     * @return bool TRUE if task was added, otherwise FALSE.
+     * @see AFTaskManagerTrait::taskIsInQueue()
+     */
+    public function queueUniqueTaskToRunAt(
+        $Callback,
+        int $RunAt,
+        ?array $Parameters = null,
+        int $Priority = self::PRIORITY_LOW,
+        string $Description = ""
+    ): bool {
+        return $this->queueUniqueTaskWithRunAfter(
+            $Callback,
+            $Parameters,
+            $Priority,
+            $Description,
+            $this->getSqlDateTimeFromTimestamp($RunAt)
+        );
     }
 
     /**
@@ -136,7 +176,7 @@ trait AFTaskManagerTrait
     public function getTaskId(callable $Callback, ?array $Parameters = null)
     {
         $TaskIds = $this->getTaskIds($Callback, $Parameters);
-        return count($TaskIds) ? reset($TaskIds) : false;
+        return count($TaskIds) !== 0 ? reset($TaskIds) : false;
     }
 
     /**
@@ -168,7 +208,7 @@ trait AFTaskManagerTrait
     public function getQueuedTaskId(callable $Callback, ?array $Parameters = null)
     {
         $TaskIds = $this->getQueuedTaskIds($Callback, $Parameters);
-        return count($TaskIds) ? reset($TaskIds) : false;
+        return count($TaskIds) !== 0 ? reset($TaskIds) : false;
     }
 
     /**
@@ -183,7 +223,7 @@ trait AFTaskManagerTrait
     {
         $Query = "SELECT TaskId FROM TaskQueue WHERE Callback = '"
                 .$this->DB->escapeString(serialize($Callback)) . "'";
-        if ($Parameters) {
+        if ($Parameters !== null && $Parameters !== []) {
             $Query .= " AND Parameters = '"
                     .$this->DB->escapeString(serialize($Parameters))."'";
         }
@@ -204,7 +244,7 @@ trait AFTaskManagerTrait
     public function getRunningTaskId(callable $Callback, ?array $Parameters = null)
     {
         $TaskIds = $this->getRunningTaskIds($Callback, $Parameters);
-        return count($TaskIds) ? reset($TaskIds) : false;
+        return count($TaskIds) !== 0 ? reset($TaskIds) : false;
     }
 
     /**
@@ -217,20 +257,20 @@ trait AFTaskManagerTrait
      */
     public function getRunningTaskIds(callable $Callback, ?array $Parameters = null): array
     {
-        $CutoffForOrphanedTasks = date(
-            "Y-m-d H:i:s",
-            (time() - $this->maxExecutionTime())
-        );
+        $DB = $this->DB;
+        $RunningCutoffTime = $this->getRunningCutoffTime();
+
+        # retrieve matching tasks that are still recent enough to count as running
         $Query = "SELECT TaskId FROM RunningTasks WHERE Callback = '"
-                .$this->DB->escapeString(serialize($Callback))."'"
-                . " AND StartedAt >= '".$CutoffForOrphanedTasks."'";
-        if ($Parameters) {
+                .$DB->escapeString(serialize($Callback))."'"
+                . " AND StartedAt >= '".$RunningCutoffTime."'";
+        if ($Parameters !== null && $Parameters !== []) {
             $Query .= " AND Parameters = '"
-                    .$this->DB->escapeString(serialize($Parameters))."'";
+                    .$DB->escapeString(serialize($Parameters))."'";
         }
         $Query .= " ORDER BY TaskId";
-        $this->DB->query($Query);
-        return $this->DB->fetchColumn("TaskId");
+        $DB->query($Query);
+        return $DB->fetchColumn("TaskId");
     }
 
     /**
@@ -245,13 +285,13 @@ trait AFTaskManagerTrait
 
     /**
      * Retrieve list of tasks currently in queue.
-     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to 100)
+     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to all)
      * @param int $Offset Offset into queue to start retrieval.  (OPTIONAL)
      * @return array Array with task IDs for index and task info for values.
      *      Task info is stored as associative array with "Callback",
-     *      "Parameters", "Priority", and "Description" indices.
+     *      "Parameters", "Priority", "Description", and "RunAfter" indices.
      */
-    public function getQueuedTaskList(int $Count = 100, int $Offset = 0): array
+    public function getQueuedTaskList(int $Count = -1, int $Offset = 0): array
     {
         return $this->getTaskList("SELECT * FROM TaskQueue"
             . " ORDER BY Priority, TaskId ", $Count, $Offset);
@@ -298,20 +338,20 @@ trait AFTaskManagerTrait
 
     /**
      * Retrieve list of tasks currently running.
-     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to 100)
+     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to all)
      * @param int $Offset Offset into queue to start retrieval.  (OPTIONAL)
      * @return array Array with task IDs for index and task info for values.
      *      Task info is stored as associative array with "Callback",
-     *      "Parameters", "Priority", "Description" "StartedAt", and
-     *      "CrashInfo" values.
+     *      "Parameters", "Priority", "Description", "RunAfter", "StartedAt",
+     *      and "CrashInfo" values.
      */
-    public function getRunningTaskList(int $Count = 100, int $Offset = 0): array
+    public function getRunningTaskList(int $Count = -1, int $Offset = 0): array
     {
+        $RunningCutoffTime = $this->getRunningCutoffTime();
+
+        # retrieve tasks whose start time still places them in the running set
         return $this->getTaskList("SELECT * FROM RunningTasks"
-            . " WHERE StartedAt >= '" . date(
-                "Y-m-d H:i:s",
-                (time() - $this->maxExecutionTime())
-            ) . "'"
+            . " WHERE StartedAt >= '" . $RunningCutoffTime . "'"
             . " ORDER BY StartedAt", $Count, $Offset);
     }
 
@@ -321,32 +361,32 @@ trait AFTaskManagerTrait
      */
     public function getRunningTaskCount(): int
     {
+        $RunningCutoffTime = $this->getRunningCutoffTime();
+
+        # count tasks whose start time still places them in the running set
         return $this->DB->query(
             "SELECT COUNT(*) AS Count FROM RunningTasks"
-            . " WHERE StartedAt >= '" . date(
-                "Y-m-d H:i:s",
-                (time() - $this->maxExecutionTime())
-            ) . "'",
+                    . " WHERE StartedAt >= '" . $RunningCutoffTime . "'",
             "Count"
         );
     }
 
     /**
      * Retrieve list of tasks currently orphaned.
-     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to 100)
+     * @param int $Count Number to retrieve.  (OPTIONAL, defaults to all)
      * @param int $Offset Offset into queue to start retrieval.  (OPTIONAL)
      * @return array Array with task IDs for index and task info for values.
      *      Task info is stored as associative array with "Callback",
-     *      "Parameters", "Priority", "Description" "StartedAt", and
-     *      "CrashInfo" values.
+     *      "Parameters", "Priority", "Description", "RunAfter", "StartedAt",
+     *      and "CrashInfo" values.
      */
-    public function getOrphanedTaskList(int $Count = 100, int $Offset = 0): array
+    public function getOrphanedTaskList(int $Count = -1, int $Offset = 0): array
     {
+        $RunningCutoffTime = $this->getRunningCutoffTime();
+
+        # retrieve tasks old enough to have transitioned into the orphaned set
         return $this->getTaskList("SELECT * FROM RunningTasks"
-            . " WHERE StartedAt < '" . date(
-                "Y-m-d H:i:s",
-                (time() - $this->maxExecutionTime())
-            ) . "'"
+            . " WHERE StartedAt < '" . $RunningCutoffTime . "'"
             . " ORDER BY StartedAt", $Count, $Offset);
     }
 
@@ -356,12 +396,12 @@ trait AFTaskManagerTrait
      */
     public function getOrphanedTaskCount(): int
     {
+        $RunningCutoffTime = $this->getRunningCutoffTime();
+
+        # count tasks old enough to have transitioned into the orphaned set
         return $this->DB->query(
             "SELECT COUNT(*) AS Count FROM RunningTasks"
-            . " WHERE StartedAt < '" . date(
-                "Y-m-d H:i:s",
-                (time() - $this->maxExecutionTime())
-            ) . "'",
+                    . " WHERE StartedAt < '" . $RunningCutoffTime . "'",
             "Count"
         );
     }
@@ -374,16 +414,22 @@ trait AFTaskManagerTrait
     public function requeueOrphanedTask(int $TaskId, ?int $NewPriority = null): void
     {
         $this->beginAtomicTaskOperation();
+
+        # copy the orphaned task back into the queue while preserving RunAfter
         $this->DB->query("INSERT INTO TaskQueue"
-            . " (Callback,Parameters,Priority,Description) "
-            . "SELECT Callback, Parameters, Priority, Description"
+            . " (Callback,Parameters,Priority,Description,RunAfter) "
+            . "SELECT Callback, Parameters, Priority, Description, RunAfter"
             . " FROM RunningTasks WHERE TaskId = " . intval($TaskId));
         if ($NewPriority !== null) {
             $NewTaskId = $this->DB->getLastInsertId();
+
+            # update the requeued task priority without changing RunAfter
             $this->DB->query("UPDATE TaskQueue SET Priority = "
                 . intval($NewPriority)
                 . " WHERE TaskId = " . intval($NewTaskId));
         }
+
+        # remove the orphaned task after its queued copy has been created
         $this->DB->query("DELETE FROM RunningTasks WHERE TaskId = " . intval($TaskId));
         $this->endAtomicTaskOperation();
     }
@@ -418,9 +464,9 @@ trait AFTaskManagerTrait
      * @param int $TaskId Task ID.
      * @return array|null Array with task info for values or NULL if task
      *      is not found.  Task info is stored as associative array with
-     *      "Callback","Parameters", "Priority", and "Description" indices.
-     *      Running or orphaned tasks will also have "StartedAt" and
-     *      "CrashInfo" values.
+     *      "Callback","Parameters", "Priority", "Description", and
+     *      "RunAfter" indices.  Running or orphaned tasks will also have
+     *      "StartedAt" and "CrashInfo" values.
      */
     public function getTask(int $TaskId)
     {
@@ -454,6 +500,7 @@ trait AFTaskManagerTrait
     public function beginAtomicTaskOperation(): void
     {
         $this->DB->query("LOCK TABLES TaskQueue WRITE, RunningTasks WRITE");
+        $this->AtomicTaskOperationStartTime = microtime(true);
     }
 
     /**
@@ -463,7 +510,25 @@ trait AFTaskManagerTrait
      */
     public function endAtomicTaskOperation(): void
     {
+        $Duration = microtime(true) - $this->AtomicTaskOperationStartTime;
         $this->DB->query("UNLOCK TABLES");
+
+        # (the cutoff for logging slow atomic tasks operations (SATOs) is
+        #       the lesser of the SATO threshold and the long DB lock hold
+        #       threshold, because making a task run atomically requires a
+        #       DB lock to be held)
+        $SATOCutoff = min(
+            $this->SlowAtomicTaskOperationThreshold,
+            $this->longDBLockThreshold()
+        );
+        if ($Duration > $SATOCutoff) {
+            $this->logMessage(
+                ApplicationFramework::LOGLVL_INFO,
+                "Slow atomic task operation ("
+                .round($Duration, 2)
+                ." s) from ".StdLib::getMyCaller()
+            );
+        }
     }
 
     /**
@@ -626,66 +691,53 @@ trait AFTaskManagerTrait
      */
     public function runQueuedTasks(): void
     {
-        # if there are tasks in the queue
-        if ($this->getTaskQueueSize()) {
-            # run any callbacks that have been registered
-            foreach ($this->PreTaskExecutionCallbacks as $Callback) {
-                ($Callback)();
-            }
-
-            # tell PHP to garbage collect to give as much memory as possible for tasks
-            gc_collect_cycles();
-
-            # turn on output buffering to (hopefully) record any crash output
-            ob_start();
-
-            # lock tables to prevent anyone else from running a task
-            $LockingQuery = "LOCK TABLES TaskQueue WRITE, RunningTasks WRITE,"
-                    ." ApplicationFrameworkSettings READ";
-            $this->DB->query($LockingQuery);
-
-            # while there is time and memory left
-            #       and a task to run
-            #       and an open slot to run it in
-            $MinimumTimeToRunAnotherTask = 65;
-            while (($this->getSecondsBeforeTimeout()
-                    > $MinimumTimeToRunAnotherTask)
-                && (StdLib::getPercentFreeMemory()
-                    > $this->BackgroundTaskMinFreeMemPercent)
-                && ($this->getTaskQueueSize() != 0) // @phpstan-ignore-line
-                && ($this->getRunningTaskCount() < $this->maxTasks())) {
-                # look for task at head of queue
-                $this->DB->query("SELECT * FROM TaskQueue"
-                    . " ORDER BY Priority, TaskId LIMIT 1");
-                $Task = $this->DB->fetchRow();
-
-                # move task from queued list to running tasks list
-                $this->DB->query("INSERT INTO RunningTasks "
-                    . "(TaskId,Callback,Parameters,Priority,Description) "
-                    . "SELECT * FROM TaskQueue WHERE TaskId = "
-                    . intval($Task["TaskId"]));
-                $this->DB->query("DELETE FROM TaskQueue WHERE TaskId = "
-                    . intval($Task["TaskId"]));
-
-                # release table locks to again allow other sessions to run tasks
-                $this->DB->query("UNLOCK TABLES");
-
-                # update the "last run" time
-                $this->DB->query("UPDATE ApplicationFrameworkSettings"
-                    . " SET LastTaskRunAt = '" . date("Y-m-d H:i:s") . "'");
-
-                # run task
-                $this->runTask($Task);
-
-                # lock tables to prevent anyone else from running a task
-                $this->DB->query($LockingQuery);
-            }
-
-            $this->resetTaskIdGeneratorIfNecessary();
-
-            # make sure tables are released
-            $this->DB->query("UNLOCK TABLES");
+        # if we have no runnable tasks, are already running the max number of
+        # tasks, or don't have enough free workers, then bail
+        if (!$this->hasRunnableQueuedTask()
+                || $this->getRunningTaskCount() >= $this->maxTasks()
+                || !$this->enoughWorkersAreFree()) {
+            return;
         }
+
+        # run any callbacks that have been registered
+        foreach ($this->PreTaskExecutionCallbacks as $Callback) {
+            ($Callback)();
+        }
+
+        # tell PHP to garbage collect to give as much memory as possible for tasks
+        gc_collect_cycles();
+
+        # turn on output buffering to (hopefully) record any crash output
+        ob_start();
+
+        # while there are enough time, memory, and workers available
+        $MinPercentFreeMemory = $this->BackgroundTaskMinFreeMemPercent;
+        while (($this->getSecondsBeforeTimeout() > self::$MinTimeToRunAnotherTask)
+               && (StdLib::getPercentFreeMemory() > $MinPercentFreeMemory)
+               && $this->enoughWorkersAreFree()) {
+            # claim task to run (also checks if execution slot is available)
+            $Task = $this->claimNextQueuedTask();
+
+            # stop running tasks if no task or no execution slot available
+            if ($Task === null) {
+                break;
+            }
+
+            # run task
+            $this->runTask($Task);
+
+            # clear output buffer since task has (presumably) run successfully
+            ob_clean();
+        }
+
+        # prune orphans from running task list if more than configured cap
+        $this->pruneRunningTasksListIfNecessary();
+
+        # reset task queue IDs if ID value is near max and no tasks in queue
+        $this->resetTaskIdGeneratorIfNecessary();
+
+        # turn off output buffering
+        ob_end_flush();
     }
 
     /**
@@ -700,6 +752,10 @@ trait AFTaskManagerTrait
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+    /* (convert this to a const as soon as minimum PHP version is 8.2) */
+    private static $MinTimeToRunAnotherTask = 65;    # (time in seconds)
+
+    private $AtomicTaskOperationStartTime = null;
     private $BackgroundTaskMemLeakLogThreshold = 10;    # percentage of max mem
     private $BackgroundTaskMinFreeMemPercent = 25;
     private $DB;
@@ -707,6 +763,7 @@ trait AFTaskManagerTrait
     private $PreTaskExecutionCallbacks = [];
     private $RequeueCurrentTask;
     private $RunningTask;
+    private $SlowAtomicTaskOperationThreshold = 0.5; # seconds
 
     /**
      * Load our settings from database, initializing them if needed.
@@ -739,22 +796,43 @@ trait AFTaskManagerTrait
 
     /**
      * Retrieve list of tasks with specified query.
-     * @param string $DBQuery Database query.
-     * @param int $Count Number to retrieve.
+     * @param string $Query Database query.
+     * @param int $Count Number to retrieve, or -1 to retrieve all.
      * @param int $Offset Offset into queue to start retrieval.
      * @return array Array with task IDs for index and task info for values.
      *      Task info is stored as associative array with "Callback",
-     *      "Parameters", "Priority", and "Description" indices.  Running or
-     *      orphaned tasks will also have "StartedAt" and "CrashInfo" values.
+     *      "Parameters", "Priority", "Description", and "RunAfter" indices.
+     *      Running or orphaned tasks will also have "StartedAt" and
+     *      "CrashInfo" values.
      */
-    private function getTaskList(string $DBQuery, int $Count, int $Offset): array
+    private function getTaskList(string $Query, int $Count, int $Offset): array
     {
-        $this->DB->query($DBQuery." LIMIT ".intval($Offset).",".intval($Count));
-        $Tasks = array();
+        if (($Count != -1) || ($Offset != 0)) {
+            # (18446744073709551615 is MySQL's max value for BIGINT)
+            $Query .= " LIMIT ".$Offset.","
+                    .(($Count == -1) ? "18446744073709551615" : $Count);
+        }
+        $this->DB->query($Query);
+        $Tasks = [];
         while ($Row = $this->DB->fetchRow()) {
             $Tasks[$Row["TaskId"]] = self::unpackTaskData($Row);
         }
         return $Tasks;
+    }
+
+    /**
+     * Determine whether there is at least one queued task ready to run.
+     * @return bool TRUE if a queued task is runnable, otherwise FALSE.
+     */
+    private function hasRunnableQueuedTask(): bool
+    {
+        # look for any task whose scheduled run time has arrived
+        $this->DB->query(
+            "SELECT TaskId FROM TaskQueue"
+            . " WHERE (RunAfter IS NULL) OR (RunAfter <= NOW())"
+            . " LIMIT 1"
+        );
+        return ($this->DB->numRowsSelected() !== 0);
     }
 
     /**
@@ -826,63 +904,145 @@ trait AFTaskManagerTrait
         # if task requeue requested (may be set by task that was run)
         if ($this->RequeueCurrentTask) {        /* @phpstan-ignore-line */
             # if task was deleted, log warning
-            if (is_null($this->getTask($TaskId))) {
+            if ($this->getTask($TaskId) === null) {
                 $this->logError(
                     ApplicationFramework::LOGLVL_WARNING,
-                    "Failed to requeue task with ID: ".(string)$TaskId
+                    "Failed to requeue task with ID: ".$TaskId
                 );
             } else {
                 # move task from running tasks list to queue
                 $this->requeueRunningTask($TaskId);
             }
-        } elseif (!is_null($this->getTask($TaskId))) {
+        } elseif ($this->getTask($TaskId) !== null) {
             # remove task from running tasks list
+            # (this clears a finished task that is not being requeued)
             $this->DB->query("DELETE FROM RunningTasks"
                 . " WHERE TaskId = " . intval($TaskId));
-        }
-
-        # prune running tasks list if necessary
-        $RunningTasksCount = $this->DB->query(
-            "SELECT COUNT(*) AS TaskCount FROM RunningTasks",
-            "TaskCount"
-        );
-        if ($RunningTasksCount > $this->MaxRunningTasksToTrack) {
-            $this->DB->query("DELETE FROM RunningTasks ORDER BY StartedAt"
-                . " LIMIT " . ($RunningTasksCount - $this->MaxRunningTasksToTrack));
         }
     }
 
     /**
      * Requeue running task, moving it from the running tasks list (in the DB)
-     * to the queued tasks list.
+     * to the queued tasks list while preserving its original RunAfter time.
      * @param int $TaskId ID of running task.
      */
     private function requeueRunningTask(int $TaskId): void
     {
         $this->beginAtomicTaskOperation();
+
+        # copy the running task back into the queue for another pass
         $this->DB->query("INSERT INTO TaskQueue"
-            . " (Callback,Parameters,Priority,Description)"
-            . " SELECT Callback,Parameters,Priority,Description"
+            . " (Callback,Parameters,Priority,Description,RunAfter)"
+            . " SELECT Callback,Parameters,Priority,Description,RunAfter"
             . " FROM RunningTasks WHERE TaskId = " . intval($TaskId));
+
+        # remove the original running-task record after it has been requeued
         $this->DB->query("DELETE FROM RunningTasks WHERE TaskId = " . intval($TaskId));
         $this->endAtomicTaskOperation();
     }
 
     /**
-     * If TaskIds are nearing their max value, TRUNCATE the TaskQueue
-     * table to reset them. Necessary because MySQL will refuse to
-     * INSERT new rows after an AUTO_INCREMENT id hits its max value.
+     * Claim the next queued task.  This method also checks whether any free
+     * task execution slots are available, because that needs to be done while
+     * task-related tables are locked for the process of claiming a task.
+     * @return ?array Queued task data, or NULL if no task could be claimed
+     *      or no task execution slots were available.
+     */
+    private function claimNextQueuedTask(): ?array
+    {
+        # lock task tables so claiming the next task is atomic
+        $this->DB->query("LOCK TABLES TaskQueue WRITE, RunningTasks WRITE");
+
+        # stop if all background task slots are already in use
+        if ($this->getRunningTaskCount() >= $this->maxTasks()) {
+            $this->DB->query("UNLOCK TABLES");
+            return null;
+        }
+
+        # fetch the highest-priority task whose RunAfter time has arrived
+        $this->DB->query(
+            "SELECT * FROM TaskQueue"
+            . " WHERE (RunAfter IS NULL) OR (RunAfter <= NOW())"
+            . " ORDER BY Priority, TaskId LIMIT 1"
+        );
+        $Task = $this->DB->fetchRow();
+        if ($Task === false) {
+            $this->DB->query("UNLOCK TABLES");
+            return null;
+        }
+
+        # copy the claimed task into the running-task list
+        $this->DB->query(
+            "INSERT INTO RunningTasks "
+                . "(TaskId,Callback,Parameters,Priority,Description,RunAfter) "
+                . "SELECT TaskId,Callback,Parameters,Priority,Description,"
+                . " RunAfter FROM TaskQueue WHERE TaskId = "
+                . intval($Task["TaskId"])
+        );
+
+        # remove the claimed task from the queue so no other worker can take it
+        $this->DB->query(
+            "DELETE FROM TaskQueue WHERE TaskId = ".intval($Task["TaskId"])
+        );
+
+        # unlock tables before running task so that others can claim tasks
+        $this->DB->query("UNLOCK TABLES");
+
+        return $Task;
+    }
+
+    /**
+     * If task IDs are nearing their max value and there are no tasks in
+     * the queue, TRUNCATE the task queue table to reset ID numbers.
+     * Necessary because MySQL will refuse to INSERT new rows after an
+     * AUTO_INCREMENT ID hits its max value.
      */
     private function resetTaskIdGeneratorIfNecessary(): void
     {
         $this->DB->query("LOCK TABLES TaskQueue WRITE");
+
+        # if enough free time and no tasks queued and next task ID is near max value
         if (($this->getSecondsBeforeTimeout() > 30)
-            && ($this->getTaskQueueSize() == 0)
-            && ($this->DB->getNextInsertId("TaskQueue")
-                > (Database::INT_MAX_VALUE * 0.90))) {
+                && ($this->getTaskQueueSize() == 0)
+                && ($this->DB->getNextInsertId("TaskQueue")
+                    > (Database::INT_MAX_VALUE * 0.90))) {
+            # truncate task queue table to reset task ID generation
             $this->DB->query("TRUNCATE TABLE TaskQueue");
         }
+
         $this->DB->query("UNLOCK TABLES");
+    }
+
+    /**
+     * Calculate the cutoff time between tasks considered running and orphaned.
+     * @return string Cutoff time formatted for direct use in SQL DATETIME queries.
+     */
+    private function getRunningCutoffTime(): string
+    {
+        return date(StdLib::SQL_DATE_FORMAT, (time() - $this->maxExecutionTime()));
+    }
+
+    /**
+     * Trim orphans from running task list if the list has grown beyond the
+     * configured cap.
+     */
+    private function pruneRunningTasksListIfNecessary(): void
+    {
+        $RunningTasksCount = $this->DB->query(
+            "SELECT COUNT(*) AS TaskCount FROM RunningTasks",
+            "TaskCount"
+        );
+
+        # if there are more entries in running task list than our threshold
+        if ($RunningTasksCount > $this->MaxRunningTasksToTrack) {
+            # discard the oldest orphaned (non-running) tasks
+            $RunningCutoffTime = $this->getRunningCutoffTime();
+            $NumberOfTasksToPrune = $RunningTasksCount - $this->MaxRunningTasksToTrack;
+            $this->DB->query("DELETE FROM RunningTasks"
+                    ." WHERE StartedAt < '".$RunningCutoffTime."'"
+                    ." ORDER BY StartedAt"
+                    ." LIMIT ".$NumberOfTasksToPrune);
+        }
     }
 
     /**
@@ -908,7 +1068,7 @@ trait AFTaskManagerTrait
         if ($MemoryUsed > $LeakThreshold) {
             # log memory leak
             $Task = $this->getTask($TaskId);
-            $TaskSynopsis = is_null($Task)
+            $TaskSynopsis = ($Task === null)
                     ? "Deleted Task with ID ".$TaskId
                     : self::getTaskCallbackSynopsis($Task);
             $this->logError(
@@ -917,5 +1077,237 @@ trait AFTaskManagerTrait
                 . number_format($MemoryUsed) . " bytes."
             );
         }
+    }
+
+    /**
+     * Determine if there are enough free workers to run background
+     * tasks. Under PHP-FPM, tasks will run if at least maxTasks() workers are
+     * free. Under other environments, tasks always run.
+     * @return bool TRUE if tasks should be run.
+     */
+    private function enoughWorkersAreFree(): bool
+    {
+        # if we're running under php-fpm
+        if (PHP_SAPI == "fpm-fcgi" && function_exists("fpm_get_status")) {
+            # attempt to get the pool status
+            $FpmStatus = fpm_get_status();
+
+            # if status could not be retrieved, assume enough workers are free
+            if ($FpmStatus === false) {
+                return true;
+            }
+
+            # if we've never reached the max number of children, assume we're
+            # okay to run tasks
+            if ($FpmStatus["max-children-reached"] == 0) {
+                return true;
+            }
+
+            # estimate how many workers we have to work with
+            # (max-active is peak concurrently active since pool was started)
+            # (total is current count including both active and idle)
+            $AvailableWorkers = max(
+                $FpmStatus["max-active-processes"],
+                $FpmStatus["total-processes"]
+            );
+
+            # if at least maxTasks() workers are free, then we're okay to run tasks
+            $FreeWorkers = $AvailableWorkers - $FpmStatus["active-processes"];
+            if ($FreeWorkers >= $this->maxTasks()) {
+                return true;
+            }
+
+            # otherwise, not
+            return false;
+        }
+
+        # under other SAPIs, assume that enough workers are free
+        return true;
+    }
+
+    /**
+     * Add task to queue if not already in queue or currently running.
+     * @param callable $Callback Function or method to call to perform task.
+     * @param array $Parameters Array containing parameters to pass to function or
+     *       method.  (OPTIONAL, pass NULL for no parameters)
+     * @param int $Priority Priority to assign to task.
+     * @param string $Description Text description of task.
+     * @param string|null $RunAfterSql SQL DATETIME string for the earliest
+     *       execution time, or NULL for immediate execution.
+     * @return bool TRUE if task was added, otherwise FALSE.
+     */
+    private function queueUniqueTaskWithRunAfter(
+        $Callback,
+        ?array $Parameters,
+        int $Priority,
+        string $Description,
+        ?string $RunAfterSql
+    ): bool {
+        # examine and possibly update the existing task while locked
+        $this->beginAtomicTaskOperation();
+        $TaskId = $this->getTaskId($Callback, $Parameters);
+        if ($TaskId !== false) {
+            $TaskInfo = $this->getTask($TaskId);
+            if (($TaskInfo !== null) && !isset($TaskInfo["StartedAt"])) {
+                $this->updateQueuedTaskTimingAndPriority(
+                    $TaskId,
+                    $TaskInfo,
+                    $Priority,
+                    $RunAfterSql
+                );
+            }
+            $Result = false;
+        } else {
+            # create a new queued task when no matching task already exists
+            $this->queueTaskWithRunAfter(
+                $Callback,
+                $Parameters,
+                $Priority,
+                $Description,
+                $RunAfterSql
+            );
+            $Result = true;
+        }
+
+        # release the lock after deciding whether to update or insert
+        $this->endAtomicTaskOperation();
+        return $Result;
+    }
+
+    /**
+     * Add task to queue, optionally with a RunAfter time.
+     * @param callable $Callback Function or method to call to perform task.
+     * @param array $Parameters Array containing parameters to pass to function or
+     *       method.  (OPTIONAL, pass NULL for no parameters)
+     * @param int $Priority Priority to assign to task.
+     * @param string $Description Text description of task.
+     * @param string|null $RunAfterSql SQL DATETIME string for the earliest
+     *       execution time, or NULL for immediate execution.
+     */
+    private function queueTaskWithRunAfter(
+        $Callback,
+        ?array $Parameters,
+        int $Priority,
+        string $Description,
+        ?string $RunAfterSql
+    ): void {
+        # normalize values before storing the queued task
+        $Priority = $this->normalizeTaskPriority($Priority);
+        if ($Parameters === null) {
+            $Parameters = [];
+        }
+
+        # store the queued task with its optional RunAfter time
+        $this->DB->query("INSERT INTO TaskQueue"
+            . " (Callback, Parameters, Priority, Description, RunAfter)"
+            . " VALUES ('"
+            . $this->DB->escapeString(serialize($Callback))
+            . "', '"
+            . $this->DB->escapeString(serialize($Parameters))
+            . "', "
+            . intval($Priority)
+            . ", '"
+            . $this->DB->escapeString($Description)
+            . "', "
+            . $this->getSqlValueForDateTime($RunAfterSql)
+            . ")");
+    }
+
+    /**
+     * Update an existing queued task when a new unique queue request is earlier
+     * or higher-priority than the existing request.
+     * @param int $TaskId ID of queued task to update.
+     * @param array $TaskInfo Current queued task info.
+     * @param int $Priority Priority requested for the new queue request.
+     * @param string|null $RunAfterSql SQL DATETIME string for the earliest
+     *       execution time, or NULL for immediate execution.
+     */
+    private function updateQueuedTaskTimingAndPriority(
+        int $TaskId,
+        array $TaskInfo,
+        int $Priority,
+        ?string $RunAfterSql
+    ): void {
+        $Updates = [];
+        $Priority = $this->normalizeTaskPriority($Priority);
+
+        # raise the task priority if the new request is more urgent
+        if ($TaskInfo["Priority"] > $Priority) {
+            $Updates[] = "Priority = " . intval($Priority);
+        }
+
+        # move the task earlier when the new request should run sooner
+        if ($this->shouldReplaceRunAfter($TaskInfo["RunAfter"] ?? null, $RunAfterSql)) {
+            $Updates[] = "RunAfter = " . $this->getSqlValueForDateTime($RunAfterSql);
+        }
+
+        # write any requested updates back to the queued task row
+        if (count($Updates) !== 0) {
+            $this->DB->query("UPDATE TaskQueue SET "
+                . implode(", ", $Updates)
+                . " WHERE TaskId = " . intval($TaskId));
+        }
+    }
+
+    /**
+     * Determine whether a queued task should have its RunAfter value replaced.
+     * @param string|null $CurrentRunAfter Current SQL DATETIME value, or NULL for
+     *       immediate execution.
+     * @param string|null $NewRunAfter New SQL DATETIME value, or NULL for
+     *       immediate execution.
+     * @return bool TRUE if the queued task should be updated.
+     */
+    private function shouldReplaceRunAfter(
+        ?string $CurrentRunAfter,
+        ?string $NewRunAfter
+    ): bool {
+        # immediate execution is earlier than any scheduled time
+        if ($NewRunAfter === null) {
+            return ($CurrentRunAfter !== null);
+        }
+
+        # an already-immediate task should not be delayed by a later request
+        if ($CurrentRunAfter === null) {
+            return false;
+        }
+
+        # earlier scheduled times should replace later scheduled times
+        return (strtotime($NewRunAfter) < strtotime($CurrentRunAfter));
+    }
+
+    /**
+     * Normalize a task priority so it falls within the supported range.
+     * @param int $Priority Requested task priority.
+     * @return int Normalized task priority.
+     */
+    private function normalizeTaskPriority(int $Priority): int
+    {
+        return min(
+            self::PRIORITY_BACKGROUND,
+            max(self::PRIORITY_HIGH, $Priority)
+        );
+    }
+
+    /**
+     * Convert a UNIX timestamp to an SQL DATETIME string.
+     * @param int $Timestamp Absolute UNIX timestamp.
+     * @return string SQL DATETIME string.
+     */
+    private function getSqlDateTimeFromTimestamp(int $Timestamp): string
+    {
+        return date(StdLib::SQL_DATE_FORMAT, $Timestamp);
+    }
+
+    /**
+     * Format an SQL DATETIME value for use in a query.
+     * @param string|null $Value SQL DATETIME value or NULL.
+     * @return string SQL value suitable for direct inclusion in a query.
+     */
+    private function getSqlValueForDateTime(?string $Value): string
+    {
+        if ($Value === null) {
+            return "NULL";
+        }
+        return "'" . $this->DB->escapeString($Value) . "'";
     }
 }

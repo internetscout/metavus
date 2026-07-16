@@ -3,7 +3,7 @@
 #   FILE:  Configuration.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2022-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -41,17 +41,8 @@ abstract class Configuration extends \ScoutLib\Datastore
     public function getFormParameters(): array
     {
         $Params = [];
-        foreach ($this->SettingDefinitions as $SettingName => $SettingDefinition) {
-            # do not include in form any settings that are marked as "Hidden"
-            if ($SettingDefinition["Hidden"] ?? false) {
-                continue;
-            }
-
-            # clear setting parameters not recognized by FormUI
-            unset($SettingDefinition["StorageType"]);
-            unset($SettingDefinition["GetFunction"]);
-            unset($SettingDefinition["SetFunction"]);
-
+        $VisSetDefs = $this->getVisibleSettingDefinitions();
+        foreach ($VisSetDefs as $SettingName => $SettingDefinition) {
             # retrieve and set current value for setting
             $Value = $this->getSettingValueForUseByForm($SettingName);
             if ($Value !== null) {
@@ -71,12 +62,8 @@ abstract class Configuration extends \ScoutLib\Datastore
     public function getFormValues(): array
     {
         $Values = [];
-        foreach ($this->SettingDefinitions as $SettingName => $SettingDefinition) {
-            # do not include in form any settings that are marked as "Hidden"
-            if ($SettingDefinition["Hidden"] ?? false) {
-                continue;
-            }
-
+        $VisSetDefs = $this->getVisibleSettingDefinitions();
+        foreach ($VisSetDefs as $SettingName => $SettingDefinition) {
             # retrieve current value for setting
             $Value = $this->getSettingValueForUseByForm($SettingName);
             if ($Value !== null) {
@@ -113,7 +100,9 @@ abstract class Configuration extends \ScoutLib\Datastore
             if (isset($SettingDefinition["SetFunction"])) {
                 $SettingDefinition["SetFunction"]($SettingName, $SettingValue);
             # else if field is not one that we do not store
-            } elseif (!in_array($SettingDefinition["Type"], static::$TypesNotStored)) {
+            } elseif (!isset(static::$TypesNotStored[
+                    $SettingDefinition["Type"]
+            ])) {
                 # save value based on storage type
                 $StorageType = $this->getStorageType($SettingName);
                 switch ($StorageType) {
@@ -159,6 +148,8 @@ abstract class Configuration extends \ScoutLib\Datastore
 
     protected $DatabaseTableName;
     protected $SettingDefinitions;
+    protected $StorageTypes = [];
+    protected $VisibleSettingDefinitions;
 
     protected static $Instance;
 
@@ -185,10 +176,10 @@ abstract class Configuration extends \ScoutLib\Datastore
     ];
     # FormUI field types for which we do not store any data
     protected static $TypesNotStored = [
-        FormUI::FTYPE_CAPTCHA,
-        FormUI::FTYPE_CUSTOMCONTENT,
-        FormUI::FTYPE_GROUPEND,
-        FormUI::FTYPE_HEADING,
+        FormUI::FTYPE_CAPTCHA => true,
+        FormUI::FTYPE_CUSTOMCONTENT => true,
+        FormUI::FTYPE_GROUPEND => true,
+        FormUI::FTYPE_HEADING => true,
     ];
 
     /**
@@ -245,9 +236,154 @@ abstract class Configuration extends \ScoutLib\Datastore
             # check to make sure that field type is one we know about
             $SettingType = $SettingValues["Type"];
             if (!isset(static::$TypeTranslations[$SettingType])
-                    && !in_array($SettingType, static::$TypesNotStored)) {
+                    && !isset(static::$TypesNotStored[$SettingType])) {
                 throw new Exception("Unknown type (\"".$SettingType."\")"
                         ." for configuration field \"".$SettingName."\".");
+            }
+        }
+    }
+
+    /**
+     * Check that supplied field list is valid for datastore-backed settings.
+     * @param array $Fields Configuration storage field list, with "Type",
+     *      "Default", and "Description" entries for each field.
+     * @throws InvalidArgumentException If no type is specified for a field.
+     * @throws InvalidArgumentException If an invalid type is specified.
+     * @throws InvalidArgumentException If no default is specified for a field.
+     * @throws InvalidArgumentException If no description is specified.
+     */
+    protected static function checkFieldsList(array $Fields): void
+    {
+        foreach ($Fields as $FieldName => $FieldInfo) {
+            # check that type is specified
+            if (!isset($FieldInfo["Type"])) {
+                throw new InvalidArgumentException("No type specified for field \""
+                    .$FieldName."\".");
+            # check that specified type is valid
+            } elseif (StdLib::getConstantName(__CLASS__, $FieldInfo["Type"], "TYPE_")
+                    === null) {
+                throw new InvalidArgumentException("Invalid type specified for field \""
+                        .$FieldName."\".");
+            }
+
+            # check that valid value list has entries if specified
+            if (isset($FieldInfo["ValidValues"])) {
+                if (!is_array($FieldInfo["ValidValues"])) {
+                    throw new InvalidArgumentException("Valid values list supplied"
+                            ." that is not an array.");
+                }
+                if (!count($FieldInfo["ValidValues"])) {
+                    throw new InvalidArgumentException("Valid values list supplied"
+                            ." with no entries.");
+                }
+            }
+
+            # if default value was specified
+            if (array_key_exists("Default", $FieldInfo)) {
+                # check that default value is correct type
+                static::checkFieldDefaultType(
+                    $FieldName,
+                    $FieldInfo["Default"],
+                    $FieldInfo["Type"]
+                );
+                # check that default value is valid
+                if ($FieldInfo["Default"] !== null) {
+                    self::checkValue($FieldInfo, $FieldName, $FieldInfo["Default"]);
+                }
+            # else if default-retrieval function was specified
+            } elseif (array_key_exists("DefaultFunction", $FieldInfo)) {
+                if (!is_callable($FieldInfo["DefaultFunction"])) {
+                    throw new InvalidArgumentException("Uncallable default function"
+                            ." specified for field \"".$FieldName."\".");
+                }
+            # else error out if field was not explicitly marked as not having a default
+            } elseif (!($FieldInfo["NoDefault"] ?? false)) {
+                throw new InvalidArgumentException("No default or"
+                        ." default-retrieval function specified for field \""
+                        .$FieldName."\".");
+            }
+
+            # check that description is specified
+            if (!isset($FieldInfo["Description"])) {
+                throw new InvalidArgumentException("No description specified for"
+                        ." field \"".$FieldName."\".");
+            }
+
+            # check that minimum or maximum are not specified for non-numeric field
+            if (!self::isNumericFieldType($FieldInfo["Type"])) {
+                if (isset($FieldInfo["MinVal"])) {
+                    throw new InvalidArgumentException("Minimum value specified"
+                            ." for non-numeric field \"".$FieldName."\".");
+                }
+                if (isset($FieldInfo["MaxVal"])) {
+                    throw new InvalidArgumentException("Maximum value specified"
+                            ." for non-numeric field \"".$FieldName."\".");
+                }
+            }
+        }
+    }
+
+    /**
+     * Check that field default value has a valid type.
+     * @param string $FieldName Name of field.
+     * @param mixed $Default Default value.
+     * @param string $Type Field type.
+     * @return void
+     */
+    protected static function checkFieldDefaultType(
+        string $FieldName,
+        $Default,
+        string $Type
+    ): void {
+        if ($Default !== null) {
+            switch ($Type) {
+                case self::TYPE_ARRAY:
+                    if (!is_array($Default)) {
+                        throw new InvalidArgumentException(
+                            "Default value for field \"".$FieldName
+                                    ."\" of type ARRAY is not an array."
+                        );
+                    }
+                    break;
+
+                case self::TYPE_BOOL:
+                    if (!is_bool($Default)) {
+                        throw new InvalidArgumentException(
+                            "Default value for field \"".$FieldName
+                                    ."\" of type BOOL is not true or false."
+                        );
+                    }
+                    break;
+
+                case self::TYPE_DATETIME:
+                    if (!is_numeric($Default) && (strtotime($Default) === false)) {
+                        throw new InvalidArgumentException(
+                            "Default value for field \"".$FieldName
+                                    ."\" of type DATETIME is not a Unix timestamp"
+                                    ." or a parseable date."
+                        );
+                    }
+                    break;
+
+                case self::TYPE_FLOAT:
+                case self::TYPE_INT:
+                    if (!is_numeric($Default)) {
+                        $TypeName = ($Type == self::TYPE_INT) ? "INT" : "FLOAT";
+                        throw new InvalidArgumentException(
+                            "Default value for field \"".$FieldName
+                                    ."\" of type ".$TypeName." is not a number."
+                        );
+                    }
+                    break;
+
+                case self::TYPE_STRING:
+                    if (!is_string($Default)) {
+                        throw new InvalidArgumentException(
+                            "Default value for field \"".$FieldName
+                                    ."\" of type STRING is not a string."
+                        );
+                    }
+                    break;
             }
         }
     }
@@ -264,7 +400,7 @@ abstract class Configuration extends \ScoutLib\Datastore
         foreach ($Settings as $SettingName => $SettingValues) {
             # skip types that we do not store
             $SettingType = $SettingValues["Type"];
-            if (in_array($SettingType, static::$TypesNotStored)) {
+            if (isset(static::$TypesNotStored[$SettingType])) {
                 continue;
             }
             # skip settings that have their own get/set functions
@@ -330,7 +466,7 @@ abstract class Configuration extends \ScoutLib\Datastore
         if (isset($SettingDefinition["GetFunction"])) {
             $Value = $SettingDefinition["GetFunction"]($SettingName);
         # else if field is not one that we do not store and currently has a value
-        } elseif (!in_array($SettingType, static::$TypesNotStored)
+        } elseif (!isset(static::$TypesNotStored[$SettingType])
                 && $this->isSet($SettingName)) {
             $StorageType = $this->getStorageType($SettingName);
             switch ($StorageType) {
@@ -382,15 +518,39 @@ abstract class Configuration extends \ScoutLib\Datastore
      */
     protected function getStorageType(string $SettingName): string
     {
-        $SettingDefinition = $this->SettingDefinitions[$SettingName];
-        # if the field allows multiple values, storage type is an array
-        if ($SettingDefinition["AllowMultiple"] ?? false) {
-            return self::TYPE_ARRAY;
-        # else use storage type if one explicitly supplied, but otherwise
-        #       translate form field type to storage type
-        } else {
-            return $SettingDefinition["StorageType"]
-                    ??  self::$TypeTranslations[$SettingDefinition["Type"]];
+        if (!isset($this->StorageTypes[$SettingName])) {
+            $SettingDefinition = $this->SettingDefinitions[$SettingName];
+            # if the field allows multiple values, storage type is an array
+            if ($SettingDefinition["AllowMultiple"] ?? false) {
+                $this->StorageTypes[$SettingName] = self::TYPE_ARRAY;
+            # else use storage type if one explicitly supplied, but otherwise
+            #       translate form field type to storage type
+            } else {
+                $this->StorageTypes[$SettingName] = $SettingDefinition["StorageType"]
+                        ?? self::$TypeTranslations[$SettingDefinition["Type"]];
+            }
         }
+        return $this->StorageTypes[$SettingName];
+    }
+
+    /**
+     * Get visible setting definitions in form-ready format.
+     * @return array Visible setting definitions.
+     */
+    protected function getVisibleSettingDefinitions(): array
+    {
+        if (!isset($this->VisibleSettingDefinitions)) {
+            $this->VisibleSettingDefinitions = [];
+            foreach ($this->SettingDefinitions as $SettingName => $Definition) {
+                if ($Definition["Hidden"] ?? false) {
+                    continue;
+                }
+                unset($Definition["StorageType"]);
+                unset($Definition["GetFunction"]);
+                unset($Definition["SetFunction"]);
+                $this->VisibleSettingDefinitions[$SettingName] = $Definition;
+            }
+        }
+        return $this->VisibleSettingDefinitions;
     }
 }

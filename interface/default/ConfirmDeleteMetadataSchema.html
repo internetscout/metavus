@@ -1,0 +1,94 @@
+<?PHP
+#
+#   FILE: ConfirmDeleteMetadataSchema.html
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2025 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\PluginManager;
+use ScoutLib\StdLib;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$SchemaId = StdLib::getArrayValue($_GET, "SC");
+
+# non-existent schema; go to the Field Editor page
+if (!MetadataSchema::schemaExistsWithId($SchemaId)) {
+    $AF->setJumpToPage("DBEditor");
+    return;
+}
+
+$Schema = new MetadataSchema($SchemaId);
+
+# non-user-owned schema; go to the Edit Schema page
+if (!$Schema->isOwnedByUser()) {
+    $AF->setJumpToPage("EditMetadataSchema&SC=".$SchemaId);
+    return;
+}
+
+$CancelButton = new HtmlButton("Cancel");
+$CancelButton->setIcon("Cross.svg");
+$CancelButton->makeSubmitButton();
+
+$DeleteButton = new HtmlButton("Delete Schema");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->makeSubmitButton();
+$DeleteButton->addSemanticClass("btn-danger");
+
+$SafeSchemaName = defaulthtmlentities($Schema->name());
+
+# ----- PROCESSING -----------------------------------------------------------
+
+switch (StdLib::getFormValue("Submit")) {
+    case "Cancel":
+        $AF->setJumpToPage("EditMetadataSchema&SC=".$SchemaId);
+        return;
+    case "Delete Schema":
+        $SchemaEditPage = $Schema->getEditPage();
+        $Schema->delete();
+
+        # delete schema from Secondary Navigation
+        $PluginMgr = PluginManager::getInstance();
+        if ($PluginMgr->pluginEnabled("SecondaryNavigation")) {
+            $SecondaryNav = $PluginMgr->getPlugin("SecondaryNavigation");
+            $SecondaryNav->removeItemFromNavForAllUsers(
+                str_replace('$ID', "NEW", $SchemaEditPage)."&SC=".$SchemaId
+            );
+        }
+
+        $AF->setJumpToPage("DBEditor");
+        return;
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+$AF->setPageTitle("Confirm Metadata Schema Deletion");
+?>
+
+<h1>Confirm Metadata Schema Deletion</h1>
+
+<p class="alert alert-danger">
+    <strong>Caution:</strong> Removing a metadata schema cannot be undone. This
+    action will also delete all resources, fields, and field mappings associated
+    with this schema. Any reference fields that reference this schema will
+    be disabled.
+</p>
+<p>
+    Are you sure you want to delete <i><?= $SafeSchemaName; ?></i>?
+</p>
+
+<form method="post" action="index.php?P=ConfirmDeleteMetadataSchema&amp;SC=<?= $Schema->id(); ?>">
+    <input type="hidden" name="F_Confirmation" value="1"/>
+    <?= $DeleteButton->getHtml(); ?>
+    <?= $CancelButton->getHtml(); ?>
+</form>

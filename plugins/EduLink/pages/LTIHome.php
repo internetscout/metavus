@@ -63,7 +63,7 @@ function getSearchResults(SearchParameterSet $SearchParams): array
     # filter out temp records (ID < 0)
     $RecordIds = array_filter(
         $RecordIds,
-        function ($Id) {
+        function ($Id): bool {
             return $Id >= 0;
         }
     );

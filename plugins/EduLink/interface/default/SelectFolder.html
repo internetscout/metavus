@@ -43,7 +43,7 @@ function getFolderSelectionHtml(string $LaunchId, array $FolderIds) : string
  * @param int $FolderId Folder to display.
  * @return string HTML.
  */
-function getFolderTileHtml(string $LaunchId, int $FolderId)
+function getFolderTileHtml(string $LaunchId, int $FolderId): string
 {
     static $ViewFolderUrl = false;
     static $RFactory = false;

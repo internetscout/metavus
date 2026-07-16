@@ -24,7 +24,7 @@ $PluginMgr = PluginManager::getInstance();
 # construct SQL conditions from provided search string
 $H_SearchString = StdLib::getFormValue("SS", "");
 $SqlConditions = [];
-if (strlen($H_SearchString)) {
+if (strlen($H_SearchString) !== 0) {
     $Vars = ["FromAddr", "ToAddr", "Subject" ];
     foreach ($Vars as $Var) {
         $SqlConditions[] = $Var.' LIKE "%'.addslashes($H_SearchString).'%"';
@@ -58,7 +58,7 @@ $SortDir = StdLib::getFormValue(TransportControlsUI::PNAME_REVERSESORT, 0) == 1 
 
 $DB->query(
     "SELECT FromAddr, ToAddr, Subject, LogData, DateSent FROM MetricsRecorder_SentEmails"
-    .(count($SqlConditions) ? " WHERE ".implode(" OR ", $SqlConditions) : "")
+    .(count($SqlConditions) !== 0 ? " WHERE ".implode(" OR ", $SqlConditions) : "")
     ." ORDER BY ".$SortField." ".$SortDir
 );
 $H_EmailList = $DB->fetchRows();

@@ -322,7 +322,7 @@ class SavedSearch
         }
 
         # trim off any leading "&"
-        if (strlen($UrlPortion)) {
+        if (strlen($UrlPortion) !== 0) {
             $UrlPortion = substr($UrlPortion, 1);
         }
 
@@ -416,8 +416,8 @@ class SavedSearch
         $AllFields = $Schema->getFields(null, null, true);
 
         foreach ($AllFields as $Field) {
-            $FieldId = $Field->Id();
-            $FieldName = $Field->Name();
+            $FieldId = $Field->id();
+            $FieldName = $Field->name();
 
             # if URL included literal value for this field
             if (isset($GetVars["F".$FieldId])) {
@@ -465,7 +465,7 @@ class SavedSearch
         }
 
         # set search logic
-        foreach ($SearchGroups as $GroupIndex => $Group) {
+        foreach (array_keys($SearchGroups) as $GroupIndex) {
             $SearchGroups[$GroupIndex]["Logic"] = ($GroupIndex == "MAIN")
                     ? SearchEngine::LOGIC_AND
                         : ((is_string($GroupIndex) && $GroupIndex[0] == "X")
@@ -804,8 +804,8 @@ class SavedSearch
                     $Value = preg_replace("/^[=><!]+/", "", $Value);
 
                     # look up index for value
-                    if ($Field->Type() & (MetadataSchema::MDFTYPE_FLAG |
-                                          MetadataSchema::MDFTYPE_NUMBER)) {
+                    if (($Field->Type() &
+                         (MetadataSchema::MDFTYPE_FLAG | MetadataSchema::MDFTYPE_NUMBER)) !== 0) {
                         # (for flag or number fields the value index is already
                         # what is used in SearchGroups)
                         if (!is_null($Value) && intval($Value) >= 0) {
@@ -915,7 +915,7 @@ class SavedSearch
         }
 
         # if visible search results were found, save them
-        if (count($NewItemIds)) {
+        if (count($NewItemIds) !== 0) {
             $this->saveLastMatches($NewItemIds);
         }
     }

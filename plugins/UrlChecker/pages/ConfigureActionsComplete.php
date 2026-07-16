@@ -29,7 +29,7 @@ foreach ($MyPlugin->getConfigSetting("FieldsToCheck") as $FieldId) {
 $Actions = ["Release", "Withhold", "Autofix"];
 foreach ($Actions as $Action) {
     $Configuration = [];
-    foreach ($Schemas as $SchemaId => $Schema) {
+    foreach (array_keys($Schemas) as $SchemaId) {
         $FEUI = new ChangeSetEditingUI($Action."_".$SchemaId, $SchemaId);
         $Configuration[$SchemaId] = $FEUI->getValuesFromFormData();
     }

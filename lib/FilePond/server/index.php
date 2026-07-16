@@ -54,6 +54,8 @@ function handle_file_transfer($transfer) {
 
 function handle_patch_file_transfer($id) {
 
+    if (empty($id) || !FilePond\is_valid_transfer_id($id)) return http_response_code(400);
+
     // location of patch files
     $dir = TRANSFER_DIR . DIRECTORY_SEPARATOR . $id . DIRECTORY_SEPARATOR;
 
@@ -96,7 +98,7 @@ function handle_patch_file_transfer($id) {
     $length = $_SERVER['HTTP_UPLOAD_LENGTH'];
 
     // should be numeric values, else exit
-    if (!is_numeric($offset) || !is_numeric($length)) {
+    if (!preg_match('/^[0-9]+$/', $offset) || !preg_match('/^[0-9]+$/', $length)) {
         return http_response_code(400);
     }
 
@@ -164,9 +166,13 @@ function handle_patch_file_transfer($id) {
                 throw new Exception("Unable to open ".$filename);
             }
 
-            $patch_contents = fread($patch_handle, filesize($filename));
+            $patch_size = filesize($filename);
+            $patch_contents = fread($patch_handle, $patch_size);
             if ($patch_contents === false) {
                 throw new Exception("Unable to read patch file contents.");
+            }
+            if (strlen($patch_contents) != $patch_size) {
+                throw new Exception("Incomplete read of patch file contents.");
             }
             fclose($patch_handle);
 
@@ -179,6 +185,9 @@ function handle_patch_file_transfer($id) {
             $result = fwrite($file_handle, $patch_contents);
             if ($result === false) {
                 throw new Exception("Unable to write chunk to combined file.");
+            }
+            if ($result != $patch_size) {
+                throw new Exception("Chunk not completely written to combined file.");
             }
         }
 

@@ -48,7 +48,7 @@ $FormFields = [
         "Type" => FormUI::FTYPE_TEXT,
         "Label" => "User Name",
         "Required" => true,
-        "ValidateFunction" => function ($FieldName, $Value) {
+        "ValidateFunction" => function ($FieldName, $Value): ?string {
             $UFactory = new UserFactory();
             if (is_null($Value) || !$UFactory->userNameExists($Value)) {
                 return "Invalid username.";
@@ -90,6 +90,14 @@ if ($H_FormUI->validateFieldInput() > 0) {
 # get the specified user
 $User = new User($UserName);
 
+# if account is active and no email change is in progress, nothing to do
+# (comes up when a user clicks the activation link repeatedly)
+if ($User->isActivated() && strlen($User->get("EMailNew")) == 0) {
+    $H_SuccessMessages[] = "Account has been activated and email address"
+        ." has been confirmed.";
+    return;
+}
+
 # if account is not already activated
 if (!$User->isActivated()) {
     # attempt to activate them
@@ -115,7 +123,7 @@ if (!$User->isActivated()) {
     return;
 }
 
-# check if we're actually servicing a mail change request
+# otherwise this is an email change request
 if ($User->confirmEmailChange($ActivationCode)) {
     $H_SuccessMessages[] = "Email successfully changed";
 } else {

@@ -3,44 +3,39 @@
 #   FILE:  PieChart.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
 use Exception;
 
 /**
-* Class for generating and displaying a pie chart.
-*/
-class PieChart extends Chart_Base
+ * Class for generating and displaying a pie chart.
+ * @see https://plotly.com/javascript/pie-charts/
+ * @see https://plotly.com/javascript/reference/pie/
+ */
+class PieChart extends Chart
 {
     # ---- PUBLIC INTERFACE --------------------------------------------------
 
     /**
-     * Set the precision used to display percentages.
-     * @param int $Prec Number of digits to display after the decimal.
-     */
-    public function percentPrecision($Prec): void
-    {
-        $this->Precision = $Prec;
-    }
-
-    /**
-     * Set the style for slice labels.
+     * Set the style for slice labels. If set via this method, defaults to
+     *         LABEL_PERCENT.
      * @param string $LabelType Label type as a PieChart::LABEL_
      *   constant. LABEL_PERCENT will display percentages, LABEL_NAME will
      *   display slice names, and LABEL_RAW will display the raw data.
      * @throws Exception If an invalid slice label type is supplied.
      */
-    public function sliceLabelType($LabelType): void
+    public function setSliceLabelType($LabelType): void
     {
-        if (!in_array(
-            $LabelType,
-            [static::LABEL_PERCENT, static::LABEL_NAME, static::LABEL_RAW]
-        )) {
+        $ValidTypes = [
+            static::LABEL_PERCENT,
+            static::LABEL_NAME,
+            static::LABEL_RAW
+        ];
+        if (!in_array($LabelType, $ValidTypes)) {
             throw new Exception("Unsupported slice label type: ".$LabelType);
         }
 
@@ -48,59 +43,26 @@ class PieChart extends Chart_Base
     }
 
     /**
-    * Set the style for values shown in the tooltip
-    * @param string $LabelType Label type as a PieChart::TOOLTIP_
-    * constant. TOOLTIP_PERCENT will display percentages, TOOLTIP_VALUE
-    * will display raw values, and TOOLTIP_BOTH shows both.
-    * @throws Exception If an invalid tooltip label type is supplied.
-    */
-    public function tooltipType($LabelType): void
+     * Set the style for values shown in the tooltip. If not set via this
+     *         method, defaults to TOOLTIP_BOTH.
+     * @param string $LabelType Label type as a PieChart::TOOLTIP_
+     *         constant. TOOLTIP_PERCENT will display percentages,
+     *         TOOLTIP_VALUE will display raw values, and TOOLTIP_BOTH shows
+     *         both.
+     * @throws Exception If an invalid tooltip label type is supplied.
+     */
+    public function setTooltipType($LabelType): void
     {
-        if (!in_array(
-            $LabelType,
-            [static::TOOLTIP_PERCENT, static::TOOLTIP_VALUE, static::TOOLTIP_BOTH]
-        )) {
+        $ValidTypes = [
+            static::TOOLTIP_PERCENT,
+            static::TOOLTIP_VALUE,
+            static::TOOLTIP_BOTH
+        ];
+        if (!in_array($LabelType, $ValidTypes)) {
             throw new Exception("Unsupported tooltip label type: ".$LabelType);
         }
 
         $this->TooltipLabelType = $LabelType;
-    }
-
-    /**
-     * Output chart HTML.
-     * @param string $ContainerId HTML Id for the chart container.
-     */
-    public function display(string $ContainerId): void
-    {
-        ob_start();
-        // @codingStandardsIgnoreStart
-        ?>
-        function tooltip_value_fn(value, ratio, id, index) {
-            <?PHP if ($this->TooltipLabelType == self::TOOLTIP_BOTH) { ?>
-            return (new Number(100*ratio)).toFixed(<?= $this->Precision ?>)+"%&nbsp;("+value+")";
-            <?PHP } elseif ($this->TooltipLabelType == self::TOOLTIP_PERCENT){ ?>
-            return (new Number(100*ratio)).toFixed(<?= $this->Precision ?>)+"%";
-            <?PHP } elseif ($this->TooltipLabelType == self::TOOLTIP_VALUE){ ?>
-            return value;
-            <?PHP } ?>
-        }
-
-        function label_format_fn(value, ratio, id, index) {
-            <?PHP if ($this->SliceLabelType == self::LABEL_PERCENT) { ?>
-            return (new Number(100*ratio)).toFixed(<?= $this->Precision ?>)+"%";
-            <?PHP } elseif ($this->SliceLabelType == self::LABEL_RAW){ ?>
-            return value;
-            <?PHP } elseif ($this->SliceLabelType == self::LABEL_NAME){ ?>
-            return id;
-            <?PHP } ?>
-        }
-        <?PHP
-        // @codingStandardsIgnoreEnd
-
-        $this->HelperFunctionJSCode = ob_get_contents();
-        ob_end_clean();
-
-        parent::display($ContainerId);
     }
 
     # label type constants
@@ -113,50 +75,126 @@ class PieChart extends Chart_Base
     const TOOLTIP_PERCENT = "Percent";
     const TOOLTIP_BOTH = "Both";
 
+
     # ---- PRIVATE INTERFACE --------------------------------------------------
 
     /**
-    * Prepare data for display. @see ChartBase::prepareData().
-    */
-    protected function prepareData(): void
+     * Get chart layout information in the format required for the 'layout'
+     *         argument to Plotly.newPlot().
+     * @see https://plotly.com/javascript/plotlyjs-function-reference/#plotlynewplot
+     * @see https://plotly.com/javascript/reference/layout/
+     * @see Chart::getChartLayout()
+     */
+    protected function getChartLayout(): array
     {
-        # see http://c3js.org/reference.html#data-columns for format of 'columns' element.
-        # since C3 always uses the label in 'columns' for the legend,
-        # we'll need to populate the TooltipLabels array that is keyed
-        # by legend label where values give the tooltip label
-        $this->Chart["data"]["columns"] = [];
-        foreach ($this->Data as $Index => $Value) {
-            $Label = isset($this->Labels[$Index]) ?
-                $this->Labels[$Index] : $Index ;
+        $Layout = parent::getChartLayout();
 
-            if (isset($this->LegendLabels[$Index])) {
-                $MyLabel = $this->LegendLabels[$Index];
-                $this->TooltipLabels[$MyLabel] = $Label;
-            } else {
-                $MyLabel = $Label;
-            }
-
-            $this->Chart["data"]["columns"][] = [$MyLabel, $Value];
+        foreach (["t", "r", "b", "l"] as $Side) {
+            $Layout["margin"][$Side] = 0;
         }
 
-        $this->addToChart([
-            "data" => [
-                "type" => "pie",
+        $Layout["legend"]["indentation"] = -10;
+
+        return $Layout;
+    }
+
+    /**
+     * Get data in the format required by Plotly for the 'data' argument to
+     *         Plotly.newPlot().
+     * @see https://plotly.com/javascript/plotlyjs-function-reference/#plotlynewplot
+     * @see https://plotly.com/javascript/pie-charts/
+     * @see https://plotly.com/javascript/reference/pie/
+     */
+    protected function getChartData(): array
+    {
+        $Data = [];
+        $Labels = [];
+        $Legend = [];
+        $Colors = [];
+        foreach ($this->Data as $Index => $Value) {
+            if ($Value == 0) {
+                continue;
+            }
+
+            $Label = $this->Labels[$Index] ?? $Index;
+            $Data[] = $Value;
+            $Labels[] = $Label;
+            $Legend[] = $this->LegendLabels[$Index] ?? $Label;
+            $Colors[] = $this->Colors[$Index] ?? $this->generateRgbColorString($Index);
+        }
+
+        $Datasets = [];
+        $Datasets[] = [
+            "values" => $Data,
+            "text" => $Labels,
+            "labels" => $Legend,
+            "marker" => [
+                "colors" => $Colors,
             ],
-            "pie" => [
-                "label" => [
-                    "format" => "label_format_fn",
-                ],
-            ],
-            "tooltip" => [
-                "format" => [
-                    "value" => "tooltip_value_fn",
-                ],
-            ],
-        ]);
+            "texttemplate" => $this->getTextTemplate(),
+            "hovertemplate" => $this->getHoverTemplate(),
+            "textposition" => "inside",
+            "sort" => false,
+            "type" => "pie",
+        ];
+
+        return $Datasets;
+    }
+
+    /**
+     * Get the labels to display on pie chart slices.
+     */
+    private function getTextTemplate(): string
+    {
+        switch ($this->SliceLabelType) {
+            case self::LABEL_PERCENT:
+                $TextTemplate = "%{percent:.1%}";
+                break;
+
+            case self::LABEL_RAW:
+                $TextTemplate = "%{value}";
+                break;
+
+            case self::LABEL_NAME:
+                $TextTemplate = "%{text}";
+                break;
+
+            default:
+                throw new Exception(
+                    "Unknown Slice Label Type - should be impossible."
+                );
+        }
+
+        return $TextTemplate;
+    }
+
+    /**
+     * Get the labels to display in hover text.
+     */
+    private function getHoverTemplate(): string
+    {
+        switch ($this->TooltipLabelType) {
+            case self::TOOLTIP_BOTH:
+                $HoverTemplate = "%{text} | %{percent:.1%} (%{value})";
+                break;
+
+            case self::TOOLTIP_PERCENT:
+                $HoverTemplate = "%{text} | %{percent.1%}";
+                break;
+
+            case self::TOOLTIP_VALUE:
+                $HoverTemplate = "%{text} | %{value}";
+                break;
+
+            default:
+                throw new Exception(
+                    "Unknown Tooltip Label Type - should be impossible."
+                );
+        }
+
+        return $HoverTemplate."<extra></extra>";
     }
 
     private $SliceLabelType = self::LABEL_PERCENT;
     private $TooltipLabelType = self::TOOLTIP_BOTH;
-    private $Precision = 1;
 }

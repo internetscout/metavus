@@ -37,7 +37,7 @@ class FileFactory extends ItemFactory
             "FileId",
             "FileName",
             false,
-            ($FieldId ? "FieldId = ".intval($FieldId) : null)
+            ($FieldId !== null && $FieldId !== 0 ? "FieldId = ".intval($FieldId) : null)
         );
     }
 
@@ -69,7 +69,7 @@ class FileFactory extends ItemFactory
         $FileNames = $this->DB->FetchColumn("FileName", "FileId");
 
         # if files were found
-        if (count($FileNames)) {
+        if (count($FileNames) !== 0) {
             # if caller asked us to return objects
             if ($ReturnObjects) {
                 # for each file
@@ -102,7 +102,7 @@ class FileFactory extends ItemFactory
      * had when they were updated.
      * @return array FileIds
      */
-    public function getFilesWithFixityProblems()
+    public function getFilesWithFixityProblems(): array
     {
         $DB = new Database();
         $DB->query("SELECT FileId FROM Files WHERE ContentUnchanged = 0");

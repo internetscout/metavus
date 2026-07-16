@@ -52,4 +52,9 @@
     .table > .row > .col:nth-of-type(2) {
         padding-right: 35px;
     }
+
+    .mv-field-row > * {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
 }

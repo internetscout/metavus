@@ -751,15 +751,15 @@ class AutoFetch extends Plugin
         # fetch, use those to perform a conditional get
         $HeadersToSet = [];
 
-        if (strlen($UrlInfo["ETag"])) {
+        if (strlen($UrlInfo["ETag"]) !== 0) {
             $HeadersToSet[] = "If-None-Match: ".$UrlInfo["ETag"];
         }
 
-        if (strlen($UrlInfo["LastModified"])) {
+        if (strlen($UrlInfo["LastModified"]) !== 0) {
             $HeadersToSet[] = "If-Modified-Since: ".$UrlInfo["LastModified"];
         }
 
-        if (count($HeadersToSet)) {
+        if (count($HeadersToSet) !== 0) {
             curl_setopt($Context, CURLOPT_HTTPHEADER, $HeadersToSet);
         }
 
@@ -907,7 +907,7 @@ class AutoFetch extends Plugin
 
         # build an update query
         $Setters = array_map(
-            function ($Col, $Val) {
+            function ($Col, $Val): string {
                 return $Col." = ".$Val;
             },
             array_keys($Values),
@@ -938,7 +938,7 @@ class AutoFetch extends Plugin
 
         # build an update query
         $Setters = array_map(
-            function ($Col) {
+            function (string $Col): string {
                 return $Col." = NULL";
             },
             $Columns

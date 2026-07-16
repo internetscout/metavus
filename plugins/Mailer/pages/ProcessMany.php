@@ -40,7 +40,7 @@ foreach ($IDs as $Id) {
 }
 
 # if any Ids were invalid, bail
-if (count($H_Errors)) {
+if (count($H_Errors) !== 0) {
     return;
 }
 

@@ -17,33 +17,6 @@ use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
-# set up secure login for non-HTTPS connections
-$UseSecureLogin = isset($_SERVER["HTTPS"]) ? false : true;
-if ($UseSecureLogin) {
-    # get the public key parameters for the most recently generated keypair
-    $PubKeyParams = SecureLoginHelper::getCryptKey();
-
-    # if we have a valid pubkey
-    if (strlen($PubKeyParams["Modulus"]) &&
-        strlen($PubKeyParams["Exponent"])) {
-        # include the 'jsbn' javascript encryption library
-        # (included inline rather than with RequireUIFile() so that
-        #  the RSAKey js object will be defined before the js above
-        #  the login form tries to use it)
-        foreach (["prng4.js", "rng.js", "jsbn.js", "rsa.js", "base64.js"] as $FileName) {
-            ApplicationFramework::getInstance()->IncludeUIFile($FileName);
-        }
-        # the HTML below will define a CryptPw javascript function
-        # to encrypt the user-supplied password, pad it with 2 random bytes,
-        # then base64 the result for transmission
-        # (pages/UserLogin.php contains the companion decryption code)
-    } else {
-        # if we don't have a valid key to use, fall back to standard
-        # login
-        $UseSecureLogin = false;
-    }
-}
-
 ?>
     <!-- begin StdPageEnd -->
 
@@ -56,24 +29,8 @@ if ($UseSecureLogin) {
         <?PHP } else { ?>
             <!-- BEGIN LOGIN AREA -->
             <div class="text cw-login-form-container">
-              <?PHP  if ($UseSecureLogin) {  ?>
-                <script type="text/javascript">
-                  var RSA = new RSAKey();
-                  RSA.setPublic("<?= $PubKeyParams["Modulus"] ?>",
-                                "<?= $PubKeyParams["Exponent"] ?>");
-                  function CryptPw(){
-                      var resp = hex2b64(RSA.encrypt(
-                          $("input#Password").val()+
-                          "\t"+rng_get_byte()+rng_get_byte() ));
-                      $("input#CryptPassword").val(resp);
-                      $("input#Password").val("");
-                  }
-                </script>
-              <?PHP } ?>
               <form method="POST" action="index.php?P=UserLogin"
-                 <?PHP if ($UseSecureLogin) { ?>
-                    onsubmit="CryptPw();"
-                 <?PHP } ?> >
+                 onsubmit="<?= SecureLoginHelper::getLoginFormOnSubmitAction() ?>">
                 <p><strong>Log In</strong>:</p>
                 <label for="UserName">User name:</label><br />
                 <input type="text" size="17" maxlength="240" name="F_UserName"
@@ -83,11 +40,7 @@ if ($UseSecureLogin) {
                        id="Password">
                 <input type="image" src="<?PHP  $AF->PUIFile("go.gif");  ?>"
                        id="go" alt="Log In"><br />
-                <?PHP  if ($UseSecureLogin) {  ?>
-                <input type="hidden" id="UseSecure" name="UseSecure">
-                <input type="hidden" id="CryptPassword" name="F_CryptPassword"
-                    value="">
-                <?PHP } ?>
+                <?PHP  SecureLoginHelper::printLoginFormContent();  ?>
               </form>
 
               <?PHP
@@ -169,7 +122,7 @@ if ($UseSecureLogin) {
 <?PHP
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function PrintMDTMenuEntry($Link, $Label)
+function PrintMDTMenuEntry($Link, $Label): void
 {
     ?>
     <div><a href="<?= $Link; ?>"><?= $Label; ?></a></div>

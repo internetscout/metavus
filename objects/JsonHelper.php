@@ -107,7 +107,7 @@ class JsonHelper
      *     This parameter is optional.
      * @return array Returns an array of standard results data.
      */
-    private function generateResult($State, $Message): array
+    private function generateResult(string $State, $Message): array
     {
         return [
             "data" => $this->Data,

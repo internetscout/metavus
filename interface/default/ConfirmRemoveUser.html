@@ -3,25 +3,57 @@
 #   FILE:  ConfirmRemoveUser.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus;
-
-use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_TriedRemovingOwnAccount)) {
-    throw new Exception("H_TriedRemovingOwnAccount not defined.");
+
+# check if current user is authorized
+if (!User::requirePrivilege(PRIV_USERADMIN, PRIV_SYSADMIN)) {
+    return;
 }
-if (!isset($H_UserInUseBy)) {
-    throw new Exception("H_UserInUseBy not defined.");
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Remove User");
+
+# get the list of users to remove
+$UsersToRemove = StdLib::getArrayValue($_SESSION, "UserRemoveArray", []);
+
+# check if the user is trying to remove his or her own account
+$OwnIdKey = array_search(User::getCurrentUser()->id(), $UsersToRemove);
+$TriedRemovingOwnAccount = false;
+
+# check whether any of the users should not be removed
+$UserInUseBy = [];
+foreach ($UsersToRemove as $Index => $UserId) {
+    $SignalResult = $AF->signalEvent(
+        "EVENT_PRE_USER_DELETE",
+        [
+            "UserId" => $UserId,
+            "Reasons" => [],
+        ]
+    );
+    if (count($SignalResult["Reasons"]) !== 0) {
+        $UserInUseBy[$UserId] = $SignalResult["Reasons"];
+        unset($UsersToRemove[$Index]);
+    }
 }
-if (!isset($H_UsersToRemove)) {
-    throw new Exception("H_UsersToRemove not defined.");
+
+# the user tried to remove his or her own account, so don't allow it
+if ($OwnIdKey !== false) {
+    $TriedRemovingOwnAccount = true;
+    unset($UsersToRemove[$OwnIdKey]);
 }
+
+# pass along the values to the removal page
+$_SESSION["OkayToRemoveUsers"] = 1;
+$_SESSION["UserRemoveArray"] = $UsersToRemove ;
 
 $CancelButton = new HtmlButton("Cancel");
 $CancelButton->setIcon("Cross.svg");
@@ -37,24 +69,24 @@ $RemoveButton->makeSubmitButton();
 
 <h1>Confirm Remove User</h1>
 
-<?PHP if ($H_TriedRemovingOwnAccount) { ?>
+<?PHP if ($TriedRemovingOwnAccount) { ?>
 <p class="alert alert-danger"><strong>Note:</strong> You may not delete your own account.</p>
 <?PHP } ?>
 
-<?PHP if (count($H_UserInUseBy)) { ?>
+<?PHP if (count($UserInUseBy) !== 0) { ?>
 <p>Could not remove following users</p>
-<p><?PHP foreach ($H_UserInUseBy as $UserId => $Reasons) { ?>
-    <?= (new User(intval($UserId)))->Get("UserName"); ?>
+<p><?PHP foreach ($UserInUseBy as $UserId => $Reasons) { ?>
+    <?= (new User(intval($UserId)))->get("UserName"); ?>
     <br/>
     <?= implode("<br/>", $Reasons); ?>
     <br/>
    <?PHP } ?></p>
 <?PHP } ?>
 
-<?PHP if (count($H_UsersToRemove)) { ?>
+<?PHP if (count($UsersToRemove) !== 0) { ?>
     Confirm removing the following users:
-    <p><?PHP foreach ($H_UsersToRemove as $UserId) { ?>
-            <?= (new User(intval($UserId)))->Get("UserName"); ?>
+    <p><?PHP foreach ($UsersToRemove as $UserId) { ?>
+            <?= (new User(intval($UserId)))->get("UserName"); ?>
             <br />
        <?PHP } ?></p>
 

@@ -1,0 +1,28 @@
+<?PHP
+#
+#   FILE:  DownloadFolderImages.html (PhotoLibrary plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2026 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+
+use Exception;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_ErrorMessage)) {
+    throw new Exception("Variable \$H_ErrorMessage not set.");
+}
+
+ApplicationFramework::getInstance()->setPageTitle("Download Folder Images");
+
+# ----- DISPLAY --------------------------------------------------------------
+
+?>
+<h1>Download Folder Images</h1>
+<p class="alert alert-danger"><?= defaulthtmlentities($H_ErrorMessage) ?></p>

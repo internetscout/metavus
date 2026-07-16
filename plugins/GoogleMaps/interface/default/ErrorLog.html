@@ -53,7 +53,7 @@ $ListUI->itemsPerPage($H_ItemsPerPage);
 $ListUI->baseLink($H_BaseLink);
 $ListUI->addActionButton(
     "Delete",
-    function ($Item) {
+    function ($Item): string {
         return 'index.php?P=P_GoogleMaps_ErrorLog&A=DELETE&ID='.$Item["Id"];
     },
     "Delete.svg"

@@ -1,0 +1,52 @@
+<?PHP
+#
+#   FILE:  Trampoline.html (Captcha plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2026 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use ScoutLib\ApplicationFramework;
+use Metavus\Plugins\Captcha;
+
+
+# create a self-submitting captcha page that redirects to a specified
+# destination on success or presents an error on failure
+# (used by the EVENT_PAGE_LOAD handler in Captcha, so the markup may appear
+# at a variety of URLs)
+$Plugin = Captcha::getInstance();
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $AF = ApplicationFramework::getInstance();
+
+    $IsValid = $Plugin->verifyCaptcha();
+    if (!$IsValid) {
+        $H_MaintTitle = "Captcha Challenge Failed";
+        $H_MaintMessage = $Plugin->getConfigSetting("AnonChallengeFailedMessage");
+        $MaintFile = is_readable("local/interface/default/MaintenanceMode.html")
+            ? "local/interface/default/MaintenanceMode.html"
+            : "interface/default/MaintenanceMode.html";
+        include($MaintFile);
+        $AF->suppressStandardPageStartAndEnd();
+        return;
+    }
+
+    $Destination = $_POST["Destination"] ?? "";
+    if (strpos($Destination, $AF->baseUrl()) !== 0) {
+        $Destination = $AF->baseUrl();
+    }
+    $AF->setJumpToPage($Destination);
+    return;
+}
+
+\Metavus\Plugins\Captcha\Captcha::makeAutoSubmitting();
+?>
+<form method="post" action="index.php?P=P_Captcha_Trampoline">
+  <input type="hidden" name="P" value="P_Captcha_Trampoline">
+  <input type="hidden" name="Destination"
+     value="<?= Captcha::getInstance()->getTrampolineTarget() ?>">
+  <?= $Plugin->getCaptchaHtml(); ?>
+</form>

@@ -65,11 +65,11 @@ class BatchEdit extends Plugin
 
                 # add a prefix for schemas that aren't the resource schema
                 $Pfx = ($Schema->id() == MetadataSchema::SCHEMAID_DEFAULT) ?
-                    "" : $Schema->Name().": ";
+                    "" : $Schema->name().": ";
                 $SchemaFields = $Schema->getFields($this->FieldTypes);
                 foreach ($SchemaFields as $Field) {
                     if ($Field->editable()) {
-                        $AllowedFields[$Field->id()] = $Pfx.$Field->Name();
+                        $AllowedFields[$Field->id()] = $Pfx.$Field->name();
                     }
                 }
             }

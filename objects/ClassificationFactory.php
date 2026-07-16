@@ -36,7 +36,7 @@ class ClassificationFactory extends ItemFactory
             "ClassificationId",
             "ClassificationName",
             false,
-            ($FieldId ? "FieldId = ".intval($FieldId) : null)
+            ($FieldId !== null && $FieldId !== 0 ? "FieldId = ".intval($FieldId) : null)
         );
         $this->FieldId = (!is_null($FieldId)) ? intval($FieldId) : null;
     }
@@ -126,7 +126,7 @@ class ClassificationFactory extends ItemFactory
     ): array {
 
         # return no results if empty search string passed in
-        if (!strlen(trim($SearchString))) {
+        if (strlen(trim($SearchString)) === 0) {
             return [];
         }
 
@@ -138,7 +138,7 @@ class ClassificationFactory extends ItemFactory
         $ValueExclusionSql = (count($ValueExclusions) > 0)
                 ?  "AND ClassificationName NOT IN ("
                         .implode(',', array_map(
-                            function ($v) {
+                            function ($v): string {
                                 return "'".addslashes($v)."'";
                             },
                             $ValueExclusions
@@ -182,7 +182,7 @@ class ClassificationFactory extends ItemFactory
         $DB = new Database();
 
         $FieldClause = "";
-        if (!empty($FieldIds)) {
+        if ($FieldIds !== []) {
             $FieldClause = " AND ClassificationId IN "
                 ."(SELECT ClassificationId FROM Classifications "
                 ."WHERE FieldId IN (".implode(",", $FieldIds)."))";
@@ -220,7 +220,7 @@ class ClassificationFactory extends ItemFactory
         $DB = new Database();
 
         $FieldClause = "";
-        if (!empty($FieldIds)) {
+        if ($FieldIds !== []) {
             $FieldClause = " AND C.FieldId IN "
                 ."(".implode(",", $FieldIds).")";
         }
@@ -293,7 +293,7 @@ class ClassificationFactory extends ItemFactory
      * @return array Array of parent information keyed by ClassificationId
      *   with values given the parent of each classification.
      */
-    public static function getAncestorMap(array $ClassificationIds)
+    public static function getAncestorMap(array $ClassificationIds): array
     {
         $Result = [];
         $IterationCount = 0;
@@ -340,7 +340,7 @@ class ClassificationFactory extends ItemFactory
      * @return array Array keyed by Classification Id where values give the
      *   associated Field Id
      */
-    public static function getFieldIds(array $ClassificationIds)
+    public static function getFieldIds(array $ClassificationIds): array
     {
         $DB = new Database();
 
@@ -369,7 +369,7 @@ class ClassificationFactory extends ItemFactory
     {
         # for each area
         $ClassNames = [];
-        foreach ($Classes as $Id => $Value) {
+        foreach (array_keys($Classes) as $Id) {
             # pare down area so that it is top-level
             $Class = new Classification($Id);
             while ($Class->depth() > 0) {

@@ -369,7 +369,7 @@ class RSS
      * @param string $Value date value
      * @return string formatted date value
      */
-    private function formatDate(string $Value)
+    private function formatDate(string $Value): string
     {
         return date("D, j M Y H:i:s O", strtotime($Value));
     }
@@ -424,7 +424,7 @@ class RSS
     }
 
     # (FTOut == Formatted Tag Output)
-    private function fTOut($String, $NewIndent = null): void
+    private function fTOut(string $String, $NewIndent = null): void
     {
         static $Indent = 0;
 

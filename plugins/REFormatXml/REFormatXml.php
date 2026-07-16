@@ -11,15 +11,15 @@
 namespace Metavus\Plugins;
 use Exception;
 use Metavus\MetadataSchema;
-use Metavus\Plugins\ResourceExporter;
+use Metavus\Plugins\RecordExporter;
 use Metavus\Record;
 use ScoutLib\Plugin;
 use ScoutLib\StdLib;
 use XMLWriter;
 
 /**
-*
-*/
+ * Record Exporter support for exporting records in XML format.
+ */
 class REFormatXml extends Plugin
 {
     # ---- STANDARD PLUGIN INTERFACE -----------------------------------------
@@ -30,16 +30,16 @@ class REFormatXml extends Plugin
      */
     public function register(): void
     {
-        $this->Name = "Resource Export Format: XML";
-        $this->Version = "1.0.0";
-        $this->Description = "Add support to Resource Exporter for exporting "
-            ."resources in eXtensible Markup Language (XML) format.";
+        $this->Name = "Record Export Format: XML";
+        $this->Version = "2.0.0";
+        $this->Description = "Add support to Record Exporter for exporting "
+            ."records in eXtensible Markup Language (XML) format.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [
             "MetavusCore" => "1.2.0",
-            "ResourceExporter" => "1.0.0"
+            "RecordExporter" => "1.0.0"
         ];
         $this->EnabledByDefault = true;
     }
@@ -68,7 +68,7 @@ class REFormatXml extends Plugin
             MetadataSchema::MDFTYPE_USER,
             MetadataSchema::MDFTYPE_REFERENCE,
         ];
-        ResourceExporter::getInstance()->
+        RecordExporter::getInstance()->
                 registerFormat(
                     "XML",
                     "xml",
@@ -131,29 +131,29 @@ class REFormatXml extends Plugin
             # for each metadata field
             foreach ($Fields as $Field) {
                 # if field is enabled
-                if ($Field->Enabled()
+                if ($Field->enabled()
                         && (($FieldIds == null)
-                                || in_array($Field->Id(), $FieldIds))) {
+                                || in_array($Field->id(), $FieldIds))) {
                     # if field has content
                     $Value = $Resource->get($Field, true);
                     if ((is_array($Value) && count($Value))
                             || (!is_array($Value) && ($Value !== null))) {
                         # handle output of field based on field type
-                        switch ($Field->Type()) {
+                        switch ($Field->type()) {
                             case MetadataSchema::MDFTYPE_TEXT:
                             case MetadataSchema::MDFTYPE_PARAGRAPH:
                             case MetadataSchema::MDFTYPE_NUMBER:
                             case MetadataSchema::MDFTYPE_TIMESTAMP:
                             case MetadataSchema::MDFTYPE_URL:
-                                if (strlen($Value)) {
-                                    $Out->writeElement($Field->DBFieldName(), $Value);
+                                if (strlen($Value) !== 0) {
+                                    $Out->writeElement($Field->dBFieldName(), $Value);
                                 }
                                 break;
 
                             case MetadataSchema::MDFTYPE_DATE:
-                                if (strlen($Value->Formatted())) {
+                                if (strlen($Value->Formatted()) !== 0) {
                                     $Out->writeElement(
-                                        $Field->DBFieldName(),
+                                        $Field->dBFieldName(),
                                         $Value->Formatted()
                                     );
                                 }
@@ -161,7 +161,7 @@ class REFormatXml extends Plugin
 
                             case MetadataSchema::MDFTYPE_FLAG:
                                 $Out->writeElement(
-                                    $Field->DBFieldName(),
+                                    $Field->dBFieldName(),
                                     ($Value ? "TRUE" : "FALSE")
                                 );
                                 break;
@@ -171,7 +171,7 @@ class REFormatXml extends Plugin
                             case MetadataSchema::MDFTYPE_OPTION:
                                 foreach ($Value as $Item) {
                                     $Out->writeElement(
-                                        $Field->DBFieldName(),
+                                        $Field->dBFieldName(),
                                         $Item->Name()
                                     );
                                 }
@@ -179,16 +179,16 @@ class REFormatXml extends Plugin
 
                             case MetadataSchema::MDFTYPE_POINT:
                                 $Out->writeElement(
-                                    $Field->DBFieldName(),
+                                    $Field->dBFieldName(),
                                     $Value["X"].",".$Value["Y"]
                                 );
                                 break;
 
                             case MetadataSchema::MDFTYPE_USER:
                                 foreach ($Value as $Item) {
-                                    if (strlen($Item->Get("UserName"))) {
+                                    if (strlen($Item->Get("UserName")) !== 0) {
                                         $Out->writeElement(
-                                            $Field->DBFieldName(),
+                                            $Field->dBFieldName(),
                                             $Item->Get("UserName")
                                         );
                                     }
@@ -201,12 +201,12 @@ class REFormatXml extends Plugin
                                             getFieldByMappedName("Title");
                                     if ($TitleField !== null) {
                                         $Out->writeElement(
-                                            $Field->DBFieldName(),
+                                            $Field->dBFieldName(),
                                             $Record->get($TitleField)
                                         );
                                     } else {
                                         $Out->writeElement(
-                                            $Field->DBFieldName(),
+                                            $Field->dBFieldName(),
                                             $Record->id()
                                         );
                                     }
@@ -217,7 +217,7 @@ class REFormatXml extends Plugin
                                 throw new Exception(
                                     "Export of unsupported metadata field type ("
                                         .MetadataSchema::getConstantName(
-                                            $Field->Type(),
+                                            $Field->type(),
                                             "MDFTYPE"
                                         )
                                     .") requested."

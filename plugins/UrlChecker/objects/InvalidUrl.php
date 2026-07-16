@@ -59,7 +59,7 @@ class InvalidUrl
      * Return a resource with the ID specified by the invalid URL.
      * @return Record Associated resource.
      */
-    public function getAssociatedResource()
+    public function getAssociatedResource(): \Metavus\Plugins\UrlChecker\Record
     {
         return new Record($this->RecordId);
     }
@@ -68,7 +68,7 @@ class InvalidUrl
      * Return a metadata field with the ID specified by the invalid URL.
      * @return MetadataField Associated metadata field.
      */
-    public function getAssociatedField()
+    public function getAssociatedField(): \Metavus\MetadataField
     {
         return MetadataField::getField($this->FieldId);
     }

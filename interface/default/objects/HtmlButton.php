@@ -46,6 +46,7 @@ class HtmlButton extends \ScoutLib\HtmlButton
             $IconAttribs = [
                 "class" => "mv-button-icon",
                 "src" => $AF->gUIFile($this->IconFileName),
+                "alt" => "",
             ];
             $IconHtml = $this->assembleHtmlElement("img", "", $IconAttribs)." ";
         } else {
@@ -56,7 +57,7 @@ class HtmlButton extends \ScoutLib\HtmlButton
         $RawAttribs = [];
         $Attribs["class"] = $this->getCssClassString();
         $Content = $IconHtml . ($this->HtmlLabel ? $this->Label : htmlspecialchars($this->Label));
-        if (strlen($this->Name)) {
+        if (strlen($this->Name) !== 0) {
             $Attribs["name"] = $this->Name;
         }
         if ($this->Link !== null) {

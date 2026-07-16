@@ -114,7 +114,7 @@ if (isset($_POST["H_FormatName"])) {
         "SchemaDefinition" => "Schema Definition URL"
     ];
     foreach ($FormVars as $FieldName => $PrintableName) {
-        if (!strlen(trim($_POST["F_".$FieldName]))) {
+        if (strlen(trim($_POST["F_".$FieldName])) === 0) {
             $H_ErrorMessages[] = $PrintableName." is required.";
         } else {
             $Format[$FieldName] = trim($_POST["F_".$FieldName]);
@@ -123,7 +123,7 @@ if (isset($_POST["H_FormatName"])) {
 
     # transfer optional values
     $FormVars = ["SchemaVersion" => "Schema Version"];
-    foreach ($FormVars as $FieldName => $PrintableName) {
+    foreach (array_keys($FormVars) as $FieldName) {
         $Format[$FieldName] = trim($_POST["F_".$FieldName]);
     }
 

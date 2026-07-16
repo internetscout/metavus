@@ -32,7 +32,7 @@ class Email
     public function send(): bool
     {
         # if whitelist set
-        if (count(self::$RecipientWhitelist)) {
+        if (count(self::$RecipientWhitelist) !== 0) {
             # save recipient list and then pare it down based on whitelist
             $SavedTo = $this->To;
             $NewTo = array();
@@ -53,7 +53,7 @@ class Email
 
         # if there are recipients
         $Result = true;
-        if (count($this->To)) {
+        if (count($this->To) !== 0) {
             # send message
             $Result = $this->assembleAndSendMessage();
 
@@ -336,7 +336,7 @@ class Email
                         $this->isHtml($MimeType == "text/html");
 
                         $Charset = trim(str_replace("charset=", "", $Charset));
-                        if (strlen($Charset)) {
+                        if (strlen($Charset) !== 0) {
                             $this->charSet($Charset);
                         }
                     } else {
@@ -918,7 +918,7 @@ class Email
         $PMail->setFrom($Address, $Name);
 
         # if a 'reply to' was provided
-        if (strlen($this->ReplyTo)) {
+        if (strlen($this->ReplyTo) !== 0) {
             $Name = "";
             $Address = $this->ReplyTo;
 
@@ -989,7 +989,7 @@ class Email
     private function buildAddresseeLine(string $Label, array $Recipients): string
     {
         $Line = "";
-        if (count($Recipients)) {
+        if (count($Recipients) !== 0) {
             $Line .= $Label.": ";
             $Separator = "";
             foreach ($Recipients as $Recipient) {

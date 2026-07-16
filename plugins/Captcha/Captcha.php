@@ -3,13 +3,16 @@
 #   FILE:  Captcha.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins;
+use Exception;
+use Metavus\FormUI;
 use Metavus\Plugin;
+use Metavus\Plugins\Captcha\TurnstileCaptcha;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -23,7 +26,7 @@ class Captcha extends Plugin
     public function register(): void
     {
         $this->Name = "CAPTCHA Anti-Spam";
-        $this->Version = "1.1.0";
+        $this->Version = "2.0.0";
         $this->Description = "Adds <a href=\"http://captcha.net\" "
             ."target=\"_blank\">CAPTCHA</a> "
             ."support to protect against attacks by spammers using bots. ";
@@ -31,48 +34,87 @@ class Captcha extends Plugin
         $this->Url = "https://metavus.net";
         $this->Email = "support@metavus.net";
         $this->Requires = [ "MetavusCore" => "1.2.0"];
-        $this->EnabledByDefault = true;
+        $this->EnabledByDefault = false;
+    }
 
+    /**
+     * Set up configuration options.
+     * (cannot be done in register() because the plugin's object directories
+     * haven't yet been added and we use the TurnstileCaptcha object)
+     * @return NULL on success, string describing the error on failure.
+     */
+    public function setUpConfigOptions(): ?string
+    {
         $this->CfgSetup = [
             "Method" =>  [
-                "Type" => "Option",
+                "Type" => FormUI::FTYPE_OPTION,
                 "Label" => "CAPTCHA Method",
                 "Help" =>
                 "Select what manner of CAPTCHA you wish to display.",
                 "Options" => [
-                    "Securimage" => "SecurImage CAPTCHA",
+                    "Turnstile" => "Cloudflare Turnstile",
                 ],
-                "Default" => "Securimage",
-            ],
-            "Width" => [
-                "Type" => "Number",
-                "MaxVal" => 1024,
-                "Label" => "Width",
-                "Help" => "Width of the captcha image",
-                "Default" => 115,
-            ],
-            "Height" => [
-                "Type" => "Number",
-                "MaxVal" => 1024,
-                "Label" => "Height",
-                "Help" => "Height of the captcha image",
-                "Default" => 40,
+                "Default" => "Turnstile",
             ],
             "DisplayIfLoggedIn" => [
-                "Type" => "Flag",
+                "Type" => FormUI::FTYPE_FLAG,
                 "Label" => "Display CAPTCHA for logged-in users",
                 "Help" => "",
                 "OnLabel" => "Yes",
                 "OffLabel" => "No",
                 "Default" => false,
             ],
+            "AnonChallengeHeading" => [
+                "Type" => FormUI::FTYPE_HEADING,
+                "Label" => "Anonymous User Challenges",
+            ],
+            "AnonChallengeEnabled" => [
+                "Type" => FormUI::FTYPE_FLAG,
+                "Label" => "Challenge Anonymous Users",
+                "Default" => false,
+                "Help" => "Present a captcha to anonymous users who arrive on the"
+                    ." one of the configured pages without any cookies set (implies they have"
+                    ." not visited any other pages)."
+            ],
+            "AnonChallengeCpuLoadCutoff" => [
+                "Type" => FormUI::FTYPE_NUMBER,
+                "Label" => "System Load Threshold for Anonymous Challenges",
+                "MinVal" => 0,
+                "DefaultFunction" => function (): int {
+                    $CoreCount = StdLib::getNumberOfCpuCores();
+                    return ($CoreCount > 0) ? (int)($CoreCount * 0.75) : 4;
+                },
+                "DisplayIf" => [
+                    "AnonChallengeEnabled" => true,
+                ],
+                "Help" => "Present captchas to anonymous cookie-less users only "
+                        ." when the system load is above this level. Set to 0 to challenge"
+                        ." all such users.",
+            ],
+            "AnonChallengePages" => [
+                "Type" => FormUI::FTYPE_PARAGRAPH,
+                "Label" => "Challenge Pages",
+                "Default" => "SearchResults",
+                "DisplayIf" => [
+                    "AnonChallengeEnabled" => true,
+                ],
+                "Help" => "Pages where captchas will be presented to anonymous cookie-less users, "
+                    ."listed one PageName per line.",
+            ],
+            "AnonChallengeFailedMessage" => [
+                "Type" => FormUI::FTYPE_PARAGRAPH,
+                "Label" => "Challenge Failed Message",
+                "Default" => "Captcha challenge not correctly solved.",
+                "DisplayIf" => [
+                    "AnonChallengeEnabled" => true,
+                ],
+                "Help" => "Message to display on when users fail the captcha."
+            ]
         ];
 
-        $this->addAdminMenuEntry(
-            "Log",
-            "View Captcha Logs",
-            [ PRIV_SYSADMIN ]
-        );
+        $this->CfgSetup += TurnstileCaptcha::getConfigOptions();
+
+        return null;
     }
 
     /**
@@ -85,65 +127,24 @@ class Captcha extends Plugin
             $this->AlreadySolved = true;
         }
 
-        $this->DB = new Database();
+        # configure Turnstile
+        if ($this->getConfigSetting("Method") == "Turnstile") {
+            return TurnstileCaptcha::initialize();
+        }
+
         return null;
     }
 
     /**
-     * Install the Captcha plugin.
-     */
-    public function install(): ?string
-    {
-        $Result = $this->checkCacheDirectory();
-        if (!is_null($Result)) {
-            return $Result;
-        }
-
-        return $this->createTables($this->SqlTables);
-    }
-
-    /**
-     * Uninstall the plugin.
-     * @return NULL|string : NULL if successful or an error message otherwise
-     */
-    public function uninstall(): ?string
-    {
-        $Path = $this->getCachePath();
-        if (file_exists($Path)) {
-            # delete .htaccess if present
-            # (RFF() does not handle hidden files)
-            if (file_exists($Path."/.htaccess")) {
-                unlink($Path."/.htaccess");
-            }
-
-            if (!StdLib::deleteDirectoryTree($Path)) {
-                return "Could not delete the cache directory.";
-            }
-        }
-
-        return $this->dropTables($this->SqlTables);
-    }
-
-    /**
-     * Hook CAPTCAH plugin into the event system.
+     * Hook CAPTCHA plugin into the event system.
      * @return array Events to hook.
      */
     public function hookEvents(): array
     {
         return [
+            "EVENT_PAGE_LOAD" => "handlePageLoad",
             "EVENT_USER_LOGIN" => "resetState",
             "EVENT_USER_LOGOUT" => "resetState",
-        ];
-    }
-
-    /**
-     *  Add a View Captcha Logs entry to the system administration menu
-     * @return Array of pages to add.
-     */
-    public function sysAdminMenu(): array
-    {
-        return [
-            "Log" => "View Captcha Logs",
         ];
     }
 
@@ -160,29 +161,27 @@ class Captcha extends Plugin
         # do not cache pages where a Captcha may be displayed
         $AF->doNotCacheCurrentPage();
 
-        $Html = "";
-
         if (User::getCurrentUser()->isLoggedIn()
             && !$this->getConfigSetting("DisplayIfLoggedIn")) {
-            return $Html;
+            return "";
         }
 
         if ($this->AlreadySolved) {
-            return $Html;
+            return "";
         }
+
+        $Html = "";
 
         $Method = $this->getConfigSetting("Method");
         switch ($Method) {
-            case "Securimage":
-                $Html = $this->getSecurimageCaptchaHtml($UniqueKey);
+            case "Turnstile":
+                $Html = TurnstileCaptcha::getCaptchaHtml($UniqueKey);
                 break;
 
             default:
-                break;
-        }
-
-        if (strlen($Html)) {
-            $this->updateCaptchaViewLogs();
+                throw new Exception(
+                    "Unknown Captcha method (should be impossible)."
+                );
         }
 
         return $Html;
@@ -191,16 +190,21 @@ class Captcha extends Plugin
     /**
      * Verify a captcha code.
      * @param string $UniqueKey Unique key to distinguish this captcha from
-     *   others on the page.
-     *
+     *         others on the page.
      * @return null|bool NULL: unable to display captcha
-     *    TRUE: Captcha displayed and successfully solved
-     *    FALSE: Captcha displayed but solved incorrectly
+     *         TRUE: Captcha displayed and successfully solved
+     *         FALSE: Captcha displayed but solved incorrectly
      */
     public function verifyCaptcha(string $UniqueKey = ""): ?bool
     {
         # if the user has already solved a captcha, don't prompt them anymore
         if ($this->AlreadySolved) {
+            return true;
+        }
+
+        # if user is logged in and we did not show them a captcha, success
+        if (User::getCurrentUser()->isLoggedIn()
+            && !$this->getConfigSetting("DisplayIfLoggedIn")) {
             return true;
         }
 
@@ -211,21 +215,20 @@ class Captcha extends Plugin
         # is appropriate for our selected method
         $Method = $this->getConfigSetting("Method");
         switch ($Method) {
-            case "Securimage":
-                $Result = $this->verifySecurimageCaptcha($UniqueKey);
+            case "Turnstile":
+                $Result = TurnstileCaptcha::verifyCaptcha($UniqueKey);
                 break;
 
             default:
-                break;
+                throw new Exception(
+                    "Unknown Captcha method (should be impossible)."
+                );
         }
 
         # if we could not display a captcha, bail
         if (is_null($Result)) {
             return $Result;
         }
-
-        # log success/failure of this attempt
-        $this->updateCaptchaAttemptLogs($Result);
 
         # if the validation succeeded, we want to stash that
         if ($Result === true) {
@@ -237,7 +240,40 @@ class Captcha extends Plugin
     }
 
     /**
-     * When a user logs out, clear the flag indicating that they've solved a captcha.
+     * Handler for EVENT_PAGE_LOAD that may redirect anonymous users who have
+     * no cookies to a Captcha.
+     * @param string $PageName Page being loaded.
+     */
+    public function handlePageLoad(string $PageName): array
+    {
+
+        # if cookies are set or challenges are disabled, bail
+        if (count($_COOKIE) > 0 || $this->getConfigSetting("AnonChallengeEnabled") == false) {
+            return ["PageName" => $PageName];
+        }
+
+        # if current page is not configured for a challenge, bail
+        $ChallengePages = $this->getConfigSetting("AnonChallengePages");
+        $ChallengePages = preg_split('%\v%', $ChallengePages, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($ChallengePages) || !in_array($PageName, $ChallengePages)) {
+            return ["PageName" => $PageName];
+        }
+
+        # if system load is below the configured cutoff, bail
+        $LoadAverage = sys_getloadavg();
+        $LoadChallengeCutoff = $this->getConfigSetting("AnonChallengCpuLoadCutoff");
+        if (is_array($LoadAverage) && ($LoadAverage[0] < $LoadChallengeCutoff)) {
+            return ["PageName" => $PageName];
+        }
+
+        # otherwise, challenge with a captcha
+        $this->TrampolineTarget = ApplicationFramework::getInstance()->fullUrl();
+        return ["PageName" => "P_Captcha_Trampoline"];
+    }
+
+    /**
+     * When a user logs out, clear the flag indicating that they've solved a
+     * captcha.
      */
     public function resetState(): void
     {
@@ -248,267 +284,18 @@ class Captcha extends Plugin
     }
 
     /**
-     * Get the per-user Captcha attempt log.
-     * @param int $Start Index of the first entry to retrieve.
-     * @param int $Count Number of entries to retrieve.
-     * @return array Captcha attempts where each row has elements
-     *   UserName, LastSeen, Views, Successes, Failuers.
+     * Get target URL for Captcha trampoline. (set in handlePageLoad)
+     * @return string Target URL.
      */
-    public function getUserLog(int $Start, int $Count) : array
+    public function getTrampolineTarget(): string
     {
-        $this->DB->query(
-            "SELECT * FROM Captcha_UserLog "
-            ."ORDER BY LastSeen DESC LIMIT ".$Start.",".$Count
-        );
-
-        return $this->DB->fetchRows();
+        return $this->TrampolineTarget;
     }
-
-    /**
-     * Get the number of user log entries available.
-     * @return int Number of log entries.
-     */
-    public function getUserLogCount() : int
-    {
-        return $this->DB->query(
-            "SELECT COUNT(*) AS N FROM Captcha_UserLog",
-            "N"
-        );
-    }
-
-    /**
-     * Get the per-IP Captcha attempt log.
-     * @param int $Start Index of the first entry to retrieve.
-     * @param int $Count Number of entries to retrieve.
-     * @return array Captcha attempts where each row has elements
-     *   ClientIp, LastSeen, Views, Successes, Failuers.
-     */
-    public function getIPLog(int $Start, int $Count) : array
-    {
-        $this->DB->query(
-            "SELECT * FROM Captcha_IpLog "
-            ."ORDER BY LastSeen DESC LIMIT ".$Start.",".$Count
-        );
-
-        return $this->DB->fetchRows();
-    }
-
-    /**
-     * Get the number of IP log entries available.
-     * @return int Number of log entries.
-     */
-    public function getIPLogCount() : int
-    {
-        return $this->DB->query(
-            "SELECT COUNT(*) AS N FROM Captcha_IpLog",
-            "N"
-        );
-    }
-
 
     # ---- PRIVATE METHODS ---------------------------------------------------
-
-    # database updates
-
-    /**
-     * Update captcha view logs after a captcha has been displayed.
-     */
-    private function updateCaptchaViewLogs(): void
-    {
-        # retrieve user currently logged in
-        $User = User::getCurrentUser();
-
-        $this->DB->query(
-            "INSERT IGNORE INTO "
-            ."Captcha_IpLog (ClientIp, Views, Successes, Failures) VALUES "
-            ."('".$_SERVER["REMOTE_ADDR"]."', 0, 0, 0)"
-        );
-        $this->DB->query(
-            "UPDATE Captcha_IpLog "
-            ."SET Views = Views + 1, LastSeen=NOW() "
-            ."WHERE ClientIp = '".$_SERVER["REMOTE_ADDR"]."'"
-        );
-
-        if ($User->isLoggedIn()) {
-            $this->DB->query(
-                "INSERT IGNORE INTO "
-                ."Captcha_UserLog (UserName, Views, Successes, Failures) VALUES "
-                ."('".$User->name()."', 0, 0, 0)"
-            );
-            $this->DB->query(
-                "UPDATE Captcha_UserLog "
-                ."SET Views = Views + 1, LastSeen=NOW() "
-                ."WHERE UserName='".$User->name()."'"
-            );
-        }
-    }
-
-    /**
-     * Update captcha attempt logs after a captcha has been submitted.
-     * @param bool $Result TRUE when the captcha was solved correctly, FALSE
-     *   when it was not
-     */
-    private function updateCaptchaAttemptLogs(bool $Result): void
-    {
-        # retrieve user currently logged in
-        $User = User::getCurrentUser();
-
-        # if we were able to run the validation, we then want
-        # to update the IP and User logs to indicate success or failure.
-        $Column = ($Result) ? "Successes" : "Failures" ;
-        $this->DB->query(
-            "UPDATE Captcha_IpLog "
-            ."SET ".$Column." = ".$Column." + 1"
-            ." WHERE ClientIp = '".$_SERVER["REMOTE_ADDR"]."'"
-        );
-
-        if ($User->isLoggedIn()) {
-            $this->DB->query(
-                "UPDATE Captcha_UserLog "
-                ."SET ".$Column." = ".$Column." + 1, LastSeen=NOW() "
-                ."WHERE UserName = '".$User->name()."'"
-            );
-        }
-    }
-
-    # Securimage backend
-
-    /**
-     * Get the HTML to display a Securimage captcha.
-     * @param string $UniqueKey Unique key to distinguish this captcha from
-     *   others on the page.
-     * @return string Captcha HTML.
-     */
-    private function getSecurimageCaptchaHtml(string $UniqueKey): string
-    {
-        $AF = ApplicationFramework::getInstance();
-
-        require_once(
-            dirname(__FILE__)."/lib/securimage/securimage.php"
-        );
-
-        $Options = [
-            'input_name' => 'captcha_code_'.$UniqueKey,
-            'securimage_path' => $AF->baseUrl()
-                ."plugins/Captcha/lib/securimage/",
-            'namespace' => $UniqueKey,
-            'image_width' => $this->getConfigSetting("Width"),
-            'image_height' => $this->getConfigSetting("Height"),
-        ];
-
-        $this->checkCacheDirectory();
-        $CaptchaHtml = \Securimage::getCaptchaHtml($Options);
-
-        # add honeypot form field
-        $Style = "style=\"opacity:0; position:absolute; top:0; left:0;"
-            ." height:0; width:0; z-index:-1;\"";
-        $CaptchaHtml .= "<label for=\"name\" ".$Style."></label>";
-        $CaptchaHtml .= "<input type=\"text\" name=\"name\" id=\"name\""
-            ." autocomplete=\"off\" placeholder=\"Your name\" ".$Style."/>";
-
-        return $CaptchaHtml;
-    }
-
-    /**
-     * Verify a Securimage captcha.
-     * @param string $UniqueKey Unique key to use for CAPTCHA.
-     * @return null|bool NULL: unable to verify captcha
-     *    TRUE: Captcha displayed and successfully solved
-     *    FALSE: Captcha displayed but solved incorrectly
-     *    or honeypot form field filled out
-     */
-    private function verifySecurimageCaptcha(string $UniqueKey): ?bool
-    {
-        require_once(
-            dirname(__FILE__)."/lib/securimage/securimage.php"
-        );
-
-        if (!isset($_POST['captcha_code_'.$UniqueKey])) {
-            return null;
-        }
-
-        # honeypot form field check
-        if (isset($_POST['name']) && strlen($_POST['name']) > 0) {
-            return false;
-        }
-
-        $img = new \Securimage();
-        $img->setNamespace($UniqueKey);
-        return $img->check($_POST['captcha_code_'.$UniqueKey]);
-    }
-
-    /**
-     * Get path to the directory where securimage stores data.
-     * @return string Cache path.
-     */
-    private function getCachePath() : string
-    {
-        static $Path = null;
-
-        if (is_null($Path)) {
-            $Path = getcwd() . "/local/data/caches/Captcha";
-        }
-
-        return $Path;
-    }
-
-    /**
-     * Ensure cache directory exists, creating it if abselt.
-     * @return null|string NULL on success, error string describing the
-     *   problem otherwise.
-     */
-    public function checkCacheDirectory(): ?string
-    {
-        $Path = $this->getCachePath();
-
-        # ensure cache exists
-        if (!file_exists($Path)) {
-            $Result = @mkdir($Path, 0777, true);
-            if ($Result === false) {
-                return "Cache directory ".$Path." could not be created.";
-            }
-        }
-
-        # exists, but is not a directory
-        if (!is_dir($Path)) {
-            return "(".$Path.") is not a directory.";
-        }
-
-        # exists and is a directory, but is not writeable
-        if (!is_writeable($Path)) {
-            return "Cache directory ".$Path." is not writeable.";
-        }
-
-        # copy upstream .htaccess to ensure this dir is not public
-        if (!file_exists($Path."/.htaccess")) {
-            copy(
-                dirname(__FILE__)."/lib/securimage/database/.htaccess",
-                $Path."/.htaccess"
-            );
-        }
-
-        return null;
-    }
 
     const SESSION_ALREADY_SOLVED = "Captcha_AlreadySolved";
 
     private $AlreadySolved = false;
-    public $DB = null;
-
-    private $SqlTables = [
-        "IpLog" => "CREATE TABLE Captcha_IpLog (
-                ClientIp VARCHAR(15) UNIQUE,
-                Views INT,
-                Successes INT,
-                Failures INT,
-                LastSeen TIMESTAMP
-            )",
-        "UserLog" => "CREATE TABLE Captcha_UserLog (
-                UserName VARCHAR(15) UNIQUE,
-                Views INT,
-                Successes INT,
-                Failures INT,
-                LastSeen TIMESTAMP
-            )",
-    ];
+    private $TrampolineTarget = "";
 }

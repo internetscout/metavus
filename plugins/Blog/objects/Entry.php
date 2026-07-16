@@ -72,7 +72,7 @@ class Entry extends Record
      * @param string $Fragment Optional fragment ID to add.
      * @return string Returns the URL to the blog entry relative to the CWIS root.
      */
-    public function entryUrl(array $Get = [], $Fragment = null)
+    public function entryUrl(array $Get = [], $Fragment = null): string
     {
         $BlogPlugin = Blog::getInstance();
         $UrlPrefix = $BlogPlugin->blogSetting($this->getBlogId(), "CleanUrlPrefix");
@@ -96,7 +96,7 @@ class Entry extends Record
         }
 
         # tack on the GET parameters, if necessary
-        if (count($Get)) {
+        if (count($Get) !== 0) {
             $Url .= "?" . http_build_query($Get);
         }
 
@@ -124,7 +124,7 @@ class Entry extends Record
      * @param int $MaxLength The maximum length of the teaser.
      * @return string Returns the truncated blog entry body.
      */
-    public function teaser($MaxLength = 1200)
+    public function teaser($MaxLength = 1200): string
     {
         $Body = $this->get(Blog::BODY_FIELD_NAME);
 
@@ -336,7 +336,7 @@ class Entry extends Record
      * Get the creation date field value for displaying to users.
      * @return string Returns the creation date field value for display to users.
      */
-    public function creationDateForDisplay()
+    public function creationDateForDisplay(): string
     {
         return $this->formatTimestampForDisplay($this->creationDate());
     }
@@ -345,7 +345,7 @@ class Entry extends Record
      * Get the modification date field value for displaying to users.
      * @return string Returns the modification date field value for display to users.
      */
-    public function modificationDateForDisplay()
+    public function modificationDateForDisplay(): string
     {
         return $this->formatTimestampForDisplay($this->modificationDate());
     }
@@ -354,7 +354,7 @@ class Entry extends Record
      * Get the publication date field value for displaying to users.
      * @return string Returns the publication date field value for display to users.
      */
-    public function publicationDateForDisplay()
+    public function publicationDateForDisplay(): string
     {
         return $this->formatTimestampForDisplay($this->publicationDate());
     }
@@ -363,7 +363,7 @@ class Entry extends Record
      * Get the categories field value for displaying to users.
      * @return array Returns the categories field value for display to users.
      */
-    public function categoriesForDisplay()
+    public function categoriesForDisplay(): array
     {
         $Categories = [];
 
@@ -387,7 +387,7 @@ class Entry extends Record
      * Get the image field value for displaying to users.
      * @return array Returns the image field value for display to users.
      */
-    public function imagesForDisplay()
+    public function imagesForDisplay(): array
     {
         $Images = [];
 
@@ -420,7 +420,7 @@ class Entry extends Record
      * Get the creation date field value for machine parsing.
      * @return string Returns the creation date field value for machine parsing.
      */
-    public function creationDateForParsing()
+    public function creationDateForParsing(): string
     {
         return $this->formatTimestampForParsing($this->creationDate());
     }
@@ -429,7 +429,7 @@ class Entry extends Record
      * Get the modification date field value for machine parsing.
      * @return string Returns the modification date field value for machine parsing.
      */
-    public function modificationDateForParsing()
+    public function modificationDateForParsing(): string
     {
         return $this->formatTimestampForParsing($this->modificationDate());
     }
@@ -438,7 +438,7 @@ class Entry extends Record
      * Get the publication date field value for machine parsing.
      * @return string Returns the publication date field value for machine parsing.
      */
-    public function publicationDateForParsing()
+    public function publicationDateForParsing(): string
     {
         return $this->formatTimestampForParsing($this->publicationDate());
     }
@@ -447,7 +447,7 @@ class Entry extends Record
      * Get the title field value for inserting into a URL.
      * @return string Returns the title field value for inserting into a URL.
      */
-    public function titleForUrl()
+    public function titleForUrl(): string
     {
         $SafeTitle = strip_tags($this->title());
         $SafeTitle = str_replace(" ", "-", $SafeTitle);
@@ -463,7 +463,7 @@ class Entry extends Record
      * @return string Returns the date prefix for the creation date field value for
      *      displaying to users.
      */
-    public function creationDateDisplayPrefix()
+    public function creationDateDisplayPrefix(): string
     {
         return $this->getTimestampPrefix($this->creationDate());
     }
@@ -474,7 +474,7 @@ class Entry extends Record
      * @return string Returns the date prefix for the modification date field value for
      *      displaying to users.
      */
-    public function modificationDateDisplayPrefix()
+    public function modificationDateDisplayPrefix(): string
     {
         return $this->getTimestampPrefix($this->modificationDate());
     }
@@ -485,7 +485,7 @@ class Entry extends Record
      * @return string Returns the date prefix for the publication date field value for
      *      displaying to users.
      */
-    public function publicationDateDisplayPrefix()
+    public function publicationDateDisplayPrefix(): string
     {
         return $this->getTimestampPrefix($this->publicationDate());
     }
@@ -569,27 +569,24 @@ class Entry extends Record
      * @param bool $Reset When TRUE Controlled Names, Classifications,
      *       and Options will be set to contain *ONLY* the contents of
      *       NewValue, rather than appending $NewValue to the current value.
+     * @return bool TRUE if the value for the field was changed in some fashion,
+     *      otherwise FALSE.
      * @throws \Exception When attempting to set a value for a field that is
      *       part of a different schema than the resource.
      * @throws \InvalidArgumentException When attempting to set a controlled
      *       name with an invalid ID.
      * @see Record::set().
      */
-    public function set($Field, $NewValue, bool $Reset = false)
+    public function set($Field, $NewValue, bool $Reset = false): bool
     {
         $Field = $this->normalizeFieldArgument($Field);
-
-        # return if we don't have a valid field
-        if (!($Field instanceof MetadataField)) {
-            return;
-        }
 
         # handle image keyword replacement
         if ($Field->type() == MetadataSchema::MDFTYPE_PARAGRAPH) {
             $NewValue = ImageFactory::convertUrlsToKeywords($NewValue);
         }
 
-        parent::set($Field, $NewValue, $Reset);
+        return parent::set($Field, $NewValue, $Reset);
     }
 
     /**
@@ -598,7 +595,7 @@ class Entry extends Record
      * @param Metavus\User|array $Users Users to format names for (from $this->Get()).
      * @return string Returns the user's name for display.
      */
-    protected function formatUserNameForDisplay($Users)
+    protected function formatUserNameForDisplay($Users): string
     {
         # blog schema does not allow multiple users, so just grab
         #  the first (and only) entry in the array
@@ -619,7 +616,7 @@ class Entry extends Record
         $BestName = $User->getBestName();
 
         # blank best name
-        if (!strlen($BestName)) {
+        if (strlen($BestName) === 0) {
             return "-";
         }
 
@@ -631,7 +628,7 @@ class Entry extends Record
      * @param string $Timestamp Timestamp to format.
      * @return string Returns a formatted timestamp.
      */
-    protected function formatTimestampForDisplay($Timestamp)
+    protected function formatTimestampForDisplay($Timestamp): string
     {
         return StdLib::getPrettyTimestamp($Timestamp, true);
     }
@@ -641,7 +638,7 @@ class Entry extends Record
      * @param string $Timestamp Timestamp to format.
      * @return string Returns a formatted timestamp.
      */
-    protected function formatTimestampForParsing($Timestamp)
+    protected function formatTimestampForParsing($Timestamp): string
     {
         $Timestamp = strtotime($Timestamp);
 
@@ -659,7 +656,7 @@ class Entry extends Record
      * @param string $Timestamp Timestamp for which to get a date prefix
      * @return string Returns the date prefix for a timestamp.
      */
-    protected function getTimestampPrefix($Timestamp)
+    protected function getTimestampPrefix($Timestamp): string
     {
         # convert timestamp to seconds
         $Timestamp = strtotime($Timestamp);
@@ -702,7 +699,7 @@ class Entry extends Record
     {
         # delete the captions shown below images
         $Html = preg_replace(
-            '%<div [^>]*class="mv-form-image-caption"[^>]*>[^<]*</div>%',
+            '%<div [^>]*class="mv-form-image-caption"[^>]*>.*?</div>%s',
             "",
             $Html
         );

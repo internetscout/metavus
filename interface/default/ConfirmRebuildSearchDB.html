@@ -9,8 +9,17 @@
 # @scout:phpstan
 
 namespace Metavus;
+use ScoutLib\ApplicationFramework;
 
 # ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Confirm Search Database Rebuild");
+
 $ManualRebuildButton = new HtmlButton("Manual Rebuild");
 $ManualRebuildButton->setLink("index.php?P=RebuildSearchDB");
 
@@ -35,8 +44,7 @@ rebuild the search database.</p>
 <p>Resource information in the search database is updated automatically whenever
 a new resource record is added, updated, or deleted from the collection.
 Rebuilding the search database is unnecessary except after importing resource
-records, when upgrading to a new version of
-<abbr title="Collection Workflow Integration System">CWIS</abbr> to take
+records, when upgrading to a new version of Metavus to take
 advantage of any improvements to the search engine, or when search results seem
 inaccurate.</p>
 
@@ -44,7 +52,7 @@ inaccurate.</p>
 Rebuilding the search database in the foreground requires that the web browser
 remain on the page until the rebuild is complete, but it provides a completion
 time estimate and current status. Rebuilding the search database in the
-background uses ackground tasks and does not require that the web browser remain
+background uses background tasks and does not require that the web browser remain
 on the page. It does not provide a completion time estimate or current status
 due to the nature of background tasks, but is highly recommended except for
 small collections, i.e., those with fewer than 100 or so resource records,
@@ -52,7 +60,5 @@ because rebuilding the search database can take a very long time and background
 tasks are less performance intensive.</p>
 
 <?= $ManualRebuildButton->getHtml(); ?>
-
 <?= $BackgroundRebuildButton->getHtml(); ?>
-
 <?= $CancelButton->getHtml(); ?>

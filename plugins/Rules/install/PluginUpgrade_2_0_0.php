@@ -25,7 +25,7 @@ class PluginUpgrade_2_0_0 extends PluginUpgrade
      * @return null|string Return NULL if upgrade succeeeded, or string
      *      containing error message if upgrade failed.
      */
-    public function performUpgrade()
+    public function performUpgrade(): ?string
     {
         $DB = new Database();
         return $DB->createTables(Rule::SQL_TABLES);

@@ -67,15 +67,15 @@ $ImageHtml = $UseIIIF ?
 $AF->setPageTitle($H_Field->Name()." Display");
 
 ?>
-<h1><?PHP if (!strlen($ResourceTitle)) {
+<h1><?PHP if (strlen($ResourceTitle) === 0) {
     print "Resource ";
     } ?><?=
-        $H_Field->Name() ?><?PHP if (strlen($ResourceTitle)) {
+        $H_Field->Name() ?><?PHP if (strlen($ResourceTitle) !== 0) {
         print " for <i>".$ResourceTitle."</i>";
         } ?></h1>
 
 <a href="<?= $ReturnLink ?>"><?= $ReturnPrompt ?><?=
-        strlen($ResourceTitle) ? "<i>".$ResourceTitle."</i>" : "the Resource" ?></a>
+        strlen($ResourceTitle) !== 0 ? "<i>".$ResourceTitle."</i>" : "the Resource" ?></a>
 
 <hr />
 
@@ -86,4 +86,4 @@ $AF->setPageTitle($H_Field->Name()." Display");
 <hr />
 
 <a href="<?= $ReturnLink ?>"><?= $ReturnPrompt ?><?=
-        strlen($ResourceTitle) ? "<i>".$ResourceTitle."</i>" : "the Resource" ?></a>
+        strlen($ResourceTitle) !== 0 ? "<i>".$ResourceTitle."</i>" : "the Resource" ?></a>

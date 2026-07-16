@@ -30,12 +30,10 @@ class PluginUpgrade_1_0_4 extends PluginUpgrade
     {
         $Plugin = Captcha::getInstance(true);
 
-        if (is_null($Plugin->DB)) {
-            $Plugin->DB = new Database();
-        }
-        $Plugin->DB->query("ALTER TABLE CaptchaIpLog "
+        $DB = new Database();
+        $DB->query("ALTER TABLE CaptchaIpLog "
             ."RENAME TO Captcha_IpLog");
-        $Plugin->DB->query("ALTER TABLE CaptchaUserLog "
+        $DB->query("ALTER TABLE CaptchaUserLog "
             ."RENAME TO Captcha_UserLog");
         return null;
     }

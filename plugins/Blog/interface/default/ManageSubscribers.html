@@ -73,7 +73,7 @@ $AF->setPageTitle($PageTitle);
 # item list ui fields definitions
 $SubscriberFieldDefinitions = [
     "UserName" => [
-        "ValueFunction" => function ($UserId, $UserField) {
+        "ValueFunction" => function ($UserId, $UserField): string {
             $UserName = getUserInfo($UserId, $UserField);
             return "<a href='index.php?P=EditUser&ID=".$UserId."'>".$UserName."</a>";
         },
@@ -81,7 +81,7 @@ $SubscriberFieldDefinitions = [
     "EMail" => [
         "Heading" => "E-Mail",
         "AllowHTML" => true,
-        "ValueFunction" => function ($UserId, $UserField) {
+        "ValueFunction" => function ($UserId, $UserField): string {
             $SafeEmail = defaulthtmlentities(getUserInfo($UserId, $UserField));
             return "<a href='mailto:".$SafeEmail."'>".$SafeEmail."</a>";
         },
@@ -94,7 +94,7 @@ $SubscriberFieldDefinitions = [
 
 $ListUI = new ItemListUI($SubscriberFieldDefinitions);
 $ListUI->heading($PageTitle);
-$RemoveLinkFunc = function ($Item) {
+$RemoveLinkFunc = function ($Item): string {
     # link for removing subscribers
     return "index.php?P=P_Blog_ManageSubscribers&amp;ID=".$Item;
 };

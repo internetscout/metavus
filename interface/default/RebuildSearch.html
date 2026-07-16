@@ -8,15 +8,34 @@
 #
 #   @scout:phpstan
 
+use Metavus\SearchEngine;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
 # ----- MAIN -----------------------------------------------------------------
 
-if (!isset($H_ResourcesQueued)) {
-    throw new Exception("Variable \$H_ResourcesQueued not set.");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
+
+$AF = ApplicationFramework::getInstance();
+
+if (!array_key_exists("AC", $_GET) || $_GET["AC"] !== "Background") {
+    $AF->setJumpToPage("index.php?P=ConfirmRebuildSearchDB");
+    return;
+}
+
+# set relatively high PHP timeout in case of large collection
+set_time_limit(600);
+
+# queue rebuild for all schemas
+$ResourcesQueued = SearchEngine::queueDBRebuildForAllSchemas();
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Search Database Rebuild</h1>
 
-<p><?= number_format($H_ResourcesQueued); ?> resources have been
+<p><?= number_format($ResourcesQueued); ?> resources have been
 queued to have their search data updated.</p>
 

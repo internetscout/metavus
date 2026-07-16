@@ -138,7 +138,7 @@ class PluginUpgrade_1_0_24 extends PluginUpgrade
      * @param int $Offset Position in the string to begin searching (OPTIONAL, default 0).
      * @return array|false Returns the position and length if found or FALSE otherwise.
      */
-    private function getEndOfFirstParagraphPositionWithLines($Html, $Offset = 0)
+    private function getEndOfFirstParagraphPositionWithLines(string $Html, $Offset = 0)
     {
         # save the initial length so that the offset of the HTML in the original
         # HTML can be found after trimming
@@ -175,7 +175,7 @@ class PluginUpgrade_1_0_24 extends PluginUpgrade
      * @param string $Html HTML to trim.
      * @return string Returns the trimmed HTML.
      */
-    private function leftTrimHtml($Html)
+    private function leftTrimHtml($Html): string
     {
         # remove whitespace from the beginning
         $Html = ltrim($Html);

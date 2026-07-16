@@ -28,7 +28,7 @@ use ScoutLib\ApplicationFramework;
  * @param int $UserId User to describe.
  * @return string HTML.
  */
-function ownerInfo(string $LaunchId, int $UserId)
+function ownerInfo(string $LaunchId, int $UserId): string
 {
     $Owner = new User($UserId);
 
@@ -49,7 +49,7 @@ function ownerInfo(string $LaunchId, int $UserId)
     $FoundImage = false;
     if (!is_null($UserImageField)) {
         $Avatar = $Owner->get($UserImageField);
-        if (count($Avatar)) {
+        if (count($Avatar) !== 0) {
             $Html .= (new Image($Avatar[0]))
                 ->getHtml("mv-image-thumbnail");
             $FoundImage = true;

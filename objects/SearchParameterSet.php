@@ -181,7 +181,7 @@ class SearchParameterSet extends \ScoutLib\SearchParameterSet
         list($Operator, $Term) = self::parseSearchString($Value);
 
         # if no term found, return value unchanged
-        if (!strlen($Term)) {
+        if (strlen($Term) === 0) {
             return $Value;
         }
 
@@ -225,7 +225,7 @@ class SearchParameterSet extends \ScoutLib\SearchParameterSet
 
         # if term does not appear valid, return value unchanged
         $Term = $TFactory->getItem($Id)->name();
-        if (!strlen($Term)) {
+        if (strlen($Term) === 0) {
             return $Value;
         }
 

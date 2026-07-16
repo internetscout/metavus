@@ -10,7 +10,6 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Plugin;
 use ScoutLib\PluginManager;
@@ -24,9 +23,9 @@ use ScoutLib\PluginManager;
  * @param string $Classes CSS classes to add to list container.
  * @return void
  */
-function printMessages(array $MessagesList, string $Classes)
+function printMessages(array $MessagesList, string $Classes): void
 {
-    if (count($MessagesList)) {
+    if (count($MessagesList) !== 0) {
         ?><ul class="alert <?= $Classes ?>">
         <?PHP
         foreach ($MessagesList as $PluginName => $PluginMessages) {
@@ -46,7 +45,7 @@ function printMessages(array $MessagesList, string $Classes)
  */
 function getContentForEnabled(Plugin $Plugin): string
 {
-    $BaseName = $Plugin->getBaseName();
+    $BaseName = $Plugin::getBaseName();
     $Identifier = "EnabledCheckbox-".$BaseName;
     return "<input type='checkbox' id='".$Identifier."' name='".$Identifier."'"
             .($Plugin->isEnabled() ? " checked" : "")
@@ -63,7 +62,7 @@ function getContentForEnabled(Plugin $Plugin): string
 function getContentForName(Plugin $Plugin): string
 {
     $Name = $Plugin->getName();
-    $BaseName = $Plugin->getBaseName();
+    $BaseName = $Plugin::getBaseName();
     return (str_replace(" ", "", $Name) == $BaseName) ? $Name : $Name." (".$BaseName.")";
 }
 
@@ -78,7 +77,7 @@ function getContentForDependencies(Plugin $Plugin): string
     $Dependencies = $Plugin->getDependencies();
     uksort(
         $Dependencies,
-        function ($A, $B) {
+        function ($A, $B): int {
             return (($A == "CWISCore") || ($A == "MetavusCore")) ? -1 : ($A <=> $B);
         }
     );
@@ -98,15 +97,15 @@ function getContentForActions(Plugin $Plugin): string
 {
     $Content = "<span>";
     $Attribs = $Plugin->getAttributes();
-    $BaseName = $Plugin->getBaseName();
+    $BaseName = $Plugin::getBaseName();
     $AF = ApplicationFramework::getInstance();
     if ($Plugin->isInstalled()) {
         $CfgLink = !is_null($Attribs["CfgPage"]) && strlen($Attribs["CfgPage"]) ?
                 $Attribs["CfgPage"]
-                : (count($Attribs["CfgSetup"])
+                : (count($Attribs["CfgSetup"]) !== 0
                 ? "index.php?P=PluginConfig&amp;PN=".$BaseName
                 : "");
-        if (strlen($CfgLink)) {
+        if (strlen($CfgLink) !== 0) {
             $Content .= "<a href='".$CfgLink."'>"
                     ."<img class='mv-plugin-settings-cog' src='"
                     .$AF->gUIFile("settings.png")
@@ -128,17 +127,64 @@ function getContentForActions(Plugin $Plugin): string
  * @param Plugin $Plugin Plugin for this row.
  * @return string CSS class (if any).
  */
-function getCssClassForPluginRow(Plugin $Plugin)
+function getCssClassForPluginRow(Plugin $Plugin): string
 {
     return (!$Plugin->isReady()) ? "text-muted" : "";
 }
 
-# ----- SETUP ----------------------------------------------------------------
-if (!isset($H_StatusMsgs)) {
-    throw new Exception("Status messages not loaded.");
+/**
+ * Enable or disable plugin, enabling prerequisite plugins as needed.
+ * @param Plugin $Plugin Plugin.
+ * @param bool $Enable TRUE to enable, or FALSE to disable.
+ * @param array $StatusMsgs Current list of status messages.
+ * @param Plugin|null $Dependent Plugin that depends on this one, that is causing
+ *         it to be enabled. (OPTIONAL)
+ * @return array List of status messages (potentially updated).
+ */
+function togglePlugin(
+    Plugin $Plugin,
+    bool $Enable,
+    array $StatusMsgs,
+    ?Plugin $Dependent = null
+): array {
+    # if plugin is to be enabled
+    if ($Enable) {
+        # retrieve list of plugins it depends on
+        $RequiredPlugins = $Plugin->getDependencies();
+
+        # for each plugin
+        foreach ($RequiredPlugins as $RequiredPluginName => $RequiredPluginVersion) {
+            # if required plugin exists and is not enabled
+            $ReqPlugin = $GLOBALS["G_PluginManager"]->getPlugin(
+                $RequiredPluginName,
+                true
+            );
+            if (($ReqPlugin !== null) && !$ReqPlugin->isEnabled()) {
+                # enable plugin
+                $StatusMsgs = togglePlugin($ReqPlugin, true, $StatusMsgs, $Plugin);
+            }
+        }
+    }
+
+    # update plugin status
+    $Plugin->isEnabled($Enable);
+
+    # record message about change
+    $PluginName = $Plugin::getBaseName();
+    $Msg = "Plugin <b>".$Plugin->getName()."</b> has been "
+        .($Enable ? "enabled" : "disabled").".";
+    if ($Dependent instanceof \ScoutLib\Plugin) {
+        $Msg .= "  (Required by <b>".$Dependent->getName()."</b>.)";
+    }
+    $StatusMsgs[$PluginName][] = $Msg;
+
+    return $StatusMsgs;
 }
-if (!isset($H_ErrMsgs)) {
-    throw new Exception("Error messages not loaded.");
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN)) {
+    return;
 }
 
 $AF = ApplicationFramework::getInstance();
@@ -146,7 +192,7 @@ $AF = ApplicationFramework::getInstance();
 $Plugins = $GLOBALS["G_PluginManager"]->GetPlugins();
 usort(
     $Plugins,
-    function ($A, $B) {
+    function ($A, $B): int {
         return $A->getName() <=> $B->getName();
     }
 );
@@ -193,12 +239,66 @@ $ListFields = [
 $BaseListUI = new ItemListUI($ListFields);
 $BaseListUI->setItemsPerPage(200);
 $BaseListUI->fieldsSortableByDefault(false);
-$LocalListUI = clone $BaseListUI;
-
-$BaseListUI->heading("Base Plugins");
+$BaseListUI->setHeading("Base Plugins");
 $BaseListUI->setItems($BasePlugins);
-$LocalListUI->heading("Local Plugins");
+
+$LocalListUI = new ItemListUI($ListFields);
+$LocalListUI->setItemsPerPage(200);
+$LocalListUI->fieldsSortableByDefault(false);
+$LocalListUI->setHeading("Local Plugins");
 $LocalListUI->setItems($LocalPlugins);
+
+# load any status or error messages
+$StatusMsgs = [];
+$ErrMsgs = $GLOBALS["G_PluginManager"]->getErrorMessages();
+if (array_key_exists("PluginManagerStatusMessages", $_SESSION)) {
+    $StatusMsgs = $_SESSION["PluginManagerStatusMessages"];
+    unset($_SESSION["PluginManagerStatusMessages"]);
+}
+
+# ----- PROCESSING -----------------------------------------------------------
+
+if (isset($_POST["SUBMITTED"])) {
+    # load current enabled state of all plugins
+    # (needed in case one is auto-enabled because of a dependency)
+    $Plugins = $GLOBALS["G_PluginManager"]->getPlugins();
+    $PEnabledCurrent = [];
+    foreach ($Plugins as $PluginName => $Plugin) {
+        $PEnabledCurrent[$PluginName] = $Plugin->isEnabled();
+    }
+
+    $NewStatusMsgs = [];
+    foreach ($Plugins as $PluginName => $Plugin) {
+        # never disable core plugin
+        if ($PluginName == "CWISCore" || $PluginName == "MetavusCore") {
+            continue;
+        }
+
+        # if plugin has been enabled or disabled
+        $FField = "EnabledCheckbox-".$PluginName;
+        $PEnabledNew = isset($_POST[$FField]);
+        if ($PEnabledNew != $PEnabledCurrent[$PluginName]) {
+            # updated enable/disable setting to reflect form checkboxes
+            $NewStatusMsgs = togglePlugin($Plugin, $PEnabledNew, $NewStatusMsgs);
+
+            # note that plugin has been enabled/disabled
+            $PEnabledChange = true;
+        }
+    }
+
+    # if plugin enabled/disabled status has changed
+    if (isset($PEnabledChange)) {
+        $AF->clearPageCache();
+        $AF->clearObjectLocationCache();
+    }
+
+    # save any resulting status messages before page is reloaded
+    $_SESSION["PluginManagerStatusMessages"] = $NewStatusMsgs;
+
+    # reload page so that correct set of plugins are loaded
+    $AF->setJumpToPage("Plugins");
+    return;
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 $AF->setPageTitle("Plugins");
@@ -207,8 +307,8 @@ $AF->setPageTitle("Plugins");
 <h1>Plugins</h1>
 
 <?PHP
-printMessages($H_StatusMsgs, "alert-primary mv-form-modified");
-printMessages($H_ErrMsgs, "alert-danger mv-form-error");
+printMessages($StatusMsgs, "alert-primary mv-form-modified");
+printMessages($ErrMsgs, "alert-danger mv-form-error");
 $PluginMgr = PluginManager::getInstance();
 if ($PluginMgr->pluginReady("Developer")) {
     print $PluginMgr->getPlugin("Developer")->getSettingsInfoHtml();
@@ -216,7 +316,7 @@ if ($PluginMgr->pluginReady("Developer")) {
 ?>
 
 <form name="MainForm" method="post" action="index.php?P=Plugins">
-    <input type="hidden" name="SUBMITTED" value="1" />
+    <input type="hidden" name="SUBMITTED" value="1"/>
     <?= $BaseListUI->getHtml(); ?>
     <?= $LocalListUI->getHtml(); ?>
 </form>

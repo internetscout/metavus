@@ -19,7 +19,7 @@ use ScoutLib\StdLib;
  * @param $ResourceId
  * @param $CheckDate
  */
-function PrintNextResource($ResourceId, $CheckDate)
+function PrintNextResource($ResourceId, $CheckDate): void
 {
     $Resource = new Record($ResourceId, $CheckDate);
     $Schema = $Resource->getSchema();
@@ -71,7 +71,7 @@ function PrintNextResource($ResourceId, $CheckDate)
  * Print out a single invalid resource URL's data.
  * @param $InvalidUrl InvalidUrl object
  */
-function PrintNextUrl(InvalidUrl $InvalidUrl)
+function PrintNextUrl(InvalidUrl $InvalidUrl): void
 {
     $Resource = $InvalidUrl->getAssociatedResource();
     $Field = $InvalidUrl->getAssociatedField();

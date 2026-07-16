@@ -39,7 +39,7 @@ $ListFields = [
     ],
     "Events: Release Flag" => [
         "Heading" => "Rel.",
-        "ValueFunction" => function ($Event) {
+        "ValueFunction" => function ($Event): string {
             return $Event->get('Release Flag') ? "Yes" : "No";
         }
     ]
@@ -73,7 +73,6 @@ $SearchListSelected = StdLib::getFormValue("F_Field");
 $SearchListOptions = [
     "ALL" => "(any field)",
     "Title" => "Title",
-    "ShortTitle" => "Short Title",
     "Description" => "Description",
     "URL" => "URL",
     "ContactEmail" => "Contact Email",

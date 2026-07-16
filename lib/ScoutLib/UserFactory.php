@@ -68,12 +68,12 @@ class UserFactory
         );
 
         # discard any errors we are supposed to ignore
-        if ($IgnoreErrorCodes) {
+        if ($IgnoreErrorCodes !== null && $IgnoreErrorCodes !== []) {
             $ErrorCodes = array_diff($ErrorCodes, $IgnoreErrorCodes);
         }
 
         # if error found in incoming values return error codes to caller
-        if (count($ErrorCodes)) {
+        if (count($ErrorCodes) !== 0) {
             return $ErrorCodes;
         }
 
@@ -142,7 +142,7 @@ class UserFactory
         );
 
         # if there were problems, merge those in to our error list
-        if (count($PasswordErrors)) {
+        if (count($PasswordErrors) !== 0) {
             $ErrorCodes = array_merge($ErrorCodes, $PasswordErrors);
             $FoundOtherPasswordError = true;
         }
@@ -191,7 +191,8 @@ class UserFactory
     public function getUserCount(?string $Condition = null): int
     {
         return $this->DB->queryValue("SELECT COUNT(*) AS UserCount FROM APUsers"
-            . ($Condition ? " WHERE " . $Condition : ""), "UserCount");
+            . ($Condition !== null && $Condition !== '' &&
+               $Condition !== '0' ? " WHERE " . $Condition : ""), "UserCount");
     }
 
     /**
@@ -305,7 +306,7 @@ class UserFactory
 
         # start with query string that will return all users
         $QueryString = "SELECT DISTINCT APUsers.UserId, UserName FROM APUsers"
-            . (count($Privs) ? ", APUserPrivileges" : "");
+            . (count($Privs) !== 0 ? ", APUserPrivileges" : "");
 
         # for each specified privilege
         foreach ($Privs as $Index => $Priv) {
@@ -315,7 +316,7 @@ class UserFactory
         }
 
         # close privilege condition in query string and add user ID condition
-        $QueryString .= count($Privs)
+        $QueryString .= count($Privs) !== 0
             ? ") AND APUsers.UserId = APUserPrivileges.UserId" : "";
 
         # add sort by user name to query string
@@ -362,7 +363,7 @@ class UserFactory
 
         # create user objects
         $Users = array();
-        foreach ($UserNames as $UserId => $UserName) {
+        foreach (array_keys($UserNames) as $UserId) {
             $Users[$UserId] = new User($UserId);
         }
 
@@ -458,24 +459,28 @@ class UserFactory
 
         # if empty search string supplied, return nothing
         $TrimmedSearchString = trim($SearchString);
-        if (empty($TrimmedSearchString)) {
+        if ($TrimmedSearchString === '' || $TrimmedSearchString === '0') {
             return $ReturnValue;
         }
 
         # make sure ordering is done by user name if not specified
-        $SortFieldName = empty($SortFieldName) ? "UserName" : $SortFieldName;
+        $SortFieldName = $SortFieldName === '' || $SortFieldName === '0' ?
+            "UserName" :
+            $SortFieldName;
 
         # begin constructing the query
         $Query = "SELECT * FROM APUsers";
         $QueryOrderBy = " ORDER BY $SortFieldName";
-        $QueryLimit = empty($ReturnNumber) ? "" : " LIMIT $ResultsStartAt, $ReturnNumber";
+        $QueryLimit = $ReturnNumber === null || $ReturnNumber === 0 ?
+            "" :
+            " LIMIT $ResultsStartAt, $ReturnNumber";
 
         # the Criteria Query will be used to get the total number of results without the
         # limit clause
         $CriteriaQuery = $Query;
 
         # if specific field comparison requested
-        if (!empty($FieldName)) {
+        if ($FieldName !== null && $FieldName !== '' && $FieldName !== '0') {
             # append queries with criteria
             $Query .= " WHERE " . $FieldName . " REGEXP '" . addslashes($SearchString) . "'";
             $CriteriaQuery = $Query;
@@ -495,7 +500,7 @@ class UserFactory
         # ...and process query return
         while ($Record = $this->DB->FetchRow()) {
             # if specific field or all users requested
-            if (!empty($FieldName)) {
+            if ($FieldName !== null && $FieldName !== '' && $FieldName !== '0') {
                 # add user to return array
                 $ReturnValue[$Record["UserId"]] = $Record;
 
@@ -535,9 +540,7 @@ class UserFactory
         if (count($Users) == 0) {
             return false;
         }
-
-        reset($Users);
-        return (int) key($Users);
+        return (int) array_key_first($Users);
     }
 
     /**

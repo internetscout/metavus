@@ -3,15 +3,15 @@
 #   FILE:  StdLib.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
 
 namespace ScoutLib;
 use Closure;
-use Exception;
 use DOMDocument;
+use Exception;
 use InvalidArgumentException;
 use LengthException;
 use RangeException;
@@ -28,9 +28,30 @@ use ReflectionProperty;
 class StdLib
 {
     # cached data timeout for DataCache->set(), in seconds
-    const CACHED_DATA_TTL = 60 * 60 * 24;
+    const CACHED_DATA_TTL = 86400; # one day
+    const CACHED_FAILURE_TTL = 3600; # one hour
 
     # ---- PUBLIC INTERFACE --------------------------------------------------
+
+    /**
+     * Parse a URL and return the value of a specified query parameter.
+     * @param string $ParamName The parameter to get from the URL.
+     * @param string $Url The URL to parse.
+     * @return ?string The value of the param, or NULL if the variable isn't
+     *         found in the URL or the URL parsing failed.
+     */
+    public static function getQueryParamFromUrl(string $ParamName, string $Url): ?string
+    {
+        $UrlParsed = parse_url($Url, PHP_URL_QUERY);
+        if (!is_string($UrlParsed)) {
+            return null;
+        }
+        parse_str($UrlParsed, $UrlArgs);
+        if (!isset($UrlArgs[$ParamName]) || !is_string($UrlArgs[$ParamName])) {
+            return null;
+        }
+        return $UrlArgs[$ParamName];
+    }
 
     /**
      * Convert a date range into a user-friendly printable format. Example outputs:
@@ -142,9 +163,26 @@ class StdLib
     public static function getMyCaller(): string
     {
         $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $FileName =  isset($Trace[1]["file"])
-                ? basename($Trace[1]["file"]) : "UnknownFile";
-        return $FileName.":".($Trace[1]["line"] ?? "UnknownLine");
+        $Info = $Trace[1] ?? [];
+        $FileName =  isset($Info["file"])
+                ? basename($Info["file"]) : "UnknownFile";
+        return $FileName.":".($Info["line"] ?? "UnknownLine");
+    }
+
+    /**
+     * Get string with name of method or function that made call to
+     * current (calling) function.  Method names will include the class.
+     * @return string String with caller info in the form "FUNCTION"
+     *      or "CLASS::METHOD", or "(unknown)" if unable to determine
+     *      what method or function called the calling function.
+     */
+    public static function getMyCallersFunction(): string
+    {
+        $Trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 4);
+        $Info = $Trace[2] ?? [];
+        $Func =  isset($Info["class"]) ? $Info["class"]."::" : "";
+        $Func .= $Info["function"] ?? "(unknown)";
+        return $Func;
     }
 
     /**
@@ -298,7 +336,7 @@ class StdLib
         # renumber backtrace entries
         $TraceString = preg_replace_callback(
             "/^#(\d+)/m",
-            function ($Matches) {
+            function ($Matches): string {
                 return "#".((int)$Matches[1] - 1);
             },
             $TraceString
@@ -450,7 +488,7 @@ class StdLib
         # get prefix for index of non-namespaced saved variables
         # (class prefix is surrounded by null bytes)
         $Reflection = new ReflectionClass($Object);
-        $VarNamePrefix = "\0".(strlen($OldNamespace) ? $OldNamespace."\\" : "")
+        $VarNamePrefix = "\0".(strlen($OldNamespace) !== 0 ? $OldNamespace."\\" : "")
             .$Reflection->getShortName()."\0";
 
         # convert object to array to be able to access private variables
@@ -806,7 +844,7 @@ class StdLib
                 $BreakPos = $MaxLength;
             } else {
                 # otherwise look for an acceptable breakpoint
-                $BreakPos = self::strrpos($String, " ", (0 - ($Length - $MaxLength)));
+                $BreakPos = self::strrpos($String, " ", (-($Length - $MaxLength)));
 
                 # if we couldn't find a breakpoint, just chop at max length
                 if ($BreakPos === false) {
@@ -1320,7 +1358,7 @@ class StdLib
         # generate random order with no duplicate values
         do {
             $RandomOrder = array_map(
-                function ($Value) {
+                function (int $Value): int {
                     return mt_rand();
                 },
                 range(1, count($Values))
@@ -1484,7 +1522,7 @@ class StdLib
      */
     public static function rgbToHexColor(int $R, int $G, int $B): string
     {
-        $FormFunc = function ($Comp) {
+        $FormFunc = function ($Comp): string {
             return str_pad(strtoupper(dechex($Comp)), 2, "0", STR_PAD_LEFT);
         };
         $HexColor = "#".$FormFunc($R).$FormFunc($G).$FormFunc($B);
@@ -1501,8 +1539,11 @@ class StdLib
      *       when there may be multiple constants with the same value.  (OPTIONAL)
      * @return string|null Constant name or null if no matching value found.
      */
-    public static function getConstantName($ClassName, $Value, ?string $Prefix = null): ?string
-    {
+    public static function getConstantName(
+        $ClassName,
+        $Value,
+        ?string $Prefix = null
+    ): ?string {
         static $Constants;
 
         # retrieve all constants for class
@@ -1526,6 +1567,37 @@ class StdLib
 
         # report to caller that no matching constant was found
         return null;
+    }
+
+    /**
+     * Convert PHP callable value to human-friendly printable string.
+     * @param callable $Call Callable to convert.
+     * @return string Printable string.
+     */
+    public static function convertCallableToString(callable $Call): string
+    {
+        if (is_string($Call)) {
+            return $Call;
+        }
+
+        if ($Call instanceof Closure) {
+            $Ref = new ReflectionFunction($Call);
+            return 'Closure@'.$Ref->getFileName().':'.$Ref->getStartLine();
+        }
+
+        if (is_array($Call)) {
+            [$ClassOrObject, $Method] = $Call;
+            $Class = is_object($ClassOrObject)
+                    ? get_class($ClassOrObject)
+                    : $ClassOrObject;
+            return $Class.'::'.$Method;
+        }
+
+        if (is_object($Call)) {
+            return get_class($Call);
+        }
+
+        return '(unknown callable)';
     }
 
     /**
@@ -1560,7 +1632,7 @@ class StdLib
 
         # filter out errors as required
         $Errors = libxml_get_errors();
-        $ErrorFilter = function ($Error) use ($ErrorsToIgnore) {
+        $ErrorFilter = function ($Error) use ($ErrorsToIgnore): bool {
             foreach ($ErrorsToIgnore as $MsgPattern) {
                 if (preg_match($MsgPattern, $Error->message)) {
                     return false;
@@ -1817,40 +1889,56 @@ class StdLib
 
     /**
      * Retrieve the host name for the given IP address. Returns the IP address
-     * if no host name can be found.  Host names are cached for CACHED_DATA_TTL
-     * time.
-     * @param string|null $IpAddress IP address.  (OPTIONAL, if not supplied
-     *      then $_SERVER["REMOTE_ADDR"] is used)
-     * @return string Host name, or IP address if no host name available for IP.
+     * if no host name can be found. Host names are cached for CACHED_DATA_TTL
+     * time. Lookup failures are cached for CACHED_FAILURE_TTL.
+     * @param string $IpAddress IP address to look up.
+     * @return string Host name or IP address if no host name available for IP.
      */
-    public static function getHostName(?string $IpAddress = null): string
-    {
-        if ($IpAddress === null) {
-            $IpAddress = $_SERVER["REMOTE_ADDR"];
+    public static function getHostName(
+        string $IpAddress
+    ): string {
+        $HostName = self::getHostNameFromCache($IpAddress);
+        if ($HostName !== null) {
+            return $HostName;
         }
 
-        $Cache = self::getCache();
-        $CacheKey = __FUNCTION__."-"
-                .str_replace(DataCache::CHARS_NOT_ALLOWED_IN_KEYS, "_", $IpAddress);
-        $HostName = $Cache->get($CacheKey);
-
-        if ($HostName === null) {
-            if ($IpAddress == "::1") {
-                $HostName = "localhost";
-            } else {
-                $IpAddressAppearsValid = preg_match(
-                    "/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/",
-                    $IpAddress
-                );
-                if ($IpAddressAppearsValid) {
-                    $HostName = gethostbyaddr($IpAddress);
-                } else {
+        if (in_array($IpAddress, ["::1", "127.0.0.1"])) {
+            $HostName = "localhost";
+        } else {
+            $FilterResult = filter_var($IpAddress, FILTER_VALIDATE_IP);
+            if ($FilterResult !== false) {
+                $HostName = gethostbyaddr($IpAddress);
+                if ($HostName === false) {
                     $HostName = $IpAddress;
                 }
+            } else {
+                $HostName = $IpAddress;
             }
-            $Cache->set($CacheKey, $HostName, self::CACHED_DATA_TTL);
         }
+
+        $CacheKey = "getHostName-"
+            .str_replace(DataCache::CHARS_NOT_ALLOWED_IN_KEYS, "_", $IpAddress);
+        $CacheTTL = ($HostName == $IpAddress) ?
+            self::CACHED_FAILURE_TTL :
+            self::CACHED_DATA_TTL;
+        self::getCache()->set($CacheKey, $HostName, $CacheTTL);
+
         return $HostName;
+    }
+
+    /**
+     * Retrieve the host name for the given IP address from values stored in
+     * cache (i.e. a DataCache instance).
+     * @param string $IpAddress IP address.
+     * @return string Host name, IP address if no host name available for IP,
+     *     or NULL when no entry for this IP exists in the cache.
+     */
+    public static function getHostNameFromCache(
+        string $IpAddress
+    ): ?string {
+        $CacheKey = "getHostName-"
+            .str_replace(DataCache::CHARS_NOT_ALLOWED_IN_KEYS, "_", $IpAddress);
+        return self::getCache()->get($CacheKey);
     }
 
     /**
@@ -1859,7 +1947,13 @@ class StdLib
      */
     public static function getNumberOfCpuCores(): ?int
     {
+        static $CachedValue = false;
+        if ($CachedValue !== false) {
+            return $CachedValue;
+        }
+
         if (!function_exists("shell_exec")) {
+            $CachedValue = null;
             return null;
         }
 
@@ -1871,7 +1965,8 @@ class StdLib
                 if (is_string($CmdOutput)) {
                     $CoreCount = trim($CmdOutput);
                     if (ctype_digit($CoreCount) && ((int)$CoreCount > 0)) {
-                        return (int)$CoreCount;
+                        $CachedValue = (int)$CoreCount;
+                        return $CachedValue;
                     }
                 }
 
@@ -1880,12 +1975,11 @@ class StdLib
                     $CpuInfo = file_get_contents("/proc/cpuinfo");
                     if ($CpuInfo !== false) {
                         preg_match_all('/^processor\s+:\s+\d+/m', $CpuInfo, $Matches);
-                        return count($Matches[0]);
+                        $CachedValue = count($Matches[0]);
+                        return $CachedValue;
                     }
                 }
-
-                # report that we could not determine count
-                return null;
+                break;
 
             case "DAR":     # MacOS (Darwin)
                 # try using "sysctl"
@@ -1893,18 +1987,18 @@ class StdLib
                 if (is_string($CmdOutput)) {
                     $CoreCount = trim($CmdOutput);
                     if (ctype_digit($CoreCount) && ((int)$CoreCount > 0)) {
-                        return (int)$CoreCount;
+                        $CachedValue = (int)$CoreCount;
+                        return $CachedValue;
                     }
                 }
-
-                # report that we could not determine count
-                return null;
+                break;
 
             case "WIN":     # Windows
                 # try using environment variable
                 $CoreCount = getenv("NUMBER_OF_PROCESSORS");
                 if (ctype_digit($CoreCount) && ((int)$CoreCount > 0)) {
-                    return (int)$CoreCount;
+                    $CachedValue = (int)$CoreCount;
+                    return $CachedValue;
                 }
 
                 # try using "wmic"
@@ -1916,25 +2010,25 @@ class StdLib
                     # sum core counts
                     $LinesWithCounts = array_values(array_filter(
                         $Lines,
-                        function ($Line) {
+                        function ($Line): bool {
                             return ctype_digit($Line);
                         }
                     ));
-                    if (count($LinesWithCounts)) {
+                    if (count($LinesWithCounts) !== 0) {
                         $CoreCount = 0;
                         foreach ($LinesWithCounts as $Line) {
                             $CoreCount += (int)$Line;
                         }
                     }
-                    return ($CoreCount > 0) ? (int)$CoreCount : null;
+                    $CachedValue = ($CoreCount > 0) ? (int)$CoreCount : null;
+                    return $CachedValue;
                 }
-
-                # report that we could not determine count
-                return null;
-
-            default:
-                return null;
+                break;
         }
+
+        # report that we could not determine count
+        $CachedValue = null;
+        return $CachedValue;
     }
 
     /**

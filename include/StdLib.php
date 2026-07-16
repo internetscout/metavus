@@ -18,7 +18,7 @@ use ScoutLib\StdLib;
  * images/icons, if any.
  * @return string the path to the interface containing the rating stars
  */
-function GetFastRatingInterfaceDirectory()
+function GetFastRatingInterfaceDirectory(): string
 {
     $AF = ApplicationFramework::getInstance();
     if (preg_match(
@@ -80,7 +80,7 @@ function PrintForDebug($VarName, $VarValue): void
  * @param string $Url URL to check
  * @return bool TRUE if the URL is safe and FALSE otherwise
  */
-function IsSafeRedirectUrl($Url)
+function IsSafeRedirectUrl($Url): bool
 {
     $ParsedUrl = parse_url((string)$Url);
     $Protocol = StdLib::getArrayValue($ParsedUrl, "scheme");
@@ -126,7 +126,7 @@ function StripTagsAttributes($String, $Options = [])
         $Tags = trim(StdLib::getArrayValue($Options, "Tags"));
 
         # escape allowed tags if any were given
-        if (strlen($Tags)) {
+        if (strlen($Tags) !== 0) {
             # strip invalid characters and ready the names for the subpattern
             $Tags = preg_replace('/[^a-z0-9 ]/i', '', $Options["Tags"]);
             $Tags = preg_replace('/\s+/', "|", $Tags);
@@ -160,7 +160,7 @@ function StripTagsAttributes($String, $Options = [])
             $String
         );
 
-        if (strlen($Attributes)) {
+        if (strlen($Attributes) !== 0) {
             # remove bad chars and split by whitespace
             $Attributes = preg_replace('/[^a-zA-z0-9 ]/i', '', $Options["Attributes"]);
             $Attributes = preg_split('/\s+/', $Attributes);
@@ -269,7 +269,7 @@ function StripUnsafeProtocols($Html)
  * @see htmlspecialchars()
  * @see defaulthtmlspecialchars()
  */
-function defaulthtmlentities($String)
+function defaulthtmlentities($String): string
 {
     $CharacterSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
     if ($CharacterSet == "") {
@@ -289,7 +289,7 @@ function defaulthtmlentities($String)
  * @see htmlentities()
  * @see defaulthtmlentities()
  */
-function defaulthtmlspecialchars($String)
+function defaulthtmlspecialchars($String): string
 {
     $CharacterSet = InterfaceConfiguration::getInstance()->getString("DefaultCharacterSet");
     if ($CharacterSet == "") {

@@ -139,7 +139,7 @@ if ($H_FilterType != FT_ALL) {
             # iterate over requests, building up a list of IPs that
             # used a resumptionToken
             $IPsThatResumed = [];
-            foreach ($H_HarvestData as $Key => $Val) {
+            foreach ($H_HarvestData as $Val) {
                 $Request = urldecode($Val["DataTwo"]);
                 if (strpos($Request, "resumptionToken") !== false) {
                     $IPsThatResumed[$Val["DataOne"]] = true;
@@ -357,22 +357,22 @@ if ($H_FilterType == FT_CONTACT) {
 
 # sort the data
 $SortFunctions = [
-    "EventDate" => function ($V1, $V2) {
+    "EventDate" => function ($V1, $V2): int {
         return StdLib::sortCompare(
             strtotime($V1["EventDate"]),
             strtotime($V2["EventDate"])
         );
     },
-    "R" => function ($V1, $V2) {
+    "R" => function ($V1, $V2): int {
         return StdLib::sortCompare(
             strtotime($V1["EventDate"]),
             strtotime($V2["EventDate"])
         );
     },
-    "DataTwo" => function ($V1, $V2) {
+    "DataTwo" => function ($V1, $V2): int {
         return strcmp($V1["DataTwo"], $V2["DataTwo"]);
     },
-    "Count" => function ($V1, $V2) {
+    "Count" => function ($V1, $V2): int {
         return StdLib::sortCompare($V1["Count"], $V2["Count"]);
     }
 ];

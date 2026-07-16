@@ -98,7 +98,7 @@ switch ($Action) {
         if ($Action == "Test") {
             # if we have resources specified to use for testing
             $Resources = [];
-            if (strlen(trim($H_TestIds))) {
+            if (strlen(trim($H_TestIds)) !== 0) {
                 # split list of resource IDs
                 $Ids = explode(" ", trim(
                     preg_replace("/[^0-9]+/", " ", $H_TestIds)
@@ -119,11 +119,11 @@ switch ($Action) {
                 # retrieve random resources to use for test email
                 $RFactory = new RecordFactory();
                 $Ids = $RFactory->getItemIds();
-                srand($H_TestSeed);
-                $ResourceCount = rand(1, 20);
+                mt_srand($H_TestSeed);
+                $ResourceCount = random_int(1, 20);
                 $Resources = [];
                 for ($Index = 0; $Index < $ResourceCount; $Index++) {
-                    $Id = $Ids[rand(0, count($Ids) - 1)];
+                    $Id = $Ids[random_int(0, max(0, count($Ids) - 1))];
                     $Resources[$Id] = new Record($Id);
                 }
             }

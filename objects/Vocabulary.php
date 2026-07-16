@@ -257,7 +257,7 @@ class Vocabulary
         $Terms = [];
         foreach ($TermTree as $Term => $Children) {
             $Term = trim($Term);
-            $NewTerm = strlen($Prefix) ? $Prefix." -- ".$Term : $Term;
+            $NewTerm = strlen($Prefix) !== 0 ? $Prefix." -- ".$Term : $Term;
             $Terms[] = $NewTerm;
             $Terms = array_merge($Terms, $this->buildTermList($NewTerm, $Children));
         }

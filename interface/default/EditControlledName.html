@@ -9,23 +9,22 @@
 # @scout:phpstan
 
 namespace Metavus;
-
-use Exception;
+use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlOptionList;
 use ScoutLib\HtmlTable;
+use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 /**
- * Get HTML for table of the list of ControlledName fields in the specified schema.
+ * Get HTML for table of the list of supplied ControlledName fields in the specified schema.
  * @param MetadataSchema $Schema Schema to display.
+ * @param array $Fields Array of ControlledName MetadataField objects to display.
  * @return string The table HTML.
  */
-function getHtmlForFieldList($Schema): string
+function getHtmlForFieldList(MetadataSchema $Schema, array $Fields): string
 {
     $RFactory = new RecordFactory($Schema->id());
     $ResourceCount = $RFactory->getItemCount();
-
-    $Fields = $Schema->getFields(MetadataSchema::MDFTYPE_CONTROLLEDNAME);
 
     $SearchButton = new HtmlButton("Search");
     $SearchButton->setIcon("MagnifyingGlass.svg");
@@ -40,21 +39,21 @@ function getHtmlForFieldList($Schema): string
     # the lengths of the field names plus "Search ".
     $Width = 0;
     foreach ($Fields as $Field) {
-        $Width = max($Width, strlen($Field->GetDisplayName()) + 10);
+        $Width = max($Width, strlen($Field->getDisplayName()) + 10);
     }
 
     $FieldListTable = new HtmlTable();
     $FieldListTable->setTableClass("table table-striped table-sm mv-content-optionlist");
 
     foreach ($Fields as $Field) {
-        $CNFactory = new ControlledNameFactory($Field->Id());
+        $CNFactory = new ControlledNameFactory($Field->id());
 
-        $DisplayName = $Field->Name()
-            .(strlen($Field->Label()) ? ": (".$Field->Label().")" : "");
+        $DisplayName = $Field->name()
+            .(strlen($Field->label()) !== 0 ? ": (".$Field->label().")" : "");
 
         $UsageCount = $CNFactory->getUsageCount();
         $UsagePercentage = ($ResourceCount > 0) ?
-            round((100 * $UsageCount) / $ResourceCount) : 0 ;
+            round((100 * $UsageCount) / $ResourceCount) : 0;
 
         $SearchButton->setLabel("Search ".$Field->getDisplayName());
         $ExportButton->setLink(
@@ -63,41 +62,40 @@ function getHtmlForFieldList($Schema): string
 
         $FieldListTable->addRow([
             $DisplayName,
-            "(" . number_format($Field->GetCountOfPossibleValues()) . "&nbsp;values)",
-            $SearchButton->getHtml() . " " . $ExportButton->getHtml(),
-            $Field->Description(),
-            "Assigned to " . number_format($UsageCount) . "&nbsp;resources\n"
-                . "(" . $UsagePercentage . "%&nbsp;coverage)"
+            "(".number_format($Field->getCountOfPossibleValues())."&nbsp;values)",
+            $SearchButton->getHtml()." ".$ExportButton->getHtml(),
+            $Field->description(),
+            "Assigned to ".number_format($UsageCount)."&nbsp;resources\n"
+                ."(".$UsagePercentage."%&nbsp;coverage)"
         ]);
     }
     return $FieldListTable->getHtml();
 }
 
 /**
-* Display a list of search results.
-* @param array $SearchResults List of ControlledNames that matched the
-*     search string, where each element is an array suitable for
-*     DisplaySearchResult().
-* @param int $Start Starting result.
-* @param int $PerPage Number of results per page.
-*/
-function displaySearchResults($SearchResults, $Start, $PerPage): void
+ * Display a list of search results.
+ * @param array $SearchResults List of ControlledName IDs.
+ * @param int $Start Starting index of array to display.
+ * @param int $PerPage Number of results per page.
+ * @see displaySearchResult()
+ */
+function displaySearchResults(array $SearchResults, int $Start, int $PerPage): void
 {
     $Results = array_slice($SearchResults, $Start, $PerPage);
 
     $Index = 0;
     foreach ($Results as $Result) {
-        displaySearchResult($Result, $Index);
+        displaySearchResult((int)$Result, $Index);
         $Index++;
     }
 }
 
 /**
-* Display a single result from a search for ControlledNames.
-* @param int $CNId ControlledNameId.
-* @param int $Index Index to use for form field names.
-*/
-function displaySearchResult($CNId, $Index): void
+ * Display a single result from a search for ControlledNames.
+ * @param int $CNId ControlledName Id.
+ * @param int $Index Index to use for form field names.
+ */
+function displaySearchResult(int $CNId, int $Index): void
 {
     $CN = new ControlledName($CNId);
     $Field = MetadataField::getField($CN->fieldId());
@@ -121,9 +119,8 @@ function displaySearchResult($CNId, $Index): void
     $VariantsButton->addClass("D_Variants_Button");
     $VariantsButton->hide();
     $VariantsButton->setValue("Variants");
-    $VariantsButton->setOnclick("$('#D_Variants_" . $Index . "').toggle();");
+    $VariantsButton->setOnclick("$('#D_Variants_".$Index."').toggle();");
 
-    // @codingStandardsIgnoreStart
     ?>
     <tr>
       <td>
@@ -134,9 +131,16 @@ function displaySearchResult($CNId, $Index): void
       </td>
       <td><?PHP printQualifier($Field, $Index, $CN); ?></td>
       <td><?= $InUseMessage; ?></td>
-      <?PHP if ($InUseCount > 0){ ?>
+      <?PHP if ($InUseCount > 0) { ?>
         <td>Remap to:</td>
-        <td><?PHP QuickSearchHelper::printQuickSearchField($Field->id(), "", "", FALSE, "D_Remap_".$Index); ?></td>
+        <td><?PHP
+            QuickSearchHelper::printQuickSearchField(
+                $Field->id(),
+                "",
+                "",
+                false,
+                "D_Remap_".$Index
+            ); ?></td>
       <?PHP } else { ?>
         <td colspan="2">&nbsp;</td>
       <?PHP } ?>
@@ -153,18 +157,17 @@ function displaySearchResult($CNId, $Index): void
                  cols="38" rows="4"><?= $CN->variantName() ?></textarea>
       </td>
     </tr>
-<?PHP
-    // @codingStandardsIgnoreEnd
+    <?PHP
 }
 
 /**
-* Print HTML for a Qualifier.
-* @param MetadataField $Field Field to display.
-* @param int $Index Index to use for form field names.
-*/
+ * Print HTML for a Qualifier.
+ * @param MetadataField $Field Field to display.
+ * @param int $Index Index to use for form field names.
+ */
 function printQualifier(MetadataField $Field, int $Index, ControlledName $CName): void
 {
-    # only display qualifer field if field uses qualifiers
+    # only display qualifier field if field uses qualifiers
     if ($Field->usesQualifiers()) {
         if ($Field->hasItemLevelQualifiers()) {
             # first value is "--"
@@ -184,16 +187,14 @@ function printQualifier(MetadataField $Field, int $Index, ControlledName $CName)
     }
 }
 
-
 /**
-* Display pagination controls for ControlledName search.
-* @param int $NumResults Number of results per page.
-* @param MetadataField $Field Field searched.
-* @param string $ControlledName Name searched for.
-* @param int $StartRecord Numerical index of the first record on this
-*     page.
-* @param int $PerPage Number of records per page.
-*/
+ * Display pagination controls for ControlledName search.
+ * @param int $NumResults Number of results per page.
+ * @param MetadataField $Field Field searched.
+ * @param string $ControlledName Name searched for.
+ * @param int $StartRecord Numerical index of the first record on this page.
+ * @param int $PerPage Number of records per page.
+ */
 function displayPagination(
     int $NumResults,
     MetadataField $Field,
@@ -204,7 +205,8 @@ function displayPagination(
     if ($NumResults > $PerPage) { ?>
 <div class="mv-pagination-container" style="float:right">
 <form method="post" action="index.php?P=EditControlledName&amp;SC=<?= $Field->schemaId() ?>">
-<input type="hidden" name="F_ControlledName" value="<?= htmlspecialchars($ControlledName) ?>"/>
+<input type="hidden" name="F_ControlledNameSearch" value="<?=
+        htmlspecialchars($ControlledName) ?>"/>
 <input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($Field->name()) ?>"/>
 <input type="hidden" name="F_StartRec" value="<?= $StartRecord ?>" />
 <input type="hidden" name="F_RecordsPerPage" value="<?= $PerPage ?>" />
@@ -214,27 +216,28 @@ function displayPagination(
             $PageBackButton->setSize(HtmlButton::SIZE_SMALL);
             print $PageBackButton->getHtml();
         }
-        print (1 + $StartRecord / $PerPage) . "/" . ceil($NumResults / $PerPage);
+        print (1 + $StartRecord / $PerPage)."/".ceil($NumResults / $PerPage);
         if ($StartRecord + $PerPage < $NumResults) {
             $PageForwardButton = new HtmlButton(">");
             $PageForwardButton->setSize(HtmlButton::SIZE_SMALL);
             print $PageForwardButton->getHtml();
         } ?>
-</form></div><?PHP
+</form>
+</div><?PHP
     }
 }
 
 /**
-* Print an option list containing metadata schemas.
-* @param MetadataSchema $SchemaInUse Metadata schema in use.
-*/
+ * Print an option list containing metadata schemas.
+ * @param MetadataSchema $SchemaInUse Metadata schema in use.
+ */
 function printSchemaOptionList(MetadataSchema $SchemaInUse): void
 {
     $Options = [];
 
     # get the metadata schema options
     foreach (MetadataSchema::getAllSchemas() as $Schema) {
-        $Options[$Schema->Id()] = $Schema->Name() . " Schema";
+        $Options[$Schema->id()] = $Schema->name()." Schema";
     }
 
     $OptList = new HtmlOptionList("SC", $Options, $SchemaInUse->id());
@@ -242,19 +245,12 @@ function printSchemaOptionList(MetadataSchema $SchemaInUse): void
     $OptList->printHtml();
 }
 
-
-
-
-
-# ----- COMPLETE FUNCTIONS ---------------------------------------------------
-# functions for when changes are submitted
-
 /**
-* Display list of modified controlled names.
-* @param array $CNArray Array giving modified controlled names, keyed
-*   by ControlledName with Variants for values.
-*/
-function displayControlledNameList($CNArray): void
+ * Display list of modified controlled names.
+ * @param array $CNArray Array giving modified controlled names, keyed
+ *         by ControlledName with Variants for values.
+ */
+function displayControlledNameList(array $CNArray): void
 {
     if (count($CNArray) > 0) {
         foreach ($CNArray as $CNName => $CNVariant) {
@@ -270,10 +266,10 @@ function displayControlledNameList($CNArray): void
 }
 
 /**
-* Display list of modified resources.
-* @param array $LinkArray Array of links to modified resources.
-*/
-function displayModifiedResourceList($LinkArray): void
+ * Display list of modified resources.
+ * @param array $LinkArray Array of links to modified resources.
+ */
+function displayModifiedResourceList(array $LinkArray): void
 {
     if (count($LinkArray) > 0) {
         foreach ($LinkArray as $LinkString) {
@@ -285,44 +281,43 @@ function displayModifiedResourceList($LinkArray): void
 }
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_ControlledName)) {
-    throw new Exception("H_ControlledName not defined.");
-}
-if (!isset($H_DeletedCNames)) {
-    $H_DeletedCNames = null;
-}
-if (!isset($H_Field)) {
-    $H_Field = null;
-}
-if (!isset($H_MatchingControlledNames)) {
-    throw new Exception("H_MatchingControlledNames not defined.");
-}
-if (!isset($H_ModifiedCNames)) {
-    $H_ModifiedCNames = null;
-}
-if (!isset($H_ModifiedResources)) {
-    $H_ModifiedResources = null;
-}
-if (!isset($H_NumResults)) {
-    throw new Exception("H_NumResults not defined.");
-}
-if (!isset($H_RecordsPerPage)) {
-    throw new Exception("H_RecordsPerPage not defined.");
-}
-if (!isset($H_SavedChanges)) {
-    throw new Exception("H_SavedChanges not defined.");
-}
-if (!isset($H_Schema)) {
-    throw new Exception("H_Schema not defined.");
-}
-if (!isset($H_SearchEntered)) {
-    throw new Exception("H_SearchEntered not defined.");
-}
-if (!isset($H_StartRec)) {
-    throw new Exception("H_StartRec not defined.");
+
+if (!User::requirePrivilege(PRIV_NAMEADMIN)) {
+    return;
 }
 
-$SafeSchemaId = defaulthtmlentities($H_Schema->Id());
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Controlled Names");
+
+$Error = "";
+
+if (isset($_POST["Submit"]) && $_POST["Submit"] == "Cancel" && !isset($_POST["F_ReturnToECN"])) {
+    $AF->setJumpToPage("MDHome");
+    return;
+}
+
+# get the schema ID or use the default one if not specified
+$SchemaId = StdLib::getFormValue("SC", MetadataSchema::SCHEMAID_DEFAULT);
+$ControlledNameSearch = StdLib::getFormValue("F_ControlledNameSearch", "");
+
+$Submit = StdLib::getFormValue("Submit", "");
+
+$RecordsPerPage = (int)StdLib::getFormValue("F_RecordsPerPage", 10);
+
+$Schema = new MetadataSchema($SchemaId);
+
+$SavedChanges = false;
+$ModifiedCNames = [];
+$DeletedCNames = [];
+$ModifiedResources = [];
+
+# if here by updating records per page, set page to zero
+if (isset($_POST["F_UpdatePerPage"])) {
+    $Submit = "Search ".$_POST["F_FieldName"];
+    $StartRec = 0;
+}
+
+$FormAction = "index.php?P=EditControlledName&amp;SC=".defaulthtmlentities($Schema->id());
 
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
@@ -335,25 +330,223 @@ $CancelButton->setSize(HtmlButton::SIZE_SMALL);
 $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
-// @codingStandardsIgnoreStart
-# ----- DISPLAY --------------------------------------------------------------
-?>
-<?PHP if ($H_NumResults > 0) { ?>
+$Fields = $Schema->getFields(
+    MetadataSchema::MDFTYPE_CONTROLLEDNAME,
+    null, # field order
+    false, # include disabled
+    false, # include temp
+    false # include read-only vocabs
+);
 
+# ----- PROCESSING -----------------------------------------------------------
+
+switch ($Submit) {
+    case ">":
+        $Submit = "Search ".$_POST["F_FieldName"];
+        $StartRec = $_POST["F_StartRec"] + $RecordsPerPage;
+        break;
+
+    case "<":
+        $Submit = "Search ".$_POST["F_FieldName"];
+        $StartRec = max(0, $_POST["F_StartRec"] - $RecordsPerPage);
+        break;
+
+    case "Save Changes":
+        $Submit = "Search ".$_POST["F_FieldName"];
+        $StartRec = $_POST["F_StartRec"];
+
+        # check if any of the affected controlled names are for uneditable field
+        for (
+            $ControlledNameIndex = 0;
+            array_key_exists('F_ControlledNameId_'.$ControlledNameIndex, $_POST);
+            $ControlledNameIndex++
+        ) {
+            $ControlledNameId = StdLib::getArrayValue($_POST, 'F_ControlledNameId_'
+                .$ControlledNameIndex);
+            $ControlledName = new ControlledName($ControlledNameId);
+            $Field = $Schema->getField($ControlledName->fieldId());
+            if (!$Field->vocabularyEditable()) {
+                $Error = "The vocabulary for this field is not editable.";
+                # break 2 levels so we don't save changes
+                break(2);
+            }
+        }
+
+        $AffectedResourceIds = [];
+
+        # iterate over the controlled names in our form
+        for (
+            $ControlledNameIndex = 0;
+            array_key_exists('F_ControlledNameId_'.$ControlledNameIndex, $_POST);
+            $ControlledNameIndex++
+        ) {
+            $ControlledNameId = StdLib::getArrayValue($_POST, 'F_ControlledNameId_'
+                .$ControlledNameIndex);
+            $ControlledName = trim(StdLib::getArrayValue($_POST, 'F_ControlledName_'
+                .$ControlledNameIndex));
+            $QualifierId = StdLib::getArrayValue($_POST, 'F_QualifierName_'.$ControlledNameIndex);
+            $VariantName = StdLib::getArrayValue($_POST, 'F_VariantName_'.$ControlledNameIndex);
+            $Remap = array_filter(StdLib::getArrayValue(
+                $_POST,
+                'D_Remap_'.$ControlledNameIndex,
+                []
+            ));
+            $Delete = StdLib::getArrayValue($_POST, 'F_Delete_'.$ControlledNameIndex, false);
+
+            # update the values for each controlled name
+            if ($ControlledName !== '' && $ControlledName !== '0') {
+                # pull out specified CName
+                $CN = new ControlledName($ControlledNameId);
+
+                if ($Delete) {
+                    # handle CName deletion
+                    $DeletedCNames[$CN->name()] = $CN->variantName();
+
+                    $AffectedResourceIds = array_merge(
+                        $AffectedResourceIds,
+                        $CN->getAssociatedResources()
+                    );
+
+                    $CN->destroy(true);
+                } elseif (count($Remap) > 0) {
+                    # if the user requested a remap
+                    # pull out the Id of the target cname
+                    $OtherId = reset($Remap);
+
+                    # if the id is valid, perform a remapping
+                    $CNFact = new ControlledNameFactory($CN->fieldId());
+                    if ($CNFact->itemExists($OtherId)) {
+                        # save resources as affected before remapping,
+                        # because after remapping, resources are moved
+                        # and GetAssociatedResources returns empty
+                        $AffectedResourceIds = array_merge(
+                            $AffectedResourceIds,
+                            $CN->getAssociatedResources()
+                        );
+
+                        # perform the remapping
+                        $CN->remapTo($OtherId);
+                    }
+                } else {
+                    # assume changeless until proven guilty
+                    $Modified = false;
+
+                    # handle name changes
+                    if ($CN->name() != $ControlledName) {
+                        $Modified = true;
+                        $CN->name($ControlledName);
+                    }
+
+                    # handle qualifier changes
+                    if (!empty($QualifierId)) {
+                        if ($CN->qualifierId() != $QualifierId) {
+                            $Modified = true;
+                            $CN->qualifierId($QualifierId);
+                        }
+                    }
+
+                    # handle variant changes
+                    if ($CN->variantName() != $VariantName) {
+                        $Modified = true;
+                        # if user submitted empty variant name,
+                        # clear variant name by passing false
+                        $CN->variantName(
+                            strlen($VariantName) > 0 ? $VariantName : false
+                        );
+                    }
+
+                    # if this CName was modified, add it to our list of changed names
+                    # and gather its list of ResourceIds.
+                    if ($Modified) {
+                        $ModifiedCNames[$CN->name()] = $CN->variantName();
+                        $AffectedResourceIds = array_merge(
+                            $AffectedResourceIds,
+                            $CN->getAssociatedResources()
+                        );
+                    }
+                }
+            }
+        }
+
+        # iterate over all the affected resources, handle their
+        # autoupdated fields, and queue search engine updates
+        $AffectedResourceIds = array_unique($AffectedResourceIds);
+        foreach ($AffectedResourceIds as $ResourceId) {
+            $Resource = new Record($ResourceId);
+            $Resource->updateAutoupdateFields(
+                MetadataField::UPDATEMETHOD_ONRECORDCHANGE,
+                User::getCurrentUser()
+            );
+
+            # update search and recommender DBs if configured to do so
+            $Resource->queueSearchAndRecommenderUpdate();
+
+            # signal the modified event
+            $AF->signalEvent(
+                "EVENT_RESOURCE_MODIFY",
+                ["Resource" => $Resource]
+            );
+
+            $ModifiedResources[] =
+                "<a href=\"index.php?P=FullRecord&amp;ID=".
+                $Resource->id()."\" target=\"_blank\">".
+                $Resource->getMapped("Title")."</a><br>";
+        }
+        $SavedChanges = true;
+        break;
+
+    case "Cancel":
+        $AF->setJumpToPage("index.php?P=EditControlledName&SC=".$SchemaId);
+        return;
+
+    default:
+        $StartRec = 0;
+        break;
+}
+
+if (preg_match("/^Search (.*)/", $Submit, $Matches)) {
+    $Field = $Schema->getField($Matches[1]);
+    if (!$Field->vocabularyEditable()) {
+        $Error = "The vocabulary for this field is not editable.";
+    }
+    $CNFact = new ControlledNameFactory($Field->id());
+
+    # if the F_ControlledNameSearch is empty (because the user just pushed
+    # "search"), then return all CNames in the given field
+    $SearchString = strlen($ControlledNameSearch) !== 0 ? $ControlledNameSearch : "*";
+    $MatchingControlledNames = $CNFact->controlledNameSearch($SearchString);
+    $NumResults = count($MatchingControlledNames);
+    $SearchEntered = true;
+} else {
+    $MatchingControlledNames = [];
+    $NumResults = 0;
+    $SearchEntered = false;
+}
+
+# ----- DISPLAY --------------------------------------------------------------
+
+if ($Error !== "") {
+    print $Error;
+    return;
+}
+
+if ($NumResults > 0 && isset($Field)) { ?>
 <div style="float:right; margin-top:2em;">
-<form  method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
-  <input type="hidden" name="F_ControlledName" value="<?= htmlspecialchars($H_ControlledName) ?>"/>
-  <input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($H_Field->Name()) ?>"/>
+<form method="post" action="<?= $FormAction; ?>">
+  <input type="hidden" name="F_ControlledNameSearch" value="<?=
+      htmlspecialchars($ControlledNameSearch) ?>"/>
+  <input type="hidden" name="F_FieldName" value="<?= htmlspecialchars($Field->name()) ?>"/>
   <input type="hidden" name="F_UpdatePerPage" value="true" />
     <label for="F_RecordsPerPage">Records per page: </label>
-    <?PHP $DisplayOptions = [
+    <?PHP
+    $DisplayOptions = [
         10 => 10,
         25 => 25,
         50 => 50,
         100 => 100,
         250 => 250
     ];
-    $OptList = new HtmlOptionList("F_RecordsPerPage", $DisplayOptions, $H_RecordsPerPage);
+    $OptList = new HtmlOptionList("F_RecordsPerPage", $DisplayOptions, $RecordsPerPage);
     $OptList->submitOnChange(true);
     $OptList->onChangeAction("submit('Submit')");
     $OptList->printHtml(); ?>
@@ -363,18 +556,19 @@ $CancelButton->makeSubmitButton();
 <h1>Edit Controlled Names</h1>
 
 <div>
-  <?PHP displayPagination($H_NumResults, $H_Field, $H_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
+    <?PHP displayPagination($NumResults, $Field, $ControlledNameSearch, $StartRec, $RecordsPerPage);
+    ?>
 </div>
 
-<form name="addclass" method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+<form name="addclass" method="post" action="<?= $FormAction; ?>">
   <input type="hidden" name="F_ReturnToECN" value="Return to EditControlledName" />
-  <input type="hidden" name="F_RecordsPerPage" value="<?= $H_RecordsPerPage; ?>" />
-  <input type="hidden" name="F_StartRec" value="<?= $H_StartRec; ?>" />
-  <input type="hidden" name="F_FieldName" value="<?= $H_Field->Name(); ?>" />
+  <input type="hidden" name="F_RecordsPerPage" value="<?= $RecordsPerPage; ?>" />
+  <input type="hidden" name="F_StartRec" value="<?= $StartRec; ?>" />
+  <input type="hidden" name="F_FieldName" value="<?= $Field->name(); ?>" />
   <div class="container">
     <div class="row">
     <div class="col">
-         Number of matching records: <?= count($H_MatchingControlledNames) ?>
+         Number of matching records: <?= $NumResults ?>
       </div>
       <div class="col text-end">
         <?= $SaveButton->getHtml() ?>
@@ -383,7 +577,7 @@ $CancelButton->makeSubmitButton();
     </div>
   </div>
     <table class="table table-striped mv-content-cnametable">
-        <?PHP displaySearchResults($H_MatchingControlledNames, $H_StartRec, $H_RecordsPerPage); ?>
+        <?PHP displaySearchResults($MatchingControlledNames, $StartRec, $RecordsPerPage); ?>
     </table>
    <div class="container">
     <div class="row">
@@ -395,14 +589,14 @@ $CancelButton->makeSubmitButton();
   </div>
 
 </form>
-<?PHP displayPagination($H_NumResults, $H_Field, $H_ControlledName, $H_StartRec, $H_RecordsPerPage); ?>
-    <script type="text/javascript">
-         $('.D_Variants_Button').show();
-         $('.D_Variants').hide();
-    </script>
+    <?PHP displayPagination($NumResults, $Field, $ControlledNameSearch, $StartRec, $RecordsPerPage);
+    ?>
+<script type="text/javascript">
+     $('.D_Variants_Button').show();
+     $('.D_Variants').hide();
+</script>
 
 <?PHP } else { ?>
-
 <div class="container-fluid">
   <div class="row">
     <div class="col-8">
@@ -411,16 +605,16 @@ $CancelButton->makeSubmitButton();
     <div class="col-4 text-end">
       <form method="get" action="index.php">
         <input type="hidden" name="P" value="EditControlledName" />
-        <?PHP printSchemaOptionList($H_Schema); ?>
+        <?PHP printSchemaOptionList($Schema); ?>
       </form>
     </div>
   </div>
 </div>
 
-<form name="searchcontrolledname" method="post" action="index.php?P=EditControlledName&amp;SC=<?= $SafeSchemaId; ?>">
+<form name="searchcontrolledname" method="post" action="<?= $FormAction; ?>">
     <table class="table table-striped">
         <tbody>
-          <?PHP if ($H_SearchEntered) { ?>
+          <?PHP if ($SearchEntered) { ?>
             <tr>
                 <td colspan="2">
                   <div class="alert alert-primary">
@@ -430,24 +624,32 @@ $CancelButton->makeSubmitButton();
                   </ul></div>
                 </td>
             </tr>
-            <?PHP } ?>
-            <tr>
-                <th><label for="F_ControlledName">Search terms</label></th>
-                <td><input type="text" id="F_ControlledName" name="F_ControlledName" value="<?= $H_ControlledName; ?>" size="45" /></td>
-            </tr>
-            <tr>
-                <td colspan="2" class="mv-no-padding">
-                  <?= getHtmlForFieldList($H_Schema); ?>
-                </td>
-            </tr>
-
+          <?PHP } ?>
+          <?PHP if (count($Fields) === 0) { ?>
+              <tr>
+                  <td>This schema does not currently have any Controlled Name
+                      fields with editable vocabularies.</td>
+              </tr>
+          <?PHP } else { ?>
+              <tr>
+                  <th><label for="F_ControlledNameSearch">Search terms</label></th>
+                  <td><input type="text" id="F_ControlledNameSearch"
+                             name="F_ControlledNameSearch"
+                             value="<?= $ControlledNameSearch; ?>" size="45"/></td>
+              </tr>
+              <tr>
+                  <td colspan="2" class="mv-no-padding">
+                    <?= getHtmlForFieldList($Schema, $Fields); ?>
+                  </td>
+              </tr>
+          <?PHP } ?>
         </tbody>
     </table>
 
 </form>
 
 <script type="text/javascript">
-$('#F_ControlledName').keydown(
+$('#F_ControlledNameSearch').keydown(
   function(e){
     if (e.which == 13) {
       return false;
@@ -457,20 +659,19 @@ $('#F_ControlledName').keydown(
 </script>
 <?PHP } ?>
 
-<?PHP if ($H_SavedChanges) { ?>
-
+<?PHP if ($SavedChanges) { ?>
 <h1>Controlled and Variant Names Updated</h1>
 
 <h2>Controlled names modified:</h2>
 
-<p><?PHP displayControlledNameList($H_ModifiedCNames); ?></p>
+<p><?PHP displayControlledNameList($ModifiedCNames); ?></p>
 
 <h2>Controlled names deleted:</h2>
 
-<p><?PHP displayControlledNameList($H_DeletedCNames); ?></p>
+<p><?PHP displayControlledNameList($DeletedCNames); ?></p>
 
 <h2>Resource records affected by these changes:</h2>
 
-<p><?PHP displayModifiedResourceList($H_ModifiedResources); ?></p>
+<p><?PHP displayModifiedResourceList($ModifiedResources); ?></p>
 
 <?PHP } ?>

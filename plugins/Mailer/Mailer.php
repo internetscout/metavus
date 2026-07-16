@@ -101,6 +101,25 @@ class Mailer extends Plugin
     }
 
     /**
+     * Initialize the plugin.
+     * @return null|string NULL on success, error string otherwise.
+     */
+    public function initialize(): ?string
+    {
+        $IntCfg = InterfaceConfiguration::getInstance();
+
+        $Templates = [
+            "ActivateAccountTemplateId",
+            "EmailChangeTemplateId",
+            "PasswordChangeTemplateId",
+        ];
+        foreach ($Templates as $Template) {
+            $this->addTemplateUser($IntCfg->getInt($Template), "Metavus");
+        }
+        return null;
+    }
+
+    /**
      * Load default templates for standard site emails
      */
     public function addDefaultTemplates(): void
@@ -343,7 +362,7 @@ class Mailer extends Plugin
         );
 
         # throw exception if invalid data provided
-        if (count($InvalidKeys)) {
+        if (count($InvalidKeys) !== 0) {
             throw new InvalidArgumentException(
                 "Invalid template settings provided: "
                 .implode(", ", $InvalidKeys)
@@ -657,24 +676,29 @@ class Mailer extends Plugin
     }
 
     /**
+     * Add a template user for a template
+     * @param int $TemplateId Template to add user for
+     * @param string $User Name of the template user to add
+     * @return void
+     */
+    public function addTemplateUser(int $TemplateId, string $User)
+    {
+        $this->TemplateUsers[$TemplateId][$User] = true;
+    }
+
+    /**
      * Get a list of template users.
      * @param int $TemplateId Template to check.
      * @return array of strings identifying template users.
      */
-    public function findTemplateUsers($TemplateId): array
+    public function findTemplateUsers(int $TemplateId): array
     {
-        $Result = ApplicationFramework::getInstance()->signalEvent(
-            "Mailer_EVENT_IS_TEMPLATE_IN_USE",
-            [
-                "TemplateId" => $TemplateId,
-                "TemplateUsers" => []
-            ]
-        );
-
-        return $Result["TemplateUsers"];
+        return array_keys($this->TemplateUsers[$TemplateId] ?? []);
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
+
+    private $TemplateUsers = [];
 
     # values for use by KeywordReplacmentCallback()
     private $KRUser;
@@ -770,7 +794,7 @@ class Mailer extends Plugin
                 break;
 
             case "BASEURL":
-                $Replacement = strlen(trim($this->getConfigSetting("BaseUrl")))
+                $Replacement = strlen(trim($this->getConfigSetting("BaseUrl"))) !== 0
                         ? trim($this->getConfigSetting("BaseUrl"))
                         : ApplicationFramework::baseUrl()."index.php";
                 break;
@@ -796,7 +820,7 @@ class Mailer extends Plugin
                     $Value = $this->KRUser->get("RealName");
 
                     # if the user hasn't specified a full name
-                    if (!strlen(trim($Value))) {
+                    if (strlen(trim($Value)) === 0) {
                         $Value = $this->KRUser->get("UserName");
                     }
 
@@ -881,7 +905,7 @@ class Mailer extends Plugin
 
                 # add base URL to view page
                 if (!isset($BaseUrl)) {
-                    $BaseUrl = strlen(trim($this->getConfigSetting("BaseUrl") ?? ""))
+                    $BaseUrl = strlen(trim($this->getConfigSetting("BaseUrl") ?? "")) !== 0
                             ? trim($this->getConfigSetting("BaseUrl"))
                             : ApplicationFramework::baseUrl();
                 }
@@ -1008,7 +1032,7 @@ class Mailer extends Plugin
                                 # if they have a real name set, use that
                                 # otherwise, fall back to UserName
                                 $RealName = trim($User->Get("RealName"));
-                                $Replacement[] = (strlen($RealName)) ? $RealName :
+                                $Replacement[] = (strlen($RealName) !== 0) ? $RealName :
                                          $User->Get("UserName") ;
                             }
                         } else {
@@ -1067,7 +1091,7 @@ class Mailer extends Plugin
     * @return string|null Returns the share URL for the resource and site or NULL if the
     *      SocialMedia plugin isn't available.
     */
-    private function getShareUrl(Record $Resource, $Site): ?string
+    private function getShareUrl(Record $Resource, string $Site): ?string
     {
         $PluginMgr = PluginManager::getInstance();
         # the social media plugin needs to be available
@@ -1115,10 +1139,10 @@ class Mailer extends Plugin
         $Headers[] = "Auto-Submitted: auto-generated";
         $Headers[] = "Precedence: list";
         $Headers[] = "X-SiteUrl: ". ApplicationFramework::baseUrl();
-        if (strlen($Template["Headers"])) {
+        if (strlen($Template["Headers"]) !== 0) {
             $ExtraHeaders = $this->splitByLineEnding($Template["Headers"]);
             foreach ($ExtraHeaders as $Line) {
-                if (strlen(trim($Line))) {
+                if (strlen(trim($Line)) !== 0) {
                     $Headers[] = $this->replaceKeywords($Line);
                 }
             }

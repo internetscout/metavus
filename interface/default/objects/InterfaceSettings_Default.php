@@ -3,7 +3,7 @@
 #   FILE:  InterfaceSettings_Default.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -23,6 +23,13 @@ class InterfaceSettings_Default extends InterfaceSettings
      */
     public function __construct()
     {
+        static $CollectionSchemaId = null;
+        if ($CollectionSchemaId === null) {
+            $CollectionSchemaId = MetadataSchema::getSchemaIdForName(
+                CollectionFactory::SCHEMA_NAME
+            );
+        }
+
         $this->SettingDefinitions = [
             # -------------------------------------------------
             "HEADING-Site" => [
@@ -138,6 +145,33 @@ class InterfaceSettings_Default extends InterfaceSettings
                         ." display in the <i>Collections</i>"
                         ." section on the home page."
             ],
+            "CollectionsSortingField" => [
+                "Type" => FormUI::FTYPE_OPTION,
+                "Label" => "Collections Sorting Field",
+                "OptionType" => FormUI::OTYPE_LIST,
+                "OptionThreshold" => 0,
+                "StorageType" => InterfaceConfiguration::TYPE_INT,
+                "DefaultFunction" => function () {
+                    return (new CollectionFactory())
+                        ->schema()
+                        ->getFieldIdByMappedName("Title");
+                },
+                "OptionsFunction" => function () {
+                    return (new CollectionFactory())
+                        ->schema()
+                        ->getSortFields();
+                },
+                "Help" => "The field to use to sort the list of collections for display."
+            ],
+            "CollectionsSortDescending" => [
+                "Type" => FormUI::FTYPE_FLAG,
+                "Label" => "Collections Sort Order",
+                "Default" => false,
+                "OnLabel" => "Descending",
+                "OffLabel" => "Ascending",
+                "Help" => "Whether the list of collections should be sorted in"
+                        ." descending or ascending order when displayed."
+            ],
             "HideCollectionMonograms" => [
                 "Type" => FormUI::FTYPE_FLAG,
                 "Label" => "Hide Collection Monograms",
@@ -154,6 +188,12 @@ class InterfaceSettings_Default extends InterfaceSettings
                 "Help" => "Whether the <i>News</i> section"
                         ." is displayed on the home page."
                         ." (Requires Blog plugin be enabled.)",
+            ],
+            "AnnouncementsSectionTitle" => [
+                "Type" => FormUI::FTYPE_TEXT,
+                "Label" => "News Title",
+                "Default" => "News",
+                "Help" => "The title for the <i>News</i> section.",
             ],
             "NumAnnounceOnHomePage" => [
                 "Type" => FormUI::FTYPE_NUMBER,
@@ -197,8 +237,33 @@ class InterfaceSettings_Default extends InterfaceSettings
                 "Type" => FormUI::FTYPE_IMAGE,
                 "Label" => "Hero Image",
                 "Default" => [],
-                "Help" => "Hero image to display when no image collage"
-                        ." is available."
+                "Help" => "<p>Hero image to display when no image collage "
+                        ."is available. As is typical for hero images, "
+                        ."Metavus creates a display area for the image, centers "
+                        ."the image within that area, displays it without scaling, "
+                        ."and crops any overflow.</p>"
+                        ."<p>The specific size of the display area will be determined by the "
+                        ."interface in use and the size of the user's browser window. "
+                        ."For the Metavus default interface, the hero image is hidden "
+                        ."on windows narrower than 990px. On wider windows, the display "
+                        ."area is 430px tall and has a variable width determind by the size "
+                        ."of the window. The default hero image file is 1920px wide by "
+                        ."430px tall.</p>"
+
+            ],
+            "CollageSchema" => [
+                "Type" => FormUI::FTYPE_OPTION,
+                "StorageType" => InterfaceConfiguration::TYPE_INT,
+                "Label" => "Photo Collage Schema",
+                "Required" => true,
+                "Default" => MetadataSchema::SCHEMAID_DEFAULT,
+                "OptionsFunction" => function (): array {
+                    $SchemaNames = MetadataSchema::getAllSchemaNames();
+                    unset($SchemaNames[MetadataSchema::SCHEMAID_USER]);
+                    return $SchemaNames;
+                },
+                "Help" => "Schena to use for the photo collage on the home page, "
+                        ." if the Collage plugin is enabled."
             ],
             # -------------------------------------------------
             "HEADING-Collections" => [
@@ -257,14 +322,14 @@ class InterfaceSettings_Default extends InterfaceSettings
                 "Label" => "Default Browsing Field",
                 "FieldTypes" => MetadataSchema::MDFTYPE_TREE,
                 "SchemaId" => MetadataSchema::SCHEMAID_DEFAULT,
-                "DefaultFunction" => function () {
+                "DefaultFunction" => function (): ?int {
                     $Schema = new MetadataSchema(
                         MetadataSchema::SCHEMAID_DEFAULT
                     );
                     $TreeFields = $Schema->getFields(
                         MetadataSchema::MDFTYPE_TREE
                     );
-                    if (count($TreeFields)) {
+                    if (count($TreeFields) !== 0) {
                         return key($TreeFields);
                     }
                     return null;
@@ -325,7 +390,7 @@ class InterfaceSettings_Default extends InterfaceSettings
                     unset($SchemaNames[MetadataSchema::SCHEMAID_USER]);
                     return array_keys($SchemaNames);
                 },
-                "OptionsFunction" => function () {
+                "OptionsFunction" => function (): array {
                     $SchemaNames = MetadataSchema::getAllSchemaNames();
                     unset($SchemaNames[MetadataSchema::SCHEMAID_USER]);
                     return $SchemaNames;
@@ -469,6 +534,16 @@ class InterfaceSettings_Default extends InterfaceSettings
                 "Help" => "Determines whether to use the resource's full"
                         ." record page or its URL when displaying links"
                         ." containing its title."
+            ],
+            "ScreenshotsLinkTo" => [
+                "Type" => FormUI::FTYPE_OPTION,
+                "StorageType" => InterfaceConfiguration::TYPE_STRING,
+                "Label" => "Screenshots Link to",
+                "Options" => ["IMAGE" => "Full Image", "PREFERRED" => "Preferred Link Value"],
+                "Default" => "IMAGE",
+                "Help" => "Determines whether to use an image's full image page"
+                        ." or its preferred link value when displaying resource"
+                        ." screenshots on the full record page."
             ],
             "RequireEmailWithFeedback" => [
                 "Type" => FormUI::FTYPE_FLAG,

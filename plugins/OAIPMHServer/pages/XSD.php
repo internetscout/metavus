@@ -82,14 +82,14 @@ print("<xs:simpleType name=\"cwis-point\"><xs:restriction base=\"xs:string\">\n"
 
 $TypeMapping = [];
 foreach ($Fields as $Field) {
-     $Names = $Server->getFieldMapping($SelectedFormat, $Field->Name());
+     $Names = $Server->getFieldMapping($SelectedFormat, $Field->name());
 
     if ($Names === null) {
         continue;
     }
 
     foreach ($Names as $Name) {
-        switch ($Field->Type()) {
+        switch ($Field->type()) {
             case MetadataSchema::MDFTYPE_NUMBER:
                 $DefaultXSType = "xs:decimal";
                 break;
@@ -106,13 +106,13 @@ foreach ($Fields as $Field) {
         }
 
         $MappedQualifiers = [];
-        foreach ($Field->AssociatedQualifierList() as $Id => $QualifierName) {
+        foreach ($Field->associatedQualifierList() as $QualifierName) {
             $RemoteQualifier = $Server->getQualifierMapping($SelectedFormat, $QualifierName);
             $MappedQualifiers [] = ($RemoteQualifier === null) ? $DefaultXSType : $RemoteQualifier;
         }
         $MappedQualifiers = array_unique($MappedQualifiers);
 
-        if (empty($MappedQualifiers)) {
+        if ($MappedQualifiers === []) {
             $MappedQualifiers [] = $DefaultXSType;
         }
 
@@ -132,24 +132,24 @@ print("<xs:element name=\"".$ThisFormat["TagName"]."\"><xs:complexType>"
       ."<xs:choice minOccurs=\"0\" maxOccurs=\"unbounded\">\n");
 
 foreach ($Fields as $Field) {
-    $Names = $Server->getFieldMapping($SelectedFormat, $Field->Name());
+    $Names = $Server->getFieldMapping($SelectedFormat, $Field->name());
     if ($Names === null) {
         continue;
     }
 
     foreach ($Names as $Name) {
         $CanHaveManyValues =
-                           ($Field->Type() == MetadataSchema::MDFTYPE_OPTION &&
-                            $Field->AllowMultiple() == true)
-                           || $Field->Type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME
-                           || $Field->Type() == MetadataSchema::MDFTYPE_TREE;
+                           ($Field->type() == MetadataSchema::MDFTYPE_OPTION &&
+                            $Field->allowMultiple() == true)
+                           || $Field->type() == MetadataSchema::MDFTYPE_CONTROLLEDNAME
+                           || $Field->type() == MetadataSchema::MDFTYPE_TREE;
 
         print("<xs:element name=\"".$Name."\" "
               ."type=\"".$TypeMapping[$Name]."\" "
-              ."minOccurs=\"".($Field->Optional() ? "0" : "1")."\" "
+              ."minOccurs=\"".($Field->optional() ? "0" : "1")."\" "
               ."maxOccurs=\"".($CanHaveManyValues ? "unbounded" : "1")."\">\n"
               ."<xs:annotation><xs:documentation xml:lang=\"en\">\n"
-              .'<![CDATA['.$Field->Description()."]]>\n"
+              .'<![CDATA['.$Field->description()."]]>\n"
               ."</xs:documentation></xs:annotation>\n"
               ."</xs:element>\n");
     }

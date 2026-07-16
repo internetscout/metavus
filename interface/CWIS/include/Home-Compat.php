@@ -45,7 +45,7 @@ function AnnouncementsEnabled(): bool
 /**
  * Print rows of new resource.
  */
-function PrintNewResourceTableRows()
+function PrintNewResourceTableRows(): void
 {
     global $MoreResources;
     global $ResourceOffset;
@@ -78,7 +78,7 @@ function PrintNewResourceTableRows()
     $MoreResources = ($ResourceCount <= $MaxNumberOfResourcesToDisplay) ? false : true;
 
     # if resources found
-    if ($ResourceCount) {
+    if ($ResourceCount !== 0) {
         # drop last resource if we have one more than is needed
         if ($ResourceCount > $MaxNumberOfResourcesToDisplay) {
             array_pop($Resources);
@@ -122,7 +122,7 @@ function PrintNewResourceRow(
  * Check if next reources are available.
  * @return bool false (pagination on Home is no longer supported)
  */
-function NextResourcesAvailable()
+function NextResourcesAvailable(): bool
 {
     return false;
 }
@@ -131,7 +131,7 @@ function NextResourcesAvailable()
  * Check if previouss are available.
  * @return bool false (pagination on Home is no longer supported)
  */
-function PreviousResourcesAvailable()
+function PreviousResourcesAvailable(): bool
 {
     return false;
 }
@@ -139,7 +139,7 @@ function PreviousResourcesAvailable()
 /**
  * Print link for the previous resource.
  */
-function PrintPrevResourceLink()
+function PrintPrevResourceLink(): string
 {
     return "";
 }
@@ -147,7 +147,7 @@ function PrintPrevResourceLink()
 /**
  * Print the link for the next resource.
  */
-function PrintNextResourceLink()
+function PrintNextResourceLink(): string
 {
     return "";
 }

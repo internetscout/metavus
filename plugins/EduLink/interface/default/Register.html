@@ -677,6 +677,8 @@ function getBrightspaceSettings() : string
 
 # ----- SETUP ----------------------------------------------------------------
 
+// phpcs:disable Generic.Files.LineLength.MaxExceeded
+
 $AF = ApplicationFramework::getInstance();
 $User = User::getCurrentUser();
 $H_Plugin = EduLink::getInstance();
@@ -796,6 +798,12 @@ $FormFields = [
         "Type" => FormUI::FTYPE_HEADING,
         "Label" => "Information From LMS",
     ],
+    "InstitutionName" => [
+        "Type" => FormUI::FTYPE_TEXT,
+        "Label" => "Institution Name",
+        "Help" => "Name of your institution.",
+        "Required" => true,
+    ],
     "ContactEmail" => [
         "Type" => FormUI::FTYPE_TEXT,
         "Label" => "Contact Email",
@@ -840,7 +848,7 @@ $FormFields = [
         "Help" => "Main URL of your LMS (e.g., https://canvas.my-institution.edu).",
         "Required" => true,
         "DisplayIf" => ["LMS" => "Canvas"],
-        "ValidateFunction" => function(string $FieldName, $FieldValues, $AllValues) {
+        "ValidateFunction" => function (string $FieldName, $FieldValues, $AllValues) {
             # if no value provided, nothing to validate
             if (strlen($FieldValues) == 0) {
                 return null;
@@ -1077,9 +1085,10 @@ switch ($H_Status) {
 <div id="mv-p-edulink-references">
 <?PHP foreach ($References as $LMS => $Links) { ?>
   <div id="mv-p-edulink-references-<?= strtolower($LMS) ?>">
-    <ul><?PHP foreach ($Links as $Url => $Label) { ?>
-      <li><a href="<?= $Url ?>" target="_blank"><?= $Label ?></a></li>
-    <?PHP } ?></ul>
+    <ul>
+      <?PHP foreach ($Links as $Url => $Label) { ?>
+        <li><a href="<?= $Url ?>" target="_blank"><?= $Label ?></a></li>
+      <?PHP } ?></ul>
   </div>
 <?PHP } ?>
 </div>
@@ -1166,6 +1175,7 @@ $(document).ready(function(){
             "#section-F_HEADERSettings",
             "#section-F_HEADERInfo",
             "#row-F_ContactEmail",
+            "#row-F_InstitutionName",
             "button[name='Submit']"
         ];
         Items.forEach(function(Item){

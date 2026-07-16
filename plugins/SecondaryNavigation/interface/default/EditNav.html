@@ -137,7 +137,7 @@ $AF->setPageTitle("Edit Your Menu");
 ?>
 
 <div class="container-fluid">
-    <?PHP if (count($H_Errors)) { ?>
+    <?PHP if (count($H_Errors) !== 0) { ?>
     <ul class='mv-form-error'>
         <?PHP foreach ($H_Errors as $Error) {
             print "<li>".$Error."</li>";
@@ -175,7 +175,7 @@ $AF->setPageTitle("Edit Your Menu");
             </form>
         </div>
     </div>
-    <?PHP if (count($H_OfferedItems)) { ?>
+    <?PHP if (count($H_OfferedItems) !== 0) { ?>
     <div class="row">
         <div class="col">
             <h2>Available Menu Items</h2>

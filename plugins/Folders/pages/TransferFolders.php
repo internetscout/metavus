@@ -25,7 +25,7 @@ use ScoutLib\UserFactory;
  * @param string $Message (optional) to display
  * @return void
  */
-function printJson(string $State, string $Message = "")
+function printJson(string $State, string $Message = ""): void
 {
     $JsonArray = [
         "data" => [],

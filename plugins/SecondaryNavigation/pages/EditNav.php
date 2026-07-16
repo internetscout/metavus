@@ -49,13 +49,11 @@ if (!$User->isLoggedIn()) {
 $H_NavMenu = new NavMenu($User->id());
 $H_Errors = [];
 $H_ButtonPushed = StdLib::getFormValue("Submit", "");
-$SecondaryNav = SecondaryNavigation::getInstance();
-$H_OfferedItems = $SecondaryNav->getOfferedNavItems();
 
 # get SecondaryNavigation plugin
 $SecondaryNavPlugin = SecondaryNavigation::getInstance();
-
 $H_OfferedItems = $SecondaryNavPlugin->getOfferedNavItems();
+
 # remove any items that are already present/user doesn't have privs for
 foreach ($H_OfferedItems as $Link => $Item) {
     if ($H_NavMenu->navItemExists($Link) || !$Item["Privs"]->meetsRequirements($User)) {
@@ -79,7 +77,7 @@ if ($H_ButtonPushed == "Add Item") {
     if (strlen($NewLink) == 0 || !SecondaryNavigation::urlLooksValid($NewLink)) {
         $H_Errors[] = "New link must be a valid URL.";
     }
-    if (count($H_Errors)) {
+    if (count($H_Errors) !== 0) {
         return;
     }
 

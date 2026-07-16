@@ -68,7 +68,7 @@ class LTIDatabase implements \IMSGlobal\LTI\Database
             "KeySetUrl" => "set_key_set_url",
         ];
         foreach ($Setters as $Column => $SetFn) {
-            if (strlen($Row[$Column])) {
+            if (strlen($Row[$Column]) !== 0) {
                 $Result->$SetFn($Row[$Column]);
             }
         }

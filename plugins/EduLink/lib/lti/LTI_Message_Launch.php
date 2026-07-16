@@ -19,6 +19,8 @@ class LTI_Message_Launch {
     private LTI_Registration $registration;
     private string $launch_id;
 
+    protected static $fetch_url_callback = '\file_get_contents';
+
     /**
      * Constructor
      *
@@ -48,6 +50,14 @@ class LTI_Message_Launch {
      */
     public static function new(Database $database, ?Cache $cache = null, ?Cookie $cookie = null): self {
         return new static($database, $cache, $cookie);
+    }
+
+    /**
+     * Set the callback used to fetch a URL.
+     * @param callable $callback
+     */
+    public static function set_fetch_url_callback(callable $callback): void {
+        self::$fetch_url_callback = $callback;
     }
 
     /**
@@ -216,9 +226,12 @@ class LTI_Message_Launch {
         $key_set_url = $this->registration->get_key_set_url();
 
         // Download key set
-        $public_key_set_data = file_get_contents($key_set_url);
+        $public_key_set_data = call_user_func(self::$fetch_url_callback, $key_set_url);
         if ($public_key_set_data === false) {
-            throw new LTI_Exception("Failed to fetch public key", 1);
+            throw new LTI_Exception(
+                "Failed to fetch public key from ".$key_set_url,
+                1
+            );
         }
 
         $public_key_set = json_decode($public_key_set_data, true);
@@ -302,7 +315,7 @@ class LTI_Message_Launch {
             throw new LTI_Exception("No nonce provided", 1);
         }
         if (!$this->cache->check_nonce($this->jwt['body']['nonce'])) {
-            //throw new LTI_Exception("Invalid Nonce",1 );
+            throw new LTI_Exception("Invalid nonce", 1);
         }
         return $this;
     }

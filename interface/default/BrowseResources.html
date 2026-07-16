@@ -90,7 +90,7 @@ function getClassificationListArray(
             ) : null;
 
             # get the correct count for the context
-            $Count = (int)$EditingEnabled
+            $Count = (int)$EditingEnabled !== 0
                 ? $Class["FullResourceCount"] : $Class["ResourceCount"];
 
             # add this entry

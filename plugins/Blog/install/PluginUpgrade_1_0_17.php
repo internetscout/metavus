@@ -33,7 +33,7 @@ class PluginUpgrade_1_0_17 extends PluginUpgrade
         $Schema = new MetadataSchema($Plugin->getSchemaId());
         $Fields = $Schema->getFields();
         foreach ($Fields as $Field) {
-            $Field->IsTempItem(false);
+            $Field->isTempItem(false);
         }
         return null;
     }

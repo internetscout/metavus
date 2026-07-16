@@ -41,7 +41,7 @@ class CalendarEvents extends Plugin
     public function register(): void
     {
         $this->Name = "Calendar Events";
-        $this->Version = "1.0.17";
+        $this->Version = "1.0.18";
         $this->Description = "Adds events calendar functionality.";
         $this->Author = "Internet Scout Research Group";
         $this->Url = "http://metavus.net";
@@ -219,7 +219,7 @@ class CalendarEvents extends Plugin
      */
     public function install(): ?string
     {
-        # setup the default privileges for authoring and editing
+        # set up the default privileges for authoring and editing
         $DefaultPrivs = new PrivilegeSet();
         $DefaultPrivs->addPrivilege(PRIV_NEWSADMIN);
         $DefaultPrivs->addPrivilege(PRIV_SYSADMIN);
@@ -234,6 +234,7 @@ class CalendarEvents extends Plugin
         );
         $Schema->setItemClassName("Metavus\\Plugins\\CalendarEvents\\Event");
         $Schema->setEditPage("index.php?P=EditResource&ID=\$ID");
+        $Schema->setOwnerToPlugin($this);
         $this->setConfigSetting("MetadataSchemaId", $Schema->id());
 
         # create schema fields
@@ -566,7 +567,7 @@ class CalendarEvents extends Plugin
         }
 
         # tack on the GET parameters, if necessary
-        if (count($Get)) {
+        if (count($Get) !== 0) {
             $Url .= "?".http_build_query($Get);
         }
 
@@ -696,7 +697,7 @@ class CalendarEvents extends Plugin
         $Address = $Event->locationString(false);
 
         # don't deal with events without addresses
-        if (!strlen($Address)) {
+        if (strlen($Address) === 0) {
             return;
         }
 
@@ -925,7 +926,7 @@ class CalendarEvents extends Plugin
      */
     public function extendEditResourceCompleteAccessList(array $AccessList): array
     {
-        array_push($AccessList, "/P=P_CalendarEvents_ListEvents/i");
+        $AccessList[] = "/P=P_CalendarEvents_ListEvents/i";
         return ["AllowList" => $AccessList];
     }
 }

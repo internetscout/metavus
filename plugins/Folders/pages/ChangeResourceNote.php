@@ -3,7 +3,7 @@
 #   FILE:  ChangeResourceNote.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -37,7 +37,7 @@ if ($H_FolderId === null || !Folder::itemExists($H_FolderId)) {
 
 # nothing to do for invalid records
 if ($H_ItemId === null || !Record::itemExists($H_ItemId)) {
-    $AF->setJumpToPage("P_Folders_ManageFolders");
+    $AF->setJumpToPage("P_Folders_ViewFolder&FolderId=".$H_FolderId);
     return;
 }
 
@@ -45,16 +45,42 @@ $Folder = new Folder($H_FolderId);
 $FolderFactory = new FolderFactory(User::getCurrentUser()->id());
 $ResourceFolder = $FolderFactory->getResourceFolder();
 
-# redirect if the user should not see the folder
+# if resource folder does not contain the target FolderId, that implies that a
+# different user owns the folder
 if (!$ResourceFolder->containsItem($Folder->id())) {
-    $AF->setJumpToPage("P_Folders_ManageFolders");
+    $AF->setJumpToPage("P_Folders_ViewFolder&FolderId=".$H_FolderId);
     return;
 }
 
 # nothing to do when resource isn't in this folder
 if (!$Folder->containsItem($H_ItemId)) {
-    $AF->setJumpToPage("P_Folders_ManageFolders");
+    $AF->setJumpToPage("P_Folders_ViewFolder&FolderId=".$H_FolderId);
     return;
 }
 
 $H_Note = $Folder->noteForItem($H_ItemId) ?? "";
+
+# build the form
+$FormFields = [
+    "ResourceNote" => [
+        "Label" => "Note",
+        "Type" => FormUI::FTYPE_PARAGRAPH,
+        "Value" => $H_Note,
+    ]
+];
+$H_Form = new FormUI($FormFields);
+$H_Form->addHiddenField("FolderId", $H_FolderId);
+$H_Form->addHiddenField("ItemId", $H_ItemId);
+
+# ----- PROCESSING -----------------------------------------------------------
+
+# if we're saving a note, save it and go back to the folder
+switch ($H_Form->getSubmitButtonValue()) {
+    case "Change Resource Note":
+        $ResourceNote = $H_Form->getNewValuesFromForm()["ResourceNote"];
+        $Folder->noteForItem($H_ItemId, $ResourceNote);
+        # intentional fall-through
+    case "Cancel":
+        $AF->setJumpToPage("P_Folders_ViewFolder&FolderId=".$H_FolderId);
+        return;
+}

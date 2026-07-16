@@ -12,6 +12,7 @@ namespace Metavus;
 use Exception;
 use InvalidArgumentException;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\DataCache;
 use ScoutLib\PluginManager;
 use ScoutLib\StdLib;
 
@@ -129,7 +130,7 @@ if ($User->isLoggedIn() &&
  * @param int $SchemaId Schema to retrieve fields from.
  * @return array Array of field names, with field IDs for the index.
  */
-function GetPossibleSortFields($SchemaId)
+function GetPossibleSortFields($SchemaId): array
 {
     $AF = ApplicationFramework::getInstance();
 
@@ -201,7 +202,7 @@ function filterInputValuesRecursive($Value)
  * @param array $FormVars Form variable array (usually $_POST).
  * @return SearchParameterSet Parameters in SearchParameterSet object.
  */
-function getSearchParametersFromForm($FormVars)
+function getSearchParametersFromForm($FormVars): \Metavus\SearchParameterSet
 {
     # retrieve user currently logged in
     $User = User::getCurrentUser();
@@ -212,7 +213,7 @@ function getSearchParametersFromForm($FormVars)
     # if there is a keyword ("quick") search value
     if (isset($FormVars["F_SearchString"])) {
         # if there was a search string supplied
-        if (strlen(trim($FormVars["F_SearchString"]))) {
+        if (strlen(trim($FormVars["F_SearchString"])) !== 0) {
             # add keyword string to search criteria
             $Params->addParameter($FormVars["F_SearchString"]);
         }
@@ -271,12 +272,12 @@ function getSearchParametersFromForm($FormVars)
     }
 
     # for each possible limit field
-    foreach (MetadataSchema::getAllSchemas() as $SchemaId => $Schema) {
+    foreach (MetadataSchema::getAllSchemas() as $Schema) {
         $Subgroups = [];
         $Fields = $Schema->getFields($GLOBALS["G_MDFTypesForLimits"]);
         foreach ($Fields as $FieldId => $Field) {
             $FieldType = $Field->type();
-            $FieldName = $Field->Name();
+            $FieldName = $Field->name();
 
             # if value is available for this field
             if (isset($FormVars["F_SearchLimit".$FieldId])) {
@@ -331,7 +332,7 @@ function getSearchParametersFromForm($FormVars)
                         }
 
                         # if there were valid values found
-                        if (count($ValuesToAdd)) {
+                        if (count($ValuesToAdd) !== 0) {
                             # add values to set for this field
                             if (!isset($Subgroups[$FieldId])) {
                                 $Subgroups[$FieldId] = new SearchParameterSet();
@@ -344,7 +345,7 @@ function getSearchParametersFromForm($FormVars)
         }
 
         # if there were limit search parameters found
-        if (count($Subgroups)) {
+        if (count($Subgroups) !== 0) {
             # for each field with limit search parameters
             foreach ($Subgroups as $FieldId => $Subgroup) {
                 # set search logic for field subgroup
@@ -538,7 +539,7 @@ if (isset($_POST["Submit"]) && ($_POST["Submit"] == "Save")) {
         }
     } else {
         # if search parameters exist
-        if (strlen($H_SearchParams->textDescription())) {
+        if (strlen($H_SearchParams->textDescription()) !== 0) {
             # jump to new saved search page
             $AF->setJumpToPage("NewSavedSearch&"
                 .$H_SearchParams->urlParameterString());
@@ -603,7 +604,7 @@ if (isset($_GET["ID"]) && $User->isLoggedIn()) {
 }
 
 # if we have search parameters
-if ($H_SearchParams->parameterCount()) {
+if ($H_SearchParams->parameterCount() !== 0) {
     # retrieve sort fields for search (convert Relevance to NULL for search engine)
     $SortFields = [];
     foreach ($H_TransportUIs as $SchemaId => $TransportUI) {
@@ -670,7 +671,7 @@ if ($H_SearchParams->parameterCount()) {
             }
         }
 
-        if (count($TempSearchResults)) {
+        if (count($TempSearchResults) !== 0) {
             $H_SearchResults[$SchemaId] = $TempSearchResults;
             $AF->addPageCacheTag(
                 "ResourceList".$SchemaId
@@ -679,6 +680,14 @@ if ($H_SearchParams->parameterCount()) {
             unset($H_SearchResults[$SchemaId]);
         }
     }
+
+    # cache results for re-use later by GenerateFacetHtml.php
+    $Cache = new DataCache();
+    $CacheKey = "SearchResults_".md5(
+        ($User->id() ?? "ANON")."/".$H_SearchParams->urlParameterString()
+    );
+    $CacheTTL = 300; # (in seconds)
+    $Cache->set($CacheKey, $H_SearchResults, $CacheTTL);
 
     $PageExpirationDate = $AF->expirationDateForCurrentPage();
     if ($CacheExpirationTimestamp !== false
@@ -692,7 +701,7 @@ if ($H_SearchParams->parameterCount()) {
     # set up list of checksums
     $H_ListChecksums = [];
     # inform transport control UI of search results
-    foreach ($H_TransportUIs as $SchemaId => $TransportUI) {
+    foreach (array_keys($H_TransportUIs) as $SchemaId) {
         if (isset($H_SearchResults[$SchemaId])) {
             $H_TransportUIs[$SchemaId]->itemCount(count($H_SearchResults[$SchemaId]));
             # add checksum to list

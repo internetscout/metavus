@@ -50,7 +50,7 @@ if (!isset($FieldValueGetters[$SortField])) {
     throw new Exception("Invalid sort field: ".$SortField);
 }
 $FieldValueFn = $FieldValueGetters[$SortField];
-$Comparator = function ($RuleA, $RuleB) use ($FieldValueFn, $ReverseSort) {
+$Comparator = function ($RuleA, $RuleB) use ($FieldValueFn, $ReverseSort): int {
     $Comparison = $FieldValueFn($RuleA) <=> $FieldValueFn($RuleB);
     return ($ReverseSort ? -1 : 1) * $Comparison;
 };

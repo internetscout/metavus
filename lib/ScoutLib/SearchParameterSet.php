@@ -199,7 +199,7 @@ class SearchParameterSet
                                 $NewSearchStrings[] = $Value;
                             }
                         }
-                        if (count($NewSearchStrings)) {
+                        if (count($NewSearchStrings) !== 0) {
                             $this->SearchStrings[$Field] = $NewSearchStrings;
                         } else {
                             unset($this->SearchStrings[$Field]);
@@ -356,7 +356,7 @@ class SearchParameterSet
     public function parameterCount(): int
     {
         $Count = count($this->KeywordSearchStrings);
-        foreach ($this->SearchStrings as $Field => $Strings) {
+        foreach ($this->SearchStrings as $Strings) {
             $Count += count($Strings);
         }
         foreach ($this->Subgroups as $Group) {
@@ -495,13 +495,13 @@ class SearchParameterSet
         if ($this->Logic !== "AND") {
             $Data["Logic"] = $this->Logic;
         }
-        if (count($this->SearchStrings)) {
+        if (count($this->SearchStrings) !== 0) {
             $Data["SearchStrings"] = $this->SearchStrings;
         }
-        if (count($this->KeywordSearchStrings)) {
+        if (count($this->KeywordSearchStrings) !== 0) {
             $Data["KeywordSearchStrings"] = $this->KeywordSearchStrings;
         }
-        if (count($this->Subgroups)) {
+        if (count($this->Subgroups) !== 0) {
             foreach ($this->Subgroups as $Subgroup) {
                 $Data["Subgroups"][] = $Subgroup->Data();
             }
@@ -608,7 +608,7 @@ class SearchParameterSet
         $Descriptions = [];
         foreach ($this->KeywordSearchStrings as $SearchString) {
             # skip empty keyword search strings
-            if (!strlen($SearchString)) {
+            if (strlen($SearchString) === 0) {
                 continue;
             }
 
@@ -673,7 +673,7 @@ class SearchParameterSet
                 $Value = $LiteralStart.$SearchString.$LiteralEnd;
 
                 # handle empty search strings for equality and inequality
-                if (!strlen($SearchString)) {
+                if (strlen($SearchString) === 0) {
                     if (($OpPhrase == "is") || ($OpPhrase == "is not")) {
                         $Value = "empty";
                     }
@@ -779,7 +779,7 @@ class SearchParameterSet
         }
 
         # modify our keyword search strings
-        if (count($this->KeywordSearchStrings)) {
+        if (count($this->KeywordSearchStrings) !== 0) {
             $this->KeywordSearchStrings =
                     preg_replace($Pattern, $Replacement, $this->KeywordSearchStrings);
         }
@@ -903,7 +903,7 @@ class SearchParameterSet
         $Legacy = [];
 
         $Group = $this->convertToLegacyGroup();
-        if (count($Group)) {
+        if (count($Group) !== 0) {
             $Legacy["MAIN"] = $Group;
         }
 
@@ -931,7 +931,7 @@ class SearchParameterSet
                 $Legacy[$FieldId."-".$Num] = $SubLegacy;
             }
 
-            if (count($Subgroup->Subgroups)) {
+            if (count($Subgroup->Subgroups) !== 0) {
                 throw new Exception(
                     "Attempt to convert SearchParameterSet containing nested subgroups "
                         ."to legacy format"
@@ -965,7 +965,7 @@ class SearchParameterSet
                 $Subgroup->loadFromLegacyGroup($SearchGroup);
 
                 # add any non-empty groups
-                if ($Subgroup->parameterCount()) {
+                if ($Subgroup->parameterCount() !== 0) {
                     $this->addSet($Subgroup);
                 }
             }
@@ -1016,7 +1016,7 @@ class SearchParameterSet
                     );
 
                     # if subgroup was non-empty, slurp it up
-                    if ($Subgroup->parameterCount()) {
+                    if ($Subgroup->parameterCount() !== 0) {
                         $this->addSet($Subgroup);
                     }
                 }
@@ -1188,7 +1188,7 @@ class SearchParameterSet
         }
 
         # if we had any search terms
-        if (count($Group)) {
+        if (count($Group) !== 0) {
             # smash single-value arrays to a scalar
             foreach ($Group["SearchStrings"] as &$Tgt) {
                 if (count($Tgt) == 1) {
@@ -1386,7 +1386,7 @@ class SearchParameterSet
         # pare down parameter array to search parameter elements
         # (filter out any parameter that does not begin with $UrlParameterPrefix)
         $UrlParameterPrefix = self::$UrlParameterPrefix;
-        $FilterFunc = function ($ParamName) use ($UrlParameterPrefix) {
+        $FilterFunc = function ($ParamName) use ($UrlParameterPrefix): bool {
             return (strpos($ParamName, $UrlParameterPrefix) === 0);
         };
         $UrlParameters = array_filter($UrlParameters, $FilterFunc, ARRAY_FILTER_USE_KEY);
@@ -1420,6 +1420,9 @@ class SearchParameterSet
                     # see https://www.php.net/manual/en/control-structures.switch.php
                     if ($FieldId === self::URL_ITEMTYPE_INDICATOR) {
                         # parse out item types and save
+                        if ($this->ItemTypes === false) {
+                            $this->ItemTypes = [];
+                        }
                         $this->ItemTypes[] = $SearchString;
                     } elseif ($FieldId === self::URL_KEYWORD_INDICATOR) {
                         # add string to keyword searches
@@ -1451,7 +1454,7 @@ class SearchParameterSet
         # if subgroups were found
         if (isset($SubgroupParameters)) {
             # for each identified subgroup
-            foreach ($SubgroupParameters as $SubgroupIndex => $Parameters) {
+            foreach ($SubgroupParameters as $Parameters) {
                 # create subgroup and set parameters
                 $Subgroup = new static();
                 $Subgroup->setFromUrlParameters($Parameters);

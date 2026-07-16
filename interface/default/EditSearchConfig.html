@@ -12,13 +12,39 @@ namespace Metavus;
 
 use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_FormUI)) {
-    throw new Exception("H_FormUI not defined.");
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
 
 $AF = ApplicationFramework::getInstance();
+
+# retrieve synonym list
+$SearchEngine = new SearchEngine();
+$SynonymList = $SearchEngine->getAllSynonyms();
+
+# place synonyms into a single string, each word+synonyms on a new line (formatted for parsing).
+$SynonymListText = "";
+foreach ($SynonymList as $Word => $Synonyms) {
+    $SynonymListText .= $Word." = ".join(", ", $Synonyms)."\n";
+}
+
+# set form field to display in FormUI
+$FormFields = [
+    "Synonyms" => [
+        "Type" => FormUI::FTYPE_PARAGRAPH,
+        "Label" => "Synonym List",
+        "Value" => $SynonymListText,
+        "Rows" => 25,
+        "Width" => 50,
+    ],
+];
+
+# instantiate formUI using form fields
+$FormUI = new FormUI($FormFields);
 
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
@@ -29,16 +55,58 @@ $CancelButton->setIcon("Cross.svg");
 $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->makeSubmitButton();
 
+# ----- PROCESSING -----------------------------------------------------------
+
+# act on any button press
+$ButtonPushed = StdLib::getFormValue("Submit");
+switch ($ButtonPushed) {
+    case "Save Changes":
+        # check values and bail out if any are invalid
+        if ($FormUI->validateFieldInput() !== 0) {
+            break;
+        }
+
+        # get updated form values
+        $ConfigValues = $FormUI->getNewValuesFromForm();
+
+        # get synonym list using form value
+        $SynonymList = $ConfigValues["Synonyms"];
+
+        if (strlen(trim($SynonymList)) > 0) {
+            # convert synonym list into array of lines
+            $SynonymList = explode("\n", $SynonymList);
+
+            # update synonym list
+            $SearchEngine = new SearchEngine();
+            try {
+                $SynonymList = $SearchEngine->parseSynonymsFromText($SynonymList);
+            } catch (Exception $Exception) {
+                $FormUI::logError($Exception->getMessage());
+                break;
+            }
+            $SearchEngine->setAllSynonyms($SynonymList);
+        }
+
+        # set page to administration
+        $AF->setJumpToPage("SysAdmin");
+        return;
+
+    case "Cancel":
+        # don't save anything and set page to administration.
+        $AF->setJumpToPage("SysAdmin");
+        return;
+}
+
 # ----- DISPLAY --------------------------------------------------------------
 $AF->setPageTitle("Edit Search Configuration");
 ?>
 
 <h1>Search Configuration</h1>
 
-<?PHP $H_FormUI->DisplayErrorBlock(); ?>
+<?PHP $FormUI::displayErrorBlock(); ?>
 
 <form method="post" action="index.php?P=EditSearchConfig">
-    <?PHP $H_FormUI->DisplayFormTable(); ?>
+    <?PHP $FormUI->displayFormTable(); ?>
     <?= $SaveButton->getHtml() ?>
     <?= $CancelButton->getHtml() ?>
 </form>

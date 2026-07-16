@@ -8,6 +8,25 @@
 #
 #   @scout:phpstan
 
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_USERADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("PHP Configuration Info");
+
+# if being reloaded within iframe
+if (isset($_GET["IF"])) {
+    phpinfo();
+    $AF->suppressStandardPageStartAndEnd();
+    return;
+}
+
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
@@ -21,27 +40,27 @@
 </iframe>
 
 <script type="text/javascript">
-/**
- * Resize the iframe.
- */
-(function() {
-    var $iframe = $("iframe");
+    /**
+     * Resize the iframe.
+     */
+    (function() {
+        var $iframe = $("iframe");
 
-    $iframe.load(function() {
-        var $this = $(this);
-        var height;
+        $iframe.load(function() {
+            var $this = $(this);
+            var height;
 
-        if (this.contentDocument) {
-            height = this.contentDocument.body.offsetHeight;
-        } else {
-            height = this.contentWindow.document.body.offsetHeight;
-        }
+            if (this.contentDocument) {
+                height = this.contentDocument.body.offsetHeight;
+            } else {
+                height = this.contentWindow.document.body.offsetHeight;
+            }
 
-        // additional 55px for IE scrollbar when shown
-        height += 55;
+            // additional 55px for IE scrollbar when shown
+            height += 55;
 
-        // resize the iframe
-        $this.height(height);
-    });
-}());
+            // resize the iframe
+            $this.height(height);
+        });
+    }());
 </script>

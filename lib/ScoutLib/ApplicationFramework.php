@@ -3,7 +3,7 @@
 #   FILE:  ApplicationFramework.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2009-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2009-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -197,7 +197,7 @@ class ApplicationFramework
         }
 
         # make sure namespace prefixes are in decreasing order of length
-        usort($NamespacePrefixes, function ($A, $B) {
+        usort($NamespacePrefixes, function ($A, $B): int {
             return strlen($B) - strlen($A);
         });
 
@@ -598,12 +598,15 @@ class ApplicationFramework
         # check whether we were invoked by a mapped clean URL, and switch to
         #   appropriate page and set appropriate $_GET parameters if so
         $CleanUrlPageName = $this->getPageAndSetParamsForCleanUrl();
-        if (strlen($CleanUrlPageName)) {
+        if (strlen($CleanUrlPageName) !== 0) {
             $PageName = $CleanUrlPageName;
         }
 
         # sanitize incoming page name and save local copy
         $PageName = preg_replace("/[^a-zA-Z0-9_.-]/", "", $PageName);
+        if ($PageName === null) {
+            throw new Exception("Page name sanitization failed.");
+        }
         $this->PageName = $PageName;
 
         # if cached page is available
@@ -622,7 +625,7 @@ class ApplicationFramework
             ["PageName" => $this->PageName]
         );
         if (($SignalResult["PageName"] != $this->PageName)
-            && strlen($SignalResult["PageName"])) {
+                && strlen($SignalResult["PageName"])) {
             $PageName = $SignalResult["PageName"];
             $this->PageName = $PageName;
         }
@@ -640,13 +643,23 @@ class ApplicationFramework
         $PageCompleteOutput = (string)ob_get_contents();
         ob_end_clean();
 
-        # set up for possible TSR (Terminate and Stay Resident :))
-        $ShouldTSR = $this->prepForTSR();
+        # if page file load left output buffers active
+        if (ob_get_level() > 0) {
+            # close open output buffers and log warning
+            $this->logError(self::LOGLVL_WARNING, "Unexpected buffers left after page file load.");
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+        }
+
+        # begin buffering output in case TSR needs to modify header later
+        # (because headers cannot be changed once any output has actually been sent)
+        ob_start();
 
         # if PHP file indicated we should immediately autorefresh to elsewhere
         if (($this->JumpToPage) && ($this->JumpToPageDelay == 0)) {
             # if no PHP page file output
-            if (!strlen(trim($PageFileOutput))) {
+            if (strlen(trim($PageFileOutput)) === 0) {
                 # do not log slow page load if jumping to page outside our site
                 if (self::urlIsExternal($this->JumpToPage)) {
                     $this->DoNotLogSlowPageLoad = true;
@@ -675,13 +688,27 @@ class ApplicationFramework
             } while (isset($this->HtmlPageNameOverride)
                     && ($HtmlPageName != $this->HtmlPageNameOverride));
 
-            # load standard page start/end if not suppressed
-            if (!$this->SuppressStdPageStartAndEnd) {
-                $PageStartOutput = $this->loadStandardPageStart();
-                $PageEndOutput = $this->loadStandardPageEnd();
-            } else {
+            # suppress standard page start/end when specifically requested
+            # or when redirecting without delay when no content was produced
+            if ($this->SuppressStdPageStartAndEnd
+                    || ($this->JumpToPage !== null
+                        && $this->JumpToPageDelay == 0
+                        && strlen($PageContentOutput) == 0)) {
                 $PageStartOutput = "";
                 $PageEndOutput = "";
+            } else {
+                $PageStartOutput = $this->loadStandardPageStart();
+                $PageEndOutput = $this->loadStandardPageEnd();
+            }
+
+            # if interface file load left extra output buffers active
+            if (ob_get_level() > 1) {
+                # close unwanted open output buffers and log warning
+                $this->logError(self::LOGLVL_WARNING, "Unexpected buffers left"
+                        ." after interface file load.");
+                while (ob_get_level() > 1) {
+                    ob_end_flush();
+                }
             }
 
             # clear include file context because it may be large and is no longer needed
@@ -689,17 +716,25 @@ class ApplicationFramework
 
             # if page auto-refresh requested
             if ($this->JumpToPage) {
-                # add auto-refresh tag to page
-                $this->addMetaTag([
-                    "http-equiv" => "refresh",
-                    "content" => $this->JumpToPageDelay
-                        . ";url=" . $this->JumpToPage,
-                ]);
+                # if no delay requested and HTML generated
+                if ($this->JumpToPageDelay == 0 && strlen($PageContentOutput) == 0) {
+                    # use a redirect
+                    $this->doNotCacheCurrentPage();
+                    self::redirectToPage($this->JumpToPage);
+                } else {
+                    # add auto-refresh tag to page
+                    $this->addMetaTag([
+                        "http-equiv" => "refresh",
+                        "content" => $this->JumpToPageDelay
+                            . ";url=" . $this->JumpToPage,
+                    ]);
+                }
             }
 
             # assemble full page
             $FullPageOutput = $PageStartOutput . $PageContentOutput . $PageEndOutput;
 
+            # do post-processing
             $FullPageOutput = $this->postProcessPageOutput($FullPageOutput);
 
             # update page cache for this page
@@ -725,20 +760,27 @@ class ApplicationFramework
         # log slow page loads
         $this->checkForAndLogSlowPageLoads();
 
-        # execute callbacks that should not have their output buffered
-        foreach ($this->UnbufferedCallbacks as $Callback) {
-            call_user_func_array($Callback[0], $Callback[1]);
-        }
-
         # log high memory usage
         $this->checkForAndLogHighMemoryUsage();
 
         $this->updateLastUsedTimeForActiveSessions();
 
-        # terminate and stay resident (TSR!) if indicated and HTML has been output
-        # (only TSR if HTML has been output because otherwise browsers will misbehave)
-        if ($ShouldTSR) {
+        # check if we should TSR (Terminate and Stay Resident :))
+        # we should if HTML has been output and it's time to launch another task
+        # (only TSR if HTML has been output because otherwise browsers
+        #       may misbehave after connection is closed)
+        if ((!$this->isRunningFromCommandLine())
+                && ($this->JumpToPage || !$this->SuppressHTML)
+                && $this->taskExecutionEnabled()
+                && $this->getTaskQueueSize()
+                && count($this->UnbufferedCallbacks) == 0) {
             $this->launchTSR();
+        } else {
+            ob_end_flush();
+            # execute callbacks that should not have their output buffered
+            foreach ($this->UnbufferedCallbacks as $Callback) {
+                call_user_func_array($Callback[0], $Callback[1]);
+            }
         }
     }
 
@@ -816,6 +858,9 @@ class ApplicationFramework
     {
         # retrieve current URL
         $Url = self::getUrlPath();
+        if ($Url === null) {
+            return null;
+        }
 
         # remove the base path if present
         $BasePath = $this->Settings["BasePath"];
@@ -850,14 +895,14 @@ class ApplicationFramework
     public function setJumpToPage($Page, int $Delay = 0, bool $IsLiteral = false): void
     {
         if (!is_null($Page)
-            && (!$IsLiteral)
-            && (strpos($Page, "?") === false)
-            && ((strpos($Page, "=") !== false)
-                || ((stripos($Page, ".php") === false)
-                    && (stripos($Page, ".htm") === false)
-                    && (strpos($Page, "/") === false)))
-            && (stripos($Page, "http://") !== 0)
-            && (stripos($Page, "https://") !== 0)) {
+                && (!$IsLiteral)
+                && (strpos($Page, "?") === false)
+                && ((strpos($Page, "=") !== false)
+                    || ((stripos($Page, ".php") === false)
+                        && (stripos($Page, ".htm") === false)
+                        && (strpos($Page, "/") === false)))
+                && (stripos($Page, "http://") !== 0)
+                && (stripos($Page, "https://") !== 0)) {
             $this->JumpToPage = self::baseUrl() . "index.php?P=" . $Page;
         } else {
             $this->JumpToPage = $Page;
@@ -1274,8 +1319,8 @@ class ApplicationFramework
     public function setContextFilter(int $Context, $NewSetting): void
     {
         if (($NewSetting === true)
-            || ($NewSetting === false)
-            || is_array($NewSetting)) {
+                || ($NewSetting === false)
+                || is_array($NewSetting)) {
             $this->ContextFilters[$Context] = $NewSetting;
         } elseif (is_string($NewSetting)) {
             $this->ContextFilters[$Context] = [ $NewSetting ];
@@ -1331,7 +1376,7 @@ class ApplicationFramework
                 if (!is_null($FoundFileName)) {
                     # if minimization enabled and supported
                     if ($this->javascriptMinimizationEnabled()
-                        && self::jsMinRewriteSupport()) {
+                            && self::jsMinRewriteSupport()) {
                         # attempt to create minimized file
                         $MinFileName = $this->minimizeJavascriptFile(
                             $FoundFileName
@@ -1355,7 +1400,8 @@ class ApplicationFramework
         } elseif (($FileType == self::FT_CSS) && $this->scssSupportEnabled()) {
             # look for SCSS version of file
             $SourceFileName = preg_replace("/.css$/", ".scss", $FileName);
-            $FoundSourceFileName = $this->findFile($DirsToSearch, $SourceFileName);
+            $FoundSourceFileName = ($SourceFileName === null) ? null
+                    : $this->findFile($DirsToSearch, $SourceFileName);
 
             # if SCSS file not found
             if ($FoundSourceFileName === null) {
@@ -1503,7 +1549,7 @@ class ApplicationFramework
     public function pUIFile(string $FileName): void
     {
         $FullFileName = $this->gUIFile($FileName);
-        if ($FullFileName) {
+        if ($FullFileName !== null && $FullFileName !== '' && $FullFileName !== '0') {
             print $FullFileName;
         } else {
             $this->logError(
@@ -1538,7 +1584,7 @@ class ApplicationFramework
             $FileName = $this->gUIFile($BaseFileName);
 
             # if file was found
-            if ($FileName) {
+            if ($FileName !== null && $FileName !== '' && $FileName !== '0') {
                 # print appropriate tag
                 print $this->getUIFileLoadingTag($FileName);
             } else {
@@ -1568,7 +1614,9 @@ class ApplicationFramework
                         $BaseFileName
                     );
                     $OverrideFileName = $this->gUIFile($BaseOverrideFileName);
-                    if ($OverrideFileName) {
+                    if ($OverrideFileName !== null
+                            && $OverrideFileName !== ''
+                            && $OverrideFileName !== '0') {
                         print $this->getUIFileLoadingTag($OverrideFileName);
                     }
                 }
@@ -1802,6 +1850,16 @@ class ApplicationFramework
         ];
     }
 
+    /**
+     * Add content to page header.  The supplied content will be added to the
+     * page header, but the location within the header is not guaranteed.
+     * @param string $Content HTML content to add to page header.
+     */
+    public function addPageHeaderContent(string $Content): void
+    {
+        $this->AdditionalHeaderContent[] = $Content;
+    }
+
     /*@)*/ /* Application Framework */
 
 
@@ -1818,7 +1876,8 @@ class ApplicationFramework
     }
 
     /**
-     * Set the page title, intended to be used for the <title> tag and potentially other places.
+     * Set the page title, intended to be used for the <title> tag and
+     * potentially other places.
      * @param string $NewTitle The title to use for the page.
      */
     public function setPageTitle(string $NewTitle): void
@@ -1827,8 +1886,9 @@ class ApplicationFramework
     }
 
     /**
-     * Get the page title, intended to be used for the <title> tag and potentially other places.
-     * Uses the registered callback to filter the title.
+     * Get the page title, intended to be used for the <title> tag and
+     * potentially other places.  Uses the registered callback to filter
+     * the title.
      * @return ?string The page title.
      * @see registerPageTitleFilteringCallback()
      */
@@ -1930,7 +1990,7 @@ class ApplicationFramework
 
         # look for insertion keywords, with the keyword in $Matches[1]
         $RegEx = '%{{([A-Z0-9-]+)%i';
-        return preg_replace_callback($RegEx, $Callback, $Content);
+        return preg_replace_callback($RegEx, $Callback, $Content) ?? $Content;
     }
 
     /**
@@ -2047,9 +2107,6 @@ class ApplicationFramework
      */
     public function addPageCacheTag(string $Tag, ?array $Pages = null): void
     {
-        # normalize tag
-        $Tag = strtolower($Tag);
-
         # if pages were supplied
         if ($Pages !== null) {
             # add pages to list for this tag
@@ -2077,11 +2134,13 @@ class ApplicationFramework
         # get tag ID
         $TagId = $this->getPageCacheTagId($Tag);
 
-        # delete pages and tag/page connections for specified tag
+        # delete any callbacks for specified tag
         $this->DB->query("DELETE CPC"
             ." FROM AF_CachedPageCallbacks CPC, AF_CachedPageTagInts CPTI"
             ." WHERE CPTI.TagId = ".intval($TagId)
             ." AND CPC.CacheId = CPTI.CacheId");
+
+        # delete any cached pages and IDs for cached pages for specified tag
         $this->DB->query("DELETE CP, CPTI"
             ." FROM AF_CachedPages CP, AF_CachedPageTagInts CPTI"
             ." WHERE CPTI.TagId = ".intval($TagId)
@@ -2098,6 +2157,7 @@ class ApplicationFramework
         $this->DB->query("TRUNCATE TABLE AF_CachedPageTags");
         $this->DB->query("TRUNCATE TABLE AF_CachedPageTagInts");
         $this->DB->query("TRUNCATE TABLE AF_CachedPageCallbacks");
+        $this->PageCacheTagIdCache = [];
     }
 
     /**
@@ -2319,6 +2379,37 @@ class ApplicationFramework
         bool $Persistent = false
     ): bool {
         return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
+    }
+
+    /**
+     * Get/set whether logging of database locking activity is enabled.  Lock
+     *         activity will be logged with LOGLVL_INFO if enabled
+     * @param bool $NewValue TRUE to enable logging or FALSE to disable.  (OPTIONAL)
+     * @param bool $Persistent If TRUE the new value will be saved (i.e.
+     *       persistent across page loads), otherwise the value will apply to
+     *       just the current page load.  (OPTIONAL, defaults to FALSE)
+     * @return bool TRUE if logging is enabled, otherwise FALSE.
+     */
+    public function logDBLocking(
+        ?bool $NewValue = null,
+        bool $Persistent = false
+    ): bool {
+        return $this->updateBoolSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
+    }
+
+    /**
+     * Get/set the threshold for logging a long database lock.
+     * @param int $NewValue New value in milliseconds.  (OPTIONAL)
+     * @param bool $Persistent If TRUE the new value will be saved (i.e.
+     *       persistent across page loads), otherwise the value will apply to
+     *       just the current page load.  (OPTIONAL, defaults to FALSE)
+     * @return int Current value
+     */
+    public function longDBLockThreshold(
+        ?int $NewValue = null,
+        bool $Persistent = false
+    ) : int {
+        return $this->updateIntSetting(ucfirst(__FUNCTION__), $NewValue, $Persistent);
     }
 
     /**
@@ -2563,7 +2654,7 @@ class ApplicationFramework
             array_pop($Lines);
 
             # prune array back to requested number of entries
-            $Lines = array_slice($Lines, (0 - $Limit));
+            $Lines = array_slice($Lines, (-$Limit));
         } else {
             # load all lines from log file
             $Lines = file($LogFile, FILE_IGNORE_NEW_LINES);
@@ -2596,8 +2687,8 @@ class ApplicationFramework
                 "TRC" => self::LOGLVL_TRACE,
             ];
             if ((($Back != "F") && ($Back != "B"))
-                || !array_key_exists($Level, $ErrorAbbrevs)
-                || !strlen($Msg)) {
+                    || !array_key_exists($Level, $ErrorAbbrevs)
+                    || !strlen($Msg)) {
                 continue;
             }
 
@@ -2691,9 +2782,9 @@ class ApplicationFramework
 
     /**
      * Register one or more events that may be signaled.
-     * @param array|string $EventsOrEventName Name of event (string).  To register multiple
-     *       events, this may also be an array, with the event names as the index
-     *       and the event types as the values.
+     * @param array|string $EventsOrEventName Name of event (string).  To register
+     *      multiple events, this may also be an array, with the event names as the
+     *      index and the event types as the values.
      * @param int $EventType Type of event (constant).  (OPTIONAL if EventsOrEventName
      *       is an array of events)
      */
@@ -2780,7 +2871,7 @@ class ApplicationFramework
                     if (count($this->RegisteredEvents[$EventName]["Hooks"]) > 1) {
                         usort(
                             $this->RegisteredEvents[$EventName]["Hooks"],
-                            function ($A, $B) {
+                            function ($A, $B): int {
                                 return StdLib::sortCompare(
                                     $A["Order"],
                                     $B["Order"]
@@ -2827,7 +2918,7 @@ class ApplicationFramework
         foreach ($Events as $EventName => $EventCallback) {
             # if this event has been registered and hooked
             if (isset($this->RegisteredEvents[$EventName])
-                && count($this->RegisteredEvents[$EventName])) {
+                    && count($this->RegisteredEvents[$EventName])) {
                 # if this callback has been hooked for this event
                 $CallbackData = [ "Callback" => $EventCallback, "Order" => $Order ];
                 $Hooks = $this->RegisteredEvents[$EventName]["Hooks"];
@@ -2876,7 +2967,7 @@ class ApplicationFramework
             foreach ($this->RegisteredEvents[$EventName]["Hooks"] as $Hook) {
                 # invoke callback
                 $Callback = $Hook["Callback"];
-                $Result = count($Parameters)
+                $Result = count($Parameters) !== 0
                     ? call_user_func_array($Callback, array_values($Parameters))
                     : call_user_func($Callback);
 
@@ -2884,7 +2975,7 @@ class ApplicationFramework
                 switch ($this->RegisteredEvents[$EventName]["Type"]) {
                     case self::EVENTTYPE_CHAIN:
                         if ($Result !== null) {
-                            foreach ($Parameters as $Index => $Value) {
+                            foreach (array_keys($Parameters) as $Index) {
                                 if (array_key_exists($Index, $Result)) {
                                     $Parameters[$Index] = $Result[$Index];
                                 }
@@ -3047,7 +3138,7 @@ class ApplicationFramework
         # if event is already in database
         $Signature = self::getCallbackSignature($Callback);
         if ($DB->queryValue("SELECT COUNT(*) AS EventCount FROM PeriodicEvents"
-            . " WHERE Signature = '" . addslashes($Signature) . "'", "EventCount")) {
+                ." WHERE Signature = '".addslashes($Signature)."'", "EventCount")) {
             # update last run time for event
             $DB->query("UPDATE PeriodicEvents SET LastRunAt = "
                 . (($EventName == "EVENT_PERIODIC")
@@ -3076,7 +3167,7 @@ class ApplicationFramework
      * @param int $NewValue New session timeout value.  (OPTIONAL)
      * @return int Current session timeout value in seconds.
      */
-    public function sessionLifetime(?int $NewValue = null)
+    public function sessionLifetime(?int $NewValue = null): int
     {
         # if we don't yet have a SessionLifetime column because the update
         # to create it hasn't yet run, use the default value
@@ -3154,7 +3245,7 @@ class ApplicationFramework
         # if HTTP_HOST is preferred or SERVER_NAME points to localhost
         #       and HTTP_HOST is set
         } elseif ((self::$PreferHttpHost || ($_SERVER["SERVER_NAME"] == "127.0.0.1"))
-            && isset($_SERVER["HTTP_HOST"])) {
+                && isset($_SERVER["HTTP_HOST"])) {
             # use HTTP_HOST for domain name
             $DomainName = $_SERVER["HTTP_HOST"];
         } else {
@@ -3251,7 +3342,8 @@ class ApplicationFramework
             return false;
         }
         $UrlParts = parse_url($Url);
-        if (($UrlParts === false) || !isset($UrlParts["host"])
+        if (($UrlParts === false)
+                || !isset($UrlParts["host"])
                 || ($UrlParts["host"] != parse_url(self::rootUrl(), PHP_URL_HOST))) {
             return false;
         }
@@ -3282,12 +3374,18 @@ class ApplicationFramework
      * This is not equivalent to determining whether a clean URL is set up for
      * the URL.
      * @param string $ScriptName The file name of the running script.
-     * @return bool Returns TRUE if the URL was rewritten and FALSE if not.
+     * @return bool Returns TRUE if the URL was rewritten and FALSE if not or
+     *      if unable to determine the current URL path.
+     * @see ApplicationFramework::getUrlPath()
      */
     public static function wasUrlRewritten(string $ScriptName = "index.php"): bool
     {
         # get path portion of URL (does not include query or fragment)
-        $Path = parse_url(self::getUrlPath(), PHP_URL_PATH);
+        $UrlPath = self::getUrlPath();
+        if ($UrlPath === null) {
+            return false;
+        }
+        $Path = parse_url($UrlPath, PHP_URL_PATH);
 
         if (is_string($Path)) {
             $BasePath = self::basePath();
@@ -3325,8 +3423,7 @@ class ApplicationFramework
         if (isset(self::$IsAjaxPageLoad)) {
             return self::$IsAjaxPageLoad;
         } elseif (isset($_SERVER["HTTP_X_REQUESTED_WITH"])
-            && (strtolower($_SERVER["HTTP_X_REQUESTED_WITH"])
-                == "xmlhttprequest")) {
+                && (strtolower($_SERVER["HTTP_X_REQUESTED_WITH"]) == "xmlhttprequest")) {
             return true;
         } else {
             return false;
@@ -3348,7 +3445,7 @@ class ApplicationFramework
         $QuerySiteDesc = self::stackFrameSummary($QuerySite);
 
         # reduce repeated strings of whitespace to single spaces
-        $Query = preg_replace('/\h+/', ' ', trim($Query));
+        $Query = preg_replace('/\h+/', ' ', trim($Query)) ?? $Query;
 
         # truncate long queries
         if (strlen($Query) > 300) {
@@ -3423,6 +3520,56 @@ class ApplicationFramework
                 ."  IP: ".($_SERVER["REMOTE_ADDR"] ?? "(none)")
                 ."  CACHE:".$CacheSummary
         );
+    }
+
+    /**
+     * Log debugging information about DB locks.
+     * @param string $QueryString SQL of the LOCK/UNLOCK currently being run.
+     * @param array $QueryLocation Location of current query, either
+     *         the UNLOCK TABLES or the second LOCK as a row of output from
+     *         debug_backtrace()
+     * @param string $LockString SQL of the LOCK statement that started the
+     *         currently held lock, NULL when no lock is active.
+     * @param ?array $LockLocation Location that issued the initial
+     *         LOCK TABLES, NULL when no LOCK is active.
+     * @param ?float $LockDuration Duration in seconds that lock was held when
+     *         UNLOCKing, NULL otherwise.
+     */
+    public static function logDBLock(
+        string $QueryString,
+        array $QueryLocation,
+        ?string $LockString,
+        ?array $LockLocation,
+        ?float $LockDuration
+    ): void {
+        $QueryLocationDesc = self::stackFrameSummary($QueryLocation);
+        if ($LockLocation === null) {
+            self::getInstance()->logMessage(
+                self::LOGLVL_INFO,
+                "'".$QueryString."' issued at ".$QueryLocationDesc." when no LOCK active."
+            );
+            return;
+        }
+
+        $LockLocationDesc = self::stackFrameSummary($LockLocation);
+        if ($LockDuration === null) {
+            self::getInstance()->logMessage(
+                self::LOGLVL_INFO,
+                "'".$QueryString."' issued at ".$QueryLocationDesc." when a LOCK was already"
+                    ." active. '".$LockString."' was issued at ".$LockLocationDesc."."
+            );
+            return;
+        }
+
+        $LockDurationThreshold = self::getInstance()->longDBLockThreshold() / 1000;
+        if ($LockDuration > $LockDurationThreshold) {
+            self::getInstance()->logMessage(
+                self::LOGLVL_INFO,
+                "Database LOCK held a long time (".round($LockDuration, 2)."s)."
+                    ." '".$LockString."' at ".$LockLocationDesc
+                    ." and '".$QueryString."' at ".$QueryLocationDesc."."
+            );
+        }
     }
 
     /**
@@ -3590,7 +3737,7 @@ class ApplicationFramework
         }
 
         # send file to user, but unbuffered to avoid memory issues
-        $this->addUnbufferedCallback(function ($File) {
+        $this->addUnbufferedCallback(function ($File): void {
             $FileSize = (int)filesize($File);
             $BlockSize = 512000;
 
@@ -3815,6 +3962,7 @@ class ApplicationFramework
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+    private $AdditionalHeaderContent = [];
     private $AdditionalRequiredUIFiles = [];
     private $BrowserDetectFunc;
     private $CacheCurrentPage = true;
@@ -3843,6 +3991,7 @@ class ApplicationFramework
     private $OutputModificationCallbacks = [];
     private $OutputModificationPatterns = [];
     private $OutputModificationReplacements = [];
+    private $PageCacheTagIdCache = [];
     private $PageCacheTags = [];
     private $PageName = "";
     private $PageTitle = null;
@@ -3906,7 +4055,7 @@ class ApplicationFramework
     # minimum expired session garbage collection probability
     private const MIN_GC_PROBABILITY = 0.01;
     # offset used to generate page cache tag IDs from numeric tags
-    private const PAGECACHETAGIDOFFSET = 100000;
+    private const PAGECACHETAG_ID_OFFSET = 100000;
 
     /**
      * Set to TRUE to not close browser connection before running
@@ -3969,7 +4118,7 @@ class ApplicationFramework
         # (using CST/CDT if nothing set because we have to use something
         #       and Scout is based in Madison, WI, USA which is in CST/CDT)
         if ((ini_get("date.timezone") === false)
-            || !strlen(ini_get("date.timezone"))) {
+                || !strlen(ini_get("date.timezone"))) {
             ini_set("date.timezone", "America/Chicago");
         }
 
@@ -3991,7 +4140,8 @@ class ApplicationFramework
 
         # if we were not invoked via command line interface
         #       and session initialization has not been explicitly suppressed
-        if ((!$this->isRunningFromCommandLine()) && (!self::$SuppressSessionInitialization)) {
+        if (!$this->isRunningFromCommandLine()
+                && !self::$SuppressSessionInitialization) {
             # attempt to start PHP session
             $this->startPhpSession();
         }
@@ -4012,6 +4162,10 @@ class ApplicationFramework
         # register events we handle internally
         $this->registerEvent($this->PeriodicEvents);
         $this->registerEvent($this->UIEvents);
+        $this->hookEvent(
+            "EVENT_HOURLY",
+            [self::class, "clearExpiredPagesFromPageCache"]
+        );
 
         # attempt to create SCSS cache directory if needed and it does not exist
         if ($this->scssSupportEnabled() && !is_dir(self::$ScssCacheDir)) {
@@ -4020,8 +4174,8 @@ class ApplicationFramework
 
         # attempt to create minimized JS cache directory if needed and it does not exist
         if ($this->useMinimizedJavascript()
-            && $this->javascriptMinimizationEnabled()
-            && !is_dir(self::$JSMinCacheDir)) {
+                && $this->javascriptMinimizationEnabled()
+                && !is_dir(self::$JSMinCacheDir)) {
             @mkdir(self::$JSMinCacheDir, 0777, true);
         }
 
@@ -4045,9 +4199,9 @@ class ApplicationFramework
         string $ErrStr,
         string $ErrFile,
         int $ErrLine
-    ) {
+    ): bool {
         # do not log notice if it was explicitly suppressed with "@"
-        if (!(error_reporting() & $ErrNo)) {
+        if ((error_reporting() & $ErrNo) === 0) {
             return false;
         }
 
@@ -4104,20 +4258,21 @@ class ApplicationFramework
     private function loadSettings(): void
     {
         # read settings in from database
-        $this->DB->query("SELECT * FROM ApplicationFrameworkSettings");
-        $this->Settings = $this->DB->fetchRow();
+        $DB = $this->DB;
+        $DB->query("SELECT * FROM `ApplicationFrameworkSettings`");
+        $this->Settings = $DB->fetchRow();
 
         # if settings were not previously initialized
         if ($this->Settings === false) {
-            # initialize settings in database
-            $this->DB->query("INSERT INTO ApplicationFrameworkSettings"
-                . " (LastTaskRunAt) VALUES ('2000-01-02 03:04:05')");
+            # initialize table in database
+            $DB->query("INSERT INTO ApplicationFrameworkSettings"
+                    ." (TaskExecutionEnabled) VALUES (1)");
 
-            # read new settings in from database
-            $this->DB->query("SELECT * FROM ApplicationFrameworkSettings");
-            $this->Settings = $this->DB->fetchRow();
+            # read new settings
+            $DB->query("SELECT * FROM ApplicationFrameworkSettings");
+            $this->Settings = $DB->fetchRow();
 
-            # bail out if reloading new settings failed
+            # bail out if loading new settings failed
             if ($this->Settings === false) {
                 throw new Exception(
                     "Unable to load application framework settings."
@@ -4134,19 +4289,19 @@ class ApplicationFramework
             $BasePath = self::getRewritebaseFromHtaccess();
 
             # if base path was found
-            if (strlen($BasePath)) {
+            if (strlen($BasePath) !== 0) {
                 # save base path locally
                 $this->Settings["BasePath"] = $BasePath;
 
                 # save base path to database
-                $this->DB->query("UPDATE ApplicationFrameworkSettings"
+                $DB->query("UPDATE ApplicationFrameworkSettings"
                     . " SET BasePath = '" . addslashes($BasePath) . "'"
                     . ", BasePathCheck = '" . addslashes(__FILE__) . "'");
             }
         }
 
         # retrieve template location cache
-        if (strlen($this->Settings["TemplateLocationCache"] ?? "")) {
+        if (strlen($this->Settings["TemplateLocationCache"] ?? "") !== 0) {
             $this->TemplateLocationCache = unserialize(
                 $this->Settings["TemplateLocationCache"]
             );
@@ -4300,7 +4455,7 @@ class ApplicationFramework
      *      from which each entry came for the values.  [OPTIONAL]
      * @return array Expanded list.
      */
-    private function expandDirectoryList(array $DirList, &$OriginList = null): array
+    private function expandDirectoryList(array $DirList, &$OriginList = []): array
     {
         # generate lookup for supplied list
         $ExpandedListKey = md5(serialize($DirList)
@@ -4309,15 +4464,13 @@ class ApplicationFramework
         # if we already have expanded version of supplied list
         if (isset($this->ExpandedDirectoryListCache[$ExpandedListKey])) {
             # return expanded version to caller
-            if ($OriginList !== null) {
-                $OriginList = $this->ExpandedDirectoryListOriginCache[$ExpandedListKey];
-            }
+            $OriginList = $this->ExpandedDirectoryListOriginCache[$ExpandedListKey];
             return $this->ExpandedDirectoryListCache[$ExpandedListKey];
         }
 
         # for each directory in list
         $ExpDirList = [];
-        $MyOriginList = [];
+        $OriginList = [];
         foreach ($DirList as $Dir) {
             # get normalized version of dir plus local version and parent dirs
             $NewDirs = $this->getNormalizedDirPlusParentDirs($Dir);
@@ -4330,19 +4483,14 @@ class ApplicationFramework
                     $ExpDirList[] = $NewDir;
 
                     # add directory to origin list
-                    $MyOriginList[$NewDir] = $Dir;
+                    $OriginList[$NewDir] = $Dir;
                 }
             }
         }
 
         # save expanded version and origin list to cache
         $this->ExpandedDirectoryListCache[$ExpandedListKey] = $ExpDirList;
-        $this->ExpandedDirectoryListOriginCache[$ExpandedListKey] = $MyOriginList;
-
-        # set origin list for caller if requested
-        if ($OriginList !== null) {
-            $OriginList = $MyOriginList;
-        }
+        $this->ExpandedDirectoryListOriginCache[$ExpandedListKey] = $OriginList;
 
         # return expanded version to caller
         return $ExpDirList;
@@ -4386,7 +4534,7 @@ class ApplicationFramework
             $ParentInterface = null;
 
             # perform interface keyword replacement
-            $CurrDir = (string)str_replace($Patterns, $Replacements, $Dir);
+            $CurrDir = str_replace($Patterns, $Replacements, $Dir);
 
             # if directory is not already in "local" tree
             if (strpos($CurrDir, "local/") !== 0) {
@@ -4854,7 +5002,7 @@ class ApplicationFramework
 
         # minimize code
         switch ($Minimizer) {
-            case "JavaScriptMinimizer":
+            case "JavaScriptPacker":
                 $Packer = new JavaScriptPacker($Code, "Normal");
                 $MinimizedCode = $Packer->pack();
                 break;
@@ -4898,13 +5046,13 @@ class ApplicationFramework
      * @return array Array with names of required files (without paths) for the
      *       index, and loading order hints (ORDER_*) for the values..
      */
-    private function getRequiredFilesNotYetLoaded(?string $PageContentFile = null)
+    private function getRequiredFilesNotYetLoaded(?string $PageContentFile = null): array
     {
         # start out assuming no files required
         $RequiredFiles = [];
 
         # if page content file supplied
-        if ($PageContentFile) {
+        if ($PageContentFile !== null && $PageContentFile !== '' && $PageContentFile !== '0') {
             # if file containing list of required files is available
             $Path = dirname($PageContentFile);
             $RequireListFile = $Path . "/REQUIRES";
@@ -4932,7 +5080,7 @@ class ApplicationFramework
         }
 
         # add in additional required files if any
-        if (count($this->AdditionalRequiredUIFiles)) {
+        if (count($this->AdditionalRequiredUIFiles) !== 0) {
             # remove files we've already included
             $AdditionalRequiredUIFiles = array_diff_key(
                 $this->AdditionalRequiredUIFiles,
@@ -4957,7 +5105,7 @@ class ApplicationFramework
      * @return array Updated array with file names for index.  (Incoming
      *       values for array will be preserved.)
      */
-    private function subBrowserIntoFileNames(array $FileNames)
+    private function subBrowserIntoFileNames(array $FileNames): array
     {
         # if a browser detection function has been made available
         $UpdatedFileNames = [];
@@ -4997,11 +5145,77 @@ class ApplicationFramework
     }
 
     /**
-     * Add any requested meta tags to page output.
-     * @param string $PageOutput Full page output.
+     * Add any requested meta tags or additional header content to page output.
+     * @param string $PageContent Current full page output.
      * @return string Full page output, potentially modified.
      */
-    private function addMetaTagsToPageOutput(string $PageOutput): string
+    private function addHeaderContentToPageOutput(string $PageContent): string
+    {
+        # start with an empty segment
+        $Section = "";
+
+        # if additional header content was supplied
+        if (count($this->AdditionalHeaderContent)) {
+            # add content to segment
+            foreach ($this->AdditionalHeaderContent as $Content) {
+                $Section .= $Content."\n";
+            }
+        }
+
+        # if there are meta tags to be added
+        $TagsToAdd = $this->getMetaTagsToAddToPageHeader($PageContent.$Section);
+        if (count($TagsToAdd) !== 0) {
+            # for each meta tag
+            foreach ($TagsToAdd as $Attribs) {
+                # assemble tag and add it to the segment
+                $Section .= "<meta";
+                foreach ($Attribs as $AttribName => $AttribValue) {
+                    $Section .= " " . $AttribName . "=\""
+                        . htmlspecialchars(trim($AttribValue)) . "\"";
+                }
+                $Section .= " />\n";
+            }
+        }
+
+        # if there is content to add to header
+        if ($Section != "") {
+            # if standard page start and end have been disabled
+            # and page output contains no <head> element
+            if ($this->SuppressStdPageStartAndEnd
+                    && (strpos($PageContent, "<head>") === false)) {
+                # add segment to beginning of page output
+                $PageContent = $Section.$PageContent;
+            } else {
+                # ensure segment does not contain regex backreferences
+                $Section = str_replace(['\\', '$'], ['\\\\', '\\$'], $Section);
+
+                # insert segment at end of HTML header section in page output
+                $PageContent = preg_replace(
+                    "#</head>#i",
+                    $Section."</head>\n",
+                    $PageContent,
+                    1
+                );
+                if ($PageContent === null) {
+                    throw new Exception("Adding content to end of page head failed.");
+                }
+            }
+        }
+
+        # return (potentially modified) page output to caller
+        return $PageContent;
+    }
+
+    /**
+     * Get meta tags to add to page header.
+     * @param string $PageContent Current full page content.  (Required to
+     *      determine whether or not tags that were requested to be unique
+     *      still need to be added.)
+     * @return array Tags to add, with each array element being another array
+     *      of meta tag attributes, with attribute names for the index and
+     *      attribute values for the values.
+     */
+    private function getMetaTagsToAddToPageHeader(string $PageContent): array
     {
         # start with unconditional (non-unique) tags
         $TagsToAdd = $this->MetaTags;
@@ -5061,14 +5275,14 @@ class ApplicationFramework
                 $SearchString = "<meta " . implode(" ", $AttribStrings);
 
                 # if search string appears in page output
-                if (strpos($PageOutput, $SearchString) !== false) {
+                if (strpos($PageContent, $SearchString) !== false) {
                     # skip to next unique tag
                     continue 2;
                 }
 
                 # repeat search with single quotes instead of double quotes
                 $SearchString = strtr($SearchString, '"', "'");
-                if (strpos($PageOutput, $SearchString) !== false) {
+                if (strpos($PageContent, $SearchString) !== false) {
                     # skip to next unique tag
                     continue 2;
                 }
@@ -5078,41 +5292,7 @@ class ApplicationFramework
             $TagsToAdd[] = $Attribs;
         }
 
-        # if there are meta tags to be added
-        if (count($TagsToAdd)) {
-            # start with an empty segment
-            $Section = "";
-
-            # for each meta tag
-            foreach ($TagsToAdd as $Attribs) {
-                # assemble tag and add it to the segment
-                $Section .= "<meta";
-                foreach ($Attribs as $AttribName => $AttribValue) {
-                    $Section .= " " . $AttribName . "=\""
-                        . htmlspecialchars(trim($AttribValue)) . "\"";
-                }
-                $Section .= " />\n";
-            }
-
-            # if standard page start and end have been disabled
-            # and page output contains no <head> element
-            if ($this->SuppressStdPageStartAndEnd &&
-                strpos($PageOutput, "<head>") === false) {
-                # add segment to beginning of page output
-                $PageOutput = $Section . $PageOutput;
-            } else {
-                # insert segment at beginning of HTML head section in page output
-                $PageOutput = preg_replace(
-                    "#<head>#i",
-                    "<head>\n" . $Section,
-                    $PageOutput,
-                    1
-                );
-            }
-        }
-
-        # return (potentially modified) page output to caller
-        return $PageOutput;
+        return $TagsToAdd;
     }
 
     /**
@@ -5145,7 +5325,7 @@ class ApplicationFramework
             $FilePath = $this->gUIFile($File);
 
             # if file was found
-            if ($FilePath) {
+            if ($FilePath !== null && $FilePath !== '' && $FilePath !== '0') {
                 # generate tag for file
                 $Tag = $this->getUIFileLoadingTag($FilePath);
 
@@ -5168,6 +5348,10 @@ class ApplicationFramework
             }
         }
 
+        # ensure tag content does not contain regex backreferences
+        $HeadContent = str_replace(['\\', '$'], ['\\\\', '\\$'], $HeadContent);
+        $BodyContent = str_replace(['\\', '$'], ['\\\\', '\\$'], $BodyContent);
+
         # add content to head
         $Replacement = $HeadContent[self::ORDER_MIDDLE]
             . $HeadContent[self::ORDER_LAST];
@@ -5179,15 +5363,19 @@ class ApplicationFramework
         );
         # (if no </head> tag was found, just prepend tags to page content)
         if ($ReplacementCount == 0) {
-            $PageOutput = $Replacement . $PageOutput;
-            # (else if multiple </head> tags found, only prepend tags to the first)
+            $PageOutput = $Replacement.$PageOutput;
+        # (else if multiple </head> tags found, only prepend tags to the first)
         } elseif ($ReplacementCount > 1) {
             $PageOutput = preg_replace(
                 "#</head>#i",
-                $Replacement . "</head>",
+                $Replacement."</head>",
                 $PageOutput,
                 1
             );
+            if ($PageOutput === null) {
+                throw new Exception("Adding content to end of page head failed"
+                        ." (Replacement: \"".$Replacement."\").");
+            }
         } else {
             $PageOutput = $UpdatedPageOutput;
         }
@@ -5200,15 +5388,19 @@ class ApplicationFramework
         );
         # (if no <head> tag was found, just prepend tags to page content)
         if ($ReplacementCount == 0) {
-            $PageOutput = $Replacement . $PageOutput;
-            # (else if multiple <head> tags found, only append tags to the first)
+            $PageOutput = $Replacement.$PageOutput;
+        # (else if multiple <head> tags found, only append tags to the first)
         } elseif ($ReplacementCount > 1) {
             $PageOutput = preg_replace(
                 "#<head>#i",
-                "<head>\n" . $Replacement,
+                "<head>\n".$Replacement,
                 $PageOutput,
                 1
             );
+            if ($PageOutput === null) {
+                throw new Exception("Adding content to beginning of page head failed"
+                        ." (Replacement: \"".$Replacement."\").");
+            }
         } else {
             $PageOutput = $UpdatedPageOutput;
         }
@@ -5217,34 +5409,43 @@ class ApplicationFramework
         $Replacement = $BodyContent[self::ORDER_FIRST];
         $PageOutput = preg_replace(
             "#<body([^>]*)>#i",
-            "<body\\1>\n" . $Replacement,
+            "<body\\1>\n".$Replacement,
             $PageOutput,
             1,
             $ReplacementCount
         );
+        if ($PageOutput === null) {
+            throw new Exception("Adding content to beginning of page body failed"
+                    ." (Replacement: \"".$Replacement."\").");
+        }
+
         # (if no <body> tag was found, just append tags to page content)
         if ($ReplacementCount == 0) {
-            $PageOutput = $PageOutput . $Replacement;
+            $PageOutput = $PageOutput.$Replacement;
         }
         $Replacement = $BodyContent[self::ORDER_MIDDLE]
             . $BodyContent[self::ORDER_LAST];
         $UpdatedPageOutput = str_ireplace(
             "</body>",
-            $Replacement . "\n</body>",
+            $Replacement."\n</body>",
             $PageOutput,
             $ReplacementCount
         );
+
         # (if no </body> tag was found, just append tags to page content)
         if ($ReplacementCount == 0) {
-            $PageOutput = $PageOutput . $Replacement;
+            $PageOutput = $PageOutput.$Replacement;
             # (else if multiple </body> tags found, only prepend tag to the first)
         } elseif ($ReplacementCount > 1) {
             $PageOutput = preg_replace(
                 "#</body>#i",
-                $Replacement . "\n</body>",
+                $Replacement."\n</body>",
                 $PageOutput,
                 1
             );
+            if ($PageOutput === null) {
+                throw new Exception("Adding content to end of page body failed.");
+            }
         } else {
             $PageOutput = $UpdatedPageOutput;
         }
@@ -5305,6 +5506,11 @@ class ApplicationFramework
             "$1." . $Fingerprint . ".$2",
             $FileName
         );
+        if ($FileName === null) {
+            throw new Exception("Adding fingerprint to file name failed"
+                    ." (Fingerprint: \"".$Fingerprint
+                    ."\", FileName: \"".$FileName."\").");
+        }
 
         # return fingerprinted file name
         return $FileName;
@@ -5381,20 +5587,28 @@ class ApplicationFramework
     private function autoloadObjects(string $ClassName): void
     {
         # if we have a cached location for the class
-        #       and the cached value indicates that a file could not be found
         $CacheKey = self::$DefaultUI.self::$ActiveUI.$ClassName;
-        $CachedValueAvailable = (self::$ObjectLocationCacheInterval > 0)
-                && array_key_exists($CacheKey, self::$ObjectLocationCache);
-        if ($CachedValueAvailable && (self::$ObjectLocationCache[$CacheKey] === false)) {
-            # quit without loading anything
-            return;
-        }
+        if ((self::$ObjectLocationCacheInterval > 0)
+                && isset(self::$ObjectLocationCache[$CacheKey])) {
+            # if cached value indicates that a file could not be found
+            if (self::$ObjectLocationCache[$CacheKey] === false) {
+                # quit without loading anything
+                return;
+            }
 
-        # if we have cached location for the class and file at cached location is readable
-        if ($CachedValueAvailable && is_readable(self::$ObjectLocationCache[$CacheKey])) {
-            # use object location from cache
-            require_once(self::$ObjectLocationCache[$CacheKey]);
-            return;
+            # if file at cached location is readable
+            if (is_readable(self::$ObjectLocationCache[$CacheKey])) {
+                # use object location from cache
+                require_once(self::$ObjectLocationCache[$CacheKey]);
+
+                # if desired class/interface/trait now exists
+                if (class_exists($ClassName, false)
+                        || interface_exists($ClassName, false)
+                        || trait_exists($ClassName, false)) {
+                    # we are done
+                    return;
+                }
+            }
         }
 
         # start out assuming that we will not find a file
@@ -5479,10 +5693,10 @@ class ApplicationFramework
                     $FullClassFileName = $Location.$ClassFileName;
                     require_once($FullClassFileName);
 
-                    # if our desired class/interface/trait now exists
-                    if (class_exists($ClassName, false) ||
-                        interface_exists($ClassName, false) ||
-                        trait_exists($ClassName, false)) {
+                    # if desired class/interface/trait now exists
+                    if (class_exists($ClassName, false)
+                            || interface_exists($ClassName, false)
+                            || trait_exists($ClassName, false)) {
                         # save location to cache
                         self::$ObjectLocationCache[$CacheKey] = $FullClassFileName;
                         # stop looking
@@ -5501,7 +5715,7 @@ class ApplicationFramework
      * @param string $Pattern Regular expression pattern to match.
      * @return array Array containing names of matching files with relative paths.
      */
-    private static function readDirectoryTree(string $Directory, string $Pattern)
+    private static function readDirectoryTree(string $Directory, string $Pattern): array
     {
         if ($Directory[-1] == "/") {
             $Directory = substr($Directory, 0, -1);
@@ -5586,8 +5800,10 @@ class ApplicationFramework
     {
         # retrieve last execution time for event if available
         $Signature = self::getCallbackSignature($Callback);
-        $LastRun = $this->DB->queryValue("SELECT LastRunAt FROM PeriodicEvents"
-            . " WHERE Signature = '" . addslashes($Signature) . "'", "LastRunAt");
+
+        $this->DB->query("SELECT LastRunAt, Signature FROM PeriodicEvents");
+        $Events = $this->DB->fetchColumn("LastRunAt", "Signature");
+        $LastRun = $Events[$Signature] ?? null;
 
         # determine whether enough time has passed for event to execute
         $ShouldExecute = (($LastRun === null)
@@ -5638,35 +5854,19 @@ class ApplicationFramework
     }
 
     /**
-     * Prepare environment for eventual background task execution.
-     * @return bool TRUE if there are tasks to be run, otherwise FALSE.
-     */
-    private function prepForTSR(): bool
-    {
-        # if HTML has been output and it's time to launch another task
-        # (only TSR if HTML has been output because otherwise browsers
-        #       may misbehave after connection is closed)
-        if ((!$this->isRunningFromCommandLine())
-                && ($this->JumpToPage || !$this->SuppressHTML)
-                && $this->taskExecutionEnabled()
-                && $this->getTaskQueueSize()) {
-            # begin buffering output for TSR
-            ob_start();
-
-            # let caller know it is time to launch another task
-            return true;
-        } else {
-            # let caller know it is not time to launch another task
-            return false;
-        }
-    }
-
-    /**
      * Attempt to close out page loading with the browser and then execute
      * background tasks.
+     *
+     * At least one level of output buffering must be active when this is called
+     * (and no output at all yet sent), so that HTTP headers can be modified.
      */
     private function launchTSR(): void
     {
+        # make sure there is only one level of output buffering active
+        while (ob_get_level() > 1) {
+            ob_end_flush();
+        }
+
         # set headers to close out connection to browser
         if (!$this->NoTSR) {
             ignore_user_abort(true);
@@ -5679,9 +5879,7 @@ class ApplicationFramework
         }
 
         # output buffered content
-        while (ob_get_level()) {
-            ob_end_flush();
-        }
+        ob_end_flush();
         flush();
 
         # write out any outstanding data and end HTTP session
@@ -5698,7 +5896,7 @@ class ApplicationFramework
 
         # handle garbage collection for session data
         if (isset($this->SessionStorage) &&
-            (rand() / getrandmax()) <= $this->SessionGcProbability) {
+            (random_int(0, mt_getrandmax()) / mt_getrandmax()) <= $this->SessionGcProbability) {
             # determine when sessions will expire
             $ExpiredTime = strtotime("-" . $this->sessionLifetime() . " seconds");
 
@@ -5718,7 +5916,7 @@ class ApplicationFramework
             unset($DI);
         }
 
-        # run qny queued tasks
+        # run any queued tasks
         $this->runQueuedTasks();
     }
 
@@ -5738,8 +5936,8 @@ class ApplicationFramework
             # add info about current page load
             $CrashInfo["ElapsedTime"] = $this->getElapsedExecutionTime();
             $CrashInfo["FreeMemory"] = $FreeMemory;
-            $CrashInfo["REMOTE_ADDR"] = $_SERVER["REMOTE_ADDR"];
-            $CrashInfo["REQUEST_URI"] = $_SERVER["REQUEST_URI"];
+            $CrashInfo["REMOTE_ADDR"] = $_SERVER["REMOTE_ADDR"] ?? "(unknown)";
+            $CrashInfo["REQUEST_URI"] = $_SERVER["REQUEST_URI"] ?? "(unknown)";
             if (isset($_SERVER["REQUEST_TIME"])) {
                 $CrashInfo["REQUEST_TIME"] = $_SERVER["REQUEST_TIME"];
             }
@@ -5816,7 +6014,7 @@ class ApplicationFramework
             if ($SearchFirst) {
                 array_unshift($DirList, $Dir);
             } else {
-                array_push($DirList, $Dir);
+                $DirList[] = $Dir;
             }
         }
 
@@ -5937,26 +6135,26 @@ class ApplicationFramework
             );
 
             # use unmodified version of output
-            $OutputToUse = $Original;
-            # else if modification reduced output by more than threshold
-        } elseif ((strlen(trim($Modified)) / strlen(trim($Original)))
-            < self::OUTPUT_MODIFICATION_THRESHOLD) {
+            return $Original;
+        }
+
+        # if original was non-empty and modified shrank too much
+        $ModifiedLength = strlen(trim($Modified));
+        $OriginalLength = strlen(trim($Original));
+        if ($OriginalLength > 0
+            && $ModifiedLength / $OriginalLength < self::OUTPUT_MODIFICATION_THRESHOLD) {
             # log error
             $this->logError(
                 self::LOGLVL_WARNING,
                 "Content reduced below acceptable threshold while modifying output."
                 . " (" . $ErrorInfo . ")"
             );
-
             # use unmodified version of output
-            $OutputToUse = $Original;
-        } else {
-            # use modified version of output
-            $OutputToUse = $Modified;
+            return $Original;
         }
 
-        # return output to use to caller
-        return $OutputToUse;
+        # otherwise modified version is fine
+        return $Modified;
     }
 
     # threshold below which page output modifications are considered to have failed
@@ -6088,7 +6286,7 @@ class ApplicationFramework
     private static function includeFile(
         string $_AF_File,
         array $_AF_ContextVars = []
-    ) {
+    ): array {
         # set up context
         foreach ($_AF_ContextVars as $_AF_VarName => $_AF_VarValue) {
             $$_AF_VarName = $_AF_VarValue;
@@ -6128,7 +6326,7 @@ class ApplicationFramework
         } else {
             # remove all variables with names that do not match supplied prefixes
             $Prefixes = $this->ContextFilters[$Context];
-            $FilterFunc = function ($VarName) use ($Prefixes) {
+            $FilterFunc = function ($VarName) use ($Prefixes): bool {
                 foreach ($Prefixes as $Prefix) {
                     if (strpos($VarName, $Prefix) === 0) {
                         return true;
@@ -6414,7 +6612,7 @@ class ApplicationFramework
      * Load standard page end file if available.
      * @return string Any page content generated.
      */
-    private function loadStandardPageEnd()
+    private function loadStandardPageEnd(): string
     {
         $Output = "";
         $File = $this->findFile(
@@ -6453,8 +6651,8 @@ class ApplicationFramework
         # add file loading tags to page
         $Output = $this->addFileTagsToPageOutput($Output, $RequiredFiles);
 
-        # add any requested meta tags to page
-        $Output = $this->addMetaTagsToPageOutput($Output);
+        # add any requested meta tags or header content to page
+        $Output = $this->addHeaderContentToPageOutput($Output);
 
         # make sure output modification patterns and callbacks are current
         $this->convertCleanUrlRequestsToOutputModifications();
@@ -6465,6 +6663,9 @@ class ApplicationFramework
             $this->OutputModificationReplacements,
             $Output
         );
+        if ($NewOutput === null) {
+            throw new Exception("Regular expression replacement in output failed.");
+        }
 
         # check to make sure replacements didn't fail badly
         $Output = $this->checkOutputModification(
@@ -6484,6 +6685,10 @@ class ApplicationFramework
                 [ $this, "outputModificationCallbackShell" ],
                 $Output
             );
+            if ($NewOutput === null) {
+                throw new Exception("Output modification failed (Callback: \"".
+                        StdLib::convertCallableToString($Info["Callback"])."\").");
+            }
 
             # check to make sure modification didn't fail
             $ErrorInfo = "callback info: " . print_r($Info, true);
@@ -6580,6 +6785,9 @@ class ApplicationFramework
         # perform path fix replacements in output
         $Patterns = array_keys($Replacements);
         $NewOutput = preg_replace($Patterns, $Replacements, $Output);
+        if ($NewOutput === null) {
+            throw new Exception("Path fix replacement failed.");
+        }
 
         # check to make sure path fixes didn't fail in a detectable manner
         $Output = $this->checkOutputModification(
@@ -6608,10 +6816,13 @@ class ApplicationFramework
             [$this, "replaceInsertionKeyword"],
             $Output
         );
+        if ($Output === null) {
+            throw new Exception("Replacement insertion callback failed.");
+        }
 
         # undo any escaped keywords
         foreach ($this->EscapedInsertionKeywords as $Keyword) {
-            $Output = str_replace('\\{{' . $Keyword, '{{' . $Keyword, $Output);
+            $Output = str_replace('\\{{'.$Keyword, '{{'.$Keyword, $Output);
         }
 
         return $Output;
@@ -6730,7 +6941,7 @@ class ApplicationFramework
             $ArgValue = $ArgPieces[1];
 
             # un-escape any special characters in value
-            if ($ArgValue) {
+            if ($ArgValue !== '' && $ArgValue !== '0') {
                 $ArgValue = str_replace(['\\:', '\\|'], [':', '|'], $ArgValue);
             }
 
@@ -6767,43 +6978,38 @@ class ApplicationFramework
             );
 
             # look for matching page in cache in database
-            $DB->query("SELECT * FROM AF_CachedPages"
-                    ." WHERE Fingerprint = '".$EscapedPageFingerprint."'");
+            $DB->query("SELECT CacheId, PageContent, ExpirationDate"
+                    ." FROM AF_CachedPages"
+                    ." WHERE Fingerprint = '".$EscapedPageFingerprint."'"
+                    ." AND CachedAt >= '".$this->getPageCacheExpirationTimestamp()."'"
+                    ." AND (ExpirationDate IS NULL OR ExpirationDate >= NOW())"
+                    ." ORDER BY CacheId DESC LIMIT 1");
+            $Row = $DB->fetchRow();
 
             # if matching page found
-            if ($DB->numRowsSelected() > 0) {
-                # if cached page has expired
-                $Row = $DB->fetchRow();
-                $ExpirationTime = strtotime(
-                    "-" . $this->getPageCacheExpirationPeriod() . " minutes"
-                );
-                if ((strtotime($Row["CachedAt"]) < $ExpirationTime)
-                        || (($Row["ExpirationDate"] !== null)
-                                && (strtotime($Row["ExpirationDate"]) < time()))) {
-                    # clear all expired pages from cache
-                    $this->clearExpiredPagesFromCache();
-                } else {
-                    # decompress cached data to get cached page
-                    $CachedPage = gzuncompress($Row["PageContent"]);
+            if ($Row !== false) {
+                # decompress cached data to get cached page
+                $CachedPage = gzinflate($Row["PageContent"]);
 
-                    # if decompression failed
-                    if ($CachedPage === false) {
-                        # clear data for this page from cache
-                        $DB->query("DELETE FROM AF_CachedPages"
-                                ." WHERE Fingerprint = '".$EscapedPageFingerprint."'");
+                # if decompression failed
+                if ($CachedPage === false) {
+                    # clear data for this page from cache
+                    $this->clearCachedPageById((int)$Row["CacheId"]);
 
-                        # report no cached page available to caller
-                        return null;
-                    }
-
-                    # save cache expiration time for page
-                    $this->CurrentPageExpirationDate = $Row["ExpirationDate"];
+                    # report no cached page available to caller
+                    return null;
                 }
+
+                # save cache expiration time for page
+                $this->CurrentPageExpirationDate = $Row["ExpirationDate"];
             }
         }
 
         # set cache status in HTTP header
-        header("X-ScoutAF-Cache: " . ($CachedPage ? "HIT" : "MISS"));
+        header(
+            "X-ScoutAF-Cache: "
+            .($CachedPage !== null && $CachedPage !== '' && $CachedPage !== '0' ? "HIT" : "MISS")
+        );
 
         # return any cached page found to caller
         return $CachedPage;
@@ -6821,20 +7027,40 @@ class ApplicationFramework
                     .$ExpirationPeriod." minutes).");
         }
         $ExpirationTimestamp = date(StdLib::SQL_DATE_FORMAT, $ExpirationTime);
-        # (these DELETEs are done as two separate queries for each table
+
+        # (some DELETEs below are done as two separate queries for each table
         #       because OR conditions can prevent indexes from being used)
         # (may benefit from being refactored to use a UNION)
+
+        # clear callbacks for cache entries that expired by age
+        $this->DB->query("DELETE CPC FROM AF_CachedPageCallbacks CPC,"
+                ." AF_CachedPages CP WHERE CPC.CacheId = CP.CacheId"
+                ." AND CP.CachedAt < '".$ExpirationTimestamp."'");
+
+        # clear callbacks for cache entries that reached an explicit expiration
+        $this->DB->query("DELETE CPC FROM AF_CachedPageCallbacks CPC,"
+                ." AF_CachedPages CP WHERE CPC.CacheId = CP.CacheId"
+                ." AND CP.ExpirationDate IS NOT NULL"
+                ." AND CP.ExpirationDate < NOW()");
+
+        # clear tagged cache rows and tag links for entries that expired by age
         $this->DB->query("DELETE CP, CPTI FROM AF_CachedPages CP,"
                 ." AF_CachedPageTagInts CPTI"
                 ." WHERE CPTI.CacheId = CP.CacheId"
                 ." AND CP.CachedAt < '".$ExpirationTimestamp."'");
+
+        # clear tagged cache rows and tag links for explicitly expired entries
         $this->DB->query("DELETE CP, CPTI FROM AF_CachedPages CP,"
                 ." AF_CachedPageTagInts CPTI"
                 ." WHERE CPTI.CacheId = CP.CacheId"
                 ." AND CP.ExpirationDate IS NOT NULL"
                 ." AND CP.ExpirationDate < NOW()");
+
+        # clear any remaining untagged cache rows that expired by age
         $this->DB->query("DELETE FROM AF_CachedPages "
                 ." WHERE CachedAt < '".$ExpirationTimestamp."'");
+
+        # clear any remaining untagged cache rows with explicit expiration dates
         $this->DB->query("DELETE FROM AF_CachedPages "
                 ." WHERE ExpirationDate IS NOT NULL"
                 ." AND ExpirationDate < NOW()");
@@ -6859,12 +7085,16 @@ class ApplicationFramework
             } else {
                 # escape page fingerprint
                 $DB = $this->DB;
+                $PageFingerprint = $this->getPageFingerprint($PageName);
                 $EscapedPageFingerprint = $DB->escapeString(
-                    $this->getPageFingerprint($PageName)
+                    $PageFingerprint
                 );
 
+                # clear any prior entries for this fingerprint
+                $this->clearCachedPageByFingerprint($PageFingerprint);
+
                 # compress and escape page data
-                $EscapedPageContent = $DB->escapeString(gzcompress($PageContent, 9));
+                $EscapedPageContent = $DB->escapeString(gzdeflate($PageContent, 9));
 
                 # if we have an expiration date for cached version of this page
                 if ($this->CurrentPageExpirationDate !== null) {
@@ -6886,18 +7116,23 @@ class ApplicationFramework
                 }
                 $CacheId = $DB->getLastInsertId();
 
-                # for each page cache tag that was added
+                # get IDs for all tags that are relevant for current page
+                $Tags = [];
                 foreach ($this->PageCacheTags as $Tag => $Pages) {
-                    # if current page is in list for tag
                     if (in_array("CURRENT", $Pages) || in_array($PageName, $Pages)) {
-                        # look up tag ID
-                        $TagId = $this->getPageCacheTagId($Tag);
-
-                        # mark current page as associated with tag
-                        $DB->query("INSERT INTO AF_CachedPageTagInts"
-                            . " (TagId, CacheId) VALUES "
-                            . " (" . intval($TagId) . ", " . intval($CacheId) . ")");
+                        $Tags[] = $Tag;
                     }
+                }
+                $TagIds = $this->getPageCacheTagIds($Tags);
+
+                # mark current page as associated with all retrieved tag IDs
+                if (count($TagIds) > 0) {
+                    $Values = [];
+                    foreach ($TagIds as $TagId) {
+                        $Values[] = "(".intval($TagId).", ".intval($CacheId).")";
+                    }
+                    $DB->query("INSERT INTO AF_CachedPageTagInts"
+                        ." (TagId, CacheId) VALUES ".join(", ", $Values));
                 }
 
                 # if callback was registered for page cache hits
@@ -6915,32 +7150,150 @@ class ApplicationFramework
     }
 
     /**
-     * Get ID for specified page cache tag.
+     * Get ID for specified page cache tag.  IDs for purely numeric tags
+     * are generated by adding self::PAGECACHETAG_ID_OFFSET to the number, while
+     * IDs for non-numeric tags are stored/retrieved to/from the database.
      * @param string $Tag Page cache tag string.
      * @return int Page cache tag ID.
      */
     private function getPageCacheTagId(string $Tag): int
     {
-        # if tag is a non-negative integer
-        if (is_numeric($Tag) && ($Tag > 0) && (intval($Tag) == $Tag)) {
-            # generate ID
-            $Id = self::PAGECACHETAGIDOFFSET + intval($Tag);
-        } else {
-            # look up ID in database
-            $Id = $this->DB->queryValue("SELECT TagId FROM AF_CachedPageTags"
-                . " WHERE Tag = '" . addslashes($Tag) . "'", "TagId");
+        $TagIds = $this->getPageCacheTagIds([$Tag]);
+        return $TagIds[$Tag];
+    }
 
-            # if ID was not found
-            if ($Id === null) {
-                # add tag to database
-                $this->DB->query("INSERT INTO AF_CachedPageTags"
-                    . " SET Tag = '" . addslashes($Tag) . "'");
-                $Id = $this->DB->getLastInsertId();
+    /**
+     * Get IDs for the supplied page cache tags.  IDs for purely numeric tags
+     * are generated by adding self::PAGECACHETAG_ID_OFFSET to the number, while
+     * IDs for non-numeric tags are stored/retrieved to/from the database.
+     * @param array $Tags Page cache tag strings.
+     * @return array Page cache tag IDs, keyed by tag string.
+     */
+    private function getPageCacheTagIds(array $Tags): array
+    {
+        $Ids = [];
+        $MissingTags = [];
+
+        # for each specified tag
+        foreach ($Tags as $Tag) {
+            # if tag is purely numeric, generate ID from tag
+            if (is_numeric($Tag) && ($Tag > 0) && (intval($Tag) == $Tag)) {
+                $Ids[$Tag] = self::PAGECACHETAG_ID_OFFSET + intval($Tag);
+            } else {
+                # if tag is present in cache
+                if (isset($this->PageCacheTagIdCache[$Tag])) {
+                    # retrieve ID from cache
+                    $Ids[$Tag] = $this->PageCacheTagIdCache[$Tag];
+                } else {
+                    # add tag to list of tags still to be looked up
+                    $MissingTags[$Tag] = $Tag;
+                }
             }
         }
 
-        # return tag ID to caller
-        return $Id;
+        # if we have IDs for all the specified tags, return IDs to caller
+        if (count($MissingTags) == 0) {
+            return $Ids;
+        }
+
+        # build query to fetch all tag IDs not yet determined
+        $DB = new Database();
+        $EscapedTags = array_map([$DB, "escapeString"], $MissingTags);
+        $QuotedTags = array_map(
+            function (string $Tag): string {
+                return "'".$Tag."'";
+            },
+            $EscapedTags
+        );
+        $Query = "SELECT Tag, TagId FROM AF_CachedPageTags"
+                ." WHERE Tag IN (".join(", ", $QuotedTags).")";
+
+        # query database to try to retrieve tag IDs not yet determined
+        $DB->query($Query);
+        while ($Row = $DB->fetchRow()) {
+            $Tag = $Row["Tag"];
+            $TagId = (int)$Row["TagId"];
+            $Ids[$Tag] = $TagId;
+            $this->PageCacheTagIdCache[$Tag] = $TagId;
+            unset($MissingTags[$Tag]);
+        }
+
+        # if there are tags for which we still do not have IDs
+        if (count($MissingTags) > 0) {
+            # add tags to database
+            $Values = array_map(
+                function (string $Tag) use ($DB): string {
+                    return "('".$DB->escapeString($Tag)."')";
+                },
+                array_values($MissingTags)
+            );
+            $DB->query("INSERT INTO AF_CachedPageTags (Tag) VALUES "
+                    .join(", ", $Values));
+
+            # retrieve IDs for newly-added tags
+            $DB->query("SELECT Tag, TagId FROM AF_CachedPageTags"
+                    ." WHERE Tag IN (".join(", ", $QuotedTags).")");
+            while ($Row = $DB->fetchRow()) {
+                $Tag = $Row["Tag"];
+                $TagId = (int)$Row["TagId"];
+                $Ids[$Tag] = $TagId;
+                $this->PageCacheTagIdCache[$Tag] = $TagId;
+            }
+        }
+
+        return $Ids;
+    }
+
+    /**
+     * Remove the cached page and related metadata for one page fingerprint.
+     * @param string $Fingerprint Page fingerprint to remove.
+     */
+    private function clearCachedPageByFingerprint(string $Fingerprint): void
+    {
+        $DB = $this->DB;
+        $EscapedFingerprint = $DB->escapeString($Fingerprint);
+
+        # clear any page-cache hit callbacks associated with this fingerprint
+        $DB->query("DELETE CPC FROM AF_CachedPageCallbacks CPC,"
+                ." AF_CachedPages CP WHERE CPC.CacheId = CP.CacheId"
+                ." AND CP.Fingerprint = '".$EscapedFingerprint."'");
+
+        # clear tagged cache rows and their tag associations in one pass
+        $DB->query("DELETE CP, CPTI FROM AF_CachedPages CP,"
+                ." AF_CachedPageTagInts CPTI"
+                ." WHERE CPTI.CacheId = CP.CacheId"
+                ." AND CP.Fingerprint = '".$EscapedFingerprint."'");
+
+        # clear any remaining untagged cache rows for this fingerprint
+        $DB->query("DELETE FROM AF_CachedPages"
+                ." WHERE Fingerprint = '".$EscapedFingerprint."'");
+    }
+
+    /**
+     * Remove one cached page and related metadata by cache ID.
+     * @param int $CacheId Page cache ID to remove.
+     */
+    private function clearCachedPageById(int $CacheId): void
+    {
+        $DB = $this->DB;
+
+        # clear any page-cache hit callback stored for this cache entry
+        $DB->query("DELETE FROM AF_CachedPageCallbacks WHERE CacheId = ".$CacheId);
+
+        # clear tag associations that point at this cache entry
+        $DB->query("DELETE FROM AF_CachedPageTagInts WHERE CacheId = ".$CacheId);
+
+        # remove the cached page row itself
+        $DB->query("DELETE FROM AF_CachedPages WHERE CacheId = ".$CacheId);
+    }
+
+    /**
+     * Periodic callback to clear expired pages from the page cache.  (Method
+     * is public so that it can be run as a scheduled task.)
+     */
+    public static function clearExpiredPagesFromPageCache(): void
+    {
+        self::getInstance()->clearExpiredPagesFromCache();
     }
 
     /**
@@ -6980,7 +7333,10 @@ class ApplicationFramework
             "SELECT Callbacks"
                 ." FROM AF_CachedPages CP, AF_CachedPageCallbacks CPC"
                 ." WHERE CPC.CacheId = CP.CacheId"
-                ." AND CP.Fingerprint = '".addslashes($Fingerprint)."'",
+                ." AND CP.Fingerprint = '".$this->DB->escapeString($Fingerprint)."'"
+                ." AND CP.CachedAt >= '".$this->getPageCacheExpirationTimestamp()."'"
+                ." AND (CP.ExpirationDate IS NULL OR CP.ExpirationDate >= NOW())"
+                ." ORDER BY CP.CacheId DESC LIMIT 1",
             "Callbacks"
         );
 
@@ -7025,7 +7381,7 @@ class ApplicationFramework
         # if it appears we are running via a CGI interpreter
         if (isset($_SERVER["ORIG_SCRIPT_NAME"])) {
             # for each server environment variable
-            foreach ($_SERVER as $Key => $Value) {
+            foreach (array_keys($_SERVER) as $Key) {
                 # if variable appears the result of using CGI
                 if (strpos($Key, "REDIRECT_") === 0) {
                     # if unmodified version of variable is not set
@@ -7152,7 +7508,10 @@ class ApplicationFramework
                         >= ($this->slowPageLoadThreshold()))) {
             $Msg = "Slow page load ("
                     .intval($this->getElapsedExecutionTime())."s) for "
-                    .$this->fullUrl()." from ".StdLib::getHostName();
+                    .$this->fullUrl();
+            if (isset($_SERVER["REMOTE_ADDR"])) {
+                $Msg .= " from ".StdLib::getHostName($_SERVER["REMOTE_ADDR"]);
+            }
             $this->logMessage(self::LOGLVL_INFO, $Msg);
         }
     }
@@ -7169,7 +7528,11 @@ class ApplicationFramework
             if ($PeakUsage >= $MemoryThreshold) {
                 $HighMemUsageMsg = "High peak memory usage ("
                         .number_format($PeakUsage).") for "
-                        .$this->fullUrl()." from ".StdLib::getHostName();
+                        .$this->fullUrl();
+                if (isset($_SERVER["REMOTE_ADDR"])) {
+                    $HighMemUsageMsg .= " from "
+                        .StdLib::getHostName($_SERVER["REMOTE_ADDR"]);
+                }
                 $this->logMessage(self::LOGLVL_INFO, $HighMemUsageMsg);
             }
         }
@@ -7181,7 +7544,7 @@ class ApplicationFramework
      */
     private function displayPageFileOutput(string $Output): void
     {
-        if (strlen($Output)) {
+        if (strlen($Output) !== 0) {
             if (!$this->SuppressHTML) {
                 ?><table width="100%" cellpadding="5"
                 style="border: 2px solid #666666;  background: #CCCCCC;
@@ -7218,7 +7581,8 @@ class ApplicationFramework
             return $Frame["class"]."::".$Frame["function"];
         }
 
-        return preg_replace('/\v/', ' ', print_r($Frame, true));
+        return preg_replace('/\v/', ' ', print_r($Frame, true))
+                ?? "PREG_REPLACE FAILED";
     }
 
     /**
@@ -7247,5 +7611,23 @@ class ApplicationFramework
             }
         }
         return $RewriteBase;
+    }
+
+    /**
+     * Retrieve timestamp for page cache expiration, in a format usable in
+     * database queries.
+     * @return string Timestamp, in SQL date format.
+     * @throws Exception if current page cache expiration period is invalid.
+     */
+    private function getPageCacheExpirationTimestamp(): string
+    {
+        $ExpirationTime = strtotime(
+            "-".$this->getPageCacheExpirationPeriod()." minutes"
+        );
+        if ($ExpirationTime === false) {
+            throw new Exception("Invalid page cache expiration period ("
+                    .$this->getPageCacheExpirationPeriod()." minutes).");
+        }
+        return date(StdLib::SQL_DATE_FORMAT, $ExpirationTime);
     }
 }

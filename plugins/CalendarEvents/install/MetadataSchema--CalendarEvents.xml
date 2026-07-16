@@ -20,7 +20,7 @@
         <Optional>0</Optional>
         <FlagOnLabel>Yes</FlagOnLabel>
         <FlagOffLabel>No</FlagOffLabel>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -28,7 +28,7 @@
         <Type>MDFTYPE_FILE</Type>
         <Description>The files associated with the event.</Description>
         <Owner>CalendarEvents</Owner>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -50,7 +50,7 @@
         <Description>The terms or a nonhierarchical string of terms relating to the event.</Description>
         <Owner>CalendarEvents</Owner>
         <AllowMultiple>1</AllowMultiple>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -58,7 +58,7 @@
         <Type>MDFTYPE_TEXT</Type>
         <Description>The contact e-mail address of the event.</Description>
         <Owner>CalendarEvents</Owner>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -66,7 +66,7 @@
         <Type>MDFTYPE_URL</Type>
         <Description>A remote URL to more contact information for the event.</Description>
         <Owner>CalendarEvents</Owner>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -86,7 +86,7 @@
         <Description>The country in which the event takes place.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -138,7 +138,7 @@
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
         <AllowHTML>1</AllowHTML>
         <UseWysiwygEditor>1</UseWysiwygEditor>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -147,7 +147,7 @@
         <Description>The date and time that the event ends.</Description>
         <Owner>CalendarEvents</Owner>
         <Optional>0</Optional>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -170,7 +170,7 @@
         <Description>The locality, e.g., the city, in which the event takes place.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -179,7 +179,7 @@
         <Description>The postal code of the location in which the event takes place.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -188,7 +188,7 @@
         <Description>The region, e.g., the state or province, in which the event takes place.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -201,7 +201,7 @@
         <FlagOnLabel>OK for Viewing</FlagOnLabel>
         <FlagOffLabel>Not OK for Viewing</FlagOffLabel>
         <ViewingPrivileges>PRIV_RESOURCEADMIN</ViewingPrivileges>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -210,7 +210,7 @@
         <Description>The date and time that the event starts.</Description>
         <Owner>CalendarEvents</Owner>
         <Optional>0</Optional>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -219,7 +219,7 @@
         <Description>The street address of the venue in which the event takes place.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -229,7 +229,7 @@
         <Owner>CalendarEvents</Owner>
         <Optional>0</Optional>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -239,7 +239,7 @@
         <Description>A remote URL to the official page or information for the event.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
@@ -248,7 +248,7 @@
         <Description>The name of the venue in which the event takes place.</Description>
         <Owner>CalendarEvents</Owner>
         <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
-        <AuthoringPrivileges>PRIV_MYRESOURCEADMIN</AuthoringPrivileges>
+        <AuthoringPrivileges>PRIV_RESOURCEADMIN</AuthoringPrivileges>
         <EditingPrivileges>PRIV_RESOURCEADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>

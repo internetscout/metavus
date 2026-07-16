@@ -26,7 +26,7 @@ class PluginUpgrade_2_0_1 extends PluginUpgrade
     public function performUpgrade()
     {
         $RFactory = new RuleFactory();
-        foreach ($RFactory->getItems() as $RuleId => $Rule) {
+        foreach ($RFactory->getItems() as $Rule) {
             if ($Rule->action() == Rule::ACTION_SENDEMAIL) {
                 $ActionParams = $Rule->actionParameters();
                 if (!array_key_exists("ConfirmBeforeSending", $ActionParams)) {

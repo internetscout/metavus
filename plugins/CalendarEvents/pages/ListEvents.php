@@ -21,7 +21,7 @@ use ScoutLib\StdLib;
 * @param string $Condition Condition describing the test
 * @return SQL fragment for the requested field
 */
-function GetSqlForField($FieldName, $Condition)
+function GetSqlForField($FieldName, $Condition): string
 {
     $Plugin = CalendarEvents::getInstance();
 
@@ -95,7 +95,6 @@ if (StdLib::getFormValue("F_Field") && StdLib::getFormValue("F_Condition") &&
     if ($TgtField == "ALL") {
         $FieldsToProcess = [
             "Title",
-            "ShortTitle",
             "Description",
             "ContactEmail",
             "URL",

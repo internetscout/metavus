@@ -46,6 +46,7 @@ class ImageFactory extends ItemFactory
             "SELECT ImageId FROM Images"
             ." WHERE ItemId = ".$RecordId
             ." AND FieldId = ".$FieldId
+            ." ORDER BY ImageId ASC"
         );
 
         return ($this->DB->numRowsSelected() > 0) ?
@@ -97,7 +98,7 @@ class ImageFactory extends ItemFactory
 
         return preg_replace_callback(
             "%{{IMAGEURL\|Id:([0-9]+)\|Size:([A-Za-z-]+)}}%",
-            function ($Matches) use ($AF) {
+            function ($Matches) use ($AF): string {
                 $Id = (int)$Matches[1];
                 $Size = $Matches[2];
 
@@ -473,7 +474,7 @@ class ImageFactory extends ItemFactory
         }
 
         # filter list to only those that appear to be scaled files
-        $FilterFunc = function ($FileName) {
+        $FilterFunc = function ($FileName): bool {
             return (preg_match('/^'.self::SCALED_FILENAME_REGEX.'$/', $FileName) == 1);
         };
         $FileNames = array_filter($FileNames, $FilterFunc);

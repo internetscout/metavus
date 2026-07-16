@@ -56,14 +56,16 @@ class FolderFactory extends ItemFactory
                 ? $ItemType : Folder::getItemTypeId($ItemType);
 
         # use default owner if available and none specified
-        if (($OwnerId === null) & ($this->OwnerId !== null)) {
+        if (($OwnerId === null & $this->OwnerId !== null) !== 0) {
             $OwnerId = $this->OwnerId;
         }
 
         # add new folder to database
         $this->DB->query("INSERT INTO Folders SET"
                 ." ContentType = ".$ItemTypeId
-                .($FolderName ? ", FolderName = '".addslashes($FolderName)."'" : "")
+                .($FolderName !== null && $FolderName !== '' && $FolderName !== '0' ?
+                  ", FolderName = '".addslashes($FolderName)."'"
+                  : "")
                 .(($OwnerId !== null) ? ", OwnerId = ".intval($OwnerId) : ""));
 
         # retrieve ID of new folder
@@ -110,7 +112,7 @@ class FolderFactory extends ItemFactory
     public function getFolderByNormalizedName(string $NormalizedName, ?int $OwnerId = null)
     {
         # use default owner if available and none specified
-        if (($OwnerId === null) & ($this->OwnerId !== null)) {
+        if (($OwnerId === null & $this->OwnerId !== null) !== 0) {
             $OwnerId = $this->OwnerId;
         }
 
@@ -171,7 +173,7 @@ class FolderFactory extends ItemFactory
                 ? $ItemType : Folder::getItemTypeId($ItemType);
 
         # use default owner if available and none specified
-        if (($OwnerId === null) & ($this->OwnerId !== null)) {
+        if (($OwnerId === null & $this->OwnerId !== null) !== 0) {
             $OwnerId = $this->OwnerId;
         }
 
@@ -228,18 +230,20 @@ class FolderFactory extends ItemFactory
         # retrieve IDs of all folders that match specified parameters
         $Condition = ($ItemTypeId !== null) ? "ContentType = ".intval($ItemTypeId) : null;
         if (($OwnerId !== null) || ($this->OwnerId !== null)) {
-            $Condition .= ($Condition ? " AND " : "")."OwnerId = "
-                    .intval(($OwnerId !== null) ? $OwnerId : $this->OwnerId);
+            $Condition .= ($Condition !== null ? " AND " : "")
+                ."OwnerId = "
+                .intval(($OwnerId !== null) ? $OwnerId : $this->OwnerId);
         }
         if ($Name !== null) {
-            $Condition .= ($Condition ? " AND " : "")."FolderName = '"
-                    .addslashes($Name)."'";
+            $Condition .= ($Condition !== null ? " AND " : "")
+                ."FolderName = '"
+                .addslashes($Name)."'";
         }
         $FolderIds = $this->getItemIds($Condition, false, "FolderId");
 
         # pare down list to requested range
         if ($Offset || $Count) {
-            $FolderIds = $Count ? array_slice($FolderIds, $Offset, $Count)
+            $FolderIds = $Count !== null && $Count !== 0 ? array_slice($FolderIds, $Offset, $Count)
                     : array_slice($FolderIds, $Offset);
         }
 

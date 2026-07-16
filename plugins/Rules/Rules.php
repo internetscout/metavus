@@ -154,7 +154,7 @@ class Rules extends Plugin
         }
 
         $RFactory = new RuleFactory();
-        foreach ($RFactory->getItems() as $RuleId => $Rule) {
+        foreach ($RFactory->getItems() as $Rule) {
             $Rule->resetForUser($UserId);
         }
     }
@@ -176,7 +176,7 @@ class Rules extends Plugin
 
         # for each rule ready to be checked
         $RFactory = new RuleFactory();
-        foreach ($RFactory->getRulesReadyToCheck() as $RuleId => $Rule) {
+        foreach ($RFactory->getRulesReadyToCheck() as $Rule) {
             # check rule and perform any appropriate actions
             $Rule->run();
         }

@@ -2,9 +2,9 @@
 #
 #   FILE:  SearchFacetUI_Base.php
 #
-#   Part of the Collection Workflow Integration System (CWIS)
+#   Part of the Metavus digital collections platform
 #   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
-#   http://scout.wisc.edu/cwis/
+#   http://metavus.net
 #
 # @scout:phpstan
 
@@ -32,10 +32,12 @@ class SearchFacetUI_Base
      * @param array $SearchResults Search results as an array where keys give
      *   ItemIds and values give search scores (so the same format SearchEngine
      *   uses to return per-schema results)
+     * @param ?int $SchemaId Schema Id for facets (OPTIONAL)
      */
     public function __construct(
         SearchParameterSet $SearchParams,
-        array $SearchResults
+        array $SearchResults,
+        ?int $SchemaId = null
     ) {
         $this->SearchParams = $SearchParams;
         $this->SearchResults = $SearchResults;
@@ -45,18 +47,24 @@ class SearchFacetUI_Base
 
         $this->ShowCounts = count($SearchResults) <= SearchEngine::numResourcesForFacets();
 
-        $SchemaIds = array_unique(
-            Record::getSchemasForRecords(array_keys($SearchResults))
-        );
-
-        if (count($SchemaIds) > 1) {
-            throw new Exception(
-                "SearchFacetUI cannot generate facets for "
-                ."multiple schemas at a time."
-            );
+        if ($SchemaId === null) {
+            $SchemaIds = $SearchParams->itemTypes();
+            if ($SchemaIds === false) {
+                $SchemaIds = array_unique(
+                    Record::getSchemasForRecords(array_keys($SearchResults))
+                );
+            }
+            if (count($SchemaIds) > 1) {
+                throw new Exception(
+                    "SearchFacetUI cannot generate facets for "
+                        ."multiple schemas at a time."
+                );
+            }
+            $this->SchemaId = reset($SchemaIds);
+        } else {
+            $this->SchemaId = $SchemaId;
         }
 
-        $this->SchemaId = reset($SchemaIds);
         $this->DataCache = new DataCache(self::CACHE_KEY_PREFIX);
     }
 
@@ -228,7 +236,7 @@ class SearchFacetUI_Base
             $Suggestions = isset($ResultFacets[$FieldName]) ?
                 $ResultFacets[$FieldName] : [];
 
-            if (count($Suggestions)) {
+            if (count($Suggestions) !== 0) {
                 # filter suggestions
                 foreach ($Suggestions as $ValueId => $ValueData) {
                     # only display fields with non-empty value
@@ -345,12 +353,14 @@ class SearchFacetUI_Base
         # retrieve current search parameter values for field
         $CurrentValues = $this->SearchParams->getSearchStringsForField($Field);
 
-        # if a field is required, and we have only one suggestion and
-        # there is no current value, then we don't want to display this
-        # facet because the search results will be identical
-        if (($Field->optional() == false) && (count($Suggestions) == 1) &&
-            !count($CurrentValues)) {
-            return;
+        if ($Field->facetsShowOnlyTermsUsedInResults()) {
+            # if a field is required, and we have only one suggestion and
+            # there is no current value, then we don't want to display this
+            # facet because the search results will be identical
+            if (($Field->optional() == false) && (count($Suggestions) == 1) &&
+                !count($CurrentValues)) {
+                return;
+            }
         }
 
         $Facets = [];
@@ -488,7 +498,7 @@ class SearchFacetUI_Base
             $Segments = explode("--", $SelectedValue);
             foreach ($Segments as $Segment) {
                 $Segment = trim($Segment);
-                $CurrentTerm .= (strlen($CurrentTerm) ? " -- " : "").$Segment;
+                $CurrentTerm .= (strlen($CurrentTerm) !== 0 ? " -- " : "").$Segment;
 
                 $TermId = $Field->getFactory()->getItemIdByName($CurrentTerm);
 
@@ -630,7 +640,7 @@ class SearchFacetUI_Base
         # be sure that we have a facet for every selected term
         foreach ($CurrentValues as $Value) {
             # if this isn't an "is" condition, move to the next one
-            if ($Value[0] !== "=") {
+            if ($Value === "" || substr($Value, 0, 1) !== "=") {
                 continue;
             }
 
@@ -717,8 +727,8 @@ class SearchFacetUI_Base
      * @return array updated facets
      */
     private function pruneUselessCNamesFromFacet(
-        $Facets,
-        $Field
+        array $Facets,
+        \Metavus\MetadataField $Field
     ): array {
         $RFactory = new RecordFactory($Field->schemaId());
 
@@ -757,7 +767,7 @@ class SearchFacetUI_Base
      * @param array $Facets Facets to prune.
      * @return array pruned facet
      */
-    private function pruneChildrenOfUnselectedFacets(array $Facets)
+    private function pruneChildrenOfUnselectedFacets(array $Facets): array
     {
         foreach ($Facets as $Id => $Item) {
             if ($Id == "TermInfo") {
@@ -883,7 +893,7 @@ class SearchFacetUI_Base
         # remove any empty facets
         $Facets = array_filter(
             $Facets,
-            function ($Value) {
+            function ($Value): bool {
                 return count($Value) > 0;
             }
         );
@@ -891,7 +901,7 @@ class SearchFacetUI_Base
         # alphabetize the facets at this level of the tree
         uasort(
             $Facets,
-            function ($A, $B) {
+            function ($A, $B): int {
                 if (isset($A["TermInfo"]) && isset($B["TermInfo"])) {
                     return $A["TermInfo"]["Name"] <=> $B["TermInfo"]["Name"];
                 } elseif (isset($A["TermInfo"]) && !isset($B["TermInfo"])) {
@@ -1076,11 +1086,11 @@ class SearchFacetUI_Base
 
         foreach ($TreeArray as $ChildPrefix => $Children) {
             if (count($Children) == 0) {
-                $Result[] = (strlen($ParentPrefix) ? $ParentPrefix." -- " : "").$ChildPrefix;
+                $Result[] = (strlen($ParentPrefix) !== 0 ? $ParentPrefix." -- " : "").$ChildPrefix;
             } else {
                 $Leaves = $this->treeArrayToSearchStrings($Children, $ChildPrefix);
                 foreach ($Leaves as $Leaf) {
-                    $Result[] = (strlen($ParentPrefix) ? $ParentPrefix." -- " : "").$Leaf;
+                    $Result[] = (strlen($ParentPrefix) !== 0 ? $ParentPrefix." -- " : "").$Leaf;
                 }
             }
         }
@@ -1097,7 +1107,7 @@ class SearchFacetUI_Base
     private function addTermToTreeArray(
         array $TreeArray,
         string $Term
-    ) {
+    ): array {
         if (is_numeric($Term)) {
             # if ClassificationId provided that does not (any longer?) exist,
             # nothing to do

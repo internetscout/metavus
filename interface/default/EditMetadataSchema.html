@@ -11,19 +11,199 @@
 namespace Metavus;
 
 use Exception;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
+
+# ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get the page with necessary parameters when returning to the DBEditor page.
+ * @param mixed $Value MetadataSchema object, MetadataField object, or a schema ID.
+ * @return string The page to return to.
+ */
+function getReturnToPage($Value): string
+{
+    $Suffix = "";
+
+    # get the suffix from a metadata schema if not using the default schema
+    if ($Value instanceof MetadataSchema) {
+        if ($Value->id() != MetadataSchema::SCHEMAID_DEFAULT) {
+            $Suffix = "&SC=".$Value->id();
+        }
+        # use the value directly if not using the default schema
+    } elseif (!is_null($Value) && $Value != MetadataSchema::SCHEMAID_DEFAULT) {
+        $Suffix = "&SC=".urlencode($Value);
+    }
+
+    return "DBEditor".$Suffix;
+}
 
 # ----- SETUP ----------------------------------------------------------------
-/** @var MetadataSchema $H_Schema*/
 
-if (!isset($H_Form)) {
-    throw new Exception("H_Form not defined.");
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
 }
-if (!isset($H_PrivilegesError)) {
-    $H_PrivilegesError = null;
+
+$AF = ApplicationFramework::getInstance();
+$AF->setPageTitle("Edit Metadata Schema");
+
+# construct the schema object
+$SchemaId = (int)StdLib::getArrayValue($_GET, "SC", MetadataSchema::SCHEMAID_DEFAULT);
+$Schema = new MetadataSchema($SchemaId);
+
+$ResourceName = $Schema->resourceName();
+
+$DefaultSortField = $Schema->defaultSortField();
+
+# build the form
+if ($Schema->isOwnedByUser()) {
+    $FormFields = [
+        "Name" => [
+            "Type" => FormUI::FTYPE_TEXT,
+            "Label" => "Name",
+            "Value" => $Schema->name(),
+            "Required" => true,
+            "ValidateFunction" => function ($FieldName, $Value) use ($SchemaId): ?string {
+                $ExistingSchemaId = MetadataSchema::getSchemaIdForName($Value);
+                if ($ExistingSchemaId !== null && $ExistingSchemaId !== $SchemaId) {
+                    return "A schema with that name already exists.";
+                }
+                return null;
+            }
+        ],
+        "Resource Name" => [
+            "Type" => FormUI::FTYPE_TEXT,
+            "Label" => "Resource Name",
+            "Value" => $Schema->resourceName(),
+            "Required" => true
+        ],
+        "Owner" => [
+            "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+            "Label" => "Owner",
+            "Content" => defaulthtmlentities($Schema->getOwner())
+        ]
+    ];
+} else {
+    $FormFields = [
+        "Name" => [
+            "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+            "Label" => "Name",
+            "Content" => defaulthtmlentities($Schema->name())
+        ],
+        "Resource Name" => [
+            "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+            "Label" => "Resource Name",
+            "Content" => defaulthtmlentities($Schema->resourceName())
+        ]
+    ];
 }
-if (!isset($H_Schema)) {
-    throw new Exception("H_Schema not defined.");
+$FormFields = $FormFields + [
+    "View Page" => [
+        "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+        "Label" => "View Page",
+        "Content" => defaulthtmlentities($Schema->getViewPage())
+    ],
+    "Title" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Title Field",
+        "Options" => $Schema->getFieldNames(MetadataSchema::MDFTYPE_TEXT),
+        "Value" => $Schema->stdNameToFieldMapping("Title")
+    ],
+    "Description" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Description Field",
+        "Options" => $Schema->getFieldNames(MetadataSchema::MDFTYPE_PARAGRAPH),
+        "Value" => $Schema->stdNameToFieldMapping("Description")
+    ],
+    "Url" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Url Field",
+        "Options" => $Schema->getFieldNames(MetadataSchema::MDFTYPE_URL),
+        "Value" => $Schema->stdNameToFieldMapping("Url")
+    ],
+    "File" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." File Field",
+        "Options" => $Schema->getFieldNames(MetadataSchema::MDFTYPE_FILE),
+        "Value" => $Schema->stdNameToFieldMapping("File")
+    ],
+    "Screenshot" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => $ResourceName." Screenshot Field",
+        "Options" => $Schema->getFieldNames(MetadataSchema::MDFTYPE_IMAGE),
+        "Value" => $Schema->stdNameToFieldMapping("Screenshot")
+    ],
+    "DefaultSortField" => [
+        "Type" => FormUI::FTYPE_OPTION,
+        "OptionType" => FormUI::OTYPE_LIST,
+        "OptionThreshold" => 0,
+        "Label" => "Default Sort Field",
+        "Options" => ["R" => "(Relevance)"] + $Schema->getSortFields(),
+        "Value" => ($DefaultSortField == false ? "R" : $DefaultSortField)
+    ],
+    "viewingPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $Schema->id(),
+        "Label" => "Viewing Permissions",
+        "Value" => $Schema->viewingPrivileges()
+    ],
+    "authoringPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $Schema->id(),
+        "Label" => "Authoring Permissions",
+        "Value" => $Schema->authoringPrivileges()
+    ],
+    "editingPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $Schema->id(),
+        "Label" => "Editing Permissions",
+        "Value" => $Schema->editingPrivileges()
+    ],
+    "deletingPrivileges" => [
+        "Type" => FormUI::FTYPE_PRIVILEGES,
+        "Schemas" => $Schema->id(),
+        "Label" => "Deleting Permissions",
+        "Value" => $Schema->deletingPrivileges(),
+        "Help" => "Additional permissions beyond the Editing Permissions"
+            ." required to delete records. If not provided, then anyone"
+            ." who can edit records will also be able to delete them."
+    ],
+    "AllowComments" => [
+        "Type" => FormUI::FTYPE_FLAG,
+        "Label" => "Allow Comments",
+        "Value" => $Schema->commentsEnabled()
+    ]
+];
+$MappingFormFields = ["Title", "Description", "Url", "File", "Screenshot"];
+foreach ($MappingFormFields as $FieldId) {
+    $Options = $FormFields[$FieldId]["Options"] ?? [];
+    if (count($Options) == 0) {
+        $FormFields[$FieldId] = [
+            "Type" => FormUI::FTYPE_CUSTOMCONTENT,
+            "Label" => $FormFields[$FieldId]["Label"],
+            "Content" => "<p>(No metadata fields of an appropriate type are available.)</p>"
+        ];
+    } elseif ($FieldId !== "Title") {
+        $FormFields[$FieldId]["Options"] = ["" => "--"] + $Options;
+    }
 }
+$Form = new FormUI($FormFields);
+
+$DeleteButton = new HtmlButton("Delete Schema");
+$DeleteButton->setIcon("Delete.svg");
+$DeleteButton->setName("F_Submit");
+$DeleteButton->makeSubmitButton();
+$DeleteButton->addSemanticClass("btn-danger");
 
 $SaveButton = new HtmlButton("Save Changes");
 $SaveButton->setIcon("Disk.svg");
@@ -36,26 +216,94 @@ $CancelButton->addSemanticClass("btn-danger");
 $CancelButton->setName("F_Submit");
 $CancelButton->makeSubmitButton();
 
-# escaped values
-$SafeSchemaId = defaulthtmlentities($H_Schema->id());
-$SafePrivilegesError = defaulthtmlentities($H_PrivilegesError);
+$SafeSchemaId = defaulthtmlentities($Schema->id());
+
+# ----- PROCESSING -----------------------------------------------------------
+
+switch (StdLib::getFormValue("F_Submit")) {
+    case "Cancel":
+        # go back to the list of fields for the schema
+        $AF->setJumpToPage(getReturnToPage($Schema));
+        return;
+    case "Save Changes":
+        try {
+            if ($Form->validateFieldInput() > 0) {
+                break;
+            }
+
+            $FormValues = $Form->getNewValuesFromForm();
+
+            # update schema name and resource name
+            if ($Schema->isOwnedByUser()) {
+                $Schema->name($FormValues["Name"]);
+                $Schema->resourceName($FormValues["Resource Name"]);
+            }
+
+            # update schema default sort field
+            $DefaultSortField = $FormValues["DefaultSortField"];
+            $Schema->defaultSortField(
+                ($DefaultSortField == "R") ? false : intval($DefaultSortField)
+            );
+
+            # update the schema mapping fields
+            foreach ($MappingFormFields as $FieldId) {
+                $NewFieldValue = array_key_exists($FieldId, $FormValues)
+                    ? $FormValues[$FieldId]
+                    : null;
+                if (is_null($NewFieldValue) || !strlen($NewFieldValue)) {
+                    $NewFieldValue = false;
+                }
+                $Schema->stdNameToFieldMapping($FieldId, $NewFieldValue);
+            }
+
+            # update each type of privilege
+            foreach (["view", "author", "edit", "delet"] as $PrivPrefix) {
+                $PrivilegeType = $PrivPrefix."ingPrivileges";
+                $Schema->{$PrivilegeType}($FormValues[$PrivilegeType]);
+            }
+
+            # update the comments enabled field
+            $Schema->commentsEnabled($FormValues["AllowComments"]);
+
+            # nuke the page cache in case permission changes affect what is displayed
+            $AF->clearPageCache();
+            RecordFactory::clearViewingPermsCache();
+        } catch (Exception $Exception) {
+            # couldn't update the privileges
+            $Form::logError(
+                "There was an issue with the viewing privileges and they were not saved:"
+                .$Exception->getMessage()
+            );
+        }
+
+        # if there were no errors
+        if (!$Form::errorsLogged()) {
+            # go back to the list of fields for the schema
+            $AF->setJumpToPage(getReturnToPage($Schema));
+            return;
+        }
+        break;
+    case "Delete Schema":
+        $AF->setJumpToPage("ConfirmDeleteMetadataSchema&SC=".$Schema->id());
+        return;
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Edit Metadata Schema</h1>
 
-<?PHP if (!is_null($H_PrivilegesError)) { ?>
-  <p class="alert alert-danger mv-form-error">
-    There was an issue with the viewing privileges and they were not saved:
-    <?= $SafePrivilegesError; ?>
-  </p>
-<?PHP } ?>
+<?PHP $Form::displayErrorBlock(); ?>
 
 <form method="post"
       class="priv-form"
       action="index.php?P=EditMetadataSchema&amp;SC=<?= $SafeSchemaId; ?>">
-    <?PHP $H_Form->displayFormTable(); ?>
+    <?PHP
+    $Form->displayFormTable();
+    if ($Schema->isOwnedByUser()) {
+        print $DeleteButton->getHtml();
+    }
+    ?>
     <?= $SaveButton->getHtml() ?>
     <?= $CancelButton->getHtml() ?>
 </form>

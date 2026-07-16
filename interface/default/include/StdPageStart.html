@@ -111,31 +111,45 @@ if (count($LogoImageIds) > 0) {
 <div class="d-sm-flex">
   <div id="mv-content-container" class="flex-grow-1">
     <nav id="mv-content-primary-nav" role="navigation"
-         class="navbar navbar-expand flex-column flex-md-row">
-      <ul class="navbar-nav flex-column flex-lg-row me-auto">
-        <li class="nav-item"
-            ><a class="nav-link navbar-brand" tabindex="-1" href="index.php?P=Home"
-                ><?= $LogoAreaContent ?></a></li>
+         class="navbar navbar-expand-md">
+
+      <div class="d-flex flex-md-row flex-column me-auto">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#mv-nav-menu"
+                    aria-controls="mv-nav-menu" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <a class="navbar-brand navbar-text" tabindex="-1" href="index.php?P=Home"
+               ><?= $LogoAreaContent ?></a>
+          </li>
+        </ul>
+
+      <ul id="mv-nav-menu" class="navbar-nav collapse navbar-collapse align-items-start">
         <?PHP foreach ($PrimaryNavItems as $Label => $Link) { ?>
         <li class="nav-item"
             ><a class="nav-link" tabindex="0" href="<?= $Link ?>"
                 ><?= $Label ?></a></li>
         <?PHP } ?>
       </ul>
-      <ul class="navbar-nav flex-column flex-lg-row">
+      </div>
+
+      <ul class="navbar-nav flex-row">
         <?PHP if (!$IsLoggedIn) { ?>
         <li class="nav-item">
           <a class="nav-link" href="#" id="mv-login-button" role="button">
             <div class="mv-header-icon">
               <?= $AF->inlineUIFile("Meeple.svg") ?>
-            </div> Sign In </a>
+            </div><span class="d-none d-lg-inline"> Sign In</span></a>
         </li>
         <?PHP } ?>
         <li class="nav-item">
           <a class="nav-link" href="#" id="mv-search-button" role="button">
             <div class="mv-header-icon">
               <?= $AF->inlineUIFile("MagnifyingGlass.svg") ?>
-            </div> Search </a>
+            </div><span class="d-none d-lg-inline"> Search</span></a>
         </li>
       </ul>
     </nav>

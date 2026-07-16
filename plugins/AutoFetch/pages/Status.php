@@ -59,13 +59,13 @@ foreach ($Tabs as $Tab) {
 switch ($H_SortFields[TAB_ERRORS]) {
     case "R":
     case "Date":
-        uasort($H_ErrorList, function ($a, $b) {
+        uasort($H_ErrorList, function ($a, $b): int {
             return StdLib::SortCompare($b["Date"], $a["Date"]);
         });
         break;
 
     case "Error":
-        uasort($H_ErrorList, function ($a, $b) {
+        uasort($H_ErrorList, function ($a, $b): int {
             return strcmp($a["Error"], $b["Error"]);
         });
         break;
@@ -77,7 +77,7 @@ switch ($H_SortFields[TAB_ERRORS]) {
 switch ($H_SortFields[TAB_FETCHES]) {
     case "R":
     case "FetchDate":
-        uasort($H_FetchList, function ($a, $b) {
+        uasort($H_FetchList, function ($a, $b): int {
             return StdLib::SortCompare($b["FetchDate"], $a["FetchDate"]);
         });
         break;

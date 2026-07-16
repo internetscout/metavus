@@ -57,7 +57,7 @@ function Blog_EditComment(Message $Comment, string $CommentBody): void
 * @param array $GetParameters GET parameters to use when jumping.
 * @param string|null $Fragment Optional fragment identifier to tack on.
 */
-function Blog_JumpTo(array $GetParameters, string $Fragment = null): void
+function Blog_JumpTo(array $GetParameters, ?string $Fragment = null): void
 {
     $AF = ApplicationFramework::getInstance();
     $Url = "index.php";
@@ -156,7 +156,7 @@ if (!$H_Blog->UserCanPostComment($User)) {
 if (!is_null($H_Action)) {
     # check for empty comment
     if ($H_Action == "Post Comment" || $H_Action == "Save Changes") {
-        if (!strlen(trim($H_CommentBody))) {
+        if (strlen(trim($H_CommentBody)) === 0) {
             $H_State = "Empty Comment";
             return;
         }

@@ -25,7 +25,7 @@ function validateUserPassword(string $NewPassword): ?string
     # retrieve user currently logged in
     $User = User::getCurrentUser();
 
-    if (!strlen($NewPassword)) {
+    if (strlen($NewPassword) === 0) {
         return null;
     }
 
@@ -176,7 +176,7 @@ if (!$User->get("Has No Password")) {
             "Label" => "Old Password",
             "MaxLength" => 20,
             "Size" => 20,
-            "ValidateFunction" => function ($FieldName, $Value, $Values) {
+            "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
                 if (strlen($Value) && !User::getCurrentUser()->isPasswordCorrect($Value)) {
                     return "Old password provided was not correct.";
                 }
@@ -197,7 +197,7 @@ $FormFields += [
         "MaxLength" => 20,
         "Size" => 20,
         "Help" => User::getPasswordRulesDescription(),
-        "ValidateFunction" => function ($FieldName, $Value, $Values) {
+        "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
             if (!User::getCurrentUser()->get("Has No Password")) {
                 if (strlen($Values["OldPassword"]) && strlen($Value) == 0) {
                     return "New password must be provided for password changes";
@@ -210,7 +210,7 @@ $FormFields += [
     "NewPasswordAgain" => [
         "Type" => FormUI::FTYPE_PASSWORD,
         "Label" => "New Password Again",
-        "ValidateFunction" => function ($FieldName, $Value, $Values) {
+        "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
             if ($Value != $Values["NewPassword"]) {
                 return "Passwords must match.";
             }

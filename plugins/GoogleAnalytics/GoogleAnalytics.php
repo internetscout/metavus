@@ -54,7 +54,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
                 ." the form <i>GT-XXXXXX</i>, <i>G-XXXXXX</i>, or <i>UA-NNNNNNNN-N</i>).",
             "Size" => 20,
             "Required" => true,
-            "ValidateFunction" => function ($FieldName, $FieldValue) {
+            "ValidateFunction" => function ($FieldName, $FieldValue): ?string {
                 if (!self::validateGoogleAnalyticsTrackingId($FieldValue)) {
                     return "Invalid Default Tracking ID value";
                 }
@@ -89,7 +89,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
                     .", if it is different than the default.",
                 "Size" => 20,
                 "Required" => false,
-                "ValidateFunction" => function ($FieldName, $FieldValue) use ($Domain) {
+                "ValidateFunction" => function ($FieldName, $FieldValue) use ($Domain): ?string {
                     if (strlen(trim($FieldValue)) > 0 &&
                         !self::validateGoogleAnalyticsTrackingId($FieldValue)) {
                         return "Invalid tracking ID for ".$Domain;
@@ -161,7 +161,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
 
         $GlobalSiteTag = !preg_match("%^ua-%i", $TrackingId);
 
-        if (strlen($TrackingId)) {
+        if (strlen($TrackingId) !== 0) {
             // @phpcs:disable
             if ($GlobalSiteTag) {
                 ?>
@@ -196,7 +196,7 @@ class GoogleAnalytics extends WebAnalyticsPlugin
             // @phpcs:enable
         }
 
-        if (strlen($SiteVerificationCode)) {
+        if (strlen($SiteVerificationCode) !== 0) {
             $AF->addMetaTag(
                 ["google-site-verification" => $SiteVerificationCode]
             );

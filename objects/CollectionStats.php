@@ -10,7 +10,7 @@
 
 namespace Metavus;
 use ScoutLib\ApplicationFramework;
-use ScoutLib\Database;
+use ScoutLib\DataCache;
 
 /**
  * Encapsulate methods to update collection statistics.
@@ -69,13 +69,9 @@ class CollectionStats
         );
 
         $CollectionStats["LocalStats"] = $SignalResult["LocalStats"];
+        $CollectionStats["StatsUpdateTime"] = date("Y-m-d H:i:s");
 
-        $DB = new Database();
-        $DB->query("DELETE FROM CachedValues WHERE NAME='CollectionStats'");
-
-        $DB->query("INSERT INTO CachedValues (Name,Value,Updated) VALUES "
-                   ."('CollectionStats','".addslashes(
-                       serialize($CollectionStats)
-                   )."',NOW())");
+        $Cache = new DataCache("CollectionStats");
+        $Cache->set("Stats", $CollectionStats, 3600);
     }
 }

@@ -8,11 +8,39 @@
 #
 #   @scout:phpstan
 
-# ----- MAIN -----------------------------------------------------------------
+use Metavus\RecordFactory;
+use Metavus\Recommender;
+use Metavus\User;
+use ScoutLib\ApplicationFramework;
 
+# ----- SETUP ----------------------------------------------------------------
+if (!User::requirePrivilege(PRIV_SYSADMIN, PRIV_COLLECTIONADMIN)) {
+    return;
+}
+
+$ResourceCount = 0;
+
+if (array_key_exists("AC", $_GET) && $_GET["AC"] == "Background") {
+    $Recommender = new Recommender();
+    $RFactory = new RecordFactory();
+    $Ids = $RFactory->getItemIds();
+    foreach ($Ids as $Id) {
+        $Recommender->queueUpdateForItem(
+            (int)$Id,
+            ApplicationFramework::PRIORITY_BACKGROUND
+        );
+    }
+    ApplicationFramework::getInstance()->queueUniqueTask(
+        [$Recommender, "PruneCorrelations"],
+        [],
+        ApplicationFramework::PRIORITY_BACKGROUND
+    );
+    $ResourceCount = count($Ids);
+}
+
+# ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Recommender Database Rebuild</h1>
 
-<p><?= $GLOBALS["ResourceCount"]; ?> resources have been queued to have
-their recommender data updated.</p>
+<p><?= $ResourceCount; ?> resources have been queued to have their recommender data updated.</p>

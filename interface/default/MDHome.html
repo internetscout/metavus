@@ -10,50 +10,116 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\DataCache;
 use ScoutLib\HtmlTable;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
-function PrintOurMenuEntry(): void
+/**
+ * Return the html string for a menu item, if the user has any of the privileges needed for it.
+ * @param string $Label The label for the menu item.
+ * @param string $Link URL the menu item should link to.
+ * @param int[] $Privs Array of privileges.
+ * @return string An html string for the menu item.
+ */
+function getMenuEntryHtml(string $Label, string $Link, array $Privs): string
 {
-    $Args = func_get_args();
-    $Label = array_shift($Args);
-    $Link = array_shift($Args);
-
-    if (call_user_func_array([User::getCurrentUser(), "HasPriv"], $Args)) {
-        ?><li class="list-group-item">
-            <a href="<?= $Link; ?>"><?= $Label; ?></a>
-        </li><?PHP
+    if (!call_user_func_array([User::getCurrentUser(), "HasPriv"], $Privs)) {
+        return "";
     }
+    return "<li class=\"list-group-item\"><a href=\"".$Link."\">".$Label."</a></li>";
 }
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_CollectionStats)) {
-    throw new Exception("H_CollectionStats not defined.");
-}
-if (!isset($H_RecentlyAdded)) {
-    throw new Exception("H_RecentlyAdded not defined.");
-}
-if (!isset($H_RecentlyModified)) {
-    throw new Exception("H_RecentlyModified not defined.");
-}
-if (!isset($G_StatsUpdateTime)) {
-    throw new Exception("G_StatsUpdateTime not defined.");
+
+if (!User::requirePrivilege(
+    PRIV_RESOURCEADMIN,
+    PRIV_CLASSADMIN,
+    PRIV_NAMEADMIN,
+    PRIV_COLLECTIONADMIN,
+    PRIV_RELEASEADMIN
+)) {
+    return;
 }
 
-$TotalNumberOfResourcesFormatted = number_format($H_CollectionStats["TotalNumberOfResources"]);
+$User = User::getCurrentUser();
+
+$AF = ApplicationFramework::getInstance();
+
+if (isset($_GET["US"])) {
+    CollectionStats::updateCollectionStats();
+    $AF->setJumpToPage("MDHome");
+    return;
+}
+
+$Cache = new DataCache("CollectionStats");
+$CollectionStats = $Cache->get("Stats");
+
+# generate collection stats if they don't exist yet
+if ($CollectionStats === null) {
+    $AF->setJumpToPage("MDHome&US");
+    return;
+}
+
+$StatsUpdateTime = $CollectionStats["StatsUpdateTime"];
+
+# retrieve lists of recently modified and recently added resources to display
+$RFactory = new RecordFactory(MetadataSchema::SCHEMAID_DEFAULT);
+
+$AllRecentlyAdded = $RFactory->getRecordIdsSortedBy("Date Of Record Creation", false);
+$RecentlyAdded = [];
+foreach ($AllRecentlyAdded as $Id) {
+    if ($Id < 0) {
+        continue;
+    }
+
+    $Resource = new Record($Id);
+    if (!$Resource->userCanView($User)) {
+        continue;
+    }
+
+    $RecentlyAdded[$Id] = $Resource;
+    if (count($RecentlyAdded) > 10) {
+        break;
+    }
+}
+
+# retrieve list of recently modified resources that aren't also new resources
+$AllRecentlyModified = $RFactory->getRecordIdsSortedBy("Date Last Modified", false);
+$RecentlyModified = [];
+foreach ($AllRecentlyModified as $Id) {
+    if ($Id < 0) {
+        continue;
+    }
+
+    $Resource = new Record($Id);
+    if (!$Resource->userCanView($User)) {
+        continue;
+    }
+
+    if (in_array($Id, $RecentlyAdded) &&
+        strtotime($Resource->get("Date Last Modified"))
+        <= strtotime($Resource->get("Date Of Record Creation"))) {
+        continue;
+    }
+
+    $RecentlyModified[$Id] = $Resource;
+    if (count($RecentlyModified) > 10) {
+        break;
+    }
+}
+
+$TotalNumberOfResourcesFormatted = number_format($CollectionStats["TotalNumberOfResources"]);
 $NumberOfReleasedResourcesFormatted =
-    number_format($H_CollectionStats["NumberOfReleasedResources"]);
-$NumberOfRatedResourcesFormatted = number_format($H_CollectionStats["NumberOfRatedResources"]);
+    number_format($CollectionStats["NumberOfReleasedResources"]);
+$NumberOfRatedResourcesFormatted = number_format($CollectionStats["NumberOfRatedResources"]);
 $TotalNumberOfClassificationsFormatted =
-    number_format($H_CollectionStats["TotalNumberOfClassifications"]);
+    number_format($CollectionStats["TotalNumberOfClassifications"]);
 $TotalNumberOfControlledNamesFormatted =
-    number_format($H_CollectionStats["TotalNumberOfControlledNames"]);
-$TotalSearchTermsFormatted = number_format($H_CollectionStats["TotalSearchTerms"]);
-
+    number_format($CollectionStats["TotalNumberOfControlledNames"]);
+$TotalSearchTermsFormatted = number_format($CollectionStats["TotalSearchTerms"]);
 
 # build link to search for recently modified resources
 $Schema = new MetadataSchema(MetadataSchema::SCHEMAID_DEFAULT);
@@ -84,18 +150,18 @@ $RecentlyAddedSearchLink = "index.php?P=SearchResults"
     ."=".$DateOfRecordCreation->id();
 
 # retrieve local collection stats (if any)
-$LocalStats = array_key_exists("LocalStats", $H_CollectionStats)
-        ? $H_CollectionStats["LocalStats"] : [];
+$LocalStats = array_key_exists("LocalStats", $CollectionStats)
+        ? $CollectionStats["LocalStats"] : [];
 
 $ModResourceList = new ItemListUI([
     "Date Last Modified" => [
         "Heading" => "Date",
-        "ValueFunction" => function ($Item) {
+        "ValueFunction" => function ($Item): string {
             return StdLib::getPrettyTimestamp($Item->Get("Date Last Modified"));
         },
     ],
     "Title" => [
-        "ValueFunction" => function ($Item) {
+        "ValueFunction" => function ($Item): string {
             $Title = $Item->getMapped("Title") ?? "";
             return "<a href=\"index.php?P=FullRecord&amp;ID=".$Item->Id()."\">".
                 htmlspecialchars($Title)."</a>";
@@ -114,23 +180,27 @@ $ModResourceList->fieldsSortableByDefault(false);
 
 $NewResourceList = clone $ModResourceList;
 
-$ModResourceList->heading("Resources Recently Modified");
+$ModResourceList->setHeading("Resources Recently Modified");
 $ModResourceList->addTopButton(
     "More Recently Modified",
     $RecentlyModifiedSearchLink
 );
+$ModResourceList->setItems($RecentlyModified);
+$ModResourceList->addAdditionalTableClass("mv-content-modified-resources");
 
-$NewResourceList->heading("Resources Recently Added");
+$NewResourceList->setHeading("Resources Recently Added");
 $NewResourceList->addTopButton(
     "More Recently Added",
     $RecentlyAddedSearchLink
 );
+$NewResourceList->setItems($RecentlyAdded);
+$NewResourceList->addAdditionalTableClass("mv-content-new-resources");
 
 $AF = ApplicationFramework::getInstance();
 
 $UpdateCollectionStatsButton = new HtmlButton("Update Now");
 $UpdateCollectionStatsButton->setIcon("RefreshArrow.svg");
-$UpdateCollectionStatsButton->setOnclick("window.location=`index.php?P=MDHome&US=1`;");
+$UpdateCollectionStatsButton->setOnclick("window.location=`index.php?P=MDHome&US`;");
 
 $CollectionStatisticsTable = new HtmlTable();
 $CollectionStatisticsTable->setTableClass("table mv-content-colstats");
@@ -146,7 +216,7 @@ foreach ($LocalStats as $Label => $Value) {
     $CollectionStatisticsTable->addRowWithHeader([$Label, $Value]);
 }
 $CollectionStatisticsTable->addRowsWithHeaders([
-    ["Stats Last Updated", $G_StatsUpdateTime],
+    ["Stats Last Updated", $StatsUpdateTime],
     ["", $UpdateCollectionStatsButton->getHtml()]
 ]);
 
@@ -160,7 +230,7 @@ $CDRTable->setTableClass("table mv-content-cdresources");
 foreach ($CDResources as $Link => $Label) {
     $CDRTable->addRowWithHeader([
         $Label,
-        "<a href=\"" . $Link . "\" target=\"_blank\">" . $Link . "</a>"
+        "<a href=\"".$Link."\" target=\"_blank\">".$Link."</a>"
     ]);
 }
 
@@ -170,49 +240,52 @@ $AF->setPageTitle("Metadata Tool");
 
 <div class="mv-content-sectioned">
 
-<h1>Metadata Tool Functions</h1>
+    <h1>Metadata Tool Functions</h1>
 
-<ul class="list-group list-group-flush">
-    <?PHP
-    PrintOurMenuEntry(
-        "Add New Resource",
-        str_replace('$ID', "NEW", $Schema->getEditPage()),
-        PRIV_RESOURCEADMIN,
-        PRIV_COLLECTIONADMIN
-    );
-    PrintOurMenuEntry(
-        "Add New Controlled Name",
-        "index.php?P=AddControlledName",
-        PRIV_NAMEADMIN
-    );
-    PrintOurMenuEntry(
-        "Edit Controlled Names",
-        "index.php?P=EditControlledName&amp;FieldId=0",
-        PRIV_NAMEADMIN
-    );
-    PrintOurMenuEntry(
-        "Edit Option Lists",
-        "index.php?P=EditOptionList",
-        PRIV_NAMEADMIN
-    );
-    PrintOurMenuEntry(
-        "Add/Edit Classifications",
-        "index.php?P=EditClassifications",
-        PRIV_CLASSADMIN
-    );
-    ?>
-</ul>
-<?PHP $ModResourceList->display($H_RecentlyModified); ?>
+    <ul class="list-group list-group-flush">
+        <?PHP
+        print getMenuEntryHtml(
+            "Add New Resource",
+            str_replace('$ID', "NEW", $Schema->getEditPage()),
+            [PRIV_RESOURCEADMIN, PRIV_COLLECTIONADMIN]
+        );
+        print getMenuEntryHtml(
+            "Add New Controlled Name",
+            "index.php?P=AddControlledName",
+            [PRIV_NAMEADMIN]
+        );
+        print getMenuEntryHtml(
+            "Edit Controlled Names",
+            "index.php?P=EditControlledName",
+            [PRIV_NAMEADMIN]
+        );
+        print getMenuEntryHtml(
+            "Edit Option Lists",
+            "index.php?P=EditOptionLists",
+            [PRIV_NAMEADMIN]
+        );
+        print getMenuEntryHtml(
+            "Add/Edit Classifications",
+            "index.php?P=EditClassifications",
+            [PRIV_CLASSADMIN]
+        );
+        ?>
+    </ul>
+    <div class="modified-resources">
+        <?= $ModResourceList->getHtml(); ?>
+    </div>
 
-<br/>
+    <br/>
 
-<?PHP $NewResourceList->display($H_RecentlyAdded); ?>
+    <div class="new-resources">
+        <?= $NewResourceList->getHtml(); ?>
+    </div>
 
-<h1>Collection Statistics</h1>
+    <h1>Collection Statistics</h1>
 
-<?= $CollectionStatisticsTable->getHtml(); ?>
+    <?= $CollectionStatisticsTable->getHtml(); ?>
 
-<h1>Collection Development Resources</h1>
-<?= $CDRTable->getHtml(); ?>
+    <h1>Collection Development Resources</h1>
+    <?= $CDRTable->getHtml(); ?>
 
 </div>

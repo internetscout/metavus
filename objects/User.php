@@ -132,7 +132,7 @@ class User extends \ScoutLib\User
      * THIS FUNCTION HAS BEEN DEPRECATED
      * This provides compatibility for interfaces written to use a
      * version of PrivilegeSet from CWIS 3.0.0 to 3.1.0.
-     * @param PrivilegeSet $NewValue New value (OPTIONAL, default NULL)
+     * @param ?PrivilegeSet $NewValue New value (OPTIONAL, default NULL)
      * @return PrivilegeSetCompatibilityShim for use in legacy code.
      */
     public function privileges(?PrivilegeSet $NewValue = null): PrivilegeSetCompatibilityShim
@@ -154,7 +154,7 @@ class User extends \ScoutLib\User
      */
     public function resourceId(): ?int
     {
-        return ($this->Resource !== null) ? $this->Resource->Id() : null;
+        return ($this->Resource !== null) ? $this->Resource->id() : null;
     }
 
     /**
@@ -172,7 +172,7 @@ class User extends \ScoutLib\User
      * conditions specified by a given privilege set.  Calling this
      * function with a PrivilegeSet as the first argument is supported
      * only for backwards compatibility.  New code should not do this.
-     * @param int|array|PrivilegeSet $Privilege Privilege or aray of privileges
+     * @param int|array|PrivilegeSet $Privilege Privilege or array of privileges
      *      or privilege set to check.
      * @param int|Record $Privileges Additional privileges (as in
      *      parent::HasPriv()), or a Resource to use if the first arg was a
@@ -223,7 +223,7 @@ class User extends \ScoutLib\User
     }
 
     /**
-     * Grant privilege to a a user.
+     * Grant privilege to a user.
      * @param int $Privilege Privilege to grant.
      * @return void
      * @throws Exception On attempts to grant a pseudo-privilege.
@@ -253,7 +253,7 @@ class User extends \ScoutLib\User
      * Get the URL for activating a user account, with parameters.
      * @return string Account activation URL.
      */
-    public function getAccountActivationUrl() : string
+    public function getAccountActivationUrl(): string
     {
         return ApplicationFramework::getInstance()->baseUrl()."index.php?P=ActivateAccount&"
             .$this->getAccountActivationUrlParameters();
@@ -263,7 +263,7 @@ class User extends \ScoutLib\User
      * Get the URL parameters for an account activation request.
      * @return string Account activation URL parameters.
      */
-    public function getAccountActivationUrlParameters() : string
+    public function getAccountActivationUrlParameters(): string
     {
         return "UN=".urlencode($this->get("UserName"))
             ."&AC=".$this->getMailChangeCode();
@@ -273,7 +273,7 @@ class User extends \ScoutLib\User
      * Get the URL for manual account activation.
      * @return string Manual account activation URL.
      */
-    public function getAccountManualActivationUrl() : string
+    public function getAccountManualActivationUrl(): string
     {
         return ApplicationFramework::getInstance()->baseUrl()."index.php?P=ManuallyActivateAccount";
     }
@@ -380,13 +380,16 @@ class User extends \ScoutLib\User
         $OldEmail = $this->get("EMail");
         $NewEmail = $this->get("EMailNew");
 
-        # if they were the same, then there's nothing to do
+        # if they were the same, nothing to do but clear EMailNew
         if ($OldEmail == $NewEmail) {
+            $this->set("EMailNew", "");
             return false;
         }
 
         # but if they were different, change the user's email
         $this->set("EMail", $NewEmail);
+        $this->set("EMailNew", "");
+
         ApplicationFramework::getInstance()->signalEvent(
             "EVENT_USER_EMAIL_CHANGED",
             [
@@ -454,7 +457,7 @@ class User extends \ScoutLib\User
      * @param string $FieldName Field to look for
      * @return bool TRUE for fields that exist, FALSE for those that do not
      */
-    public static function isDatabaseOnlyField(string $FieldName) : bool
+    public static function isDatabaseOnlyField(string $FieldName): bool
     {
         StdLib::checkMyCaller(
             "Metavus\\UserFactory",
@@ -479,9 +482,8 @@ class User extends \ScoutLib\User
             $Fields = $Schema->getFields(null, MetadataSchema::MDFORDER_EDITING);
             foreach ($Fields as $Field) {
                 # they're custom if not owned by core software
-                if (($Field->Owner() != "CWISCore")
-                        && ($Field->Owner() != "MetavusCore")) {
-                    $CustomFields[$Field->Id()] = $Field;
+                if (!$Field->isOwnedByCore()) {
+                    $CustomFields[$Field->id()] = $Field;
                 }
             }
         }
@@ -504,9 +506,8 @@ class User extends \ScoutLib\User
             $Fields = $Schema->getFields(null, MetadataSchema::MDFORDER_EDITING);
             foreach ($Fields as $Field) {
                 # they're default if owned by core software
-                if (($Field->Owner() == "CWISCore")
-                        || ($Field->Owner() == "MetavusCore")) {
-                    $DefaultFields[$Field->Id()] = $Field;
+                if ($Field->isOwnedByCore()) {
+                    $DefaultFields[$Field->id()] = $Field;
                 }
             }
         }
@@ -617,7 +618,7 @@ class User extends \ScoutLib\User
             return self::U_OKAY;
         }
 
-        # if this field is not among those that should only exists in
+        # if this field is not among those that should only exist in
         # the APUsers table
         if (!in_array($Field, self::$FieldsOnlyInDatabase)) {
             # set it in our corresponding resource
@@ -703,14 +704,14 @@ class User extends \ScoutLib\User
      * @param string $FieldName FormUI field name to get settings for.
      * @return array FormUI-format settings.
      */
-    public static function getFormSettingsForField(string $FieldName) : array
+    public static function getFormSettingsForField(string $FieldName): array
     {
         switch ($FieldName) {
             case "UserName":
                 return [
                     "Type" => FormUI::FTYPE_TEXT,
                     "Label" => "User Name",
-                    "ValidateFunction" => function ($FieldName, $Value) {
+                    "ValidateFunction" => function ($FieldName, $Value): ?string {
                         $UFactory = new UserFactory();
                         if ($UFactory->userNameExists($Value)) {
                             return "The user name you entered is already associated"
@@ -732,14 +733,14 @@ class User extends \ScoutLib\User
                 return [
                     "Type" => FormUI::FTYPE_PASSWORD,
                     "Label" => "Password",
-                    "ValidateFunction" => function ($FieldName, $Value, $Values) {
+                    "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
                         $PasswordErrors = User::checkPasswordForErrors(
                             $Values["Password"],
                             $Values["UserName"],
                             $Values["EMail"]
                         );
 
-                        if (count($PasswordErrors)) {
+                        if (count($PasswordErrors) !== 0) {
                             return implode(
                                 "<br/>",
                                 array_map(
@@ -748,6 +749,7 @@ class User extends \ScoutLib\User
                                 )
                             );
                         }
+                        return null;
                     },
                     "Required" => true,
                     "Size" => 17,
@@ -758,7 +760,7 @@ class User extends \ScoutLib\User
                 return [
                     "Type" => FormUI::FTYPE_PASSWORD,
                     "Label" => "Password (Again)",
-                    "ValidateFunction" => function ($FieldName, $Value, $Values) {
+                    "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
                         if ($Value != $Values["Password"]) {
                             return "Passwords must match.";
                         }
@@ -772,7 +774,7 @@ class User extends \ScoutLib\User
                 return [
                     "Type" => FormUI::FTYPE_TEXT,
                     "Label" => "E-mail Address",
-                    "ValidateFunction" => function ($FieldName, $Value) {
+                    "ValidateFunction" => function ($FieldName, $Value): ?string {
                         if (filter_var($Value, FILTER_VALIDATE_EMAIL) === false) {
                             return "Invalid email address.";
                         }
@@ -788,7 +790,7 @@ class User extends \ScoutLib\User
                 return [
                     "Type" => FormUI::FTYPE_TEXT,
                     "Label" => "E-mail Address (Again)",
-                    "ValidateFunction" => function ($FieldName, $Value, $Values) {
+                    "ValidateFunction" => function ($FieldName, $Value, $Values): ?string {
                         if ($Value != $Values["EMail"]) {
                             return "EMail addresses do not match.";
                         }
@@ -885,7 +887,7 @@ class User extends \ScoutLib\User
             "FieldId=".self::$UserIdFieldId.
             " AND UserId=".intval($UserId)
         );
-        $ResourceIds = $this->DB->FetchColumn("RecordId");
+        $ResourceIds = $this->DB->fetchColumn("RecordId");
         $ResourceIdCount = count($ResourceIds);
 
         # no resource found
@@ -907,7 +909,7 @@ class User extends \ScoutLib\User
 
     /**
      * Determine if a privilege is one of the standard privileges built
-     * in to CWIS.
+     * in to Metavus.
      * @param int $Priv Privilege to check.
      * @return bool TRUE for standard privileges, FALSE otherwise
      */
@@ -919,7 +921,7 @@ class User extends \ScoutLib\User
 
     /**
      * Determine if a privilege is one of the pseudo-privileges used by
-     * CWIS.
+     * Metavus.
      * @param int $Priv Privilege to check.
      * @return bool TRUE for pseudo-privileges, FALSE otherwise
      */
@@ -1032,14 +1034,14 @@ class User extends \ScoutLib\User
         ApplicationFramework::getInstance()->overrideInterfaceFile("UnauthorizedAccess");
     }
 
-    const MIN_STANDARD_PRIV = 1;
-    const MAX_STANDARD_PRIV = 74;
+    public const MIN_STANDARD_PRIV = 1;
+    public const MAX_STANDARD_PRIV = 74;
 
-    const MIN_PSEUDO_PRIV = 75;
-    const MAX_PSEUDO_PRIV = 99;
+    public const MIN_PSEUDO_PRIV = 75;
+    public const MAX_PSEUDO_PRIV = 99;
 
-    const MIN_CUSTOM_PRIV = 100;
-    const MAX_CUSTOM_PRIV = Database::INT_MAX_VALUE;
+    public const MIN_CUSTOM_PRIV = 100;
+    public const MAX_CUSTOM_PRIV = Database::INT_MAX_VALUE;
 
     private static $UserIdFieldId = null;
 }

@@ -66,7 +66,7 @@ $FormFields = [
         "Type" => FormUI::FTYPE_CUSTOMCONTENT,
         "Label" => "",
         # (use a callback so that this function can be defined in the HTML)
-        "Callback" => function () {
+        "Callback" => function (): void {
             // @phpstan-ignore-next-line
             print getBlackboardInstructions();
         },
@@ -118,7 +118,7 @@ $H_Status = null;
 $ButtonPushed = StdLib::getFormValue("Submit");
 switch ($ButtonPushed) {
     case "Register":
-        if ($H_FormUI->validateFieldInput()) {
+        if ($H_FormUI->validateFieldInput() !== 0) {
             return;
         }
 

@@ -38,7 +38,7 @@ class PluginUpgrade_1_0_1 extends PluginUpgrade
             WHERE SchemaId = '".intval($SchemaId)."'");
 
         # if the schema attributes don't already exist
-        if (!$DB->numRowsSelected()) {
+        if ($DB->numRowsSelected() === 0) {
             $AuthorPriv = [PRIV_NEWSADMIN, PRIV_SYSADMIN];
             $Result = $DB->query("
                 INSERT INTO MetadataSchemas

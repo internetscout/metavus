@@ -1,0 +1,386 @@
+<?PHP
+#
+#   FILE:  Metrics.html (EduLink plugin)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2026 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+# @scout:phpstan
+
+namespace Metavus;
+use Exception;
+use Metavus\Plugins\EduLink\LMSRegistration;
+use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
+
+/**
+ * Get the name of an institution corresponding to an LMS registration.
+ * @param int $Id LMS Registration Id to look up.
+ * @return string Institution name.
+ */
+function getInstitutionName(int $Id): string
+{
+    static $Names = [];
+    if (!isset($Names[$Id])) {
+        $Registration = new LMSRegistration($Id);
+        $Names[$Id] = $Registration->getInstitutionName();
+    }
+
+    return $Names[$Id];
+}
+
+/**
+ * Print a summary table for LTI data. Data is expected to be in descending
+ *         order of counts. The first 25 elements will be shown and then an
+ *         "Other" row will be added as the 26th line of the table showing the
+ *         total for all the remaining entries.
+ * @param array $Data Data to display, keyed by an item description with
+ *         values giving a count to display.
+ * @param array $Fields ItemListUI Field definitions describing how the Key
+ *         and Value elements of the data should be formatted.
+ */
+function printSummaryTable($Data, $Fields): void
+{
+    arsort($Data);
+
+    $Count = 0;
+    $Other = 0;
+
+    $Rows = [];
+    foreach ($Data as $Key => $Val) {
+        if ($Count < 25) {
+            $Rows[] = ["Key" => $Key, "Val" => $Val];
+        } else {
+            $Other += $Val;
+        }
+        $Count++;
+    }
+
+    if ($Other > 0) {
+        $Rows[] = ["Key" => "<i>Other</i>", "Val" => $Other];
+    }
+
+
+    $List = new ItemListUI(
+        $Fields,
+        $Rows
+    );
+    $List->setItemsPerPage(26);
+
+    print "<div>".$List->getHtml()."</div>";
+}
+
+/**
+ * Generate a URL for this page updated to add an additional restriction on the data.
+ * @param string $Param Url parameter to add.
+ * @param string $Value Value for the new parameter.
+ * @return string Updated URL.
+ */
+function updateUrl(string $Param, string $Value): string
+{
+    static $BaseUrl = false;
+    static $BaseParams = [];
+
+    if ($BaseUrl === false) {
+        $BaseUrl = ApplicationFramework::getInstance()->baseUrl();
+        $BaseParams = $_GET;
+        unset($BaseParams["P"]);
+    }
+
+    $NewParams = $BaseParams;
+    if (isset($NewParams[$Param]) && $NewParams[$Param] == $Value) {
+        unset($NewParams[$Param]);
+    } else {
+        $NewParams[$Param] = $Value;
+    }
+
+    return $BaseUrl."index.php?P=P_EduLink_Metrics&".http_build_query($NewParams);
+}
+
+
+# ----- SETUP ----------------------------------------------------------------
+
+if (!isset($H_CourseLimitName) || !is_string($H_CourseLimitName)) {
+    throw new Exception(
+        "Variable H_CourseLimitName is unset or incorrect type."
+    );
+}
+if (!isset($H_EventSummary) || !is_array($H_EventSummary)) {
+    throw new Exception(
+        "Variable H_EventSummary is unset or incorrect type."
+    );
+}
+if (!isset($H_EventsPerDay) || !is_array($H_EventsPerDay)) {
+    throw new Exception(
+        "Variable H_EventsPerDay is unset or incorrect type."
+    );
+}
+if (!isset($H_Report) || !is_array($H_Report)) {
+    throw new Exception(
+        "Variable H_Report is unset or incorrect type."
+    );
+}
+
+$AF = ApplicationFramework::getInstance();
+
+$BaseUrl = ApplicationFramework::getInstance()->baseUrl()."index.php?"
+    .http_build_query($_GET);
+
+$SummaryFields = [
+    "Roles" => [
+        "Sortable" => false,
+        "LinkFunction" => function ($Item) {
+            return updateUrl("R", $Item["Role"]);
+        },
+        "ValueFunction" => function ($Item) {
+            return $Item["Role"];
+        },
+    ],
+];
+
+if (!isset($_GET["T"]) || $_GET["T"] == "SelectRecord") {
+    $SummaryFields += [
+        "SelectRecord" => [
+            "Heading" => "Select",
+            "Sortable" => false,
+            "AlignRight" => true,
+            "LinkFunction" => function ($Item) {
+                return updateUrl("T", "SelectRecord");
+            },
+            "ValueFunction" => function ($Item) {
+                return $Item["SelectRecord"];
+            },
+        ],
+    ];
+}
+
+if (!isset($_GET["T"]) || $_GET["T"] == "ViewRecord") {
+    $SummaryFields += [
+        "ViewRecord" => [
+            "Heading" => "View",
+            "Sortable" => false,
+            "AlignRight" => true,
+            "LinkFunction" => function ($Item) {
+                return updateUrl("T", "ViewRecord");
+            },
+            "ValueFunction" => function ($Item) {
+                return $Item["ViewRecord"];
+            },
+        ],
+    ];
+}
+
+$SummaryFields += [
+    "Total" => [
+        "Sortable" => false,
+        "AlignRight" => true,
+    ]
+];
+
+$Summary = new ItemListUI($SummaryFields, $H_EventSummary);
+
+$LinkFunctions = [
+    "IPAddresses" => function ($Item) {
+        if ($Item["Key"] == "<i>Other</i>") {
+            return "";
+        }
+        return updateUrl("IP", $Item["Key"]);
+    },
+    "Classes" => function ($Item) {
+        if ($Item["Key"] == "<i>Other</i>") {
+            return "";
+        }
+        return updateUrl("C", md5($Item["Key"]));
+    },
+    "Institutions" => function ($Item) {
+        if ($Item["Key"] == "<i>Other</i>") {
+            return "";
+        }
+        return updateUrl("LI", $Item["Key"]);
+    },
+];
+
+
+# ----- DISPLAY --------------------------------------------------------------
+
+$Limits = [
+    "T" => "Event Type",
+    "R" => "User Role",
+    "LI" => "Institution",
+    "C" => "Course",
+    "RI" => "Record",
+    "IP" => "IP Address",
+];
+
+$RemoveLimitLinks = [];
+
+foreach ($Limits as $Key => $Limit) {
+    if (!isset($_GET[$Key])) {
+        continue;
+    }
+
+    $NewParams = $_GET;
+    unset($NewParams[$Key]);
+
+    switch ($Key) {
+        case "LI":
+            $Value = getInstitutionName($_GET[$Key]);
+            break;
+
+        case "RI":
+            $Value = Record::getRecord($_GET[$Key])
+                ->getMapped("Title");
+            break;
+
+        case "C":
+            $Value = $H_CourseLimitName;
+            break;
+
+        default:
+            $Value = $_GET[$Key];
+    }
+
+
+    $RemoveLimitLinks[] = "&nbsp;&nbsp;&nbsp;&nbsp;"
+        ."<a href='".$AF->baseUrl()."index.php?"
+        .http_build_query($NewParams)."' "
+        ."title='remove requirement'><b>[x]</b></a> "
+        .$Limit." is <i>".$Value."</i>";
+}
+
+$EventCountGraph = new LineChart();
+$EventCountGraph->data($H_EventsPerDay);
+$EventCountGraph->axisType(LineChart::AXIS_DATE);
+$EventCountGraph->yLabel("Activity per Day");
+$EventCountGraph->autoscale(true);
+$EventCountGraph->height(400);
+$EventCountGraph->makeAutosizing();
+
+if (!isset($_GET["T"])) {
+    $EventCountGraph->setLegendLabels([
+        "Select Record",
+        "View Record",
+        "Total",
+    ]);
+}
+
+print "<h1>EduLink Activity</h1>";
+
+$EventCountGraph->display("lti-events");
+
+print "<p class='pt-3'>";
+if (count($RemoveLimitLinks) > 0) {
+    print "<span style='font-size: 1.2em; line-height: 1.3em'>"
+        ."<b><u>Displaying activity where</u></b><br>"
+        .implode("<br>", $RemoveLimitLinks)."</span><br><br>";
+}
+print "Click any row in the tables below to filter the data displayed.";
+print "</p>";
+
+foreach (["Institutions", "Roles", "Classes", "Records", "IPAddresses"] as $Slot) {
+    $SlotLabel = ($Slot == "IPAddresses") ? "IP Addresses" : $Slot;
+
+
+    print "<h2 class='pt-2 mv-p-edulink-metrics-header'>".$SlotLabel."</h2>";
+
+    if ($Slot == "Roles") {
+        print "<div>".$Summary->getHtml()."</div>";
+        continue;
+    }
+
+    $TableFields = [
+        "Key" => [
+            "Heading" => STdLib::singularize($SlotLabel),
+            "Sortable" => false,
+            "ValueFunction" => function ($Item, $FieldId) use ($Slot) {
+                $ValueSuffix = "";
+                if ($Slot == "Records" && $Item["Key"] !== "<i>Other</i>") {
+                    $Record = Record::getRecord($Item["Key"]);
+                    $Title = $Record->getMapped("Title");
+                    $Value = "<a href='".updateUrl("RI", $Item["Key"])."'>"
+                        .$Title."</a>";
+                    $ValueSuffix = " <a href='".$Record->getViewPageUrl()."' "
+                        ."target='_blank' "
+                        ."title='Open \"".$Title."\" in a new tab.' "
+                        ."style='font-size: 0.75em; text-decoration: unset;' "
+                        .">&#x1F517;</a>";
+                } elseif ($Slot == "Institutions" && $Item["Key"] !== "<i>Other</i>") {
+                    $Value = getInstitutionName($Item["Key"]);
+                } elseif ($Slot === "Classes" && $Item["Key"] !== "<i>Other</i>") {
+                    $KeyParts = explode(":", $Item["Key"]);
+                    $Value = trim($KeyParts[1]);
+                } else {
+                    $Value = $Item["Key"];
+                }
+
+                return $Value.$ValueSuffix;
+            }
+        ],
+    ];
+
+    if ($Slot !== "Records") {
+        $TableFields["Key"]["LinkFunction"] = $LinkFunctions[$Slot];
+    }
+
+    if ($Slot == "Classes") {
+        $TableFields += [
+            "Institution" => [
+                "Heading" => "Institution",
+                "Sortable" => false,
+                "ValueFunction" => function ($Item, $FieldId) {
+                    if ($Item["Key"] == "<i>Other</i>") {
+                        return "";
+                    }
+
+                    $KeyParts = explode(":", $Item["Key"]);
+                    $Value = getInstitutionName((int)$KeyParts[0]);
+                    $Link = updateUrl("LI", $KeyParts[0]);
+
+                    $Html = "<a href='".$Link."'>".$Value."</a>";
+
+                    return $Html;
+                },
+            ]
+        ];
+    } elseif ($Slot == "Institutions") {
+        $TableFields += [
+            "Platform" => [
+                "Heading" => "LMS Platform",
+                "Sortable" => false,
+                "ValueFunction" => function ($Item, $FieldId) {
+                    if ($Item["Key"] == "<i>Other</i>") {
+                        return "";
+                    }
+
+                    return (new LMSRegistration($Item["Key"]))->getLms();
+                },
+            ]
+        ];
+    }
+
+    $TableFields += [
+        "Val" => [
+            "Heading" => "Count",
+            "Sortable" => false,
+            "AlignRight" => true,
+        ]
+    ];
+
+
+    printSummaryTable($H_Report[$Slot], $TableFields);
+}
+?>
+<script>
+$(".mv-p-edulink-metrics-header").on("click", function() {
+    $(this).next().toggle();
+});
+<?PHP if (!isset($_GET["IP"])) { ?>
+$(".mv-p-edulink-metrics-header:contains('IPAddress')").next().hide();
+<?PHP } ?>
+</script>
+<style type="text/css">
+.mv-p-edulink-metrics-header {
+    cursor: pointer;
+}
+</style>

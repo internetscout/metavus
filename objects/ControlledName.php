@@ -3,7 +3,7 @@
 #   FILE:  ControlledName.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2001-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2001-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -65,6 +65,7 @@ class ControlledName extends Item
      * @param int $FieldId ID of the MetadataField.
      * @return bool TRUE if there exists such controlled name,
      *       otherwise FALSE.
+     * @deprecated Use ControlledNameFactory::getItemIdByName() instead.
      */
     public static function controlledNameExists(string $Term, int $FieldId): bool
     {
@@ -73,7 +74,7 @@ class ControlledName extends Item
         $DB->query("SELECT * FROM ControlledNames".
                 " WHERE ControlledName = '".addslashes($Term).
                 "' AND FieldId = ".intval($FieldId));
-        return $DB->numRowsSelected() ? true : false;
+        return $DB->numRowsSelected() !== 0 ? true : false;
     }
 
     /**

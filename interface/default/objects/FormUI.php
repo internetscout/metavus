@@ -3,7 +3,7 @@
 #   FILE:  FormUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -154,7 +154,7 @@ class FormUI extends FormUI_Base
         ?string $TableCssClass = null
     ) : void {
         # display nothing if there are no fields
-        if (!count($this->FieldParams)) {
+        if (count($this->FieldParams) === 0) {
             return;
         }
 
@@ -204,8 +204,8 @@ class FormUI extends FormUI_Base
         if ($TableIsSectioned) {  print(" mv-table-sectioned");  }
         if (!is_null($TableCssClass)) {  print(" ".$TableCssClass);  }
         ?> mv-content-sysconfigtable mv-form-table"<?PHP
-        if ($TableId) {  print(" id=\"".$TableId."\"");  }
-        if ($TableStyle) {  print(" style=\"".$TableStyle."\"");  }
+        if ($TableId !== '' && $TableId !== '0') {  print(" id=\"".$TableId."\"");  }
+        if ($TableStyle !== null && $TableStyle !== '' && $TableStyle !== '0') {  print(" style=\"".$TableStyle."\"");  }
         print (" data-uniquekey=\"".$this->UniqueKey."\"");
         ?>>
         <?PHP
@@ -248,7 +248,7 @@ class FormUI extends FormUI_Base
                        data-group="<?= $GroupNumber ?>" data-cookie="<?= $CookieName ?>"
                        data-open="<?= $IsOpen ?>">
                 <?PHP if ($Params["Collapsible"]) { ?>
-                  (<span class="mv-form-group-indicator"><?= $IsOpen ? "-" : "+"; ?></span>)
+                  (<span class="mv-form-group-indicator"><?= $IsOpen !== 0 ? "-" : "+"; ?></span>)
                 <?PHP } ?>
                 <?= $Params["Label"] ?></th></tr>
                 </tbody>
@@ -337,7 +337,7 @@ $Params["Parameters"]
 
                 # set up CSS classes for row header cell
                 $HeaderClass = $IsTallRow ? "mv-content-tallrow-th" : "";
-                $HeaderClassAttrib = strlen($HeaderClass)
+                $HeaderClassAttrib = strlen($HeaderClass) !== 0
                         ? ' class="'.$HeaderClass.'"' : "";
 
                 # set up CSS classes for row label
@@ -435,10 +435,10 @@ $Params["Parameters"]
     public static function displayErrorBlock($UniqueKey = null): void
     {
         $ErrorText = "";
-        if (count(self::$ErrorMessages)) {
+        if (count(self::$ErrorMessages) !== 0) {
             $DisplayedMsgs = [];
             $Errors = self::getLoggedErrors($UniqueKey);
-            foreach ($Errors as $Field => $Msgs) {
+            foreach ($Errors as $Msgs) {
                 foreach ($Msgs as $Msg) {
                     if (!in_array($Msg, $DisplayedMsgs)) {
                         $ErrorText .= "<li>" . $Msg . "</li>\n";
@@ -447,7 +447,7 @@ $Params["Parameters"]
                 }
             }
         }
-        if (strlen($ErrorText)) {
+        if (strlen($ErrorText) !== 0) {
             print "<ul class=\"mv-form-error\">\n";
             print $ErrorText;
             print "</ul>\n";
@@ -550,7 +550,7 @@ $Params["Parameters"]
         $TextFieldsToCheck = [];
 
         # check for text fields that may contain images
-        foreach ($this->FieldParams as $Name => $Params) {
+        foreach ($this->FieldParams as $Params) {
             if (isset($Params["InsertIntoField"])
                     && (($Params["Type"] == self::FTYPE_FILE)
                             || ($Params["Type"] == self::FTYPE_IMAGE))) {
@@ -607,7 +607,7 @@ $Params["Parameters"]
                     "%<a [^>]*href=\""
                                 .preg_quote(htmlspecialchars($FileLink), '%')
                                 ."\"[^>]*>(.*?)</a>%",
-                    "\1",
+                    '$1',
                     $this->getFieldValue($FieldName)
                 );
             }
@@ -785,8 +785,9 @@ $Params["Parameters"]
                 : (isset($Params["Width"]) ? $Params["Width"] : 40);
         $MaxLen = isset($Params["MaxLength"]) ? $Params["MaxLength"] : "";
         # ENT_SUBSTITUTE, to supersede htmlspecialchars's default flags.
+        $AllowedKeywords = $Params["AllowedInsertionKeywords"] ?? [];
         $EscapedValue = htmlspecialchars(
-            $AF->escapeInsertionKeywords($Value ?? ""),
+            $AF->escapeInsertionKeywords($Value ?? "", $AllowedKeywords),
             ENT_SUBSTITUTE
         );
         print('<textarea rows="'.$Rows.'" cols="'.$Columns
@@ -972,14 +973,16 @@ $Params["Parameters"]
         array $Params
     ): void {
         $FieldName = $this->getFormFieldName($Name);
+        $FieldNameX = $FieldName."_X";
+        $FieldNameY = $FieldName."_Y";
         $ReadOnlyAttrib = $this->isReadOnlyField($Name) ? " readonly" : "";
         print '<input type="text" '
-                .' id="'.$FieldName.'" name="'.$FieldName.'_X"'
+                .' id="'.$FieldNameX.'" name="'.$FieldName.'_X"'
                 .' value="'.htmlspecialchars($Value["X"] ?? "").'"'
                 .' size="'.$Params["Size"].'" '
                 .$ReadOnlyAttrib.' />'
                 .'<input type="text" '
-                .' id="'.$FieldName.'" name="'.$FieldName.'_Y"'
+                .' id="'.$FieldNameY.'" name="'.$FieldName.'_Y"'
                 .' value="'.htmlspecialchars($Value["Y"] ?? "").'"'
                 .' size="'.$Params["Size"].'" '
                 .$ReadOnlyAttrib.' />';
@@ -1043,7 +1046,7 @@ $Params["Parameters"]
                 $AllowMultiple = $Params["AllowMultiple"];
             }
             $UFactory = new UserFactory();
-            $NameFn = function ($Key, $Val) use ($UFactory) {
+            $NameFn = function ($Key, $Val) use ($UFactory): string {
                 return $UFactory->userExists($Val) ?
                         (new User($Val))->name() : "" ;
             };
@@ -1070,12 +1073,12 @@ $Params["Parameters"]
         # filter out empty incoming values
         $Value = array_filter(
             $Value,
-            function ($x) {
+            function ($x): bool {
                 return strlen($x) > 0;
             }
         );
 
-        if (count($Value)) {
+        if (count($Value) !== 0) {
             # iterate over incoming values
             foreach ($Value as $Key => $Val) {
                 # pull out the corresponding name/id
@@ -1288,8 +1291,9 @@ $Params["Parameters"]
                     "CKEDITOR.instances['".$InsertField
                     ."'].insertHtml('".$FileLinkTag."');"
                 );
-                $InsertButtonHtml = '<button type="button" onclick="'
-                        .$InsertCommand.'">Insert</button>';
+                $InsertButtonHtml = '<button type="button"'
+                    .' class="btn btn-primary"'
+                    .' onclick="' .$InsertCommand.'">Insert</button>';
             }
 
             # add table row for file
@@ -1539,11 +1543,11 @@ $Params["Parameters"]
     }
 
     /**
-    * Check whether specified field should be displayed as checkboxes.
+    * Check whether specified field should be read-only.
     * @param string $Name Name of field.
     * @param ?array $Params Field parameters array.  [OPTIONAL, if not
     *       supplied, $this->FieldParams will be used]
-    * @return bool TRUE if field should use radio buttons, otherwise FALSE.
+    * @return bool TRUE if field should be read-only, otherwise FALSE.
     */
     private function isReadOnlyField(string $Name, ?array $Params = null): bool
     {

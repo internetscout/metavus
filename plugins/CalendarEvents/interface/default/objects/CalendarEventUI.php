@@ -154,13 +154,13 @@ class CalendarEventUI
       <div class="description"
             itemprop="description"><?= $Description; ?></div>
 
-        <?PHP if ($SafeUrl) { ?>
+        <?PHP if ($SafeUrl !== '' && $SafeUrl !== '0') { ?>
         <p><a class="url calendar_events-url"
               href="<?= $SafeUrl; ?>"><?= $SafeUrlDisplay; ?></a></p>
       <?PHP } ?>
 
       <div class="calendar_events-fancy_box">
-          <?PHP if ($HasCategories) { ?>
+          <?PHP if ($HasCategories !== 0) { ?>
           <section id="categories">
             <header><b><?= $SafeCategoriesLabel; ?>:</b></header>
             <ul class="list-inline calendar_events-categories"
@@ -177,11 +177,11 @@ class CalendarEventUI
           <section id="contact">
             <header><b>Contact:</b></header>
             <ul class="list-inline calendar_events-contact">
-              <?PHP if ($SafeContactEmail) { ?>
+              <?PHP if ($SafeContactEmail !== '' && $SafeContactEmail !== '0') { ?>
                 <li class="list-inline-item"><a href="mailto:<?= $SafeContactEmail; ?>"
                         title="E-mail the event organizer"><?= $SafeContactEmail; ?></a></li>
               <?PHP } ?>
-              <?PHP if ($SafeContactUrl) { ?>
+              <?PHP if ($SafeContactUrl !== '' && $SafeContactUrl !== '0') { ?>
                 <li class="list-inline-item"><a href="<?= $SafeContactUrl; ?>"
                         title="Go to the event organizer's contact page"><?= $SafeContactUrl; ?></a></li>
               <?PHP } ?>
@@ -189,7 +189,7 @@ class CalendarEventUI
           </section>
         <?PHP } ?>
 
-          <?PHP if ($HasAttachments) { ?>
+          <?PHP if ($HasAttachments !== 0) { ?>
           <section id="attachments">
             <header><b><?= $SafeAttachmentsLabel; ?>:</b></header>
             <ul class="list-inline calendar_events-attachments">
@@ -324,7 +324,7 @@ class CalendarEventUI
                   </span>
               <?PHP } ?>
           <?PHP } ?>
-          <?PHP if ($Location) { ?>
+          <?PHP if ($Location !== '' && $Location !== '0') { ?>
             <span class="location calendar_events-location"><?= $Location; ?></span>
           <?PHP } ?>
         </p>
@@ -333,7 +333,7 @@ class CalendarEventUI
       <div class="description calendar_events-description"
             itemprop="description"><?= $Description; ?></div>
 
-      <?PHP if ($SafeUrl) { ?>
+      <?PHP if ($SafeUrl !== '' && $SafeUrl !== '0') { ?>
         <p><a class="url calendar_events-url"
               href="<?= $SafeUrl; ?>"><?= $SafeUrlDisplay; ?></a></p>
       <?PHP } ?>
@@ -494,12 +494,12 @@ class CalendarEventUI
         }
 
         # if any of the location fields are set
-        if ($Event->locationString()) {
+        if (!in_array($Event->locationString(), ['', '0'], true)) {
             $MapUrl = $EventUrl."#location";
         }
 
         # if there are any attachments
-        if (count($Event->get("Attachments"))) {
+        if (count($Event->get("Attachments")) !== 0) {
             $AttachmentsUrl = $EventUrl."#attachments";
         }
 
@@ -515,10 +515,10 @@ class CalendarEventUI
     <?PHP if ($ContactUrl) { ?>
       <li class="list-inline-item"><a title="Contact the event organizer" href="<?= $SafeContactUrl; ?>"><img src="<?PHP $AF->pUIFile("at-sign_16".$FileSuffix.".png"); ?>" alt="Contact" /></a></li>
     <?PHP } ?>
-    <?PHP if ($MapUrl) { ?>
+    <?PHP if ($MapUrl !== null) { ?>
       <li class="list-inline-item"><a title="View this event on a map" href="<?= $SafeMapUrl; ?>"><img src="<?PHP $AF->pUIFile("marker_16".$FileSuffix.".png"); ?>" alt="Map" /></a></li>
     <?PHP } ?>
-    <?PHP if ($AttachmentsUrl) { ?>
+    <?PHP if ($AttachmentsUrl !== null) { ?>
       <li class="list-inline-item"><a title="View files attached to this event" href="<?= $SafeAttachmentsUrl; ?>"><img src="<?PHP $AF->pUIFile("paper-clip_16".$FileSuffix.".png"); ?>" alt="Attachments" /></a></li>
     <?PHP } ?>
   </ul>

@@ -12,25 +12,27 @@
     <StandardName>Screenshot</StandardName>
     <Name>Photo</Name>
   </StandardFieldMapping>
-  <AuthoringPrivileges>
-    <UsesAndLogic>FALSE</UsesAndLogic>
-    <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
-  </AuthoringPrivileges>
-  <EditingPrivileges>
-    <UsesAndLogic>FALSE</UsesAndLogic>
-    <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
-  </EditingPrivileges>
-  <ViewingPrivileges>
-    <UsesAndLogic>FALSE</UsesAndLogic>
-    <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
-    <AddCondition>
-      <Field>Record Status</Field>
-      <Value>Published</Value>
-    </AddCondition>
-    <AddCondition>
-      <Field>Added By Id</Field>
-    </AddCondition>
-  </ViewingPrivileges>
+  <SchemaPrivileges>
+    <AuthoringPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </AuthoringPrivileges>
+    <EditingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+    </EditingPrivileges>
+    <ViewingPrivileges>
+      <UsesAndLogic>FALSE</UsesAndLogic>
+      <AddPrivilege>PRIV_RESOURCEADMIN</AddPrivilege>
+      <AddCondition>
+        <Field>Record Status</Field>
+        <Value>Published</Value>
+      </AddCondition>
+      <AddCondition>
+        <Field>Added By Id</Field>
+      </AddCondition>
+    </ViewingPrivileges>
+  </SchemaPrivileges>
   <MetadataField>
     <Name>Title</Name>
     <Type>TEXT</Type>
@@ -227,6 +229,21 @@ Alternate titles should include the full spelling of any abbreviations or number
     <TextFieldSize>100</TextFieldSize>
   </MetadataField>
   <MetadataField>
+    <Name>Image File Name</Name>
+    <Type>TEXT</Type>
+    <Description>Name used when downloading the original image file.</Description>
+    <Editable>0</Editable>
+    <Enabled>1</Enabled>
+    <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
+    <IncludeInKeywordSearch>1</IncludeInKeywordSearch>
+    <IncludeInSortOptions>1</IncludeInSortOptions>
+    <MaxLength>120</MaxLength>
+    <Optional>1</Optional>
+    <RecommenderWeight>1</RecommenderWeight>
+    <SearchWeight>10</SearchWeight>
+    <TextFieldSize>80</TextFieldSize>
+  </MetadataField>
+  <MetadataField>
     <Name>Internal Notes</Name>
     <Type>PARAGRAPH</Type>
     <AllowHTML>1</AllowHTML>
@@ -278,6 +295,7 @@ Alternate titles should include the full spelling of any abbreviations or number
     <Name>Record Status</Name>
     <Type>OPTION</Type>
     <Description>This internal administrative feature allows resource administrators to withhold record from public view and searching. Intended to provide a method for internal review and editing. The record will only be available for view by authorized resource editors and site administrator and is not available in the Advanced search. This is a required field. Required fields may not be customized as to the field type or disabled. In the Administration database editor feature, portal administrators may set the default value for this field.</Description>
+    <VocabularyFile>plugins/PhotoLibrary/install/Vocabulary--Record-Status.voc</VocabularyFile>
     <Editable>1</Editable>
     <EditingPrivileges>
       <UsesAndLogic>FALSE</UsesAndLogic>

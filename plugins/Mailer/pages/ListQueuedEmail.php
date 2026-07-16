@@ -29,7 +29,7 @@ $DB = new Database();
 $WhereClause = "";
 
 # add in SQL conditions for the given search
-if (strlen($H_SearchString)) {
+if (strlen($H_SearchString) !== 0) {
     $Vars = ["FromAddr", "ToAddr", "Mailer_StoredEmailName" ];
     $Conditions = [];
     foreach ($Vars as $Var) {
@@ -40,14 +40,14 @@ if (strlen($H_SearchString)) {
 
 # add in SQL conditions for the template
 if ($H_SelectedTemplate >= 0) {
-    if (strlen($WhereClause)) {
+    if (strlen($WhereClause) !== 0) {
         $WhereClause .= " AND ";
     }
     $WhereClause .= "TemplateId = ".intval($H_SelectedTemplate);
 }
 
 # prepend the WHERE if we have any conditions
-if (strlen($WhereClause)) {
+if (strlen($WhereClause) !== 0) {
     $WhereClause = " WHERE ".$WhereClause;
 }
 

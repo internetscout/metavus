@@ -17,13 +17,14 @@
         <Type>MDFTYPE_OPTION</Type>
         <Description>The blog name which this entry is from.</Description>
         <Owner>Blog</Owner>
-        <AuthoringPrivileges>2</AuthoringPrivileges>
-        <EditingPrivileges>2</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_NEWSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_NEWSADMIN</EditingPrivileges>
         <Optional>0</Optional>
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
         <SearchWeight>3</SearchWeight>
+        <VocabularyEditable>0</VocabularyEditable>
     </MetadataField>
     <MetadataField>
         <Name>Title</Name>
@@ -36,8 +37,8 @@
         <IncludeInRecommender>1</IncludeInRecommender>
         <SearchWeight>5</SearchWeight>
         <RecommenderWeight>5</RecommenderWeight>
-        <AuthoringPrivileges>2</AuthoringPrivileges>
-        <EditingPrivileges>2</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_NEWSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_NEWSADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
         <Name>Body</Name>
@@ -52,8 +53,8 @@
         <RecommenderWeight>1</RecommenderWeight>
         <AllowHTML>1</AllowHTML>
         <UseWysiwygEditor>1</UseWysiwygEditor>
-        <AuthoringPrivileges>2</AuthoringPrivileges>
-        <EditingPrivileges>2</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_NEWSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_NEWSADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
         <Name>Summary</Name>
@@ -78,8 +79,8 @@
         <IncludeInRecommender>1</IncludeInRecommender>
         <SearchWeight>1</SearchWeight>
         <RecommenderWeight>1</RecommenderWeight>
-        <AuthoringPrivileges>2</AuthoringPrivileges>
-        <EditingPrivileges>2</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_NEWSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_NEWSADMIN</EditingPrivileges>
         <AllowMultiple>1</AllowMultiple>
     </MetadataField>
     <MetadataField>
@@ -92,8 +93,9 @@
         <IncludeInRecommender>1</IncludeInRecommender>
         <SearchWeight>3</SearchWeight>
         <RecommenderWeight>3</RecommenderWeight>
-        <AuthoringPrivileges>2</AuthoringPrivileges>
-        <EditingPrivileges>2</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_NEWSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_NEWSADMIN</EditingPrivileges>
+        <VocabularyEditable>0</VocabularyEditable>
     </MetadataField>
     <MetadataField>
         <Name>Notifications Sent</Name>
@@ -129,8 +131,8 @@
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
         <SearchWeight>1</SearchWeight>
-        <AuthoringPrivileges>1</AuthoringPrivileges>
-        <EditingPrivileges>1</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
         <Name>Date of Modification</Name>
@@ -145,8 +147,8 @@
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
         <SearchWeight>1</SearchWeight>
-        <AuthoringPrivileges>1</AuthoringPrivileges>
-        <EditingPrivileges>1</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
         <Name>Date of Publication</Name>
@@ -165,8 +167,8 @@
         <IncludeInRecommender>0</IncludeInRecommender>
         <SearchWeight>1</SearchWeight>
         <RecommenderWeight>0</RecommenderWeight>
-        <AuthoringPrivileges>2</AuthoringPrivileges>
-        <EditingPrivileges>2</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_NEWSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_NEWSADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
         <Name>Author</Name>
@@ -181,9 +183,11 @@
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
         <SearchWeight>3</SearchWeight>
-        <UserPrivilegeRestrictions>2</UserPrivilegeRestrictions>
-        <AuthoringPrivileges>1</AuthoringPrivileges>
-        <EditingPrivileges>1</EditingPrivileges>
+        <UserPrivilegeRestrictions>
+          <Privilege>PRIV_NEWSADMIN</Privilege>
+        </UserPrivilegeRestrictions>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
     </MetadataField>
     <MetadataField>
         <Name>Editor</Name>
@@ -194,12 +198,14 @@
         <Optional>0</Optional>
         <UpdateMethod>OnRecordEdit</UpdateMethod>
         <TriggersAutoUpdates>0</TriggersAutoUpdates>
-        <UserPrivilegeRestrictions>2</UserPrivilegeRestrictions>
+        <UserPrivilegeRestrictions>
+          <Privilege>PRIV_NEWSADMIN</Privilege>
+        </UserPrivilegeRestrictions>
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>1</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
         <SearchWeight>1</SearchWeight>
-        <AuthoringPrivileges>1</AuthoringPrivileges>
-        <EditingPrivileges>1</EditingPrivileges>
+        <AuthoringPrivileges>PRIV_SYSADMIN</AuthoringPrivileges>
+        <EditingPrivileges>PRIV_SYSADMIN</EditingPrivileges>
     </MetadataField>
 </MetadataSchema>

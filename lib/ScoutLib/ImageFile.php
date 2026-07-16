@@ -72,7 +72,7 @@ abstract class ImageFile
             return self::$MimeTypes[$this->format()];
         }
 
-        if (strlen($this->SourceFileName)) {
+        if (strlen($this->SourceFileName) !== 0) {
             return mime_content_type($this->SourceFileName);
         }
 
@@ -195,7 +195,7 @@ abstract class ImageFile
         # for each possible supported format
         foreach (self::$ImageFileExtensions as $ImageType => $ImageExtension) {
             # if format is supported
-            if ($ImageType & $SupportedFormats) {
+            if (($ImageType & $SupportedFormats) !== 0) {
                 # add format extension to list of supported image format names
                 $FormatNames[] = strtoupper($ImageExtension);
             }

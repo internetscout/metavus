@@ -15,7 +15,6 @@ use Metavus\Plugins\PhotoLibrary;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\HtmlTable;
 use ScoutLib\PluginManager;
-use ScoutLib\StdLib;
 
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
@@ -37,7 +36,7 @@ function getPhotoDetailInfoTables(Record $Record): array
         foreach ($FieldGroup as $FieldName) {
             $Label = $FieldName;
             $Value = $Record->get($FieldName);
-            if (is_null($Value) || (is_array($Value) && empty($Value))) {
+            if (is_null($Value) || (is_array($Value) && $Value === [])) {
                 continue;
             }
 
@@ -77,7 +76,7 @@ function getPhotoDetailInfoTables(Record $Record): array
                 case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
                 case MetadataSchema::MDFTYPE_TREE:
                     $Urls = [];
-                    foreach ($Value as $ValueId => $ValueName) {
+                    foreach ($Value as $ValueName) {
                         $Urls[] = getSearchLinkedVersionOfValue(
                             $ValueName,
                             $Field
@@ -95,10 +94,13 @@ function getPhotoDetailInfoTables(Record $Record): array
             $Details[] = [ $Label, $Value ?? "-" ];
         }
 
-        if (count($Details)) {
+        if (count($Details) !== 0) {
             $DetailsTable = new HtmlTable();
-            $DetailsTable->setTableClass("table table-borderless bg-light");
-            $DetailsTable->addRowsWithHeaders($Details);
+            $DetailsTable->setTableClass("col");
+            $DetailsTable->addRowsWithHeaders($Details, "mv-field-row");
+            $DetailsTable->isPseudoTable(true);
+            $DetailsTable->addClassForColumn(0, "col-4");
+            $DetailsTable->addClassForColumn(1, "col-8");
             $DetailsTables[] = $DetailsTable;
         }
     }
@@ -118,7 +120,7 @@ function getSearchLinkedVersionOfValue(
 ): string {
     $SearchParams = new SearchParameterSet();
     $SearchParams->addParameter("=".$Value, $Field);
-    $SearchUrl = "index.php?P=SearchResults&".$SearchParams->UrlParameterString();
+    $SearchUrl = "index.php?P=SearchResults&".$SearchParams->urlParameterString();
 
     # italicize controlled name and tree values
     $AnchorValue = htmlspecialchars($Value);

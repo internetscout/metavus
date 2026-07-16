@@ -1,0 +1,18 @@
+.js-plotly-plot {
+    .plot-container {
+        .svg-container {
+            margin: auto;
+
+            text.slicetext {
+                fill: white !important;
+                font-weight: bold !important;
+            }
+
+            g.hovertext {
+                text {
+                    fill: white !important;
+                }
+            }
+        }
+    }
+}

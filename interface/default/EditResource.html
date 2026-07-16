@@ -10,16 +10,16 @@
 
 namespace Metavus;
 
-use Exception;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 /**
- * Print main action buttons for page
- * @param string $Mode mode page is in (add/edit/confirm delete)
+ * Print main action buttons for page.
+ * @param string $Mode Mode page is in (add/edit/confirm delete).
  * @return void
  */
-function printButtons(string $Mode): void
+function printButtons(string $Mode, bool $CanDelete): void
 {
     $CancelButton = new HtmlButton("Cancel");
     $CancelButton->setIcon("Cross.svg");
@@ -36,17 +36,26 @@ function printButtons(string $Mode): void
             $SaveButton->setIcon("Disk.svg");
             $DuplicateButton = new HtmlButton("Duplicate");
             $DuplicateButton->setIcon("Copy.svg");
-            $DeleteButton = new HtmlButton("Delete");
-            $DeleteButton->setIcon("Delete.svg");
-            $DeleteButton->addSemanticClass("btn-danger");
-            $Buttons = [$SaveButton, $DuplicateButton, $DeleteButton, $CancelButton];
+
+            if ($CanDelete) {
+                $DeleteButton = new HtmlButton("Delete");
+                $DeleteButton->setIcon("Delete.svg");
+                $DeleteButton->addSemanticClass("btn-danger");
+                $Buttons = [$SaveButton, $DuplicateButton, $DeleteButton, $CancelButton];
+            } else {
+                $Buttons = [$SaveButton, $DuplicateButton, $CancelButton];
+            }
             break;
 
         case "Confirm Delete":
-            $ConfirmButton = new HtmlButton("Confirm");
-            $ConfirmButton->setIcon("Check.svg");
-            $ConfirmButton->addSemanticClass("btn-danger");
-            $Buttons = [$ConfirmButton, $CancelButton];
+            if ($CanDelete) {
+                $ConfirmButton = new HtmlButton("Confirm");
+                $ConfirmButton->setIcon("Check.svg");
+                $ConfirmButton->addSemanticClass("btn-danger");
+                $Buttons = [$ConfirmButton, $CancelButton];
+            } else {
+                $Buttons = [$CancelButton];
+            }
             break;
 
         default:
@@ -55,132 +64,266 @@ function printButtons(string $Mode): void
     }
 
     foreach ($Buttons as $Button) {
-        print $Button->getHtml() . " ";
+        print $Button->getHtml()." ";
     }
 }
 
 # ----- SETUP ----------------------------------------------------------------
-if (!isset($H_ErrorNoResource) || !is_bool($H_ErrorNoResource)) {
-    throw new Exception("Variable \$H_ErrorNoResource not set or is the wrong type.");
+
+$User = User::getCurrentUser();
+$ResourceId = StdLib::getFormValue("ID");
+$ButtonPushed = StdLib::getFormValue("Submit");
+
+$ResourceExists = ($ResourceId !== null
+    && is_numeric($ResourceId)
+    && Record::itemExists((int)$ResourceId));
+
+# find the mode
+if ($ButtonPushed == "Delete") {
+    $Mode = "Confirm Delete";
+} elseif ($ButtonPushed == "Confirm") {
+    $Mode = "Delete";
+} elseif (($ResourceId == "NEW") ||
+        ($ResourceExists && Record::getRecord((int)$ResourceId)->isTempRecord())) {
+    $Mode = "Add";
+} else {
+    $Mode = "Edit";
 }
-if (!isset($H_Mode) || !is_string($H_Mode)) {
-    throw new Exception("Variable \$H_Mode not set or is the wrong type.");
-}
-if (!$H_ErrorNoResource) {
-    if (!isset($H_Resource) || !($H_Resource instanceof Record)) {
-        throw new Exception("Variable \$H_Resource not set or is the wrong type.");
+
+# if ResourceId was absent or invalid
+if (!$ResourceExists && $ResourceId != "NEW") {
+    # for users without one of required privileges, display Unauthorized Access page
+    User::requirePrivilege(
+        PRIV_RESOURCEADMIN,
+        PRIV_COLLECTIONADMIN,
+        PRIV_RELEASEADMIN
+    );
+
+    # for users that do have these privs, we'll give a more specific error
+    print "<h1>".$Mode." Record</h1><p class='alert alert-danger'>";
+    if (!isset($ResourceId)) {
+        print "No Record ID was specified.</p>";
+    } elseif ($ResourceId == "NEW") {
+        print "Insufficient privileges to create Record</p>";
+    } else {
+        print "No Record found with the specified ID.</p>";
     }
-    if (!isset($H_ResourceId) || !is_string($H_ResourceId)) {
-        throw new Exception("Variable \$H_ResourceId not set or is the wrong type.");
-    }
-    if (!isset($H_RecordEditingUI) || !($H_RecordEditingUI instanceof RecordEditingUI)) {
-        throw new Exception("Variable \$H_RecordEditingUI not set or is the wrong type.");
-    }
+
+    return;
 }
 
 $AF = ApplicationFramework::getInstance();
 
-$SafeResourceName = isset($H_Resource) ?
-    $H_Resource->getSchema()->resourceName() : "Record";
-
-# set page title
-$AF->setPageTitle($H_Mode." ".$SafeResourceName);
-
-# handle error reporting
-if ($H_ErrorNoResource) {
-    print "<h1>".$H_Mode." ".$SafeResourceName."</h1>"
-        ."<p class='alert alert-danger'>";
-
-    if (!isset($H_ResourceId)) {
-        print "No ". $SafeResourceName." ID was specified.</p>";
-        return;
-    } elseif ($H_ResourceId == "NEW") {
-        print "Insufficient privileges to create " . $SafeResourceName . "</p>";
-        return;
-    }
-
-    print "No ".$SafeResourceName." found with the specified ID.</p>";
+# if this is a view (from editing complete form) or cancel
+if (isset($_POST["Submit"]) && $_POST["Submit"] == "View") {
+    $Record = Record::getRecord($ResourceId);
+    $AF->setJumpToPage($Record->isTempRecord() ? "Home" : $Record->getViewPageUrl());
     return;
 }
 
+# if creating a new resource was requested
+if ($ResourceId == "NEW") {
+    # retrieve schema for new resource
+    $SchemaId = $_GET["SC"] ?? MetadataSchema::SCHEMAID_DEFAULT;
+    $Schema = new MetadataSchema($SchemaId);
+
+    # bail out if user is not authorized to create new resources
+    if (!$Schema->userCanAuthor($User)) {
+        User::handleUnauthorizedAccess();
+        return;
+    }
+
+    # create new resource
+    $Resource = Record::create($SchemaId);
+} else {
+    # load resource to be edited
+    $Resource = Record::getRecord($ResourceId);
+}
+
+# bail out if user is not authorized to modify this resource
+if (!$Resource->userCanModify($User)) {
+    User::handleUnauthorizedAccess();
+    return;
+}
+
+$SafeResourceName = $Resource->getSchema()->resourceName();
+
 # get HTML for any extra buttons
-# (need to use $H_Resource->id() instead of $H_ResourceId
-# because $H_ResourceId is "NEW" when making a new record)
+# (need to use $Resource->id() instead of $ResourceId
+# because $ResourceId is "NEW" when making a new record)
 $TopButtonInsertionHtml = $AF->formatInsertionKeyword(
     "EDITRESOURCE-TOP-BUTTONS",
-    ["RecordId" => $H_Resource->id()]
+    ["RecordId" => $Resource->id()]
 );
 $BottomButtonInsertionHtml = $AF->formatInsertionKeyword(
     "EDITRESOURCE-BOTTOM-BUTTONS",
-    ["RecordId" => $H_Resource->id()]
+    ["RecordId" => $Resource->id()]
 );
 
+# redirect to correct URL if this is not the right editing page for record
+$EditUrl = $Resource->getSchema()->getEditPage();
+$EditUrlArgString = parse_url($EditUrl, PHP_URL_QUERY);
+$EditUrl = str_replace('$ID', (string)$ResourceId, $EditUrl);
+if ($EditUrlArgString !== false) {
+    parse_str($EditUrlArgString, $EditUrlArgs);
+    if (isset($EditUrlArgs["P"]) && ($EditUrlArgs["P"] != "EditResource")) {
+        if ($AF::cleanUrlSupportAvailable()) {
+            $EditUrl = $AF->getCleanRelativeUrlForPath($EditUrl);
+        }
+        $AF->setJumpToPage(ApplicationFramework::baseUrl().$EditUrl);
+        return;
+    }
+}
+
+# set up editing user interface
+$RecordEditingUI = new RecordEditingUI($Resource);
+
+if (in_array($Mode, ["Confirm Delete", "Delete"])) {
+    $RecordEditingUI->setAllFieldsReadOnly();
+}
+
+# ----- PROCESSING -----------------------------------------------------------
+
+# determine if user is allowed to delete records
+$CanDelete = $Resource->userCanDelete($User);
+
+# if no POST was provided, then update the ONRECORDEDIT fields and stop as
+# there's nothing more to do
+if ($_POST === []) {
+    $Resource->updateAutoupdateFields(
+        MetadataField::UPDATEMETHOD_ONRECORDEDIT,
+        $User
+    );
+} else {
+    # if a button in the EditingUI was pushed, process its actions
+    switch ($RecordEditingUI->getSubmitButtonValue()) {
+        case "Upload":
+            $RecordEditingUI->handleUploads();
+            break;
+
+        case "Delete":
+            $RecordEditingUI->handleDeletes();
+            break;
+    }
+
+    # take action as required
+    switch ($ButtonPushed) {
+        case "Save":
+        case "Add":
+            # if the input provided was valid
+            if ($RecordEditingUI->validateFieldInput() == 0) {
+                if ($ButtonPushed == "Add") {
+                    $Resource->isTempRecord(false);
+                }
+
+                $RecordEditingUI->saveChanges();
+
+                $AF->setJumpToPage("FullRecord&ID=".$Resource->id());
+                return;
+            }
+            break;
+
+        case "Confirm":
+            if ($CanDelete) {
+                $AF->addPostProcessingCall(
+                    function ($Resource): void {
+                        $Resource->destroy();
+                    },
+                    $Resource
+                );
+            }
+            break;
+
+        case "Duplicate":
+            $DupResource = Record::duplicate($Resource->id());
+
+            # return to editing page with duplicate
+            $AF->setJumpToPage("EditResource&ID=".$DupResource->id());
+            return;
+
+        case "Cancel":
+            $RecordEditingUI->deleteUploads();
+            $AF->setJumpToPage(
+                $Resource->isTempRecord() ? "Home" : $Resource->getViewPageUrl()
+            );
+            return;
+    }
+}
+
 # ----- DISPLAY --------------------------------------------------------------
+
+$AF->setPageTitle($Mode." ".$SafeResourceName);
 ?>
 <form name="EditForm" method="post" enctype="multipart/form-data"
-      action="index.php?P=EditResource&amp;ID=<?= $H_Resource->id();?>">
+      action="index.php?P=EditResource&amp;ID=<?= $Resource->id(); ?>">
   <div class="clearfix">
     <div class="float-start">
-      <h1><?= $H_Mode ?> <?= $SafeResourceName ?></h1>
+      <h1><?= $Mode ?> <?= $SafeResourceName ?></h1>
       <p><i>(required fields are <span class="mv-form-requiredfield">circled</span>)</i></p>
     </div>
     <div class="float-end">
-      <?PHP printButtons($H_Mode); ?>
+      <?PHP printButtons($Mode, $CanDelete); ?>
       <?= $TopButtonInsertionHtml; ?>
     </div>
   </div>
 
-  <?PHP if ($H_Mode == "Confirm Delete") { ?>
+  <?PHP if ($Mode == "Confirm Delete") { ?>
     <div class="alert alert-danger">
       <p>Once deleted, all data associated with this <?= $SafeResourceName ?> will be purged
         from the system and <b>CANNOT</b> be recovered.</p>
     </div>
-  <?PHP } elseif ($H_Mode == "Delete") { ?>
-    <div class="alert alert-success">
-      <p><?= $SafeResourceName ?> has been deleted.</p>
-    </div>
+  <?PHP } elseif ($Mode == "Delete") { ?>
+      <?PHP if ($CanDelete) { ?>
+        <div class="alert alert-success">
+          <p><?= $SafeResourceName ?> has been deleted.</p>
+        </div>
+      <?PHP } else { ?>
+        <div class="alert alert-danger">
+          <p>You do not have permission to delete records.</p>
+        </div>
+      <?PHP } ?>
   <?PHP } ?>
   <div class="mv-above-editform"><?PHP
     $AF = ApplicationFramework::getInstance();
-           $AF->signalEvent(
-               "EVENT_HTML_INSERTION_POINT",
-               [
-                   $AF->getPageName(),
-                   "Above Edit Form",
-                   [
-                       "Resource" => $H_Resource,
-                       "AddingNewResource" => $H_Resource->isTempRecord(),
-                   ]
-               ]
-           );
-            ?></div>
+    $AF->signalEvent(
+        "EVENT_HTML_INSERTION_POINT",
+        [
+            $AF->getPageName(),
+            "Above Edit Form",
+            [
+                "Resource" => $Resource,
+                "AddingNewResource" => $Resource->isTempRecord()
+            ]
+        ]
+    );
+    ?></div>
 
-  <?PHP $H_RecordEditingUI->displayErrorBlock(); ?>
-  <?PHP $H_RecordEditingUI->displayFormTable(); ?>
+  <?PHP $RecordEditingUI::displayErrorBlock(); ?>
+  <?PHP $RecordEditingUI->displayFormTable(); ?>
 
   <div class="float-end">
-    <?PHP printButtons($H_Mode); ?>
+    <?PHP printButtons($Mode, $CanDelete); ?>
     <?= $BottomButtonInsertionHtml; ?>
   </div>
   <?PHP
     $AF = ApplicationFramework::getInstance();
-        $AF->signalEvent(
-            "EVENT_HTML_INSERTION_POINT",
+    $AF->signalEvent(
+        "EVENT_HTML_INSERTION_POINT",
+        [
+            $AF->getPageName(),
+            "Bottom of Edit Form",
             [
-                $AF->getPageName(),
-                "Bottom of Edit Form",
-                [
-                    "Resource" => $H_Resource,
-                    "AddingNewResource" => $H_Resource->isTempRecord(),
-                ]
+                "Resource" => $Resource,
+                "AddingNewResource" => $Resource->isTempRecord()
             ]
-        );
-        ?>
+        ]
+    );
+    ?>
 </form>
 <div class="clearfix">&nbsp;</div>
 
 <script type="text/javascript">
-  var RecordId = parseInt('<?= $H_ResourceId; ?>');
+  var RecordId = parseInt('<?= $ResourceId; ?>');
   $(document).ready(function(){
       CKEDITOR.config.contentsCss.push('<?= $AF->gUIFile("MV-Theme-CKEditor.css"); ?>');
   });

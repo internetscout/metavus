@@ -116,7 +116,7 @@ function Blog_PrintComment(Message $Comment): void
 * @param string $Timestamp Timestamp to format.
 * @return string Returns a formatted timestamp.
 */
-function Blog_FormatTimestampForParsing($Timestamp)
+function Blog_FormatTimestampForParsing($Timestamp): string
 {
     $Timestamp = strtotime($Timestamp);
 
@@ -267,6 +267,7 @@ if ($BlogEntryFound) {
             $H_Blog->UserIsSubscribedToNotifications($User);
     $DisplayNotificationButton = $H_Blog->NotificationsCouldBeSent(null, $User);
     $NotificationButtonEnabled = $H_Blog->NotificationsCouldBeSent($H_Entry, $User);
+    $TestButtonEnabled = $H_Blog->NotificationsCouldBeSent($H_Entry, $User, false);
     $EntryFromEmailBlog = ($H_Entry->GetBlogId() == $H_Blog->getConfigSetting(
         "EmailNotificationBlog"
     ));
@@ -303,20 +304,24 @@ if ($BlogEntryFound) {
     $UnsubscribeButton->setIcon("BellMinus.svg");
     $UnsubscribeButton->setTitle("Unsubscribe from new blog entry e-mail");
     $UnsubscribeButton->setLink("index.php?P=P_Blog_Unsubscribe");
+    $UnsubscribeButton->setSize(HtmlButton::SIZE_SMALL);
 
     $SubscribeButton = new HtmlButton("Subscribe");
     $SubscribeButton->setIcon("BellPlus.svg");
     $SubscribeButton->setTitle("Subscribe to receive e-mail when new blog entries are posted");
     $SubscribeButton->setLink("index.php?P=P_Blog_Subscribe");
+    $SubscribeButton->setSize(HtmlButton::SIZE_SMALL);
 
     $TestEmailButton = new HtmlButton("Test Email");
     $TestEmailButton->setIcon("NotifyEmail.svg");
     $TestEmailButton->setTitle("Send test e-mail for this blog entry");
     $TestEmailButton->setLink("index.php?P=P_Blog_SendTestNotification&ID=$SafeId");
+    $TestEmailButton->setSize(HtmlButton::SIZE_SMALL);
 
     $NotifySubscribersButton = new HtmlButton("Notify Subscribers");
     $NotifySubscribersButton->setIcon("NotifyEmail.svg");
     $NotifySubscribersButton->setTitle($NotificationButtonHovertext);
+    $NotifySubscribersButton->setSize(HtmlButton::SIZE_SMALL);
     $SubscribeLink = "index.php?P=P_Blog_ConfirmNotifySubscribers&ID=$SafeId";
 
     $EditBlogEntryButton = new HtmlButton("Edit");
@@ -327,6 +332,7 @@ if ($BlogEntryFound) {
         $SafeId,
         $H_Entry->getSchema()->getEditPage()
     ));
+    $EditBlogEntryButton->setSize(HtmlButton::SIZE_SMALL);
 
     $SeeMoreButton = new HtmlButton("See More $BlogName");
     $SeeMoreButton->setIcon("Other.svg");
@@ -355,7 +361,7 @@ if ($BlogEntryFound) {
           <div class="col">
             <h1 class="blog-title" itemprop="headline"><?= $SafeTitle; ?></h1>
           </div>
-          <div class="col text-right">
+          <div class="col text-end">
             <?PHP if ($NotificationsEnabled && $EntryFromEmailBlog) { ?>
                 <?PHP if ($UserIsSubscribed) { ?>
                     <?= $UnsubscribeButton->getHtml(); ?>
@@ -365,8 +371,10 @@ if ($BlogEntryFound) {
             <?PHP } ?>
             <?PHP if ($H_Entry->UserCanEdit($User)) { ?>
                 <?PHP if ($DisplayNotificationButton && $EntryFromEmailBlog) { ?>
-                    <?PHP if ($NotificationButtonEnabled) { ?>
+                    <?PHP if ($TestButtonEnabled) { ?>
                         <?= $TestEmailButton->getHtml(); ?>
+                    <?PHP } ?>
+                    <?PHP if ($NotificationButtonEnabled) { ?>
                         <?PHP $NotifySubscribersButton->setLink($SubscribeLink); ?>
                         <?= $NotifySubscribersButton->getHtml(); ?>
                     <?PHP } else { ?>
@@ -403,7 +411,7 @@ if ($BlogEntryFound) {
 
     <div class="blog-body" itemprop="articleBody"><?= $Body; ?></div>
 
-    <?PHP if (count($Categories)) { ?>
+    <?PHP if (count($Categories) !== 0) { ?>
       <b>Categories:</b>
       <ul class="list-inline blog-categories" itemprop="keywords">
         <?PHP Blog_PrintCategories($Categories); ?>

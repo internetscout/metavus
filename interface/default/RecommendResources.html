@@ -14,46 +14,41 @@ use Metavus\Record;
 use Metavus\ResourceSummary;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
+use ScoutLib\HtmlTable;
 
 # ----- EXPORTED FUNCTIONS ---------------------------------------------------
 
 /**
- * Outputs each resource recommendation as html.
- * @param Record $Resource The resource recommendation to print.
- * @param string $FullRecordLink The resource full record page link.
- * @param bool $EditOkay TRUE if the message can be edited by the current user.
- * @param string $EditLink Where the user should go to edit the link.
- * @param int|null $CumulativeRating The cumulative rating of the resource.
- *     Note: NULL can be used to indicate that this resource was never rated before.
+ * Returns HTML string resource recommendation for given resource ID.
+ *
+ * @param int $ResourceId The ID for the resource to print recommendation for.
+ * @return string HTML for resource recommendation.
  */
-function PrintRecommendation(
-    Record $Resource,
-    string $FullRecordLink,
-    bool $EditOkay,
-    string $EditLink,
-    ?int $CumulativeRating
-): void {
-    $Summary = ResourceSummary::Create($Resource->id());
-    $Summary->Display();
-    ?>
-    <table class="table mv-recommendation-contain">
-        <tr>
-            <td align="right" colspan="5">
-                <a href="<?= "index.php?P=WhyRecommend&amp;rr=".$Resource->id() ?>"
-                        class="mv-why-recommend-link lightgray">
-                        <img class="mv-small-up-arrow" src="<?=
-                            ApplicationFramework::getInstance()->GUIFile("uparrow_small.gif") ?>"/>
-                        Why was the above resource recommended?</a>
-            </td>
-        </tr>
-    </table>
-    <?PHP
+function getRecommendationHtml(int $ResourceId): string
+{
+    $Summary = ResourceSummary::create($ResourceId);
+    $Html = $Summary->getHtml();
+
+    $ResourceTable = new HtmlTable();
+    $ResourceTable->setTableClass("table mv-recommendation-contain");
+    $ResourceTable->addRow([
+        "<a href=\"index.php?P=WhyRecommend&rr=" . $ResourceId . "\""
+        . " class=\"mv-why-recommend-link lightgray\">"
+        . " <img class=\"mv-small-up-arrow\" src=\""
+        . ApplicationFramework::getInstance()->gUIFile("uparrow_small.gif") . "\"/>"
+        . "Why was the above resource recommended?</a>"
+    ]);
+    $Html .= $ResourceTable->getHtml();
+
+    return $Html;
 }
 
 /**
-* Output resource recommendations.
-*/
-function PrintRecommendations(): void
+ * Returns HTML string of resource recommendations.
+ *
+ * @return string HTML for resource recommendations.
+ */
+function getRecommendationsHtml(): string
 {
     global $Recommendations;
     global $CurrentResourceId;
@@ -61,21 +56,17 @@ function PrintRecommendations(): void
     # make sure recommendations have been generated
     GetRecommendations();
 
+    $Html = "";
+
     # for each recommended result
     foreach ($Recommendations as $ResourceId => $Score) {
         # export resource ID for use by other functions
         $CurrentResourceId = $ResourceId;
 
-        # print entry
-        $Resource = new Record($ResourceId);
-        PrintRecommendation(
-            $Resource,
-            $Resource->getViewPageUrl(),
-            $Resource->UserCanEdit(User::getCurrentUser()),
-            $Resource->getEditPageUrl(),
-            $Resource->ScaledCumulativeRating()
-        );
+        # add entry to HTML
+        $Html .= getRecommendationHtml($ResourceId);
     }
+    return $Html;
 }
 
 /**
@@ -218,11 +209,11 @@ function GetRecommendations(): void
     $Recommender = new Recommender();
 
     # add filter function to return only released records
-    $Recommender->AddResultFilterFunction("FilterRecommendationsForReleasedRecords");
+    $Recommender->addResultFilterFunction("FilterRecommendationsForReleasedRecords");
 
     # get recommendations
-    $Recommendations = $Recommender->Recommend(
-        User::getCurrentUser()->Get("UserId"),
+    $Recommendations = $Recommender->recommend(
+        User::getCurrentUser()->get("UserId"),
         $StartingResult,
         $ResultsPerPage
     );
@@ -236,32 +227,49 @@ function GetRecommendations(): void
 function FilterRecommendationsForReleasedRecords(int $ResourceId): bool
 {
     $Resource = new Record($ResourceId);
-    return ($Resource->UserCanView(User::getCurrentUser()));
+    return ($Resource->userCanView(User::getCurrentUser()));
 }
 
 # ----- SETUP ----------------------------------------------------------------
 
 # verify that required incoming variable are set
-if (!isset($StartingResult)) {
-    throw new Exception("Variable \$StartingResult not set.");
+if (!isset($StartingResult) || !is_int($StartingResult)) {
+    throw new Exception("Variable \$StartingResult not set or is the wrong type.");
 }
 
 global $ResultsPerPage;
 
-$PreviousButton = new HtmlButton("← Previous");
-$PreviousButton->setLink("index.php?P=RecommendResources&sr="
-    . max(($StartingResult - $ResultsPerPage), 0));
+if (User::getCurrentUser()->isLoggedIn()) {
+    $ResourcesTable = new HtmlTable();
+    $ResourcesTable->setTableClass("table");
+    $ResourcesTable->addRow([getRecommendationsHtml()]);
+    if ($StartingResult > 0 || NextResultsAvailable()) {
+        $PreviousButton = new HtmlButton("← Previous");
+        $PreviousButton->setLink("index.php?P=RecommendResources&sr="
+            . max(($StartingResult - $ResultsPerPage), 0));
 
-$NextButton = new HtmlButton("Next →");
-$NextButton->setLink("index.php?P=RecommendResources&sr="
-    . ($StartingResult + $ResultsPerPage));
+        $NextButton = new HtmlButton("Next →");
+        $NextButton->setLink("index.php?P=RecommendResources&sr="
+            . ($StartingResult + $ResultsPerPage));
+
+        $FooterCell = "";
+        if ($StartingResult > 0) {
+            $FooterCell = "<span style='float: left;'>" . $PreviousButton->getHtml() . "</span>";
+        }
+        if (NextResultsAvailable()) {
+            $FooterCell .= "<span style='text-align: center; display: block;'>"
+                . $NextButton->getHtml() . "</span>";
+        }
+        $ResourcesTable->addFooterRow([$FooterCell]);
+    }
+}
 
 # ----- DISPLAY --------------------------------------------------------------
 ?>
 
 <h1>Recommended Resources</h1>
 
-<?PHP if (!User::getCurrentUser()->IsLoggedIn()) { ?>
+<?PHP if (!User::getCurrentUser()->isLoggedIn()) { ?>
 <p>
     You must have an account and be logged in to get recommendations.If you
     have an existing account, please <a href="index.php?P=Login">log in</a>.If
@@ -287,24 +295,6 @@ $NextButton->setLink("index.php?P=RecommendResources&sr="
     <?PHP PrintTotalNumberOfResults(); ?></b>
 </p>
 
-<table class="table">
-    <tbody><tr><td><?PHP PrintRecommendations(); ?></td></tr></tbody>
-    <?PHP if ($StartingResult > 0 || NextResultsAvailable()) { ?>
-    <tfoot>
-        <tr>
-            <td>
-                <?PHP if ($StartingResult > 0) {
-                    print $PreviousButton->getHtml();
-                } ?>
-            </td>
-            <td>
-                <?PHP if (NextResultsAvailable()) {
-                    print $NextButton->getHtml();
-                } ?>
-            </td>
-        </tr>
-    </tfoot>
-    <?PHP } ?>
-</table>
+    <?= $ResourcesTable->getHtml(); ?>
 
 <?PHP } ?>

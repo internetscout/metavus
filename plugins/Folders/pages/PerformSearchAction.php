@@ -3,7 +3,7 @@
 #   FILE:  PerformSearchAction.php (Folders plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -165,6 +165,13 @@ $SearchResults = performSearch(
     $SearchParams,
     $SortFieldName,
     $SortDescending
+);
+$SearchResults = $FoldersPlugin->filterSearchActionResults(
+    $SearchResults,
+    $SearchParams,
+    $Action,
+    $User,
+    $_GET
 );
 
 foreach ($SearchResults as $SchemaId => $Results) {
