@@ -2,7 +2,7 @@
 #
 #   FILE:  EditMessageTemplate.php (Mailer plugin)
 #
-#   Copyright 2012-2025 Edward Almasy and Internet Scout
+#   Copyright 2012-2026 Edward Almasy and Internet Scout
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -109,7 +109,7 @@ switch ($Action) {
                     # force value type to match argument type for subsequent calls
                     $Id = (int)$Id;
                     if (Record::itemExists($Id)) {
-                        $Resources[$Id] = new Record($Id);
+                        $Resources[$Id] = Record::getRecord($Id);
                     }
                 }
             }
@@ -124,7 +124,7 @@ switch ($Action) {
                 $Resources = [];
                 for ($Index = 0; $Index < $ResourceCount; $Index++) {
                     $Id = $Ids[random_int(0, max(0, count($Ids) - 1))];
-                    $Resources[$Id] = new Record($Id);
+                    $Resources[$Id] = Record::getRecord($Id);
                 }
             }
 

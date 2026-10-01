@@ -3,7 +3,7 @@
 #   FILE:  REFormatTSV.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -138,7 +138,7 @@ class REFormatTsv extends Plugin
         # iterate over the resources, extracting data on which schemas they belong to
         $Schemas = [];
         foreach ($ResourceIds as $Id) {
-            $Resource = new Record($Id);
+            $Resource = Record::getRecord($Id);
             if (!isset($Schemas[$Resource->getSchemaId()])) {
                 $Schemas[$Resource->getSchemaId()] = new MetadataSchema(
                     $Resource->getSchemaId()
@@ -206,7 +206,7 @@ class REFormatTsv extends Plugin
         $ExportedResourceCount = 0;
         foreach ($ResourceIds as $ResourceId) {
             # load resource
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
 
             # create an array representing the values we'll need to output,
             # with field names as keys that point to arrays of values

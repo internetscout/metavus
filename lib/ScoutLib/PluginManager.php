@@ -94,6 +94,9 @@ class PluginManager
 
     /**
      * Load and initialize plugins.
+     * Plugin file discovery is cached by findPluginFiles() for the duration
+     * of self::$PluginDirListExpirationPeriod, so run "mvus clearcache all"
+     * after adding new plugins.
      * @param bool $ForceLoading If TRUE, full plugin classes (rather than
      *      just .ini files, for disabled plugins) will always be loaded.
      *      (OPTIONAL, defaults to FALSE)
@@ -102,10 +105,9 @@ class PluginManager
      */
     public function loadPlugins(bool $ForceLoading = false): bool
     {
-        $ErrMsgs = [];
-
         # look for plugin files
         $this->PluginFiles = $this->findPluginFiles(self::$PluginDirectories);
+        $ErrMsgs = $this->CachedPluginFilesData["PluginFileErrors"];
 
         # load enabled/disabled state of all plugins
         $this->DB->query("SELECT BaseName, Enabled FROM PluginInfo");
@@ -443,17 +445,39 @@ class PluginManager
      */
     public static function clearCaches(): void
     {
-        $DB = new Database();
-        $DB->query(
-            "UPDATE PluginInfo SET DirectoryCache=NULL, DirectoryCacheLastUpdatedAt=NULL"
+        $AF = self::$AF ?? ApplicationFramework::getInstance();
+        $AF->getLock(
+            self::PLUGIN_FILES_CACHE_LOCK_NAME,
+            true,
+            self::LOCK_RETRY_TIME
         );
-        if (isset(self::$Instance)) {
-            self::$Instance->PluginDirLists = [];
+        try {
+            # clear cached plugin file and directory lists
+            $Cache = new DataCache(__CLASS__."-");
+            $Cache->delete(self::PLUGIN_FILES_CACHE_KEY);
+            $DB = new Database();
+            $DB->query(
+                "UPDATE PluginInfo SET DirectoryCache=NULL, DirectoryCacheLastUpdatedAt=NULL"
+            );
+            if (isset(self::$Instance)) {
+                self::$Instance->CachedPluginFilesData = null;
+                self::$Instance->PluginDirLists = [];
+            }
+        } finally {
+            $AF->releaseLock(self::PLUGIN_FILES_CACHE_LOCK_NAME);
         }
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
 
+    private const LOCK_RETRY_TIME = 0.25;
+
+    # DataCache key for discovered plugin files
+    private const PLUGIN_FILES_CACHE_KEY = "PluginFiles";
+    private const PLUGIN_FILES_CACHE_LOCK_NAME = __CLASS__ . ":FindPluginFiles";
+
+    private $CachedPluginFilesData = null;
+    private $DataCache;
     private $DB;
     private $ErrMsgs = [];
     private $PageFilePlugin = null;
@@ -488,6 +512,11 @@ class PluginManager
 
         # get our own database handle
         $this->DB = new Database();
+        $this->DataCache = new DataCache(__CLASS__."-");
+
+        # load cache of plugin files
+        $this->CachedPluginFilesData =
+                $this->DataCache->get(self::PLUGIN_FILES_CACHE_KEY);
 
         # load cache of plugin directories
         $this->loadDirectoryListCache();
@@ -503,12 +532,38 @@ class PluginManager
      * @param array $DirsToSearch Array of strings containing names of
      *       directories in which to look for plugin files.
      * @return array Array of plugin base file names, with base plugin names
-     *       for the index.
+     *       for the index. Discovery errors are stored in
+     *       $this->CachedPluginFilesData for later use by other methods.
      */
     private function findPluginFiles(array $DirsToSearch): array
     {
+        # use the cached result when the searched directories still match
+        $CachedData = $this->CachedPluginFilesData;
+        if (is_array($CachedData)
+                && ($CachedData["Directories"] === $DirsToSearch)) {
+            return $CachedData["PluginFiles"];
+        }
+
+        # prevent multiple requests from populating the cache concurrently
+        self::$AF->getLock(
+            self::PLUGIN_FILES_CACHE_LOCK_NAME,
+            true,
+            self::LOCK_RETRY_TIME
+        );
+
+        # check again after waiting for the lock in case another request
+        # populated the cache while this request was waiting
+        $CachedData = $this->DataCache->get(self::PLUGIN_FILES_CACHE_KEY);
+        if (is_array($CachedData)
+                && ($CachedData["Directories"] === $DirsToSearch)) {
+            $this->CachedPluginFilesData = $CachedData;
+            self::$AF->releaseLock(self::PLUGIN_FILES_CACHE_LOCK_NAME);
+            return $CachedData["PluginFiles"];
+        }
+
         # for each directory
         $PluginFiles = [];
+        $PluginFileErrors = [];
         foreach ($DirsToSearch as $Dir) {
             # if directory exists
             if (is_dir($Dir)) {
@@ -544,7 +599,7 @@ class PluginManager
                             # if we have not already found a plugin file for this plugin
                             if (!isset($PluginFiles[$PluginName])) {
                                 # record error
-                                $this->ErrMsgs[$PluginName][] =
+                                $PluginFileErrors[$PluginName][] =
                                         "Expected plugin file"
                                             ." <i>".$PluginName.".php</i>"
                                             ." not found in plugin subdirectory"
@@ -555,6 +610,22 @@ class PluginManager
                 }
             }
         }
+
+        $NewCachedData = [
+            "Directories" => $DirsToSearch,
+            "PluginFileErrors" => $PluginFileErrors,
+            "PluginFiles" => $PluginFiles,
+        ];
+        $this->CachedPluginFilesData = $NewCachedData;
+
+        # cache the discovered file list using the plugin directory cache TTL
+        # (DataCache expects seconds while the setting is in minutes)
+        $this->DataCache->set(
+            self::PLUGIN_FILES_CACHE_KEY,
+            $NewCachedData,
+            self::$PluginDirListExpirationPeriod * 60
+        );
+        self::$AF->releaseLock(self::PLUGIN_FILES_CACHE_LOCK_NAME);
 
         # return info about found plugins to caller
         return $PluginFiles;
@@ -998,6 +1069,7 @@ class PluginManager
             return;
         }
 
+        # load unexpired directory lists from the plugin information table
         $this->DB->query(
             "SELECT DirectoryCache, BaseName FROM PluginInfo "
                 ."WHERE DirectoryCache IS NOT NULL AND"

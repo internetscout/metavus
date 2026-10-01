@@ -3,7 +3,7 @@
 #   FILE:  SearchParameterSetEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -916,7 +916,7 @@ class SearchParameterSetEditingUI
                         $Id = (int)$Matches[1];
                         if (Record::itemExists($Id)) {
                             $ItemId = $Id;
-                            $CurVal = (new Record($ItemId))->getMapped("Title");
+                            $CurVal = (Record::getRecord($ItemId))->getMapped("Title");
                         }
                     }
                     break;

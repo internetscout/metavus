@@ -3,7 +3,7 @@
 #   FILE:  User.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -904,7 +904,7 @@ class User extends \ScoutLib\User
         }
 
         # construct the associated resource and return it
-        return new Record(array_shift($ResourceIds));
+        return Record::getRecord(array_shift($ResourceIds));
     }
 
     /**

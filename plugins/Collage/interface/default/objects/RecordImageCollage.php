@@ -3,7 +3,7 @@
 #   FILE:  RecordImageCollage.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -55,7 +55,7 @@ class RecordImageCollage
         $CollageHtml = "<div class=\"col mv-p-collage-wrapper\" style=\"height:"
             .$CollageHeight."px;\"><div class=\"mv-p-collage\">";
         foreach ($RecordIds as $Id) {
-            $Record = new Record($Id);
+            $Record = Record::getRecord($Id);
             $CollageHtml .= self::getHtmlForRecord($Record);
         }
         $CollageHtml .= "</div></div>";

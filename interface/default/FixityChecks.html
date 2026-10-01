@@ -2,7 +2,7 @@
 #   FILE:  FixityChecks.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -88,7 +88,7 @@ $FileFields = [
 
             $FieldId = getFileData($ItemId, "fieldId");
 
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
 
             $Title = $Record->getMapped("Title");
             if (is_null($Title)) {
@@ -133,7 +133,7 @@ $ImageFields = [
                 return "Invalid RecordId: ".$RecordId;
             }
 
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $Title = $Record->getMapped("Title");
             if (is_null($Title)) {
                 $Title = "<i>Record ".$Record->id()."</i>";

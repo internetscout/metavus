@@ -171,7 +171,7 @@ class PhotoLibrary extends Plugin
         $RFactory = new RecordFactory($this->getConfigSetting("MetadataSchemaId"));
         $Ids = $RFactory->getItemIds();
         foreach ($Ids as $Id) {
-            $Record = new Record($Id);
+            $Record = Record::getRecord($Id);
             $Record->destroy();
         }
 
@@ -356,7 +356,7 @@ class PhotoLibrary extends Plugin
                 # if field does not exist in our schema
                 if (!$Schema->fieldExists($Line)) {
                     # add error message for field
-                    $ErrMsgs[] = "Unknown metadata field \"".$Line."\".";
+                    $ErrMsgs[] = "Unknown metadata field \"".htmlspecialchars($Line)."\".";
                 }
             }
         }
@@ -443,7 +443,7 @@ class PhotoLibrary extends Plugin
                 continue;
             }
 
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             if ($Record->getSchemaId() !== $SchemaId
                     || !$Record->userCanViewMappedField($User, "Screenshot")) {
                 continue;
@@ -741,7 +741,7 @@ class PhotoLibrary extends Plugin
                 continue;
             }
 
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             if ($Record->getSchemaId() !== $SchemaId
                     || !$Record->userCanView($User)
                     || !$Record->userCanViewMappedField($User, "Screenshot")) {
@@ -878,7 +878,7 @@ class PhotoLibrary extends Plugin
         $ImageFileNameField = $Schema->getField(self::IMAGE_FILE_NAME_FIELD_NAME);
         $RFactory = new RecordFactory($this->getSchemaId());
         foreach ($RFactory->getItemIds() as $RecordId) {
-            $Record = new Record((int)$RecordId);
+            $Record = Record::getRecord((int)$RecordId);
             try {
                 # continue through the batch even if one record cannot be updated
                 $this->updateImageFileNameForRecord($Record);
@@ -921,7 +921,7 @@ class PhotoLibrary extends Plugin
         $Schema = new MetadataSchema($this->getSchemaId());
         if ($Schema->fieldExists(self::IMAGE_FILE_NAME_FIELD_NAME)) {
             Record::registerObserver(
-                Record::EVENT_ADD,
+                Record::EVENT_CREATE,
                 [$this, "handleRecordAdded"]
             );
         }
@@ -933,10 +933,7 @@ class PhotoLibrary extends Plugin
             }
 
             MetadataField::registerObserver(
-                MetadataField::EVENT_SET
-                    | MetadataField::EVENT_CLEAR
-                    | MetadataField::EVENT_ADD
-                    | MetadataField::EVENT_REMOVE,
+                MetadataField::EVENT_SET | MetadataField::EVENT_CLEAR,
                 [$this, "handleFilenameMetadataFieldChange"],
                 $Field->id()
             );
@@ -946,22 +943,17 @@ class PhotoLibrary extends Plugin
     /**
      * React to changes in fields that affect generated image file names.
      * @param int $Event Field observer event.
-     * @param int $RecordId ID of record whose field changed.
+     * @param Record $Record Record whose field changed.
      * @param MetadataField $Field Metadata field that changed.
-     * @param mixed $Value New value or changed values.
+     * @param array $Values Values removed or assigned.
      * @return void
      */
     public function handleFilenameMetadataFieldChange(
         int $Event,
-        int $RecordId,
+        Record $Record,
         MetadataField $Field,
-        $Value
+        array $Values
     ): void {
-        if (!Record::itemExists($RecordId)) {
-            return;
-        }
-
-        $Record = new Record($RecordId);
         if ($Record->getSchemaId() !== $this->getSchemaId()) {
             return;
         }
@@ -1102,7 +1094,7 @@ class PhotoLibrary extends Plugin
                 continue;
             }
 
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             if ($Record->getSchemaId() !== $SchemaId
                     || !$Record->userCanView($User)
                     || !$Record->userCanViewMappedField($User, "Screenshot")) {

@@ -79,7 +79,7 @@ $AF->setPageTitle("Display Photo Gallery");
         foreach ($H_ItemIds as $ItemId) {
             # ----- SETUP (WITHIN LOOP) --------------------------------------
             # retrieve basic item info
-            $Item = new Record($ItemId);
+            $Item = Record::getRecord($ItemId);
             $Title = htmlspecialchars($Item->getMapped("Title"));
             $Screenshots = $Item->getMapped("Screenshot", true);
 

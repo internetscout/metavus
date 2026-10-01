@@ -3,7 +3,7 @@
 #   FILE:  PageFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -52,7 +52,7 @@ class PageFactory extends RecordFactory
         $Ids = $this->getItemIds();
         foreach ($Ids as $Id) {
             # retrieve clean URL
-            $Page = new Page($Id);
+            $Page = Page::getRecord($Id);
             $Url = trim($Page->get("Clean URL") ?? "");
 
             # add to list if non-empty, including tabs
@@ -88,7 +88,7 @@ class PageFactory extends RecordFactory
         # for each page that was loaded
         foreach ($NewPages as $NewPageId) {
             # populate additional fields
-            $NewPage = new Page($NewPageId);
+            $NewPage = Page::getRecord($NewPageId);
             $NewPage->set("Added By Id", $AdminUserId);
             $NewPage->set("Last Modified By Id", $AdminUserId);
             $NewPage->set("Creation Date", date(StdLib::SQL_DATE_FORMAT));
@@ -124,7 +124,7 @@ class PageFactory extends RecordFactory
         $UpdatedPageIds = [];
 
         foreach ($PageIds as $PageId) {
-            $Page = new Page($PageId);
+            $Page = Page::getRecord($PageId);
 
             # get the list of pages using this url
             $Url = $Page->get("Clean URL");

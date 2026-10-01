@@ -3,7 +3,7 @@
 #   FILE:  ResourceSelectionUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -71,7 +71,7 @@ class ResourceSelectionUI
 
         $Result .= "<div class='mv-p-edulink-selected-records'>";
         foreach ($AllRecordIds as $RecordId) {
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $RecordUrl = $Record->getViewPageUrl();
             $IsSelected = isset($SelectedRecords[$RecordId]);
 

@@ -3,7 +3,7 @@
 #   FILE:  Entries.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -95,7 +95,7 @@ $EntryIds = array_slice(
 
 # load blog entries from IDs
 foreach ($EntryIds as $Id) {
-    $H_Entries[$Id] = new Entry($Id);
+    $H_Entries[$Id] = Entry::getRecord($Id);
 }
 
 # additional variables

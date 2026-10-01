@@ -712,7 +712,7 @@ class Folders extends Plugin
         }
 
         FullRecordHelper::setRecord(
-            new Record($RecordId)
+            Record::getRecord($RecordId)
         );
 
         $Folder = $this->getSelectedFolder();

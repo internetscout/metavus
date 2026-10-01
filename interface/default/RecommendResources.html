@@ -3,7 +3,7 @@
 #   FILE:  SysAdmin.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -226,7 +226,7 @@ function GetRecommendations(): void
 */
 function FilterRecommendationsForReleasedRecords(int $ResourceId): bool
 {
-    $Resource = new Record($ResourceId);
+    $Resource = Record::getRecord($ResourceId);
     return ($Resource->userCanView(User::getCurrentUser()));
 }
 

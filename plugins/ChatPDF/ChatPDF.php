@@ -3,7 +3,7 @@
 #   FILE: ChatPDF.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -68,7 +68,7 @@ class ChatPDF extends Plugin
             $FileFields = $Schema->getFields(MetadataSchema::MDFTYPE_FILE);
             foreach ($FileFields as $FileField) {
                 MetadataField::registerObserver(
-                    MetadataField::EVENT_ADD,
+                    MetadataField::EVENT_SET,
                     [$this, "observeFileUpload"],
                     $FileField->id()
                 );
@@ -77,7 +77,7 @@ class ChatPDF extends Plugin
 
         # register observer to listen to record update
         Record::registerObserver(
-            Record::EVENT_SET,
+            Record::EVENT_MODIFY,
             [$this, "observeRecordUpdate"]
         );
 
@@ -420,7 +420,7 @@ class ChatPDF extends Plugin
 
             # verify that field exists
             if (!MetadataSchema::fieldExistsInAnySchema($QualifiedFieldName)) {
-                return "\"".$QualifiedFieldName."\" is not a fully-qualified"
+                return "\"".htmlspecialchars($QualifiedFieldName)."\" is not a fully-qualified"
                    ." metadata field name in the <i>Actions</i> setting.";
             }
 
@@ -452,13 +452,14 @@ class ChatPDF extends Plugin
 
         # check if all pages in the field are valid and exist
         foreach ($Lines as $Line) {
+            $EscapedLine = htmlspecialchars($Line);
             $Line_url = parse_url($Line);
             if ($Line_url === false) {
-                return "The page ".$Line." is formatted incorrectly.";
+                return "The page ".$EscapedLine." is formatted incorrectly.";
             }
             $Page = (isset($Line_url["path"])) ? $Line_url["path"] : $Line;
             if (!$AF->isExistingPage($Page)) {
-                return "The page ".$Line." is not a valid existing page.";
+                return "The page ".$EscapedLine." is not a valid existing page.";
             }
         }
         return null;
@@ -470,14 +471,14 @@ class ChatPDF extends Plugin
      * record by uploading the files to ChatPDF and saving its answers to our
      * configured questions to the record.
      * @param int $Event MetadataField::EVENT_* value.
-     * @param int $RecordId The ID of the record to save ChatPDf responses to.
+     * @param Record $Record The record to save ChatPDF responses to.
      * @param MetadataField $FileField The file field that contains the uploaded
      *      files.
      * @param array $FileIds The list of uploaded files.
      */
     public function observeFileUpload(
         int $Event,
-        int $RecordId,
+        Record $Record,
         MetadataField $FileField,
         array $FileIds
     ): void {
@@ -495,7 +496,6 @@ class ChatPDF extends Plugin
         # add post processing call to add ChatPDF's responses AFTER all other
         # values from the record edit form have been saved to prevent responses
         # from being overwritten by destination form fields below the file field
-        $Record = new Record($RecordId);
         (ApplicationFramework::getInstance())->addPostProcessingCall(
             [$this, "processAutomaticUploadsForRecord"],
             $Record,
@@ -508,8 +508,8 @@ class ChatPDF extends Plugin
      * is used to populate any empty configured fields for the record. This
      * uses every file in each configured file field if every minimum retry
      * interval has passed.
-     * @param int $Event MetadataField::EVENT_* value.
-     * @param Record $Record The record to be processed.
+     * @param int $Event Record::EVENT_* value.
+     * @param Record $Record Record to be processed.
      */
     public function observeRecordUpdate(int $Event, Record $Record): void
     {
@@ -702,7 +702,7 @@ class ChatPDF extends Plugin
 
         $AF->requireUIFile("ChatPDF_Main.js");
 
-        $Record = new Record($RecordId);
+        $Record = Record::getRecord($RecordId);
         $UsablePrompts = $this->getUsableFieldsAndPromptsForRecord($Record);
 
         # don't display button if there are no prompts relating to the fields in this record
@@ -755,7 +755,7 @@ class ChatPDF extends Plugin
     public function handleManualButtonPress(int $RecordId, array $FileIds)
     {
         # get ChatPDF's responses for this record
-        $Record = new Record($RecordId);
+        $Record = Record::getRecord($RecordId);
         $FileIds = $this->getFileIdsApplicableToRecord($Record, $FileIds);
         return $this->processManualUploadsForRecord($Record, $FileIds);
     }
@@ -1407,7 +1407,7 @@ class ChatPDF extends Plugin
         # if we can process it now, dequeue it and process it
         # otherwise, break because we can't process more right now
         foreach ($RecordIds as $RecordId) {
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $FileIds = $this->getFileIdsForQueuedRecord($Record);
 
             # only dequeue and process the record if we're within both quotas

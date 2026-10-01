@@ -41,6 +41,12 @@ function RespondToUser($JumpToPage, $AjaxMessage): void
     }
 }
 
+# if user is already logged in, bounce to home
+if ($User->isLoggedIn()) {
+    RespondToUser("Home", "Success");
+    return;
+}
+
 # try to log user in
 $LoginResult = null;
 if (isset($_POST["F_UserName"]) && isset($_POST["F_Password"])) {

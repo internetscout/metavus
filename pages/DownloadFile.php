@@ -3,7 +3,7 @@
 #   FILE:  DownloadFile.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -34,7 +34,7 @@ $File = new File($FileId);
 
 # check whether user can view file
 if ($File->resourceId() != Record::NO_ITEM) {
-    $Resource = new Record($File->resourceId());
+    $Resource = Record::getRecord($File->resourceId());
     if ($File->fieldId() != Item::NO_ITEM) {
         $Field = MetadataField::getField($File->fieldId());
         $CanView = $Resource->userCanViewField($User, $Field);

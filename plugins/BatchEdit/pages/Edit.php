@@ -3,7 +3,7 @@
 #   FILE:  Edit.php (BatchEdit plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -31,7 +31,7 @@ $H_Folder = new Folder(intval($_GET["FI"]));
 # they belong to
 $H_Schemas = [];
 foreach ($H_Folder->GetItemIds() as $ResourceId) {
-    $Resource = new Record($ResourceId);
+    $Resource = Record::getRecord($ResourceId);
     $SchemaId = $Resource->getSchemaId();
 
     if (!isset($H_Schemas[$SchemaId])) {
@@ -74,7 +74,7 @@ if (isset($_POST["Submit"]) && $_POST["Submit"] == "Apply All Changes") {
 
     # iterate through all the items in this folder
     foreach ($H_Folder->GetItemIds() as $ResourceId) {
-        $Resource = new Record($ResourceId);
+        $Resource = Record::getRecord($ResourceId);
 
         # if we have any changes for resources in this schema
         if (count($ChangeData[$Resource->getSchemaId()]) !== 0) {

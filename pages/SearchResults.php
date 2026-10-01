@@ -71,16 +71,6 @@ $PluginMgr = PluginManager::getInstance();
 # assume load is normal
 $H_HighLoad = false;
 
-# check for access by bots
-if ($PluginMgr->pluginReady("BotDetector") &&
-    $PluginMgr->getPlugin("BotDetector")->CheckForBot()) {
-    $AF->doNotCacheCurrentPage();
-    $H_IsBot = true;
-    return;
-} else {
-    $H_IsBot = false;
-}
-
 # for anon users
 if (!$User->isLoggedIn()) {
     # check system load
@@ -93,6 +83,16 @@ if (!$User->isLoggedIn()) {
         $H_HighLoad = true;
         return;
     }
+}
+
+# check for access by bots
+if ($PluginMgr->pluginReady("BotDetector") &&
+    $PluginMgr->getPlugin("BotDetector")->CheckForBot()) {
+    $AF->doNotCacheCurrentPage();
+    $H_IsBot = true;
+    return;
+} else {
+    $H_IsBot = false;
 }
 
 # ----- CONFIGURATION  -------------------------------------------------------

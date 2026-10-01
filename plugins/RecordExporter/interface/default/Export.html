@@ -3,7 +3,7 @@
 #   FILE:  Export.html (RecordExporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -83,7 +83,7 @@ function GetSourceSchemas(array $AvailableSources): array
 
             $FolderSchemas = [];
             foreach ($Folder->getItemIds() as $ItemId) {
-                $Resource = new Record($ItemId);
+                $Resource = Record::getRecord($ItemId);
                 $FolderSchemas[$Resource->getSchemaId()] = true;
             }
 

@@ -3,7 +3,7 @@
 #   FILE:  DataCache.php
 #
 #   Part of the ScoutLib application support library
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://scout.wisc.edu
 #
 # @scout:phpstan
@@ -14,8 +14,9 @@ use MatthiasMullie\Scrapbook\Psr16\SimpleCache;
 
 /**
  * General-purpose data caching facility, providing a superset of the
- * standard PSR-16 simple cache interface.  For all methods, key prefixes
- * and keys cannot contain the following characters:  {}()/\@:
+ * standard PSR-16 simple cache interface. For all methods, keys and key
+ * prefixes cannot contain the following characters: {}()/\@. If backslashes
+ * do appear in key prefixes, they are automatically replaced with dashes.
  * @see https://www.php-fig.org/psr/psr-16/
  */
 class DataCache
@@ -26,13 +27,14 @@ class DataCache
     const CHARS_NOT_ALLOWED_IN_KEYS = [ "{", "}", "(", ")", "/", "\\", "@", ":" ];
 
     /**
-     * Class constructor.  Key prefixes (and keys) cannot contain the
-     * following characters:  {}()/\@:
+     * Class constructor.
+     * Key prefixes cannot contain the following characters: {}()/@:
+     * Any backslashes that appear in key prefixes will be replaced with dashes.
      * @param string $KeyPrefix Prefix to prepend to all keys.  (OPTIONAL)
      */
     public function __construct(string $KeyPrefix = "")
     {
-        $this->KeyPrefix = $KeyPrefix;
+        $this->KeyPrefix = str_replace("\\", "-", $KeyPrefix);
 
         if (!isset(self::$Cache)) {
             # instantiate KeyValueStore cache interface with MySQL for storage
@@ -63,10 +65,11 @@ class DataCache
      * @param mixed $Value The value of the item to store. Must be serializable.
      * @param ?int $Ttl The TTL value of this item, in seconds.  (OPTIONAL,
      *      defaults to no TTL, meaning that the goal is to store the data
-     *      indefinitely.)
+     *      indefinitely.)  (The type of this argument represents a small
+     *      deviation from PSR-16, which also allows DateInterval values.)
      * @return bool TRUE on success and FALSE on failure.
      */
-    public function set(string $Key, $Value, $Ttl = null): bool
+    public function set(string $Key, $Value, ?int $Ttl = null): bool
     {
         return self::$Cache->set($this->KeyPrefix.$Key, $Value, $Ttl);
     }
@@ -77,7 +80,7 @@ class DataCache
      * @return bool TRUE if the item was successfully removed, or FALSE
      *      if there was an error.
      */
-    public function delete($Key): bool
+    public function delete(string $Key): bool
     {
         return self::$Cache->delete($this->KeyPrefix.$Key);
     }
@@ -101,7 +104,7 @@ class DataCache
      * @return iterable A list of Key => Value pairs.  Cache keys that do
      *      not exist or are stale will have $Default as value.
      */
-    public function getMultiple($Keys, $Default = null): iterable
+    public function getMultiple(iterable $Keys, $Default = null): iterable
     {
         # add prefix to keys if one was set
         if ($this->KeyPrefix != "") {
@@ -137,7 +140,7 @@ class DataCache
      *      indefinitely.)
      * @return bool TRUE on success and FALSE on failure.
      */
-    public function setMultiple($Values, $Ttl = null): bool
+    public function setMultiple(iterable $Values, $Ttl = null): bool
     {
         # add prefix to keys if one was set
         if ($this->KeyPrefix != "") {
@@ -158,7 +161,7 @@ class DataCache
      * @return bool TRUE if the items were successfully removed. FALSE if
      *      there was an error.
      */
-    public function deleteMultiple($Keys): bool
+    public function deleteMultiple(iterable $Keys): bool
     {
         # add prefix to keys if one was set
         if ($this->KeyPrefix != "") {
@@ -182,7 +185,7 @@ class DataCache
      * @param string $Key The cache item key.
      * @return bool TRUE if item is found in cache, otherwise FALSE.
      */
-    public function has($Key): bool
+    public function has(string $Key): bool
     {
         return self::$Cache->has($this->KeyPrefix.$Key);
     }

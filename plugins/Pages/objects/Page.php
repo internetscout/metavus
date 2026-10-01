@@ -35,7 +35,7 @@ class Page extends Record
      * page, use Page::Create().).
      * @param int $PageId ID of the page to load.
      */
-    public function __construct($PageId)
+    protected function __construct($PageId)
     {
         # run base class constructor
         parent::__construct($PageId);
@@ -64,13 +64,11 @@ class Page extends Record
             throw new \Exception("Unnecessary and erroneous schema ID provided.");
         }
 
-        # create a resource
-        $Resource = Record::create(PageFactory::$PageSchemaId);
-
-        # reload resource as a page
-        $Id = $Resource->id();
-        unset($Resource);
-        $Page = new Page($Id);
+        # create page record using schema-specific class
+        $Page = parent::create(PageFactory::$PageSchemaId);
+        if (!($Page instanceof Page)) {
+            throw new \Exception("Page schema did not create a Page object.");
+        }
 
         # return page to caller
         return $Page;

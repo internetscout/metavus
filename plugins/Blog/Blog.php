@@ -3,7 +3,7 @@
 #   FILE:  Blog.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -348,7 +348,7 @@ class Blog extends Plugin
         }
 
         Record::registerObserver(
-            Record::EVENT_ADD | Record::EVENT_SET,
+            Record::EVENT_CREATE | Record::EVENT_MODIFY,
             [$this, "resourceEdited"]
         );
 
@@ -502,7 +502,7 @@ class Blog extends Plugin
 
         # delete each resource, including temp ones
         foreach ($ResourceFactory->getItemIds(null, true) as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $Resource->destroy();
         }
 
@@ -561,7 +561,7 @@ class Blog extends Plugin
             }
 
             # get the blog entry from the matched ID
-            $Entry = new Entry($Matches[2]);
+            $Entry = Entry::getRecord($Matches[2]);
 
             # return the replacement
             return "href=\"".defaulthtmlentities($Entry->entryUrl())."\"";
@@ -691,7 +691,7 @@ class Blog extends Plugin
         }
 
         # update the entry summary
-        $BlogEntryForResource = new Entry($Resource->id());
+        $BlogEntryForResource = Entry::getRecord($Resource->id());
         $BlogEntryForResource->set("Summary", $BlogEntryForResource->teaser(
             ($this->getConfigSetting("SummaryLength"))
         ));
@@ -820,7 +820,7 @@ class Blog extends Plugin
 
         # transform IDs to blog entry objects
         foreach ($Factory->getItemIds() as $ItemId) {
-            $Entries[$ItemId] = new Entry($ItemId);
+            $Entries[$ItemId] = Entry::getRecord($ItemId);
         }
 
         return $Entries;
@@ -846,7 +846,7 @@ class Blog extends Plugin
 
         # transform IDs to blog entry objects
         foreach ($Ids as $ItemId) {
-            $Entries[$ItemId] = new Entry($ItemId);
+            $Entries[$ItemId] = Entry::getRecord($ItemId);
         }
 
         return $Entries;
@@ -1410,7 +1410,7 @@ class Blog extends Plugin
 
         # delete all of them
         foreach ($EntryFactory->getItemIds() as $EntryId) {
-            $TgtEntry = new Entry($EntryId);
+            $TgtEntry = Entry::getRecord($EntryId);
             $TgtEntry->destroy();
         }
 
@@ -1767,7 +1767,7 @@ class Blog extends Plugin
             return null;
         }
 
-        return "Clean URL <b>".$CleanPrefix."</b> is already in use.";
+        return "Clean URL <b>".htmlspecialchars($CleanPrefix)."</b> is already in use.";
     }
 
     # parameters that we expect each blog to have

@@ -123,7 +123,7 @@ class MyResourceViews extends Plugin
             # if resource still exists
             if (Record::itemExists($View["ResourceId"])) {
                 # load resource
-                $Resource = new Record($View["ResourceId"]);
+                $Resource = Record::getRecord($View["ResourceId"]);
 
                 # if resource type should be displayed
                 #       and user can view the resource

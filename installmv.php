@@ -1399,7 +1399,7 @@ if (isset($this->FVars["F_EvenMoreDebug"])) {
         $REngine = new Recommender();
         foreach ($RecordIds as $RecordId) {
             # make sure record is publicly-viewable
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $Record->set("Record Status", "Published");
             $Record->set("Date Of Record Release", "NOW");
 

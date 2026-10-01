@@ -3,7 +3,7 @@
 #   FILE:  Record.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -42,33 +42,9 @@ class Record extends Item
     # events that can be monitored via registerObserver()
     # (TO DO: push down into ObserverSupportTrait once our minimum
     #   supported PHP version allows constants in traits (PHP 8.2))
-    const EVENT_SET = 1;
-    const EVENT_CLEAR = 2;
-    const EVENT_ADD = 4;
-    const EVENT_REMOVE = 8;
-
-    /**
-     * Object constructor for loading an existing record.(To create a new
-     * record, use Record::create().)
-     * @param int $RecordId ID of resource to load.
-     * @see Record::create()
-     * @throws InvalidArgumentException If ID is invalid.
-     */
-    public function __construct(int $RecordId)
-    {
-        # call parent contstructor to load info from DB
-        parent::__construct($RecordId);
-
-        # load local attributes from database value cache
-        $this->CumulativeRating = $this->DB->updateValue("CumulativeRating");
-
-        # load our local metadata schema
-        $this->SchemaId = $this->DB->updateValue("SchemaId");
-        if (!isset(self::$Schemas[$this->SchemaId])) {
-            self::$Schemas[$this->SchemaId] =
-                    new MetadataSchema($this->SchemaId);
-        }
-    }
+    const EVENT_MODIFY = 1;
+    const EVENT_CREATE = 4;
+    const EVENT_DESTROY = 8;
 
     /**
      * Create a new resource.
@@ -107,7 +83,7 @@ class Record extends Item
         $DB->query("UNLOCK TABLES");
 
         # instantiate newly-added record as object
-        $Record = new Record($Id);
+        $Record = self::getRecord($Id);
 
         # for each field that can have a default value
         $Schema = new MetadataSchema($SchemaId);
@@ -144,7 +120,7 @@ class Record extends Item
             "EVENT_RESOURCE_CREATE",
             ["Resource" => $Record]
         );
-        $Record->notifyObservers(self::EVENT_ADD);
+        $Record->notifyObservers(self::EVENT_CREATE);
 
         # return new Resource object to caller
         return $Record;
@@ -171,7 +147,7 @@ class Record extends Item
         }
 
         # load up resource to duplicate
-        $SrcResource = new Record($ResourceId);
+        $SrcResource = self::getRecord($ResourceId);
         $Schema = $SrcResource->getSchema();
 
         # create new target resource
@@ -255,7 +231,7 @@ class Record extends Item
             "EVENT_RESOURCE_DELETE",
             ["Resource" => $this]
         );
-        $this->notifyObservers(self::EVENT_REMOVE);
+        $this->notifyObservers(self::EVENT_DESTROY);
 
         # grab list of classifications
         $Classifications = $this->classifications();
@@ -363,17 +339,78 @@ class Record extends Item
         if (isset(self::$SchemaIdCache[$this->Id])) {
             unset(self::$SchemaIdCache[$this->Id]);
         }
+
+        # remove destroyed record from object cache
+        unset(self::$RecordCache[$this->Id]);
+        unset(self::$RecordCacheAccessSeqNums[$this->Id]);
+        unset(self::$WasPublic[$this->Id]);
     }
 
     /**
      * Get instance of record with appropriate class.
      * @param int $RecordId ID of record to load.
-     * @return mixed Instance of appropriate class.
+     * @return static Instance of appropriate class.
      */
     public static function getRecord(int $RecordId)
     {
-        $FQClassName = (new self($RecordId))->getSchema()->getItemClassName();
-        return new $FQClassName($RecordId);
+        # return cached record if available
+        if (isset(self::$RecordCache[$RecordId])) {
+            self::$RecordCacheAccessSeqCounter++;
+            self::$RecordCacheAccessSeqNums[$RecordId] =
+                    self::$RecordCacheAccessSeqCounter;
+            return self::$RecordCache[$RecordId];
+        }
+
+        # determine appropriate class for record
+        $SchemaId = self::getSchemaForRecord($RecordId);
+        if (!isset(self::$Schemas[$SchemaId])) {
+            self::$Schemas[$SchemaId] = new MetadataSchema($SchemaId);
+        }
+        $FQClassName = self::$Schemas[$SchemaId]->getItemClassName();
+
+        # instantiate and cache record
+        /** @var static $Record */
+        $Record = new $FQClassName($RecordId);
+        self::$RecordCache[$RecordId] = $Record;
+        self::$RecordCacheAccessSeqCounter++;
+        self::$RecordCacheAccessSeqNums[$RecordId] =
+                self::$RecordCacheAccessSeqCounter;
+        self::pruneRecordCache();
+
+        return $Record;
+    }
+
+    /**
+     * Clear all static caches maintained by Record.
+     * @return void
+     */
+    public static function clearCaches(): void
+    {
+        self::$RecordCache = [];
+        self::$RecordCacheAccessSeqCounter = 0;
+        self::$RecordCacheAccessSeqNums = [];
+        self::$SchemaIdCache = [];
+        self::$Schemas = [];
+    }
+
+    /**
+     * Instantiate record and call specified method with supplied parameters.
+     * This overriding of the Item method is needed so that getRecord() will
+     * be used to instantiate, rather than the constructor.
+     * @param int $Id ID of record to retrieve.
+     * @param string $MethodName Name of method to call.
+     * @param array $MethodArgs Arguments to pass to specified method.
+     * @return void
+     */
+    public static function callMethod($Id, $MethodName, ...$MethodArgs): void
+    {
+        $ClassName = get_called_class();
+        if (method_exists($ClassName, $MethodName)
+                && [$ClassName, "itemExists"]($Id)) {
+            $Record = self::getRecord((int)$Id);
+            // @phpstan-ignore-next-line
+            call_user_func_array([$Record, $MethodName], $MethodArgs);
+        }
     }
 
     /**
@@ -443,6 +480,10 @@ class Record extends Item
      */
     public function getSchema(): MetadataSchema
     {
+        if (!isset(self::$Schemas[$this->SchemaId])) {
+            self::$Schemas[$this->SchemaId] =
+                    new MetadataSchema($this->SchemaId);
+        }
         return self::$Schemas[$this->SchemaId];
     }
 
@@ -495,11 +536,17 @@ class Record extends Item
             self::$WasPublic[$this->id()] = $this->userCanView(User::getAnonymousUser());
         }
 
+        # preserve a distinct object representing the temporary record
+        $OldRecordId = $this->Id;
+        $DestroyedRecord = clone $this;
+
+        # notify observers before replacing the temporary ID
+        $DestroyedRecord->notifyObservers(self::EVENT_DESTROY);
+
         # lock DB tables to prevent next ID from being grabbed
         $DB->query("LOCK TABLES `".$this->ItemTableName."` WRITE");
 
         # get next resource ID as appropriate
-        $OldRecordId = $this->Id;
         $this->Id = $Factory->getNextItemId();
 
         # change resource ID
@@ -517,6 +564,16 @@ class Record extends Item
 
         # release DB tables
         $DB->query("UNLOCK TABLES");
+
+        # move record and schema cache entries to permanent ID
+        unset(self::$RecordCache[$OldRecordId]);
+        unset(self::$RecordCacheAccessSeqNums[$OldRecordId]);
+        self::$RecordCache[$this->Id] = $this;
+        self::$RecordCacheAccessSeqCounter++;
+        self::$RecordCacheAccessSeqNums[$this->Id] =
+                self::$RecordCacheAccessSeqCounter;
+        unset(self::$SchemaIdCache[$OldRecordId]);
+        self::$SchemaIdCache[$this->Id] = $this->SchemaId;
 
         # clear internal caches
         unset($this->ClassificationCache);
@@ -543,20 +600,25 @@ class Record extends Item
         self::$WasPublic[$this->id()] = self::$WasPublic[$OldRecordId];
         unset(self::$WasPublic[$OldRecordId]);
 
-        # and run housekeeping
+        # run promotion housekeeping without emitting a modification event
         $User = User::getCurrentUser();
-        $this->doHousekeepingAfterChangeToRecord(
-            $User->id(),
-            self::$WasPublic[$this->id()],
-            true,
-            true
-        );
+        $this->SuppressModifyNotification = true;
+        try {
+            $this->doHousekeepingAfterChangeToRecord(
+                $User->id(),
+                self::$WasPublic[$this->id()],
+                true,
+                true
+            );
+        } finally {
+            $this->SuppressModifyNotification = false;
+        }
 
         (ApplicationFramework::getInstance())->signalEvent(
             "EVENT_RESOURCE_ADD",
             ["Resource" => $this]
         );
-        $this->notifyObservers(self::EVENT_ADD);
+        $this->notifyObservers(self::EVENT_CREATE);
 
         return $NewSetting;
     }
@@ -870,7 +932,7 @@ class Record extends Item
 
                     while (false !== ($Record = $this->DB->fetchRow())) {
                         $ReferenceId = $Record["DstRecordId"];
-                        $Reference = new Record($ReferenceId);
+                        $Reference = self::getRecord($ReferenceId);
                         $ReturnValue[$ReferenceId] = $Reference;
                     }
                 # return each reference as a resource ID
@@ -1290,6 +1352,9 @@ class Record extends Item
             self::$WasPublic[$this->id()] = $this->userCanView(User::getAnonymousUser());
         }
 
+        # capture the original value for observer notifications
+        $OldObserverValues = $this->getValuesForObserver($Field);
+
         $DBFieldName = $Field->dBFieldName();
         $ValueWasChanged = false;
 
@@ -1302,9 +1367,6 @@ class Record extends Item
                 if ($NewValue !== $CurrentValue) {
                     $this->DB->updateValue($DBFieldName, $NewValue);
                     $ValueWasChanged = true;
-                    $NotificationType = ($NewValue === false)
-                            ? MetadataField::EVENT_CLEAR : MetadataField::EVENT_SET;
-                    $Field->notifyObservers($NotificationType, $this->Id, $NewValue);
                 }
                 break;
 
@@ -1314,9 +1376,6 @@ class Record extends Item
                 if ($NewValue !== $CurrentValue) {
                     $this->DB->updateIntValue($DBFieldName, $NewValue);
                     $ValueWasChanged = true;
-                    $NotificationType = ($NewValue === false)
-                            ? MetadataField::EVENT_CLEAR : MetadataField::EVENT_SET;
-                    $Field->notifyObservers($NotificationType, $this->Id, $NewValue);
                 }
                 break;
 
@@ -1329,11 +1388,6 @@ class Record extends Item
                 if ($NewValue !== $CurrentValue) {
                     $this->DB->updateBoolValue($DBFieldName, $NewValue);
                     $ValueWasChanged = true;
-                    $Field->notifyObservers(
-                        MetadataField::EVENT_SET,
-                        $this->Id,
-                        $NewValue
-                    );
                 }
                 break;
 
@@ -1359,9 +1413,6 @@ class Record extends Item
                 if ($NewValue !== $CurrentValue) {
                     $this->DB->updateDateValue($DBFieldName, $NewValue);
                     $ValueWasChanged = true;
-                    $NotificationType = ($NewValue === false)
-                            ? MetadataField::EVENT_CLEAR : MetadataField::EVENT_SET;
-                    $Field->notifyObservers($NotificationType, $this->Id, $NewValue);
                 }
                 break;
 
@@ -1391,11 +1442,6 @@ class Record extends Item
                 if ($NewValue->data() !== $CurrentValueData) {
                     $this->DB->updateValue($DBFieldName, $NewValue->data());
                     $ValueWasChanged = true;
-                    $Field->notifyObservers(
-                        MetadataField::EVENT_SET,
-                        $this->Id,
-                        $NewValue
-                    );
                 }
                 break;
 
@@ -1404,9 +1450,17 @@ class Record extends Item
                 throw new Exception("Attempt to set unknown resource field type");
         }
 
-        # if field value was changed and this is not a temp record, do housekeeping
-        if ($ValueWasChanged && !$this->isTempRecord()) {
-            $this->doHousekeepingAfterChangeToValue($Field);
+        # notify observers and perform housekeeping after a successful change
+        if ($ValueWasChanged) {
+            $NewObserverValues = $this->getValuesForObserver($Field);
+            $this->notifyFieldObserversOfChange(
+                $Field,
+                $OldObserverValues,
+                $NewObserverValues
+            );
+            if (!$this->isTempRecord()) {
+                $this->doHousekeepingAfterChangeToValue($Field);
+            }
         }
 
         return $ValueWasChanged;
@@ -1450,10 +1504,6 @@ class Record extends Item
     public function clear($Field, $ValueToClear = null)
     {
         $Field = $this->normalizeFieldArgument($Field);
-        $UpdateModTime = false;
-
-        # retrieve user currently logged in
-        $User = User::getCurrentUser();
 
         # store value in DB based on field type
         switch ($Field->type()) {
@@ -1466,12 +1516,22 @@ class Record extends Item
             case MetadataSchema::MDFTYPE_POINT:
             case MetadataSchema::MDFTYPE_DATE:
                 $this->set($Field, false);
-                break;
+                return;
 
             case MetadataSchema::MDFTYPE_FLAG:
-                $DBFieldName = $Field->dBFieldName();
-                $this->DB->updateValue($DBFieldName, false);
-                break;
+                $OldObserverValues = $this->getValuesForObserver($Field);
+                if (count($OldObserverValues) !== 0) {
+                    $this->DB->updateValue($Field->dBFieldName(), false);
+                    $this->notifyFieldObserversOfChange(
+                        $Field,
+                        $OldObserverValues,
+                        []
+                    );
+                    if (!$this->isTempRecord()) {
+                        $this->doHousekeepingAfterChangeToValue($Field);
+                    }
+                }
+                return;
 
             case MetadataSchema::MDFTYPE_TREE:
             case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
@@ -1497,44 +1557,38 @@ class Record extends Item
                     $this->set($Field, [], true);
                 }
 
-                break;
+                return;
 
             case MetadataSchema::MDFTYPE_FILE:
-                # if value to clear supplied
+                # retrieve the currently-assigned files
+                $Files = $this->get($Field, true);
+                $OldObserverValues = $this->getValuesForObserver($Field);
+
+                # limit removal to specified files if a value was supplied
                 if ($ValueToClear !== null) {
-                    # convert value to array if necessary
-                    $Files = $ValueToClear;
-                    if (!is_array($Files)) {
-                        $Files = [$Files];
-                    }
-
-                    # convert values to objects if necessary
-                    foreach ($Files as $Index => $File) {
-                        if (!is_object($File)) {
-                            $Files[$Index] = new File($File);
-                        }
-                    }
-                } else {
-                    # use all files associated with resource
-                    $Files = $this->get($Field, true);
-                }
-
-                foreach ($Files as $File) {
-                    # signal event to indicate file deletion
-                    (ApplicationFramework::getInstance())->signalEvent(
-                        "EVENT_RESOURCE_FILE_DELETE",
-                        [
-                            "Field" => $Field,
-                            "Resource" => $this,
-                            "File" => $File,
-                        ]
+                    $FileIds = $this->normalizeValueToItemIds(
+                        $ValueToClear,
+                        $Field
                     );
-
-                    # delete files
-                    $File->destroy();
+                    $Files = array_intersect_key($Files, array_flip($FileIds));
                 }
-                $Field->notifyObservers(MetadataField::EVENT_REMOVE, $this->Id, $Files);
-                break;
+
+                # delete each selected file
+                $FilesWereRemoved = $this->removeFilesFromField($Field, $Files);
+
+                # notify observers and perform housekeeping if files were removed
+                if ($FilesWereRemoved) {
+                    $NewObserverValues = $this->getValuesForObserver($Field);
+                    $this->notifyFieldObserversOfChange(
+                        $Field,
+                        $OldObserverValues,
+                        $NewObserverValues
+                    );
+                    if (!$this->isTempRecord()) {
+                        $this->doHousekeepingAfterChangeToValue($Field);
+                    }
+                }
+                return;
 
             case MetadataSchema::MDFTYPE_IMAGE:
             case MetadataSchema::MDFTYPE_REFERENCE:
@@ -1549,31 +1603,28 @@ class Record extends Item
                     $NewValue = [];
                 }
 
-                $UpdateModTime = ($Field->type() == MetadataSchema::MDFTYPE_IMAGE) ?
-                    $this->setImageField($Field, $NewValue, true) :
-                    $this->setReferenceField($Field, $NewValue, true);
-                break;
+                $this->set($Field, $NewValue, true);
+                return;
 
             case MetadataSchema::MDFTYPE_SEARCHPARAMETERSET:
-                $this->DB->updateValue($Field->dBFieldName(), false);
-                break;
+                $OldObserverValues = $this->getValuesForObserver($Field);
+                if (count($OldObserverValues) !== 0) {
+                    $this->DB->updateValue($Field->dBFieldName(), false);
+                    $this->notifyFieldObserversOfChange(
+                        $Field,
+                        $OldObserverValues,
+                        []
+                    );
+                    if (!$this->isTempRecord()) {
+                        $this->doHousekeepingAfterChangeToValue($Field);
+                    }
+                }
+                return;
 
             default:
                 throw new Exception(
                     "Attempt to clear unknown resource field type"
                 );
-        }
-
-        if ($UpdateModTime && !$this->isTempRecord()) {
-            # update modification timestamps
-            $UserId = $User->isLoggedIn() ? $User->get("UserId") : -1;
-            $this->DB->query("DELETE FROM RecordFieldTimestamps "
-                       ."WHERE RecordId=".$this->Id." AND "
-                       ."FieldId=".$Field->id());
-            $this->DB->query("INSERT INTO RecordFieldTimestamps "
-                       ."(RecordId,FieldId,ModifiedBy,Timestamp) VALUES ("
-                       .$this->Id.",".$Field->id().","
-                       .$UserId.",NOW())");
         }
     }
 
@@ -1745,7 +1796,9 @@ class Record extends Item
             ["Resource" => $this]
         );
 
-        $this->notifyObservers(self::EVENT_SET);
+        if (!$this->SuppressModifyNotification) {
+            $this->notifyObservers(self::EVENT_MODIFY);
+        }
 
         # restore the user who was logged in when the method was called
         User::setCurrentUser($LoggedInUser);
@@ -2163,8 +2216,10 @@ class Record extends Item
     {
         # make sure database access has been set up
         $Class = get_called_class();
+        static::setDatabaseAccessValues($Class);
+
+        # initialize schema ID cache if needed
         if (!isset(self::$SchemaIdCache)) {
-            static::setDatabaseAccessValues($Class);
             self::$SchemaIdCache = [];
         }
 
@@ -2202,8 +2257,10 @@ class Record extends Item
     {
         # make sure database access has been set up
         $Class = get_called_class();
+        static::setDatabaseAccessValues($Class);
+
+        # initialize schema ID cache if needed
         if (!isset(self::$SchemaIdCache)) {
-            static::setDatabaseAccessValues($Class);
             self::$SchemaIdCache = [];
         }
 
@@ -2263,18 +2320,33 @@ class Record extends Item
      *      function myObserver(
      *          int $Event,
      *          Record $Record): void
-     * Record addition and deletion produce ADD and REMOVE events, and
-     * record modification produces a SET event.  Observers are notified
-     * about the REMOVE event before the record is actually deleted.
+     * Observers are notified about EVENT_DESTROY before the record is
+     * actually deleted.  Objects supplied for EVENT_DESTROY are only
+     * guaranteed to be usable during the callback.
      * @param int $Event Event to notify about (EVENT_ constant).
+     * @throws InvalidArgumentException If the event is unknown.
      */
     public function notifyObservers(int $Event): void
     {
-        $Args = [ $Event, $this ];
-        $this->notifyObserversWithArgs($Event, $Args, $this->Id);
+        $ValidEvents = [
+            self::EVENT_MODIFY,
+            self::EVENT_CREATE,
+            self::EVENT_DESTROY,
+        ];
+        if (!in_array($Event, $ValidEvents)) {
+            throw new InvalidArgumentException("Unknown record observer event.");
+        }
+
+        $Args = [$Event, $this];
+        $this->notifyObserversWithArgs($Event, $Args, $this->id());
     }
 
     # ---- PRIVATE INTERFACE -------------------------------------------------
+
+    /** maximum number of Record objects to retain in cache */
+    private const RECORD_CACHE_MAX_SIZE = 100;
+    /** number of Record objects to retain when pruning cache */
+    private const RECORD_CACHE_PRUNE_TO_SIZE = 80;
 
     private $ClassificationCache;
     private $Comments;
@@ -2285,15 +2357,214 @@ class Record extends Item
     private $NumberOfRatings;
     private $RunAutoUpdates = false;
     private $SchemaId;
+    private $SuppressModifyNotification = false;
     private $ViewPrivExpirationDate = false;
 
+    private static $RecordCache = [];
+    private static $RecordCacheAccessSeqCounter = 0;
+    private static $RecordCacheAccessSeqNums = [];
     private static $SchemaIdCache;
     private static $Schemas;
     private static $WasPublic = [];
 
     protected $PermissionCache = [];
 
+    /**
+     * Object constructor for loading an existing record. (To create a new
+     * record, use Record::create().)
+     * @param int $RecordId ID of resource to load.
+     * @see Record::create()
+     * @throws InvalidArgumentException If ID is invalid.
+     */
+    protected function __construct(int $RecordId)
+    {
+        # call parent constructor to load info from DB
+        parent::__construct($RecordId);
+
+        # load local attributes from database value cache
+        $this->CumulativeRating = $this->DB->updateValue("CumulativeRating");
+
+        # load our local metadata schema
+        $this->SchemaId = $this->DB->updateValue("SchemaId");
+        if (!isset(self::$Schemas[$this->SchemaId])) {
+            self::$Schemas[$this->SchemaId] =
+                    new MetadataSchema($this->SchemaId);
+        }
+    }
+
+    /**
+     * Prune least-recently-used Records when object cache exceeds maximum size.
+     * @return void
+     */
+    private static function pruneRecordCache(): void
+    {
+        # nothing to do when cache is within configured limit
+        if (count(self::$RecordCache) <= self::RECORD_CACHE_MAX_SIZE) {
+            return;
+        }
+
+        # identify least-recently-used cache entries
+        asort(self::$RecordCacheAccessSeqNums, SORT_NUMERIC);
+        $NumberToRemove = count(self::$RecordCache)
+                - self::RECORD_CACHE_PRUNE_TO_SIZE;
+        $RecordIdsToRemove = array_slice(
+            array_keys(self::$RecordCacheAccessSeqNums),
+            0,
+            $NumberToRemove
+        );
+
+        # remove least-recently-used entries
+        foreach ($RecordIdsToRemove as $RecordId) {
+            unset(self::$RecordCache[$RecordId]);
+            unset(self::$RecordCacheAccessSeqNums[$RecordId]);
+        }
+    }
+
     # ---- Field Setting Methods ---------------------------------------------
+
+    /**
+     * Get field values normalized for metadata field observer callbacks.  (For
+     * details about what "normalized" means in this context, please see inline
+     * comments in method body.)
+     * @param MetadataField $Field Field for which values should be retrieved.
+     * @return array Normalized list of values.
+     */
+    private function getValuesForObserver(MetadataField $Field): array
+    {
+        switch ($Field->type()) {
+            case MetadataSchema::MDFTYPE_TREE:
+            case MetadataSchema::MDFTYPE_CONTROLLEDNAME:
+            case MetadataSchema::MDFTYPE_OPTION:
+            case MetadataSchema::MDFTYPE_USER:
+            case MetadataSchema::MDFTYPE_FILE:
+            case MetadataSchema::MDFTYPE_REFERENCE:
+                # return item IDs in a numerically-indexed value array
+                return array_map("intval", array_keys($this->get($Field)));
+
+            case MetadataSchema::MDFTYPE_IMAGE:
+                # return image IDs in a numerically-indexed value array
+                return array_map("intval", array_values($this->get($Field)));
+
+            case MetadataSchema::MDFTYPE_DATE:
+                # return the Date object in a single-element value array
+                $DateValue = $this->get($Field, true);
+                return ($DateValue instanceof Date) ? [$DateValue] : [];
+
+            case MetadataSchema::MDFTYPE_TIMESTAMP:
+                # return the Unix timestamp in a single-element value array
+                $TimestampValue = $this->get($Field);
+                if ($TimestampValue === null) {
+                    return [];
+                }
+                $UnixTimestamp = strtotime($TimestampValue);
+                return ($UnixTimestamp === false) ? [] : [$UnixTimestamp];
+
+            case MetadataSchema::MDFTYPE_SEARCHPARAMETERSET:
+                # return the parameter set object in a single-element value array
+                $StoredData = $this->DB->updateValue($Field->dBFieldName());
+                return (strlen((string)$StoredData) === 0)
+                    ? []
+                    : [new SearchParameterSet($StoredData)];
+
+            case MetadataSchema::MDFTYPE_POINT:
+                # return the associative X/Y pair in a single-element value array
+                $PointValue = $this->get($Field);
+                return (($PointValue["X"] === null) && ($PointValue["Y"] === null))
+                    ? []
+                    : [$PointValue];
+
+            case MetadataSchema::MDFTYPE_FLAG:
+                # return the stored boolean in a single-element value array
+                $StoredFlag = $this->DB->updateValue($Field->dBFieldName());
+                return ($StoredFlag === false) ? [] : [(bool)$StoredFlag];
+
+            case MetadataSchema::MDFTYPE_TEXT:
+            case MetadataSchema::MDFTYPE_PARAGRAPH:
+            case MetadataSchema::MDFTYPE_NUMBER:
+            case MetadataSchema::MDFTYPE_URL:
+            case MetadataSchema::MDFTYPE_EMAIL:
+                # return the scalar in a single-element value array
+                $ScalarValue = $this->get($Field);
+                return ($ScalarValue === null) ? [] : [$ScalarValue];
+
+            default:
+                throw new Exception("Unknown field type for observer values.");
+        }
+    }
+
+    /**
+     * Notify field observers about values removed and assigned by a change.
+     * @param MetadataField $Field Field that was changed.
+     * @param array $OldValues Values before the change.
+     * @param array $NewValues Values after the change.
+     * @return void
+     */
+    private function notifyFieldObserversOfChange(
+        MetadataField $Field,
+        array $OldValues,
+        array $NewValues
+    ): void {
+        $ItemValueFieldTypes = [
+            MetadataSchema::MDFTYPE_CONTROLLEDNAME,
+            MetadataSchema::MDFTYPE_FILE,
+            MetadataSchema::MDFTYPE_IMAGE,
+            MetadataSchema::MDFTYPE_OPTION,
+            MetadataSchema::MDFTYPE_REFERENCE,
+            MetadataSchema::MDFTYPE_TREE,
+            MetadataSchema::MDFTYPE_USER,
+        ];
+
+        # calculate the portions removed and assigned by the change
+        if (in_array($Field->type(), $ItemValueFieldTypes)) {
+            $RemovedValues = array_values(array_diff($OldValues, $NewValues));
+            $AssignedValues = array_values(array_diff($NewValues, $OldValues));
+        } else {
+            $RemovedValues = $OldValues;
+            $AssignedValues = $NewValues;
+        }
+
+        # notify observers about removed values before assigned values
+        if (count($RemovedValues) !== 0) {
+            $Field->notifyObservers(
+                MetadataField::EVENT_CLEAR,
+                $this,
+                $RemovedValues
+            );
+        }
+        if (count($AssignedValues) !== 0) {
+            $Field->notifyObservers(
+                MetadataField::EVENT_SET,
+                $this,
+                $AssignedValues
+            );
+        }
+    }
+
+    /**
+     * Remove files assigned to a field.
+     * @param MetadataField $Field Field from which files should be removed.
+     * @param array $Files File objects to remove.
+     * @return bool TRUE if any files were removed, otherwise FALSE.
+     */
+    private function removeFilesFromField(
+        MetadataField $Field,
+        array $Files
+    ): bool {
+        # signal removal and destroy each file
+        foreach ($Files as $File) {
+            (ApplicationFramework::getInstance())->signalEvent(
+                "EVENT_RESOURCE_FILE_DELETE",
+                [
+                    "Field" => $Field,
+                    "Resource" => $this,
+                    "File" => $File,
+                ]
+            );
+            $File->destroy();
+        }
+
+        return count($Files) !== 0;
+    }
 
     /**
      * Perform internal housekeeping necessary after changing a value -- sets
@@ -2321,6 +2592,11 @@ class Record extends Item
 
         if ($Field->triggersAutoUpdates()) {
             $this->RunAutoUpdates = true;
+        }
+
+        # promotion performs its own housekeeping and must not queue modification
+        if ($this->SuppressModifyNotification) {
+            return;
         }
 
         $AF = ApplicationFramework::getInstance();
@@ -2391,11 +2667,6 @@ class Record extends Item
                 $this->DB->updateFloatValue($XFieldName, false);
                 $this->DB->updateFloatValue($YFieldName, false);
                 $ValueChanged = true;
-                $Field->notifyObservers(
-                    MetadataField::EVENT_CLEAR,
-                    $this->Id,
-                    $NewValue
-                );
             }
             return $ValueChanged;
         }
@@ -2411,11 +2682,6 @@ class Record extends Item
             $this->DB->updateFloatValue($XFieldName, $NewXValue);
             $this->DB->updateFloatValue($YFieldName, $NewYValue);
             $ValueChanged = true;
-            $Field->notifyObservers(
-                MetadataField::EVENT_CLEAR,
-                $this->Id,
-                [ "X" => $NewXValue, "Y" => $NewYValue ]
-            );
         }
 
         return $ValueChanged;
@@ -2469,13 +2735,6 @@ class Record extends Item
                 $ToRemove,
                 $Field
             );
-            if ($ValueChanged !== 0) {
-                $Field->notifyObservers(
-                    MetadataField::EVENT_REMOVE,
-                    $this->Id,
-                    $ToRemove
-                );
-            }
         }
 
         # associate with resource if not already associated
@@ -2485,13 +2744,6 @@ class Record extends Item
             $NewValue,
             $Field
         );
-        if ($ValueChanged !== 0) {
-            $Field->notifyObservers(
-                MetadataField::EVENT_ADD,
-                $this->Id,
-                $NewValue
-            );
-        }
 
         return (bool)$ValueChanged;
     }
@@ -2539,11 +2791,6 @@ class Record extends Item
                 $this->DB->updateValue($EFieldName, false);
                 $this->DB->updateValue($PFieldName, false);
                 $ValueChanged = true;
-                $Field->notifyObservers(
-                    MetadataField::EVENT_CLEAR,
-                    $this->Id,
-                    false
-                );
             }
         } else {
             $NewDate = ($NewValue instanceof Date) ? $NewValue
@@ -2569,13 +2816,6 @@ class Record extends Item
                     $this->DB->updateValue($PFieldName, $NewDate->precision());
                     $ValueChanged = true;
                 }
-            }
-            if ($ValueChanged) {
-                $Field->notifyObservers(
-                    MetadataField::EVENT_SET,
-                    $this->Id,
-                    $NewDate
-                );
             }
         }
 
@@ -2663,20 +2903,6 @@ class Record extends Item
         if ($ValueChanged) {
             # clear classification cache
             unset($this->ClassificationCache);
-
-            # notify any observers of the changes
-            if (isset($ToRemove)) {
-                $Field->notifyObservers(
-                    MetadataField::EVENT_REMOVE,
-                    $this->Id,
-                    $ToRemove
-                );
-            }
-            $Field->notifyObservers(
-                MetadataField::EVENT_ADD,
-                $this->Id,
-                $ToAdd
-            );
         }
 
         return $ValueChanged;
@@ -2750,11 +2976,6 @@ class Record extends Item
             foreach ($ToAdd as $ControlledNameId) {
                 (new ControlledName($ControlledNameId))->updateLastAssigned();
             }
-            $Field->notifyObservers(
-                MetadataField::EVENT_ADD,
-                $this->Id,
-                $ToAdd
-            );
         }
 
         if ($ValueChanged) {
@@ -2766,20 +2987,6 @@ class Record extends Item
             $RFactory = new RecordFactory($this->SchemaId);
             $RFactory->clearVisibleRecordCountForValues(
                 array_unique(array_merge($OldValue, $NewValue))
-            );
-
-            # notify any observers of the changes
-            if (isset($ToRemove)) {
-                $Field->notifyObservers(
-                    MetadataField::EVENT_REMOVE,
-                    $this->Id,
-                    $ToRemove
-                );
-            }
-            $Field->notifyObservers(
-                MetadataField::EVENT_ADD,
-                $this->Id,
-                $ToAdd
             );
         }
 
@@ -2822,11 +3029,6 @@ class Record extends Item
                 foreach ($ToRemove as $ImageId) {
                     (new Image($ImageId))->destroy();
                 }
-                $Field->notifyObservers(
-                    MetadataField::EVENT_REMOVE,
-                    $this->Id,
-                    $ToRemove
-                );
             }
         }
 
@@ -2860,8 +3062,6 @@ class Record extends Item
 
         # clear image symlinks for this record
         $this->clearImageSymlinksForField($Field->id());
-
-        $Field->notifyObservers(MetadataField::EVENT_ADD, $this->Id, $ToAdd);
 
         return true;
     }
@@ -2897,8 +3097,9 @@ class Record extends Item
             $ToRemove = array_diff($OldValue, $NewValue);
 
             if (count($ToRemove) !== 0) {
-                $ValueChanged = true;
-                $this->clear($Field, $ToRemove);
+                $Files = $this->get($Field, true);
+                $Files = array_intersect_key($Files, array_flip($ToRemove));
+                $ValueChanged = $this->removeFilesFromField($Field, $Files);
             }
         }
 
@@ -2907,8 +3108,7 @@ class Record extends Item
         if (count($ToAdd) !== 0) {
             $ValueChanged = true;
 
-            # for each new incoming file
-            $AddedFileIds = [];
+            # duplicate and associate each new incoming file
             foreach ($ToAdd as $FileId) {
                 # get the file
                 $File = new File($FileId);
@@ -2929,11 +3129,7 @@ class Record extends Item
                         "File" => $NewFile,
                     ]
                 );
-
-                # note copy's file ID for observers
-                $AddedFileIds[] = $NewFile->id();
             }
-            $Field->notifyObservers(MetadataField::EVENT_ADD, $this->Id, $AddedFileIds);
         }
 
         # report to caller if we changed anything
@@ -2976,7 +3172,6 @@ class Record extends Item
                     ." AND SrcRecordId = ".$this->id()
                     ." AND DstRecordId IN (".implode(",", $ToRemove).")"
                 );
-                $Field->notifyObservers(MetadataField::EVENT_REMOVE, $this->Id, $ToRemove);
             }
         }
 
@@ -3000,7 +3195,6 @@ class Record extends Item
             );
             $ValueChanged = true;
         }
-        $Field->notifyObservers(MetadataField::EVENT_ADD, $this->Id, $ToAdd);
 
         return $ValueChanged;
     }

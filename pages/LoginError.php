@@ -8,8 +8,14 @@
 #
 # @scout:phpstan
 
+namespace Metavus;
 use ScoutLib\ApplicationFramework;
 
 # ----- MAIN -----------------------------------------------------------------
 $AF = ApplicationFramework::getInstance();
 $AF->setPageTitle("Login Error");
+
+$User = User::getCurrentUser();
+if ($User->isLoggedIn()) {
+    $AF->setJumpToPage("Home");
+}

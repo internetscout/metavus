@@ -3,7 +3,7 @@
 #   FILE:  Collage.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -104,7 +104,7 @@ class Collage extends Plugin
         );
 
         Record::registerObserver(
-            Record::EVENT_ADD | Record::EVENT_SET | Record::EVENT_REMOVE,
+            Record::EVENT_CREATE | Record::EVENT_MODIFY | Record::EVENT_DESTROY,
             [$this, "resourceUpdated"]
         );
 
@@ -150,10 +150,10 @@ class Collage extends Plugin
     /**
      * Callback executed whenever a resource is updated, i.e., added or modified.
      * @param int $Events Record::EVENT_* values OR'd together.
-     * @param Record $Resource Just-updated resource.
+     * @param Record $Record Just-updated resource.
      * @return void
      */
-    public function resourceUpdated(int $Events, Record $Resource): void
+    public function resourceUpdated(int $Events, Record $Record): void
     {
         $this->clearCaches();
     }
@@ -329,7 +329,7 @@ class Collage extends Plugin
                 ? "mv-image-collage"
                 : Image::getNextLargestSize($TileWidth, $TileWidth);
         foreach ($RecordIds as $RecordId) {
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $Image = $Record->getMapped("Screenshot", true);
             $Image = reset($Image);
             # skip record if no images in Screenshot field

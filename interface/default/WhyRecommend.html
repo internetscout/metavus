@@ -3,7 +3,7 @@
 #   FILE:  WhyRecommend.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2020 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -31,9 +31,9 @@ function PrintRecommendation(
     string $EditLink,
     ?int $CumulativeRating
 ): void {
-    $Summary = ResourceSummary::Create($Resource->id());
-    $Summary->Editable($EditOkay);
-    $Summary->Display();
+    $Summary = ResourceSummary::create($Resource->id());
+    $Summary->editable($EditOkay);
+    $Summary->display();
 }
 
 /**
@@ -43,13 +43,13 @@ function PrintRecommendedResource(): void
 {
     global $RecommendedResourceId;
 
-    $Resource = new Record($RecommendedResourceId);
+    $Resource = Record::getRecord($RecommendedResourceId);
     PrintRecommendation(
         $Resource,
         $Resource->getViewPageUrl(),
-        User::getCurrentUser()->HasPriv(PRIV_RESOURCEADMIN),
+        User::getCurrentUser()->hasPriv(PRIV_RESOURCEADMIN),
         $Resource->getEditPageUrl(),
-        $Resource->ScaledCumulativeRating()
+        $Resource->scaledCumulativeRating()
     );
 }
 
@@ -70,8 +70,8 @@ function PrintRecommendationSources(): void
     $Recommender = new Recommender();
 
     # get list of recommendation source resources
-    $RecSources = $Recommender->GetSourceList(
-        $User->Get("UserId"),
+    $RecSources = $Recommender->getSourceList(
+        $User->get("UserId"),
         $RecommendedResourceId
     );
 
@@ -86,13 +86,13 @@ function PrintRecommendationSources(): void
         $ResourceCount++;
 
         # print resource record
-        $Resource = new Record($SourceId);
+        $Resource = Record::getRecord($SourceId);
         PrintRecommendation(
             $Resource,
             $Resource->getViewPageUrl(),
-            $Resource->UserCanEdit($User),
+            $Resource->userCanEdit($User),
             $Resource->getEditPageUrl(),
-            $Resource->ScaledCumulativeRating()
+            $Resource->scaledCumulativeRating()
         );
     }
 }

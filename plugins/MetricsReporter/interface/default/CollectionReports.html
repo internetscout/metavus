@@ -30,7 +30,7 @@ function printRecordTable(array $CountData, int $StartDate, string $Caption): vo
         if (count($CountData["Counts"]) > 0) {
             foreach ($CountData["Counts"] as $Id => $Count) {
                 if (Record::itemExists($Id)) {
-                    $Resource = new Record($Id);
+                    $Resource = Record::getRecord($Id);
                     $Shown += $Count;
                     ?><tr valign="top">
                            <td><a href="index.php?P=FullRecord&AMP;ID=<?= $Id;
@@ -121,7 +121,7 @@ function printShareTable(array $CountData, int $StartDate, string $Caption): voi
             continue;
         }
 
-        $Resource = new Record($Id);
+        $Resource = Record::getRecord($Id);
         ?><tr valign="top"><td><a href="<?= $Resource->getMapped("Url"); ?>"
             ><?= $Resource->getMapped("Title");  ?></a></td>
             <td align="right"><?= $Count;  ?></td>

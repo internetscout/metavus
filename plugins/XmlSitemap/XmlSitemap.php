@@ -3,7 +3,7 @@
 #   FILE:  XmlSitemap.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -52,7 +52,7 @@ class XmlSitemap extends Plugin
         ApplicationFramework::getInstance()->addCleanUrl("%^sitemap.xml$%", "P_XmlSitemap_Sitemap");
 
         Record::registerObserver(
-            Record::EVENT_ADD | Record::EVENT_SET | Record::EVENT_REMOVE,
+            Record::EVENT_CREATE | Record::EVENT_MODIFY | Record::EVENT_DESTROY,
             [$this, "updateResourceTimestamp"]
         );
 
@@ -139,10 +139,10 @@ class XmlSitemap extends Plugin
     /**
      * Update the timestamp storing the last change to any resource.
      * @param int $Events Record::EVENT_* values OR'd together.
-     * @param Record $Resource The resource being affected.
+     * @param Record $Record Resource being affected.
      * @return void
      */
-    public function updateResourceTimestamp(int $Events, Record $Resource): void
+    public function updateResourceTimestamp(int $Events, Record $Record): void
     {
         $this->setConfigSetting("ResourcesLastModified", time());
     }

@@ -375,7 +375,6 @@
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
-        <MaxLength>100</MaxLength>
         <ParagraphRows>4</ParagraphRows>
         <ParagraphCols>50</ParagraphCols>
         <SearchWeight>1</SearchWeight>
@@ -394,7 +393,6 @@
         <IncludeInKeywordSearch>0</IncludeInKeywordSearch>
         <IncludeInAdvancedSearch>0</IncludeInAdvancedSearch>
         <IncludeInRecommender>0</IncludeInRecommender>
-        <MaxLength>100</MaxLength>
         <ParagraphRows>4</ParagraphRows>
         <ParagraphCols>50</ParagraphCols>
         <SearchWeight>1</SearchWeight>

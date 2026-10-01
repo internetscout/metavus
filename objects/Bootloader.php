@@ -3,7 +3,7 @@
 #   FILE:  Bootloader.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -438,7 +438,7 @@ class Bootloader
                     "EVENT_APPEND_HTML_TO_FIELD_DISPLAY",
                     [
                         "Field" => \Metavus\MetadataField::getField($FieldId),
-                        "Resource" => new \Metavus\Record($RecordId),
+                        "Resource" => \Metavus\Record::getRecord($RecordId),
                         "Context" => "EDIT",
                         "Html" => null,
                     ]
@@ -458,7 +458,7 @@ class Bootloader
                     "EVENT_APPEND_HTML_TO_FIELD_DISPLAY",
                     [
                         "Field" => \Metavus\MetadataField::getField($FieldId),
-                        "Resource" => new \Metavus\Record($RecordId),
+                        "Resource" => \Metavus\Record::getRecord($RecordId),
                         "Context" => "DISPLAY",
                         "Html" => null,
                     ]

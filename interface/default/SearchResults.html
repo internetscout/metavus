@@ -3,7 +3,7 @@
 #   FILE:  SearchResults.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -29,7 +29,7 @@ if ($H_HighLoad) {
     $MaintFile = is_readable("local/interface/default/MaintenanceMode.html")
             ? "local/interface/default/MaintenanceMode.html"
             : "interface/default/MaintenanceMode.html";
-    include($MaintFile);
+    include($MaintFile);    // @phpstan-ignore include.fileNotFound
     $AF->suppressStandardPageStartAndEnd();
     return;
 }
@@ -386,7 +386,7 @@ function printSearchResults(
         true
     ));
     foreach ($ResultSliceIds as $Id) {
-        $ResultsToDisplay[] = new Record($Id);
+        $ResultsToDisplay[] = Record::getRecord($Id);
     }
 
     $BaseLinkWithSearchParams = "index.php?P=SearchResults&amp;"

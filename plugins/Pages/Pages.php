@@ -3,7 +3,7 @@
 #   FILE:  Pages.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -220,7 +220,7 @@ class Pages extends Plugin
         $PFactory = new PageFactory();
         $Ids = $PFactory->getItemIds();
         foreach ($Ids as $Id) {
-            $Page = new Page($Id);
+            $Page = Page::getRecord($Id);
             $Page->destroy();
         }
 
@@ -297,7 +297,7 @@ class Pages extends Plugin
             $PFactory = new PageFactory();
             $Ids = $PFactory->getItemIds();
             foreach ($Ids as $Id) {
-                $Page = new Page($Id);
+                $Page = Page::getRecord($Id);
                 $Page->set("Summary", $Page->getSummary($NewValue));
             }
         }
@@ -399,7 +399,7 @@ class Pages extends Plugin
 
         # delete existing help pages that have not been modified
         foreach ($PFactory->getItemIds() as $PageId) {
-            $Page = new Page($PageId);
+            $Page = Page::getRecord($PageId);
             $InitialContentHash = $Page->get("Initial Content Hash");
 
             # if this page was not automatically created, skip it
@@ -449,7 +449,7 @@ class Pages extends Plugin
             );
         }
 
-        $AboutPage = new Page(array_shift($PageIds));
+        $AboutPage = Page::getRecord(array_shift($PageIds));
 
         if (!is_null($this->getConfigSetting("MigratedAboutContent"))) {
             $AboutPage->set(

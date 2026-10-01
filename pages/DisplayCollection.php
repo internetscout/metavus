@@ -3,7 +3,7 @@
 #   FILE:  DisplayCollection.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2025-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -102,7 +102,7 @@ if (!$CFactory->itemExists($CollectionId)) {
     $H_Error = "ERROR: Invalid collection ID specified.";
     return;
 }
-$H_Collection = new Collection($CollectionId);
+$H_Collection = Collection::getRecord($CollectionId);
 
 # retrieve list of all items in collection
 $ItemIds = $H_Collection->getItemIds();

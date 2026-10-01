@@ -250,7 +250,7 @@ class FormUI extends FormUI_Base
                 <?PHP if ($Params["Collapsible"]) { ?>
                   (<span class="mv-form-group-indicator"><?= $IsOpen !== 0 ? "-" : "+"; ?></span>)
                 <?PHP } ?>
-                <?= $Params["Label"] ?></th></tr>
+                <?= htmlspecialchars($Params["Label"]) ?></th></tr>
                 </tbody>
                 <tbody class="mv-form-group <?= ($IsOpen == 0) ? "mv-form-group-hidden" : "" ?>"
                 data-group="<?= $GroupNumber ?>">
@@ -273,7 +273,7 @@ class FormUI extends FormUI_Base
                         <?PHP
                             $this->displayHelp($Name, $Params);
                         ?>
-                        <label class="mv-form-pseudolabel"><?= $Params["Label"]  ?></label>
+                        <label class="mv-form-pseudolabel"><?= htmlspecialchars($Params["Label"]) ?></label>
                     </th>
                     <td <?PHP  if (!isset($Params["Help"]) ) {
                                     print "colspan=\"2\"";  }  ?>><?PHP
@@ -386,7 +386,7 @@ $Params["Parameters"]
                         ?>
                         <label for="<?=  $FormFieldName
                                 ?>" class="<?=  $LabelClass  ?>"><?=
-                                $Params["Label"]  ?></label>
+                                htmlspecialchars($Params["Label"]) ?></label>
                     </th>
                     <td <?PHP if ($FieldColumnIsWide) { ?> colspan="2" <?PHP } ?>>
                         <?PHP $this->displayFormField($Name, $Value, $Params);  ?>
@@ -1059,7 +1059,7 @@ $Params["Parameters"]
             $AllowMultiple = $MField->allowMultiple();
             $NameFn = function ($Key, $Val) use ($MField) {
                 if ($MField->type() == MetadataSchema::MDFTYPE_REFERENCE) {
-                    $Resource = new Record($Key);
+                    $Resource = Record::getRecord($Key);
                     return $Resource->getMapped("Title");
                 } else {
                     return $Val;
@@ -1619,7 +1619,7 @@ $Params["Parameters"]
             <img class="mv-form-instructions"
                  src="<?PHP $AF->pUIFile("help.png"); ?>"
                  alt="?" title="Enter the verification code to prove you are not a spam robot."/>
-            <label class="<?= $LabelClass ?>"><?= $Params["Label"] ?></label>
+            <label class="<?= $LabelClass ?>"><?= htmlspecialchars($Params["Label"]) ?></label>
           </th>
           <td><?= $CaptchaHtml ?></td>
           <td><?= $Params["Help"] ?? "" ?></td>

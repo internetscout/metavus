@@ -3,7 +3,7 @@
 #   FILE:  ListEntries.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -69,5 +69,5 @@ $EntryIds = array_slice($EntryIds, $H_PageOffset, $H_PageSize);
 # convert entry ID to entry object
 $H_BlogEntries = [];
 foreach ($EntryIds as $Id) {
-    $H_BlogEntries[$Id] = new Entry($Id);
+    $H_BlogEntries[$Id] = Entry::getRecord($Id);
 }

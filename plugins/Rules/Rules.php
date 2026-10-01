@@ -3,7 +3,7 @@
 #   FILE:  Rules.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -85,7 +85,7 @@ class Rules extends Plugin
         Rule::setDefaultUser($this->getConfigSetting("DefaultUser")[0]);
 
         Record::registerObserver(
-            Record::EVENT_SET,
+            Record::EVENT_MODIFY,
             [$this, "resourceModifiedRuleCheck"]
         );
 
@@ -304,10 +304,9 @@ class Rules extends Plugin
 
     /**
      * Queue task to check rules and take any corresponding actions (hooked
-     * to Record::EVENT_SET observer).
+     * to Record::EVENT_MODIFY observer).
      * @param int $Events Record::EVENT_* values OR'd together.
-     * @param Record $Resource The Resource that has been modified.
-     *       (passed in from the Event signaler, but not used)
+     * @param Record $Resource Resource that has been modified.
      */
     public function resourceModifiedRuleCheck(int $Events, Record $Resource): void
     {

@@ -3,7 +3,7 @@
 #   FILE:  Launch.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -296,7 +296,7 @@ $Html = $H_Plugin->getCachedRecordListHtml($H_RecordIds);
 if (is_null($Html)) {
     ob_start();
     foreach ($H_RecordIds as $RecordId) {
-        $Record = new Record($RecordId);
+        $Record = Record::getRecord($RecordId);
         printRecord($H_Plugin, $Record);
     }
 

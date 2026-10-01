@@ -3,7 +3,7 @@
 #   FILE:  OAIItem.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -51,7 +51,7 @@ class OAIItem implements \ScoutLib\OAIItem
             throw new InvalidArgumentException("Item ID is invalid.");
         } else {
             # create resource object
-            $this->Resource = new Record($ItemId);
+            $this->Resource = Record::getRecord($ItemId);
 
             # if cumulative rating data is available for this resource
             if (InterfaceConfiguration::getInstance()->getBool("ResourceRatingsEnabled")

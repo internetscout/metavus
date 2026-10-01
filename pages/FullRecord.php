@@ -3,7 +3,7 @@
 #   FILE:  FullRecord.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -17,7 +17,7 @@ use ScoutLib\ApplicationFramework;
 $AF = ApplicationFramework::getInstance();
 
 $RecordId = $_GET["ID"] ?? null;
-$H_Record = Record::itemExists($RecordId) ? new Record($RecordId) : false;
+$H_Record = Record::itemExists($RecordId) ? Record::getRecord($RecordId) : false;
 
 # if provided ID was invalid, tell AF not to cache page
 if ($H_Record === false) {

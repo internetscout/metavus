@@ -3,7 +3,7 @@
 #   FILE:  PluginUpgrade_2_0_10.php (Pages plugin)
 #
 #   A plugin upgrade file for the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -38,7 +38,7 @@ class PluginUpgrade_2_0_10 extends PluginUpgrade
         $PFactory = new PageFactory();
         $Ids = $PFactory->getItemIds();
         foreach ($Ids as $Id) {
-            $Page = new Page($Id);
+            $Page = Page::getRecord($Id);
             $UpdatedContent = preg_replace(
                 '%local/data/images/previews/Preview--([0-9]+)\.([a-z]+)%',
                 'local/data/caches/images/scaled/img_\1_300x300.\2',

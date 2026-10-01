@@ -3,7 +3,7 @@
 #   FILE:  ResourceSummary_BlogEntry.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -28,7 +28,7 @@ class ResourceSummary_BlogEntry extends \Metavus\ResourceSummary
      */
     public function __construct(int $RecordId)
     {
-        $this->Resource = new Entry($RecordId);
+        $this->Resource = Entry::getRecord($RecordId);
         parent::__construct($RecordId);
     }
 

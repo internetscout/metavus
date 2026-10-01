@@ -3,7 +3,7 @@
 #   FILE:  InterfaceConfiguration.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -152,21 +152,22 @@ class InterfaceConfiguration extends Configuration
                 $Pieces = explode("|", $Line);
                 # trim any leading or trailing whitespace off of pieces
                 $Pieces = array_map("trim", $Pieces);
+                $EscapedLine = htmlspecialchars($Line);
 
                 if (count($Pieces) == 1) {
                     return "Menu item encountered without both label and link"
-                            ." (\"".$Line."\")";
+                            ." (\"".$EscapedLine."\")";
                 }
                 if (count($Pieces) > 3) {
                     return "Menu item encountered with too many elements "
-                            ." (\"".$Line."\")";
+                            ." (\"".$EscapedLine."\")";
                 }
                 if (isset($Pieces[2])) {
                     try {
                         $Privs = self::parseOutPrivileges($Pieces[2]);
                     } catch (Exception $Ex) {
                         return "Menu item encountered with invalid privilege "
-                                ." (\"".$Line."\")";
+                                ." (\"".$EscapedLine."\")";
                     }
                 }
             }

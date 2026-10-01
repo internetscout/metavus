@@ -3,7 +3,7 @@
 #   FILE:  FeaturedItems.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -215,7 +215,7 @@ class FeaturedItems extends Plugin
         );
 
         Record::registerObserver(
-            Record::EVENT_ADD | Record::EVENT_SET | Record::EVENT_REMOVE,
+            Record::EVENT_CREATE | Record::EVENT_MODIFY | Record::EVENT_DESTROY,
             [$this, "resourceUpdated"]
         );
 
@@ -352,10 +352,10 @@ class FeaturedItems extends Plugin
     /**
      * Callback executed whenever a resource is updated, i.e., added or modified.
      * @param int $Events Record::EVENT_* values OR'd together.
-     * @param Record $Resource Just-updated resource.
+     * @param Record $Record Just-updated resource.
      * @return void
      */
-    public function resourceUpdated(int $Events, Record $Resource): void
+    public function resourceUpdated(int $Events, Record $Record): void
     {
         $this->clearCaches();
     }
@@ -491,7 +491,7 @@ class FeaturedItems extends Plugin
     ): array {
         $RecordIdsByGroup = [];
         foreach ($RecordIds as $RecordId) {
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $VocabId = key($Record->get($Field));
 
             # if there's no such vocabulary, move to the next record

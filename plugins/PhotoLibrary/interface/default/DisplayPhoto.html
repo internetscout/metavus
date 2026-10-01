@@ -3,7 +3,7 @@
 #   FILE:  DisplayPhoto.html (PhotoLibrary plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -65,7 +65,7 @@ function getPhotoDetailInfoTables(Record $Record): array
 
                 case MetadataSchema::MDFTYPE_REFERENCE:
                     foreach ($Value as $ReferenceId) {
-                        $RefRecord = new Record((int)$ReferenceId);
+                        $RefRecord = Record::getRecord((int)$ReferenceId);
                         $ReferenceUrl = $RefRecord->getViewPageUrl();
                         $ReferenceTitle = htmlspecialchars($RefRecord->getMapped("Title"));
                         $Value = "<a href=\"".$ReferenceUrl."\">".$ReferenceTitle."</a>";

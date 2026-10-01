@@ -3,7 +3,7 @@
 #   FILE:  ConfirmNotifySubscribers.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -20,7 +20,7 @@ $AF->setPageTitle("Notify Blog Subscribers Confirmation");
 
 # get the blog plugin and entry
 $H_Blog = Blog::getInstance();
-$H_Entry = new Entry(StdLib::getArrayValue($_GET, "ID"));
+$H_Entry = Entry::getRecord(StdLib::getArrayValue($_GET, "ID"));
 
 # don't allow unauthorized access
 if (!$H_Entry->UserCanEdit(User::getCurrentUser())) {

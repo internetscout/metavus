@@ -3,7 +3,7 @@
 #   FILE:  InlineEdit.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -44,7 +44,7 @@ if (!$PFactory->itemExists($PageId)) {
 $User = User::getCurrentUser();
 
 # make sure user can edit provided page
-$Page = new Page($PageId);
+$Page = Page::getRecord($PageId);
 if (!$Page->userCanEdit($User)) {
     $Result = [
         "status" => "error",

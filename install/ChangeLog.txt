@@ -2,6 +2,33 @@
 Metavus Change Log
 ==================
 
+Version 1.3.1 - September 29, 2026
+ADDED
+- Add field-level authoring and editing permission checks.  [EA]
+- Add htaccess support checks to the SysAdmin page.  [CRH]
+
+CHANGED
+- Redirect already-logged-in users from UserLogin and LoginError to Home.  [CRH]
+- BotDetector plugin: Skip DNS lookups on networks with a history of
+    very slow DNS replies.  [CRH]
+
+FIXED
+- Clear Record caches when schema item-class mappings change.  [EA]
+
+DEVELOPER
+- Revise Record retrieval to use canonical, schema-specific Record objects
+	with bounded LRU caching and safe cache initialization.  [EA]
+- Revise DataCache usage so plugin caches are isolated by plugin.  [EA]
+- Added "ccheck" command line utility that runs code integrity checks and
+    unit tests with any available tools.  [EA]
+- mvus utility: Add "mvus upload" command, which allows uploading a file
+    to a specified File field in a specified record.  [EA]
+- mvus utility: Add "mvus search" command, which allows keyword or
+    fielded searches from the command line.  [EA]
+- mvus utility: Revise "mvus database reload" and configuration handling to
+    improve command safety, credential protection, and boolean-value
+    handling.  [EA]
+
 Version 1.3.0 - July 15, 2026
 
 ADDED

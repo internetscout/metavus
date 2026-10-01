@@ -631,7 +631,8 @@ abstract class FormUI_Base
                     $MaxFileSize = StdLib::convertPhpIniSizeToBytes(
                         (string)ini_get("upload_max_filesize")
                     );
-                    $Message = "The file ".$UploadedFileName." exceeds the current"
+                    $Message = "The file ".htmlspecialchars($UploadedFileName)
+                        ." exceeds the current"
                         ." upload size limit of ".($MaxFileSize / 1000000)." MB."
                         ." Please contact your server administrator if you need"
                         ." this limit (set via the PHP configuration parameter"
@@ -666,8 +667,8 @@ abstract class FormUI_Base
                         switch ($File) {
                             case File::FILESTAT_ZEROLENGTH:
                                 $this->logError(
-                                    "Uploaded file ".$UploadedFileName." was empty"
-                                    ." (zero length).",
+                                    "Uploaded file ".htmlspecialchars($UploadedFileName)
+                                    ." was empty (zero length).",
                                     $FieldName,
                                     $this->UniqueKey
                                 );
@@ -681,8 +682,9 @@ abstract class FormUI_Base
                                 );
 
                                 $Message = "Error encountered with uploaded file "
-                                    .$UploadedFileName.": ".$ErrorName."(Code ".$File."). "
-                                    ."Temp upload location was ".$TmpFile.".";
+                                    .htmlspecialchars($UploadedFileName).": ".$ErrorName
+                                    ."(Code ".$File."). "
+                                    ."Temp upload location was ".htmlspecialchars($TmpFile).".";
                                 $this->logError(
                                     $Message,
                                     $FieldName,
@@ -718,7 +720,7 @@ abstract class FormUI_Base
                     } catch (Exception $Ex) {
                         $this->logError(
                             "Problem uploading file: "
-                            .$Ex->getMessage(),
+                            .htmlspecialchars($Ex->getMessage()),
                             $FieldName,
                             $this->UniqueKey
                         );
@@ -1671,7 +1673,7 @@ abstract class FormUI_Base
                 };
 
                 $NameFn = function ($Id) {
-                    return (new Record($Id))->getMapped("Title");
+                    return (Record::getRecord($Id))->getMapped("Title");
                 };
                 break;
 
@@ -1770,7 +1772,7 @@ abstract class FormUI_Base
                     && $this->requiredFieldValueIsMissing($FieldParams, $FieldValue)) {
                 # log error to indicate required value is missing
                 self::logError(
-                    "<i>".$FieldParams["Label"]."</i> is required.",
+                    "<i>".htmlspecialchars($FieldParams["Label"])."</i> is required.",
                     $FieldName,
                     $this->UniqueKey
                 );
@@ -1811,7 +1813,7 @@ abstract class FormUI_Base
             if ($FieldValue != $OldValue) {
                 # log error to indicate that a readonly value was changed
                 self::logError(
-                    "<i>".$FieldParams["Label"]."</i> is read-only, "
+                    "<i>".htmlspecialchars($FieldParams["Label"])."</i> is read-only, "
                         ."but appears to have been modified.",
                     $FieldName,
                     $this->UniqueKey
@@ -1898,7 +1900,7 @@ abstract class FormUI_Base
         # check if provided value is numeric
         if (!is_null($FieldValue) && strlen($FieldValue) > 0 && !is_numeric($FieldValue)) {
             self::logError(
-                "<i>".$FieldParams["Label"]."</i> must be a number.",
+                "<i>".htmlspecialchars($FieldParams["Label"])."</i> must be a number.",
                 $FieldName,
                 $this->UniqueKey
             );
@@ -1911,21 +1913,21 @@ abstract class FormUI_Base
             || (isset($FieldParams["MaxVal"]) && ($FieldValue > $FieldParams["MaxVal"]))) {
             if (!isset($FieldParams["MaxVal"])) {
                 self::logError(
-                    "<i>".$FieldParams["Label"]."</i> must be "
+                    "<i>".htmlspecialchars($FieldParams["Label"])."</i> must be "
                         .$FieldParams["MinVal"]." or greater.",
                     $FieldName,
                     $this->UniqueKey
                 );
             } elseif (!isset($FieldParams["MinVal"])) {
                 self::logError(
-                    "<i>".$FieldParams["Label"]."</i> must be "
+                    "<i>".htmlspecialchars($FieldParams["Label"])."</i> must be "
                         .$FieldParams["MaxVal"] ." or less.",
                     $FieldName,
                     $this->UniqueKey
                 );
             } else {
                 self::logError(
-                    "<i>".$FieldParams["Label"]."</i> must be"
+                    "<i>".htmlspecialchars($FieldParams["Label"])."</i> must be"
                         ." in the range ".$FieldParams["MinVal"]
                         ." to ".$FieldParams["MaxVal"].".",
                     $FieldName,
@@ -1942,7 +1944,8 @@ abstract class FormUI_Base
         if (!isset($FieldParams["AllowFloats"]) || !$FieldParams["AllowFloats"]) {
             if (is_numeric($FieldValue) && (floor((float)$FieldValue) != $FieldValue)) {
                 self::logError(
-                    "<i>".$FieldParams["Label"]."</i> cannot be a decimal number.",
+                    "<i>".htmlspecialchars($FieldParams["Label"])
+                        ."</i> cannot be a decimal number.",
                     $FieldName,
                     $this->UniqueKey
                 );
@@ -1977,8 +1980,9 @@ abstract class FormUI_Base
         $IsValidUrl = filter_var($FieldValue, FILTER_VALIDATE_URL) !== false;
         if (!is_null($FieldValue) && strlen($FieldValue) > 0 && !$IsValidUrl) {
             self::logError(
-                "Value \"".$FieldValue."\" does not appear to be a valid URL for <i>"
-                    .$FieldParams["Label"]."</i>.",
+                "Value \"".htmlspecialchars($FieldValue)
+                    ."\" does not appear to be a valid URL for <i>"
+                    .htmlspecialchars($FieldParams["Label"])."</i>.",
                 $FieldName,
                 $this->UniqueKey
             );
@@ -2019,7 +2023,7 @@ abstract class FormUI_Base
             if (strlen($UId) && !$UFactory->userExists($UId)) {
                 self::logError(
                     "User ID \"".$UId."\" not found for <i>"
-                        .$FieldParams["Label"]."</i>.",
+                        .htmlspecialchars($FieldParams["Label"])."</i>.",
                     $FieldName,
                     $this->UniqueKey
                 );
@@ -2057,8 +2061,8 @@ abstract class FormUI_Base
             !is_null($FieldValue) &&
             mb_strlen($FieldValue, $DefaultCharset) > $FieldParams["MaxLength"]) {
             self::logError(
-                "<i>".$FieldParams["Label"]."</i> must not exceed "
-                    .$FieldParams["MaxLength"]." characters.",
+                "<i>".htmlspecialchars($FieldParams["Label"])."</i> must not exceed "
+                    .htmlspecialchars($FieldParams["MaxLength"])." characters.",
                 $FieldName,
                 $this->UniqueKey
             );

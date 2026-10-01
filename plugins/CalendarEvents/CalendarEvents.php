@@ -3,7 +3,7 @@
 #   FILE:  CalendarEvents.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -204,7 +204,7 @@ class CalendarEvents extends Plugin
         }
 
         Record::registerObserver(
-            Record::EVENT_ADD | Record::EVENT_SET,
+            Record::EVENT_CREATE | Record::EVENT_MODIFY,
             [$this, "resourceUpdated"]
         );
 
@@ -362,7 +362,7 @@ class CalendarEvents extends Plugin
         # delete each resource, including temp ones
         $ResourceFactory = new RecordFactory($SCID);
         foreach ($ResourceFactory->getItemIds(null, true) as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $Resource->destroy();
         }
 
@@ -414,7 +414,7 @@ class CalendarEvents extends Plugin
             }
 
             # get the event from the matched ID
-            $Event = new Event($Matches[2]);
+            $Event = Event::getRecord($Matches[2]);
 
             # return the replacement
             return "href=\"".defaulthtmlentities($Event->eventUrl())."\"";
@@ -686,7 +686,7 @@ class CalendarEvents extends Plugin
             return;
         }
 
-        $Event = new Event($EventId);
+        $Event = Event::getRecord($EventId);
 
         # don't deal with temp events
         if ($Event->id() < 0) {

@@ -3,7 +3,7 @@
 #   FILE:  RecordEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2019-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2019-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -553,7 +553,10 @@ END;
                 $Value = [];
                 foreach ($FormValue as $Id) {
                     if ($Class::itemExists($Id)) {
-                        $Value[$Id] = new $Class(intval($Id));
+                        # retrieve Records through canonical object cache
+                        $Value[$Id] = is_a($Class, Record::class, true)
+                                ? Record::getRecord((int)$Id)
+                                : new $Class((int)$Id);
                     }
                 }
                 break;

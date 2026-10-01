@@ -3,7 +3,7 @@
 #   FILE:  BrowseResources.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -426,7 +426,7 @@ function getResourceListHtml(): string
         if (($ResourceIndex >= $H_StartingResourceIndex)
             && ($ResourceIndex < ($H_StartingResourceIndex + $H_MaxResourcesPerPage))) {
             # append resource entry to return string
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $Summary = ResourceSummary::create($Resource->id());
             $Summary->editable($Resource->userCanEdit(User::getCurrentUser()));
             $Summary->showScreenshot($ShowScreenshots);

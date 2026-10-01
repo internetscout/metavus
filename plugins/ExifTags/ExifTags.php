@@ -3,7 +3,7 @@
 #   FILE:  ExifTags.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2023-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2023-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -80,7 +80,7 @@ class ExifTags extends Plugin
 
             foreach ($ImageFields as $ImageField) {
                 MetadataField::registerObserver(
-                    MetadataField::EVENT_ADD,
+                    MetadataField::EVENT_SET,
                     [$this, "observeImageAdditions"],
                     $ImageField->id()
                 );
@@ -110,17 +110,18 @@ class ExifTags extends Plugin
     * Add a post processing call to a callback method to extract EXIF tag
     * values from the specified image and add it to the specified record.
     * @param int $Events MetadataField::EVENT* values OR'd together.
-    * @param int $RecordId ID of the record to assign mapped EXIF tag values to.
+    * @param Record $Record Record to assign mapped EXIF tag values to.
     * @param MetadataField $Field Metadata field the image was saved to.
     * @param array $ImageIds ID(s) of image(s) saved to $Field.
     */
     public function observeImageAdditions(
         int $Events,
-        int $RecordId,
+        Record $Record,
         MetadataField $Field,
         array $ImageIds
     ): void {
         $AF = ApplicationFramework::getInstance();
+        $RecordId = $Record->id();
 
         foreach (array_values($ImageIds) as $ImageId) {
             # uses ApplicationFramework::addPostProcessingCall() to apply tag
@@ -200,11 +201,11 @@ class ExifTags extends Plugin
         foreach ($Folder->getItemIds() as $RecordId) {
             $Record = Record::getRecord($RecordId);
             $Schema = $Record->getSchema();
-            if (!isset($ImageFields[$Schema->Id()])) {
-                $ImageFields[$Schema->Id()] =
+            if (!isset($ImageFields[$Schema->id()])) {
+                $ImageFields[$Schema->id()] =
                         $Schema->getFields(MetadataSchema::MDFTYPE_IMAGE);
             }
-            foreach ($ImageFields[$Schema->Id()] as $ImageField) {
+            foreach ($ImageFields[$Schema->id()] as $ImageField) {
                 if (!$Record->fieldIsSet($ImageField)) {
                     continue;
                 }
@@ -616,7 +617,7 @@ class ExifTags extends Plugin
     */
     private function saveValuesToRecord(array $Values, int $RecordId): void
     {
-        $Record = new Record($RecordId);
+        $Record = Record::getRecord($RecordId);
         foreach ($Values as $MetadataFieldId => $NormalizedValues) {
             $Field = MetadataField::getField($MetadataFieldId);
             if ($Field->schemaId() != Record::getSchemaForRecord($RecordId)) {

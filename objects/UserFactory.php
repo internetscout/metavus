@@ -3,7 +3,7 @@
 #   FILE:  UserFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -80,7 +80,7 @@ class UserFactory extends \ScoutLib\UserFactory
 
                     # load resource
                     if (!isset($ResourceCache[$ResourceId])) {
-                        $ResourceCache[$ResourceId] = new Record($ResourceId);
+                        $ResourceCache[$ResourceId] = Record::getRecord($ResourceId);
                     }
 
                     # if user meets requirements for set

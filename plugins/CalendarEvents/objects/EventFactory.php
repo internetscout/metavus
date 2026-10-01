@@ -3,7 +3,7 @@
 #   File:  EventFactory.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -372,7 +372,7 @@ class EventFactory extends RecordFactory
         $Ids = $this->getIdsOfUpcomingEvents($ReleasedOnly, $Limit);
         $Events = [];
         foreach ($Ids as $Id) {
-            $Events[$Id] = new Event($Id);
+            $Events[$Id] = Event::getRecord($Id);
         }
         return $Events;
     }

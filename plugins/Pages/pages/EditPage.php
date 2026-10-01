@@ -74,7 +74,7 @@ if ($PageId == "NEW") {
         return;
     }
 
-    $Page = new Page($PageId);
+    $Page = Page::getRecord($PageId);
     if (!$Page->userCanModify($User)) {
         $AF->setJumpToPage("UnauthorizedAccess");
         return;
@@ -169,8 +169,9 @@ $FormFields = [
                 (!array_key_exists($Page->id(), $CleanUrlList) ||
                  !in_array($Value, $CleanUrlList[$Page->id()]))) {
                 # set error message to be displayed
+                $EscapedValue = htmlspecialchars($Value);
                 return "The specified clean URL path (<a href=\""
-                    .$AF->baseUrl().$Value."\"><i>".$Value
+                    .$AF->baseUrl().$EscapedValue."\"><i>".$EscapedValue
                     ."</i></a>) is already in use.";
             }
 

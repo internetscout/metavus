@@ -3,7 +3,7 @@
 #   FILE:  ResourceSummary.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -30,7 +30,7 @@ abstract class ResourceSummary
     */
     public static function create(int $RecordId)
     {
-        $Resource = new Record($RecordId);
+        $Resource = Record::getRecord($RecordId);
         $ResourceName = $Resource->getSchema()->resourceName();
         $ClassName = __CLASS__."_".str_replace(" ", "", $ResourceName);
         if (!class_exists($ClassName)) {
@@ -50,7 +50,7 @@ abstract class ResourceSummary
         # if this->Resource has not yet been set by a child class's __construct(),
         # set it now
         if (is_null($this->Resource)) {
-            $this->Resource = new Record($RecordId);
+            $this->Resource = Record::getRecord($RecordId);
         }
         $this->Editable = $this->Resource->userCanEdit(User::getCurrentUser());
     }

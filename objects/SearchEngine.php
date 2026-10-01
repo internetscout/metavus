@@ -3,7 +3,7 @@
 #   FILE:  SearchEngine.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -125,7 +125,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
     public function getFieldContent(int $ItemId, string $FieldId)
     {
         # get resource object
-        $Resource = new Record($ItemId);
+        $Resource = Record::getRecord($ItemId);
 
         # check if field still exists
         if (!$Resource->getSchema()->fieldExists($FieldId)) {
@@ -141,7 +141,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
             $ReturnValue = [];
             foreach ($ReferredItemIds as $RefId) {
                 # retrieve title value for item and add to returned values
-                $RefResource = new Record($RefId);
+                $RefResource = Record::getRecord($RefId);
                 $ReturnValue[] = $RefResource->getMapped("Title");
             }
 
@@ -982,7 +982,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
     {
         if (is_numeric($ItemOrItemId)) {
             $ItemId = (int)$ItemOrItemId;
-            $Item = new Record($ItemId);
+            $Item = Record::getRecord($ItemId);
         } else {
             $Item = $ItemOrItemId;
             $ItemId = $Item->Id();
@@ -1020,7 +1020,7 @@ class SearchEngine extends \ScoutLib\SearchEngine
     {
         # bail out if item no longer exists
         try {
-            $Resource = new Record($ItemId);
+            $Resource = Record::getRecord($ItemId);
         } catch (InvalidArgumentException $Exception) {
             return;
         }

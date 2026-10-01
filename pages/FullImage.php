@@ -3,7 +3,7 @@
 #   FILE:  FullImage.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2003-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2003-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (OPTIONAL):
@@ -74,7 +74,7 @@ if (!MetadataSchema::fieldExistsInAnySchema($FieldId)) {
 }
 
 # get the requested record and field
-$H_Resource = new Record($ResourceId);
+$H_Resource = Record::getRecord($ResourceId);
 $H_Field = MetadataField::getField($FieldId);
 
 # check that the requested field is actually an image field

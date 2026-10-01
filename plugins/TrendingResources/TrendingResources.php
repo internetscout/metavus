@@ -3,7 +3,7 @@
 #   FILE:  TrendingResources.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -145,7 +145,7 @@ class TrendingResources extends Plugin
             }
 
             # load resource
-            $Resource = new Record($RecordId);
+            $Resource = Record::getRecord($RecordId);
 
             # skip record if it is not viewable
             if (!$Resource->userCanView($User)) {

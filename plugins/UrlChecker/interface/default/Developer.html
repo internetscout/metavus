@@ -2,26 +2,27 @@
 #
 #   FILE:  Developer.html
 #
-#   Copyright 2011-2025 Internet Scout Research Group
+#   Copyright 2011-2026 Internet Scout Research Group
 #   http://scout.wisc.edu/
 #
 
 use Metavus\HtmlButton;
 use Metavus\InterfaceConfiguration;
 use Metavus\Plugins\UrlChecker\InvalidUrl;
-use Metavus\Plugins\UrlChecker\Record;
+use Metavus\Record;
 use ScoutLib\StdLib;
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
 
 /**
  * Print out resource data for a resource that will be checked next.
- * @param $ResourceId
- * @param $CheckDate
+ * @param int $ResourceId Resource ID.
+ * @param string $CheckDate Date resource was last checked.
+ * @return void
  */
-function PrintNextResource($ResourceId, $CheckDate): void
+function PrintNextResource(int $ResourceId, string $CheckDate): void
 {
-    $Resource = new Record($ResourceId, $CheckDate);
+    $Resource = Record::getRecord($ResourceId);
     $Schema = $Resource->getSchema();
 
     $TitleField = $Schema->getFieldByMappedName("Title");
@@ -46,9 +47,9 @@ function PrintNextResource($ResourceId, $CheckDate): void
         );
     }
 
-    $CheckDate = ($Resource->getCheckDate() == "N/A")  ?
-        $Resource->getCheckDate() :
-        date("M jS, Y \a\\t g:i A", strtotime($Resource->getCheckDate()));
+    $FormattedCheckDate = ($CheckDate === "N/A")
+            ? $CheckDate
+            : date("M jS, Y \a\\t g:i A", strtotime($CheckDate));
     ?>
     <tr>
         <td><?= $Resource->id(); ?></td>
@@ -56,7 +57,7 @@ function PrintNextResource($ResourceId, $CheckDate): void
             <a href="index.php?P=FullRecord&amp;Id=<?= $Resource->id(); ?>"
                 title="<?= $Title; ?>"><?= $Name; ?></a>
         </td>
-        <td><?= $CheckDate; ?></td>
+        <td><?= $FormattedCheckDate; ?></td>
         <td>
             <a href="index.php?P=P_UrlChecker_Check&amp;ResourceId=<?= $Resource->id(); ?>"
                 title="Validate this URL now. This may take awhile">

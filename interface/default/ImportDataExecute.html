@@ -3,7 +3,7 @@
 #   FILE:  ImportDataExecute.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -149,7 +149,7 @@ function firstTimeThrough(): bool
 
     if (count($InvalidFields) > 0) {
         $_SESSION["ErrorMessage"] = "Unknown metadata fields encountered: "
-                .implode(", ", $InvalidFields)."<br/>";
+                .htmlspecialchars(implode(", ", $InvalidFields))."<br/>";
         unsetSessionVars();
         ApplicationFramework::getInstance()->setJumpToPage("ImportData");
         return false;
@@ -480,12 +480,12 @@ function doWhileLoop(): bool
                 # this resource already exists
                 # should only be one matching Resources record
                 $ResourceId = $Resources[0];
-                $Resource = new Record($ResourceId);
+                $Resource = Record::getRecord($ResourceId);
             } else {
                 # otherwise duplicate resources exist!
                 $_SESSION["ImportComplete"] = $ImportComplete;
                 $ErrorMessage =
-                    "Error: Multiple Resources matching \"".$SqlCondition
+                    "Error: Multiple Resources matching \"".htmlspecialchars($SqlCondition)
                     ."\" encountered.<br>"
                     ."Please select Back and correct the problem on line "
                     .$TotalLineCount.".";
@@ -705,7 +705,7 @@ if ($ImportComplete == 0) {
     foreach ($ReferenceArray as $FieldId => $ResourceReferences) {
         # Foreach resource having a value for that field:
         foreach ($ResourceReferences as $ResourceId => $RefTargets) {
-            $ThisResource = new Record($ResourceId);
+            $ThisResource = Record::getRecord($ResourceId);
 
             # for each value that it has
             foreach ($RefTargets as $RefTarget) {

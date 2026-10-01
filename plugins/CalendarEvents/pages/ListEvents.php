@@ -3,7 +3,7 @@
 #   FILE:  ListEvents.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -142,5 +142,5 @@ $EventIds = array_slice($EventIds, $H_StartingIndex, $H_EventsPerPage);
 
 $H_Events = [];
 foreach ($EventIds as $Id) {
-    $H_Events[$Id] = new Event($Id);
+    $H_Events[$Id] = Event::getRecord($Id);
 }

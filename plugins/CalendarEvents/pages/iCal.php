@@ -3,7 +3,7 @@
 #   FILE:  iCal.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2022 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -35,7 +35,7 @@ if (!Event::itemExists($EventId)) {
     return;
 }
 
-$Event = new Event($EventId);
+$Event = Event::getRecord((int)$EventId);
 
 $H_Plugin = CalendarEvents::getInstance();
 

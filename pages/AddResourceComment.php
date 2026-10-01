@@ -3,7 +3,7 @@
 #   FILE:  AddResourceComment.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -57,7 +57,7 @@ if (!is_null($H_MessageId)) {
                 );
                 return;
             } else {
-                $H_Resource = new Record($Message->parentId());
+                $H_Resource = Record::getRecord($Message->parentId());
             }
         } else {
             FormUI::logError("You don't have permissions to edit that message.");
@@ -75,7 +75,7 @@ if (!is_null($H_MessageId)) {
         FormUI::logError("Invalid resource ID specified.");
         return;
     } else {
-        $H_Resource = new Record($ResourceId);
+        $H_Resource = Record::getRecord($ResourceId);
     }
 
     # set body text

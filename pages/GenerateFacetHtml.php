@@ -30,13 +30,6 @@ $AF->suppressHtmlOutput();
 # request that this page not be indexed by search engines
 $AF->addMetaTag(["robots" => "noindex"]);
 
-# do not generate facets for bots
-if ($PluginMgr->pluginReady("BotDetector") &&
-    $PluginMgr->getPlugin("BotDetector")->checkForBot()) {
-    $AF->doNotCacheCurrentPage();
-    return;
-}
-
 # do not generate facets for anon uses when load is high
 if (!$User->isLoggedIn()) {
     # check system load
@@ -52,6 +45,13 @@ if (!$User->isLoggedIn()) {
         header($_SERVER["SERVER_PROTOCOL"]." 429 Too Many Requests");
         return;
     }
+}
+
+# do not generate facets for bots
+if ($PluginMgr->pluginReady("BotDetector") &&
+    $PluginMgr->getPlugin("BotDetector")->checkForBot()) {
+    $AF->doNotCacheCurrentPage();
+    return;
 }
 
 $SchemaId = $_GET["SC"] ?? MetadataSchema::SCHEMAID_DEFAULT;

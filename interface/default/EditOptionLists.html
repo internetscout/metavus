@@ -3,7 +3,7 @@
 #   FILE:  EditOptionLists.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -227,7 +227,7 @@ if (isset($_POST["Submit"])) {
 
         # iterate through and set unset option values
         foreach ($ResourceIds as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $Resource->set($Field->id(), $Values);
         }
         $Messages[] = "default value set on records that had no value";

@@ -3,7 +3,7 @@
 #   FILE:  SystemConfiguration.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -317,7 +317,7 @@ class SystemConfiguration extends Configuration
                     $CoreCount = StdLib::getNumberOfCpuCores();
                     return ($CoreCount > 0) ? (int)($CoreCount * 1.2) : 8;
                 },
-                "Help" => "When the system laod is above this level, searches"
+                "Help" => "When the system load is above this level, searches"
                         ." by anonymous users will not be allowed.",
             ],
             "StrictSearchUrls" => [
@@ -649,7 +649,7 @@ class SystemConfiguration extends Configuration
                     return (ApplicationFramework::getInstance())->maxTasks();
                 },
                 "SetFunction" => function (string $SettingName, $Value): void {
-                    (ApplicationFramework::getInstance())->maxTasks($Value);
+                    (ApplicationFramework::getInstance())->maxTasks($Value, true);
                 },
                 "Help" => "The maximum number of tasks to run in "
                         ."the background per execution cycle."
@@ -664,7 +664,7 @@ class SystemConfiguration extends Configuration
                     return (ApplicationFramework::getInstance())->maxExecutionTime() / 60;
                 },
                 "SetFunction" => function (string $SettingName, $Value): void {
-                    (ApplicationFramework::getInstance())->maxExecutionTime($Value * 60);
+                    (ApplicationFramework::getInstance())->maxExecutionTime($Value * 60, true);
                 },
             ],
             "UseFilepond" => [
@@ -902,7 +902,7 @@ class SystemConfiguration extends Configuration
                 $Msg = "Unable to connect with the specified <b>SMTP User Name</b>"
                         . " and <b>SMTP Password</b>. Please check that these"
                         . " values are correct to connect to <i>"
-                        . $AllValues["SmtpServer"] . "</i>.";
+                        . htmlspecialchars($AllValues["SmtpServer"]) . "</i>.";
                 $ErrMsgs["SmtpUserName"] = $Msg;
                 $ErrMsgs["SmtpPassword"] = $Msg;
             } elseif (in_array("Server", $TestResultMsgs)

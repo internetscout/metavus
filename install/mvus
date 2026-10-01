@@ -30,7 +30,7 @@ class CommandLineUtility
     # ---- CONFIGURATION -----------------------------------------------------
 
     const BOOTSTRAP_FILE = "objects/Bootloader.php";
-    const CLU_VERSION = "2.0.25";
+    const CLU_VERSION = "2.0.26";
     const REQUIRED_SOFTWARE_VERSION = "1.2.0";
 
     # SQL errors we can ignore when doing upgrades
@@ -318,6 +318,12 @@ class CommandLineUtility
                     ],
                 ],
             ],
+        "search" => [
+            "Description" => "search for records",
+            "Usage" => "(KeywordSearch|UrlParameterString) [KeywordSearch...]",
+            "MinArgs" => 1,
+            "Function" => "searchRecords",
+            ],
         "task" => [
             "SubCommands" => [
                 "count" => [
@@ -366,6 +372,12 @@ class CommandLineUtility
             "Usage" => "",
             "Function" => "runUpgrades",
             "NoBootstrap" => true,
+            ],
+        "upload" => [
+            "Description" => "upload file to specified File field in specified record",
+            "Usage" => "FileName (RecordId|RecordTitle) FieldName",
+            "MinArgs" => 3,
+            "Function" => "uploadFileToRecord",
             ],
         "user" => [
             "SubCommands" => [
@@ -717,6 +729,8 @@ class CommandLineUtility
 
     # ---- PRIVATE INTERFACE -----------------------------------------------------
 
+    private const MYSQL_CREDENTIALS_FILE_MODE = 0600;
+
     private $Command;
     private $SubCommand;
 
@@ -801,6 +815,7 @@ class CommandLineUtility
 
         if (isset($Args[1])) {
             $NewValue = $Args[1];
+            $ValueForDisplay = $NewValue;
             switch ($SettingType) {
                 case SystemConfiguration::TYPE_ARRAY:
                     $NewValues = $Args;
@@ -808,7 +823,11 @@ class CommandLineUtility
                     $SysConfig->setArray($SettingName, $NewValues);
                     break;
                 case SystemConfiguration::TYPE_BOOL:
-                    $SysConfig->setBool($SettingName, (bool)$NewValue);
+                    # parse Boolean text explicitly because PHP casts every
+                    # nonempty string to true
+                    $NewBoolValue = $this->normalizeBooleanArgument($NewValue);
+                    $SysConfig->setBool($SettingName, $NewBoolValue);
+                    $ValueForDisplay = $NewBoolValue ? "TRUE" : "FALSE";
                     break;
                 case SystemConfiguration::TYPE_DATETIME:
                     $SysConfig->setDatetime($SettingName, $NewValue);
@@ -824,7 +843,7 @@ class CommandLineUtility
                     break;
             }
             print "Set ".$SettingName." to:";
-            print "\n    ".$NewValue;
+            print "\n    ".$ValueForDisplay;
         } else {
             if (!$SysConfig->isSet($SettingName)) {
                 $CurrentValue = "(no value set)";
@@ -1025,40 +1044,63 @@ class CommandLineUtility
      * command line option, to avoid including the password on the command
      * line.  (It must be the first option, placed right after the command.)
      * @param array $Args Additional command line arguments.
+     * @throws Exception If the software configuration cannot be loaded.
      */
     private function writeMysqlLoginInfoToConfigFile(array $Args): void
     {
         $FileName = $Args[0];
 
-        # check to make sure that file does not already exist
-        if (file_exists($FileName)) {
-            print "File ".$FileName." already exists.";
-            exit(1);
-        }
-
-        # check to make sure directory is writable
-        if (!is_writable(dirname($FileName))) {
-            print "Directory ".dirname($FileName)." is not writable.";
-            exit(1);
-        }
-
-        # create file and make sure it is readable only by user
-        touch ($FileName);
-        $Result = chmod($FileName, 0600);
-        if ($Result !== true) {
-            print "Unable to set mode on file "
-                    .$FileName." so that others cannot read it.\n";
-        }
-
-        # write out login info to file
-        print "Writing database login info to ".$FileName."\n";
+        # load login data before creating a destination that may need cleanup
         $this->loadConfigFile();
         $DBInfo = $GLOBALS["G_Config"]["Database"];
         $LoginInfo = "[client]\n"
                 ."host = ".$DBInfo["Host"]."\n"
                 ."user = ".$DBInfo["UserName"]."\n"
                 ."password = ".$DBInfo["Password"]."\n";
-        file_put_contents($FileName, $LoginInfo);
+
+        # create the file exclusively with restrictive initial permissions
+        $SavedUmask = umask(0077);
+        try {
+            $FileHandle = @fopen($FileName, "x");
+        } finally {
+            umask($SavedUmask);
+        }
+        if ($FileHandle === false) {
+            print "Unable to create file ".$FileName
+                    ."; it may already exist or be inaccessible.\n";
+            exit(1);
+        }
+
+        # verify that the restrictive umask produced the required file mode
+        $FileInfo = fstat($FileHandle);
+        $FileMode = ($FileInfo === false) ? null : ($FileInfo["mode"] & 0777);
+        if ($FileMode !== self::MYSQL_CREDENTIALS_FILE_MODE) {
+            fclose($FileHandle);
+            @unlink($FileName);
+            print "Unable to secure file ".$FileName
+                    ." for database credentials.\n";
+            exit(1);
+        }
+
+        # require the complete credential data to be written
+        $BytesWritten = fwrite($FileHandle, $LoginInfo);
+        if ($BytesWritten !== strlen($LoginInfo)) {
+            fclose($FileHandle);
+            @unlink($FileName);
+            print "Unable to write complete database login information to "
+                    .$FileName.".\n";
+            exit(1);
+        }
+
+        # close the file successfully before reporting completion
+        if (!fclose($FileHandle)) {
+            @unlink($FileName);
+            print "Unable to finish writing database login information to "
+                    .$FileName.".\n";
+            exit(1);
+        }
+
+        print "Database login information written to ".$FileName.".\n";
     }
 
     /**
@@ -1228,7 +1270,7 @@ class CommandLineUtility
                 foreach ($OwnerFields as $FieldName) {
                     foreach ($NewResourceIds as $ResourceId) {
                         if ($Schema->fieldExists($FieldName)) {
-                            $Resource = new Record($ResourceId);
+                            $Resource = Record::getRecord($ResourceId);
                             $Resource->set($FieldName, $SiteOwnerId);
                         }
                     }
@@ -1261,19 +1303,62 @@ class CommandLineUtility
     /**
      * Reload database from specified file.
      * @param array $Args Additional command line arguments.
+     * @throws Exception If database authorization cannot be prepared.
      */
     private function reloadDatabase(array $Args): void
     {
         $FileName = $Args[0];
 
-        if (!file_exists($FileName)) {
-            print "No file found with the name \"".$FileName."\".\n";
+        # make sure the input is a readable, nonempty file
+        if (!is_file($FileName) || !is_readable($FileName)) {
+            print "No readable file found with the name \"".$FileName."\".\n";
             exit(1);
-        } elseif (!preg_match("%.(sql|gz|bz2)$%i", $FileName)) {
+        }
+        $FileSize = filesize($FileName);
+        if (($FileSize === false) || ($FileSize === 0)) {
+            print "Database file \"".$FileName."\" is empty or unreadable.\n";
+            exit(1);
+        }
+
+        # select a portable input command based on the complete file suffix
+        if (preg_match('/\.sql\.gz$/i', $FileName)) {
+            $InputCommand = "gzip";
+            $InputCommandArgs = "-dc --";
+            $ValidationCommand = "gzip -t -- ".escapeshellarg($FileName);
+        } elseif (preg_match('/\.sql\.bz2$/i', $FileName)) {
+            $InputCommand = "bzip2";
+            $InputCommandArgs = "-dc --";
+            $ValidationCommand = "bzip2 -t -- ".escapeshellarg($FileName);
+        } elseif (preg_match('/\.sql$/i', $FileName)) {
+            $InputCommand = "cat";
+            $InputCommandArgs = "--";
+            $ValidationCommand = null;
+        } else {
             print "File type not recognized for \"".$FileName."\".\n";
             exit(1);
         }
 
+        # verify that every external command is available before changing the database
+        $RequiredCommands = ["mysql", "mysqladmin", $InputCommand];
+        foreach (array_unique($RequiredCommands) as $RequiredCommand) {
+            if (!self::shellCommandAvailable($RequiredCommand)) {
+                print "Required command \"".$RequiredCommand."\" was not found.\n";
+                exit(1);
+            }
+        }
+
+        # verify compressed input integrity before offering to wipe the database
+        if ($ValidationCommand !== null) {
+            $this->executeCheckedShellCommand(
+                $ValidationCommand,
+                "validation of compressed database file"
+            );
+        }
+
+        # verify database access before beginning any destructive work
+        $this->verifyCmdLineDbAccess();
+
+        # handle backup selection only after all reload prerequisites have passed
         if (isset($Args[1])) {
             if (strtoupper($Args[1][0]) == "B") {
                 $this->dumpDatabase(["."], "Backing up");
@@ -1293,12 +1378,12 @@ class CommandLineUtility
             $this->dumpDatabase(["."], "Backing up");
         }
 
+        # replace the existing database only after every preflight check succeeded
+        print "Reloading database from ".$FileName."\n";
+
         $DbAuth = $this->getAuthArgsForMysqlCommands();
         $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
         $DbNameArg = escapeshellarg($DbName);
-        $FileNameArg = escapeshellarg($FileName);
-
-        print "Reloading database from ".$FileName."\n";
 
         $Cmd = "mysqladmin ".$DbAuth." -f drop ".$DbNameArg;
         $this->executeCheckedShellCommand($Cmd, "database drop");
@@ -1306,22 +1391,13 @@ class CommandLineUtility
         $Cmd = "mysqladmin ".$DbAuth." create ".$DbNameArg;
         $this->executeCheckedShellCommand($Cmd, "database create");
 
-        if (preg_match("%.gz$%", $FileName)) {
-            $CatCmd = "gzcat";
-        } elseif (preg_match("%.bz2$%", $FileName)) {
-            $CatCmd = "bzcat";
-        } else {
-            $CatCmd = "cat";
-        }
-
-        $Cmd = $CatCmd." ".$FileNameArg
+        # stream the validated input through the selected portable decompressor
+        $FileNameArg = escapeshellarg($FileName);
+        $Cmd = $InputCommand." ".$InputCommandArgs." ".$FileNameArg
                 ." | mysql ".$DbAuth." --max_allowed_packet=512M ".$DbNameArg;
 
-        # set charset if needed
-        $MysqlVersion = exec("mysql --version");
-        if ($MysqlVersion === false) {
-            throw new Exception("Unable to determine MySQL version.");
-        }
+        # retain the legacy charset workaround for MySQL 5.x imports
+        $MysqlVersion = $this->getCmdLineMysqlVersion();
         if (preg_match("/Distrib 5\.[0-9]\.[0-9]+/", $MysqlVersion)) {
             $Cmd .=" --default-character-set=latin1";
         }
@@ -1925,6 +2001,75 @@ class CommandLineUtility
     }
 
     /**
+     * Search for records and print their IDs and titles.
+     * @param array $Args Search string or URL parameter string.
+     * @throws Exception If an error occurs while searching or retrieving results.
+     */
+    private function searchRecords(array $Args): void
+    {
+        # determine whether the first argument contains URL search parameters
+        $SearchParams = $this->parseUrlSearchParameterArgument($Args[0]);
+        $UrlParametersWereSupplied = ($SearchParams !== null);
+
+        # reject extra arguments after URL parameters or assemble a keyword search
+        if ($UrlParametersWereSupplied) {
+            array_shift($Args);
+            if (count($Args) !== 0) {
+                print "A URL parameter string must be supplied as a single argument.\n";
+                exit(1);
+            }
+        } else {
+            $SearchParams = new SearchParameterSet();
+            $SearchParams->addParameter(implode(" ", $Args));
+        }
+
+        # perform the search
+        $SearchResults = (new SearchEngine())->search($SearchParams);
+
+        # describe URL parameter searches (only when output is going to a terminal)
+        $OutputIsPiped = self::outputIsPiped();
+        if ($UrlParametersWereSupplied && !$OutputIsPiped) {
+            $Description = $SearchParams->textDescription(false, false);
+            if ($Description !== "") {
+                print $Description."\n";
+            }
+        }
+
+        # report an empty result set (only when output is going to a terminal)
+        if (count($SearchResults) === 0) {
+            if (!$OutputIsPiped) {
+                print "No matching results were found.\n";
+            }
+            return;
+        }
+
+        # for each search result
+        foreach (array_keys($SearchResults) as $RecordId) {
+            $Record = Record::getRecord((int)$RecordId);
+
+            # retrieve and normalize record title
+            $Title = $Record->getMapped("Title");
+            if (is_array($Title)) {
+                $TitleParts = [];
+                foreach ($Title as $TitlePart) {
+                    if (is_scalar($TitlePart)) {
+                        $TitleParts[] = (string)$TitlePart;
+                    }
+                }
+                $Title = implode(", ", $TitleParts);
+            } elseif (!is_scalar($Title)) {
+                $Title = "";
+            } else {
+                $Title = (string)$Title;
+            }
+
+            # assemble and print string with record ID and title
+            $NormalizedTitle = str_replace(["\r", "\n", "\t"], " ", $Title);
+            print $Record->getSchemaId()."\t".$RecordId."\t".$NormalizedTitle."\n";
+        }
+    }
+
+    /**
      * Print current count of queued, running, or orphaned tasks.
      * @param array $Args Additional command line arguments.
      */
@@ -2101,6 +2246,102 @@ class CommandLineUtility
     }
 
     /**
+     * Upload a file to a specified File field in a specified record.
+     * @param array $Args Additional command line arguments.
+     * @throws Exception If record lookup or file cleanup fails unexpectedly.
+     */
+    private function uploadFileToRecord(array $Args): void
+    {
+        # validate command arguments and source file
+        [$SourceFileName, $RecordArgument, $FieldName] = $Args;
+        if (!is_file($SourceFileName) || !is_readable($SourceFileName)) {
+            print "No readable file was found with the name \""
+                    .$SourceFileName."\".\n";
+            exit(1);
+        }
+
+        # resolve the record and destination field
+        $Record = $this->getRecord($RecordArgument);
+        $Schema = $Record->getSchema();
+        try {
+            $Field = $Schema->getField($FieldName);
+        } catch (Exception $Ex) {
+            print "No field found with the name \"".$FieldName."\" in the "
+                    .$Schema->name()." schema.\n";
+            exit(1);
+        }
+        if ($Field->type() !== MetadataSchema::MDFTYPE_FILE) {
+            print "Field \"".$Field->name()."\" in the ".$Schema->name()
+                    ." schema is not a File field.\n";
+            exit(1);
+        }
+
+        # make sure the upload does not conflict with existing files
+        $UploadFileName = basename($SourceFileName);
+        $ExistingFiles = $Record->get($Field);
+        if (in_array($UploadFileName, $ExistingFiles, true)) {
+            print "A file named \"".$UploadFileName."\" already exists in field \""
+                    .$Field->name()."\" for record ID ".$Record->id().".\n";
+            exit(1);
+        }
+        if (!$Field->allowMultiple() && count($ExistingFiles) !== 0) {
+            print "Field \"".$Field->name()."\" for record ID ".$Record->id()
+                    ." does not allow multiple files and already contains a file.\n";
+            exit(1);
+        }
+
+        # set umask to make sure files created will be readable by web server
+        $SavedUmask = umask(0022);
+
+        # create a temporary stored File while preserving the source file
+        $Upload = File::create($SourceFileName, $UploadFileName, false);
+        if (!$Upload instanceof File) {
+            $ErrorName = StdLib::getConstantName(
+                "Metavus\\File",
+                $Upload,
+                "FILESTAT_"
+            );
+            $ErrorDescription = ($ErrorName === null)
+                    ? "error code ".$Upload : $ErrorName." (code ".$Upload.")";
+            print "Unable to upload file \"".$SourceFileName."\": "
+                    .$ErrorDescription.".\n";
+            exit(1);
+        }
+
+        # attach a duplicate through Record to preserve normal housekeeping
+        try {
+            $ValueWasChanged = $Record->set($Field, $Upload);
+            if (!$ValueWasChanged) {
+                throw new Exception("Record field was not changed.");
+            }
+            $UploadException = null;
+        } catch (Exception $Ex) {
+            $UploadException = $Ex;
+        }
+
+        # remove the unassociated temporary File created above
+        if (File::itemExists($Upload->id())) {
+            $Upload->destroy();
+        }
+        if ($UploadException !== null) {
+            $this->reportExceptionAndExit($UploadException, "file upload");
+        }
+
+        # restore old umask
+        umask($SavedUmask);
+
+        # report successful upload
+        $TitleField = $Schema->getFieldByMappedName("Title");
+        $RecordTitle = ($TitleField === null) ? null : $Record->get($TitleField);
+        $RecordDescription = is_string($RecordTitle)
+                ? "\"".$RecordTitle."\" (ID ".$Record->id().")"
+                : "ID ".$Record->id();
+        print "Uploaded file \"".$UploadFileName."\" to field \""
+                .$Field->name()."\" in record ".$RecordDescription
+                ." in the ".$Schema->name()." schema.\n";
+    }
+
+    /**
      * Add new user account.
      * @param array $Args Additional command line arguments.
      */
@@ -2227,42 +2468,44 @@ class CommandLineUtility
                 "install/mvus",
                 ];
 
-        # start arguments for "find" with locations
+        # add existing local source locations to the directories to search
         foreach ($LocalLocations as $LocalLoc) {
             if (is_dir($LocalLoc)) {
                 $Locations[] = $LocalLoc;
             }
         }
-        $FindArgs = join(" ", $Locations);
 
-        # add exclusions to arguments for "find"
+        # escape each location separately to preserve its argument boundary
+        $EscapedLocations = array_map("escapeshellarg", $Locations);
+        $FindArgs = join(" ", $EscapedLocations);
+
+        # add escaped exclusions to the application-controlled find expression
         $Opts = [];
         foreach ($PathsToExclude as $PathToExclude) {
-            $Opts[] = "-path ".$PathToExclude;
+            $Opts[] = "-path ".escapeshellarg($PathToExclude);
         }
         $FindArgs .= " \( ".join(" -o ", $Opts)." \) -prune -o ";
 
-        # add file types to arguments for "find"
+        # add escaped file patterns to the application-controlled find expression
         $Opts = [];
         foreach ($Extensions as $Extension) {
-            $Opts[] = "-iname \"*.".$Extension."\"";
+            $Opts[] = "-iname ".escapeshellarg("*.".$Extension);
         }
         $FindArgs .= " \( ".join(" -o ", $Opts)." \)";
 
         # add final options to arguments for "find"
         $FindArgs .= " -print0";
 
-        # assemble arguments for "grep"
-        foreach ($GrepArgs as $Index => $Arg) {
-            if (strpos($Arg, " ") !== false) {
-                $GrepArgs[$Index] = "'".$Arg."'";
-            }
-        }
+        # escape every grep argument so the shell cannot interpret its contents
+        $EscapedGrepArgs = array_map("escapeshellarg", $GrepArgs);
 
-        # assemble entire command and return it to caller
+        # escape the additional source files before appending them to grep
+        $EscapedOtherFiles = array_map("escapeshellarg", $OtherFiles);
+
+        # assemble the command using only application-controlled shell syntax
         $Command = "find ".$FindArgs
-                ." | xargs -0 grep ".join(" ", $GrepArgs)
-                ." ".join(" ", $OtherFiles);
+                ." | xargs -0 grep ".join(" ", $EscapedGrepArgs)
+                ." ".join(" ", $EscapedOtherFiles);
         return $Command;
     }
 
@@ -2402,6 +2645,34 @@ class CommandLineUtility
     }
 
     /**
+     * Retrieve the version reported by the MySQL command line client.
+     * @return string MySQL command line client version string.
+     */
+    private function getCmdLineMysqlVersion(): string
+    {
+        # execute the version command while capturing output and status
+        $MysqlVersionOutput = [];
+        $MysqlVersionStatus = 0;
+        $MysqlVersion = exec(
+            "mysql --version 2>&1",
+            $MysqlVersionOutput,
+            $MysqlVersionStatus
+        );
+
+        # report command failures or an unexpectedly empty version string
+        if (($MysqlVersionStatus !== 0) || ($MysqlVersion === false)
+                || ($MysqlVersion === "")) {
+            print "Unable to determine MySQL version.\n";
+            if (count($MysqlVersionOutput) !== 0) {
+                print implode("\n", $MysqlVersionOutput)."\n";
+            }
+            exit(1);
+        }
+
+        return $MysqlVersion;
+    }
+
+    /**
      * Get the current Metavus version from the VERSION file.
      * @return string Current Metavus version.
      * @throws Exception If VERSION cannot be read.
@@ -2536,6 +2807,66 @@ class CommandLineUtility
     }
 
     /**
+     * Retrieve a record by ID or exact title, erroring out if not found.
+     * @param string $RecordArgument Record ID or title.
+     * @return Record Matching record.
+     * @throws Exception If the matching record cannot be retrieved.
+     */
+    private function getRecord(string $RecordArgument): Record
+    {
+        # interpret numeric arguments as record IDs
+        if (is_numeric($RecordArgument)) {
+            $RecordId = (int)$RecordArgument;
+            if (!Record::itemExists($RecordId)) {
+                print "No record found with the ID \"".$RecordArgument."\".\n";
+                exit(1);
+            }
+            return Record::getRecord($RecordId);
+        }
+
+        # search mapped Title fields in every schema
+        $MatchingRecords = [];
+        foreach (MetadataSchema::getAllSchemas() as $Schema) {
+            $TitleField = $Schema->getFieldByMappedName("Title");
+            if ($TitleField === null) {
+                continue;
+            }
+            $RecordFactory = new RecordFactory($Schema->id());
+            $RecordIds = $RecordFactory->getIdsOfMatchingRecords(
+                [$TitleField->id() => $RecordArgument]
+            );
+            foreach ($RecordIds as $RecordId) {
+                $Record = Record::getRecord((int)$RecordId);
+                if ($Record->get($TitleField) === $RecordArgument) {
+                    $MatchingRecords[$Record->id()] = $Record;
+                }
+            }
+        }
+
+        # require the title to identify exactly one record
+        if (count($MatchingRecords) === 0) {
+            print "No record found with the title \"".$RecordArgument."\".\n";
+            exit(1);
+        }
+        if (count($MatchingRecords) > 1) {
+            print "Ambiguous record title \"".$RecordArgument."\".\n";
+            print "Matching records:";
+            foreach ($MatchingRecords as $Record) {
+                print "\n    ID ".$Record->id()." ("
+                        .$Record->getSchema()->name()." schema)";
+            }
+            print "\n";
+            exit(1);
+        }
+
+        $Record = reset($MatchingRecords);
+        if (!$Record instanceof Record) {
+            throw new Exception("Unable to retrieve matching record.");
+        }
+        return $Record;
+    }
+
+    /**
      * Retrieve schema for specified name or ID, erroring out if no matching
      * schema found.
      * @param string $Name Schema name or ID.
@@ -2622,6 +2953,33 @@ class CommandLineUtility
         } else {
             throw new Exception("Could not find (or read) config.php.");
         }
+    }
+
+    /**
+     * Convert a command line Boolean value to a native Boolean.
+     * @param string $Value Command line value supplied by the user.
+     * @return bool Normalized Boolean value.
+     */
+    private function normalizeBooleanArgument(string $Value): bool
+    {
+        # normalize capitalization and surrounding command line whitespace
+        $NormalizedValue = strtolower(trim($Value));
+
+        # accept common unambiguous representations of true
+        $TrueValues = ["1", "true", "yes", "on"];
+        if (in_array($NormalizedValue, $TrueValues, true)) {
+            return true;
+        }
+
+        # accept common unambiguous representations of false
+        $FalseValues = ["0", "false", "no", "off"];
+        if (in_array($NormalizedValue, $FalseValues, true)) {
+            return false;
+        }
+
+        print "Invalid Boolean value \"".$Value."\"; expected true/false, "
+                ."yes/no, on/off, or 1/0.\n";
+        exit(1);
     }
 
     /**
@@ -2740,6 +3098,27 @@ class CommandLineUtility
     private static function outputIsPiped(): bool
     {
         return (function_exists("posix_isatty") && !posix_isatty(STDOUT)) ? true : false;
+    }
+
+    /**
+     * Parse a command line argument as URL search parameters if possible.
+     * @param string $Argument Potential URL parameter string.
+     * @return SearchParameterSet|null Parsed parameters, or NULL if the argument
+     *      does not contain recognized URL search parameters.
+     */
+    private function parseUrlSearchParameterArgument(
+        string $Argument
+    ): ?SearchParameterSet {
+        # attempt to load and normalize the supplied URL parameters
+        $SearchParams = new SearchParameterSet();
+        try {
+            $NormalizedParameters = $SearchParams->urlParameterString($Argument);
+        } catch (Exception $Ex) {
+            return null;
+        }
+
+        # an empty normalized value means that no recognized parameters were found
+        return ($NormalizedParameters === "") ? null : $SearchParams;
     }
 
     /**
@@ -2881,5 +3260,24 @@ class CommandLineUtility
             $DBInfo["Host"]
         );
         Database::setGlobalDatabaseName($DBInfo["DatabaseName"]);
+    }
+
+    /**
+     * Verify that MySQL command line utilities can access the configured database.
+     * @throws Exception If database authorization cannot be prepared.
+     */
+    private function verifyCmdLineDbAccess(): void
+    {
+        # build an authenticated query that does not modify the database
+        $DbAuth = $this->getAuthArgsForMysqlCommands();
+        $DbName = $GLOBALS["G_Config"]["Database"]["DatabaseName"];
+        $ConnectionTestCommand = "mysql ".$DbAuth
+                ." --execute=".escapeshellarg("SELECT 1")." ".escapeshellarg($DbName);
+
+        # report a connection or authentication failure before destructive work
+        $this->executeCheckedShellCommand(
+            $ConnectionTestCommand,
+            "database connection test"
+        );
     }
 }

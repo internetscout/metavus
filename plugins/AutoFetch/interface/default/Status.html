@@ -3,7 +3,7 @@
 #   FILE:  Status.html (AutoFetch plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2016-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2016-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -79,7 +79,7 @@ $ErrorListFields =
             "Sortable" => false,
             "ValueFunction" => function ($Item, $FieldId): string {
                 $RecordId = $Item["RecordId"];
-                $Resource = new Record($RecordId);
+                $Resource = Record::getRecord($RecordId);
                 return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
                         .htmlspecialchars($Resource->getMapped("Title")).'</a>';
             },
@@ -127,7 +127,7 @@ $FetchLogFields =
                 $File = new File($FileId);
                 $RecordId = $File->resourceId();
 
-                $Resource = new Record($RecordId);
+                $Resource = Record::getRecord($RecordId);
                 return '<a href="index.php?P=FullRecord&ID='.$RecordId.'">'
                         .htmlspecialchars($Resource->getMapped("Title")).'</a>';
             },

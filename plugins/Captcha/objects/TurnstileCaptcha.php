@@ -25,6 +25,7 @@ class TurnstileCaptcha extends Captcha
      */
     public static function getConfigOptions(): array
     {
+        $DocsBase = "https://developers.cloudflare.com";
         $Options = [
             "TurnstileHeading" => [
                 "Type" => FormUI::FTYPE_HEADING,
@@ -33,7 +34,7 @@ class TurnstileCaptcha extends Captcha
             "TurnstileSiteKey" => [
                 "Type" => FormUI::FTYPE_TEXT,
                 "Label" => "Turnstile Site Key",
-                "Help" => "Site key for the <a href='https://developers.cloudflare.com/turnstile/'"
+                "Help" => "Site key for the <a href='".$DocsBase."/turnstile/'"
                     .">Cloudflare Turnstile</a> service. Displayed below the widget name in the "
                     ."list of Turnstile widgets in your Cloudflare Dashboard under "
                     ."Protect &amp; Connect / Application Security / Turnstile.",
@@ -42,7 +43,7 @@ class TurnstileCaptcha extends Captcha
                 "Type" => FormUI::FTYPE_TEXT,
                 "Label" => "Turnstile Secret Key",
                 "Help" => "Listed at the bottom of the Edit Widget page accessed from the "
-                    ."list of widgets.",
+                    ."list of widgets referenced above.",
             ],
         ];
 
@@ -74,6 +75,21 @@ class TurnstileCaptcha extends Captcha
         self::$SiteKey = $SiteKey;
         self::$SecretKey = $SecretKey;
         return null;
+    }
+
+    /**
+     * Get text to include in plugin instructions.
+     * @return string Instructions text.
+     */
+    public static function getInstructions(): string
+    {
+        $DocsBase = "https://developers.cloudflare.com";
+        $Instructions = "To use the Cloudflare Turnstile service, you will need to "
+            ."<a href='".$DocsBase."/fundamentals/account/create-account/'"
+            .">create a Cloudflare account</a>, then follow the "
+            ."<a href='".$DocsBase."/turnstile/get-started/widget-management/dashboard/'"
+            .">widget creation instructions</a> to create a 'Managed' widget. ";
+        return $Instructions;
     }
 
     /**

@@ -3,7 +3,7 @@
 #   FILE:  PluginUpgrade_2_0_2.php (Pages plugin)
 #
 #   A plugin upgrade file for the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -49,7 +49,7 @@ class PluginUpgrade_2_0_2 extends PluginUpgrade
         $PFactory = new PageFactory();
         $Ids = $PFactory->getItemIds();
         foreach ($Ids as $Id) {
-            $Page = new Page($Id);
+            $Page = Page::getRecord($Id);
             $Page->set("Summary", $Page->getSummary());
         }
 

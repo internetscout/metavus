@@ -47,8 +47,8 @@ class MetadataField
     #   supported PHP version allows constants in traits (PHP 8.2))
     const EVENT_SET = 1;
     const EVENT_CLEAR = 2;
-    const EVENT_ADD = 4;
-    const EVENT_REMOVE = 8;
+    const EVENT_CREATE = 4;
+    const EVENT_DESTROY = 8;
 
     # reserved field names that user can't set field to
     public const RESERVED_NAMES = ["resourceid", "schemaid", "xtempfieldnamex"];
@@ -481,6 +481,9 @@ class MetadataField
                         # set field order values for new field
                         $Schema->getDisplayOrder()->appendItem($NewId, "Metavus\\MetadataField");
                         $Schema->getEditOrder()->appendItem($NewId, "Metavus\\MetadataField");
+
+                        # notify observers that the permanent field was created
+                        $this->notifyObservers(self::EVENT_CREATE);
                     }
                 }
             }
@@ -516,6 +519,27 @@ class MetadataField
     }
 
     /**
+     * Determine if the given user can author values for this field.
+     * @param ?User $User User to check.  (OPTIONAL, defaults to current user)
+     * @return bool TRUE if the user can author values, otherwise FALSE.
+     */
+    public function userCanAuthor(?User $User = null): bool
+    {
+        # avoid checking privileges when the field cannot be edited
+        if (!$this->editable()) {
+            return false;
+        }
+
+        # use the current user when none was supplied
+        if ($User === null) {
+            $User = User::getCurrentUser();
+        }
+
+        # check whether the user meets the field authoring requirements
+        return $this->authoringPrivileges()->meetsRequirements($User);
+    }
+
+    /**
      * Get/set privileges that allowing editing values for this field.
      * @param PrivilegeSet $NewValue New PrivilegeSet value.  (OPTIONAL)
      * @return PrivilegeSet PrivilegeSet that allows editing.
@@ -535,6 +559,27 @@ class MetadataField
 
         # return current value to caller
         return $this->EditingPrivileges;
+    }
+
+    /**
+     * Determine if the given user can edit values for this field.
+     * @param ?User $User User to check.  (OPTIONAL, defaults to current user)
+     * @return bool TRUE if the user can edit values, otherwise FALSE.
+     */
+    public function userCanEdit(?User $User = null): bool
+    {
+        # avoid checking privileges when the field cannot be edited
+        if (!$this->editable()) {
+            return false;
+        }
+
+        # use the current user when none was supplied
+        if ($User === null) {
+            $User = User::getCurrentUser();
+        }
+
+        # check whether the user meets the field editing requirements
+        return $this->editingPrivileges()->meetsRequirements($User);
     }
 
     /**
@@ -2017,23 +2062,51 @@ class MetadataField
 
     /**
      * Notify registered observers about the specified event.
-     * Observer functions should have the following signature:
+     * Observer functions for EVENT_SET and EVENT_CLEAR should have the
+     * following signature:
      *      function myObserver(
      *          int $Event,
-     *          int $RecordId,
+     *          Record $Record,
      *          MetadataField $Field,
-     *          $Value): void
-     * Field types that can support multiple values produce ADD and REMOVE
-     * events, while field types that cannot support multiple values produce
-     * SET and CLEAR events.
+     *          array $Values): void
+     * Observer functions for EVENT_CREATE and EVENT_DESTROY should have the
+     * following signature:
+     *      function myObserver(
+     *          int $Event,
+     *          MetadataField $Field): void
      * @param int $Event Event to notify about (EVENT_ constant).
-     * @param int $RecordId ID of record to which event applies.
-     * @param mixed $Value Value associated with event.
+     * @param Record|null $Record Record associated with a value event.
+     * @param array|null $Values Values associated with a value event.
+     * @throws InvalidArgumentException If arguments do not match the event.
      */
-    public function notifyObservers(int $Event, int $RecordId, $Value): void
-    {
-        $Args = [ $Event, $RecordId, $this, $Value ];
-        $this->notifyObserversWithArgs($Event, $Args, $this->Id);
+    public function notifyObservers(
+        int $Event,
+        ?Record $Record = null,
+        ?array $Values = null
+    ): void {
+        # assemble arguments for field value events
+        if (($Event === self::EVENT_SET) || ($Event === self::EVENT_CLEAR)) {
+            if (($Record === null) || ($Values === null)) {
+                throw new InvalidArgumentException(
+                    "Field value observer events require a Record and values."
+                );
+            }
+            $Args = [$Event, $Record, $this, $Values];
+            $ItemId = $this->Id;
+        } elseif (($Event === self::EVENT_CREATE) || ($Event === self::EVENT_DESTROY)) {
+            # assemble arguments for field lifecycle events
+            if (($Record !== null) || ($Values !== null)) {
+                throw new InvalidArgumentException(
+                    "Field lifecycle observer events do not accept values."
+                );
+            }
+            $Args = [$Event, $this];
+            $ItemId = $this->Id;
+        } else {
+            throw new InvalidArgumentException("Unknown metadata field observer event.");
+        }
+
+        $this->notifyObserversWithArgs($Event, $Args, $ItemId);
     }
 
     /**
@@ -3009,7 +3082,7 @@ class MetadataField
         ],
         MetadataSchema::MDFTYPE_PARAGRAPH  => [
             "AllowHTML" => false,
-            "MaxLength" => 100,
+            "MaxLength" => 0,
             "ParagraphCols" => 50,
             "ParagraphRows" => 4,
             "SearchWeight" => 1,
@@ -3178,6 +3251,11 @@ class MetadataField
             "Attempt to update drop Metadata Field at %FILE%:%LINE%."
             ." (Fields may only be dropped by MetadataSchema.)"
         );
+
+        # notify observers before destroying a permanent field
+        if ($this->Id >= 0) {
+            $this->notifyObservers(self::EVENT_DESTROY);
+        }
 
         # clear other database entries as appropriate for field type
         $DB = $this->DB;
@@ -3797,7 +3875,8 @@ class MetadataField
                 $Association["RecordId"],
                 $OldToNewMap[$Association[$OldType ."Id"]]
             ];
-            (new Record($Association["RecordId"]))->queueSearchAndRecommenderUpdate();
+            $AssociatedRecord = Record::getRecord($Association["RecordId"]);
+            $AssociatedRecord->queueSearchAndRecommenderUpdate();
         }
         $InsertQueryBase = "INSERT INTO " .$NewIntsTable
                 ." (RecordId, " .$NewIdField .") VALUES ";

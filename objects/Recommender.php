@@ -3,7 +3,7 @@
 #   FILE:  Recommender.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -112,7 +112,7 @@ class Recommender extends \ScoutLib\Recommender
         # if resource not already loaded
         if (!isset(self::$RecordCache[$ItemId])) {
             # get resource object
-            self::$RecordCache[$ItemId] = new Record($ItemId);
+            self::$RecordCache[$ItemId] = Record::getRecord($ItemId);
 
             # if cached resource limit exceeded
             if (count(self::$RecordCache) > 100) {
@@ -138,7 +138,7 @@ class Recommender extends \ScoutLib\Recommender
     {
         if (is_numeric($ItemOrItemId)) {
             $ItemId = (int)$ItemOrItemId;
-            $Item = new Record($ItemId);
+            $Item = Record::getRecord($ItemId);
         } else {
             $Item = $ItemOrItemId;
             $ItemId = $Item->Id();
@@ -249,7 +249,7 @@ class Recommender extends \ScoutLib\Recommender
             }
         } else {
             # requeue updates for remaining items
-            $Item = new Record($SourceItemId);
+            $Item = Record::getRecord($SourceItemId);
             $TaskDescription = "Update recommender data for"
                 ." <a href=\"r".$SourceItemId."\"><i>"
                 .$Item->getMapped("Title")."</i></a>";

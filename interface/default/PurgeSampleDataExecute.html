@@ -3,7 +3,7 @@
 #   FILE:  PurgeSampleDataExecute.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -43,7 +43,7 @@ $ClassIds = [];
 $CNIds = [];
 
 foreach ($ResourceList as $ResourceId) {
-    $Resource = new Record($ResourceId);
+    $Resource = Record::getRecord($ResourceId);
 
     # get Classifications associated with this Resource
     $Names = $Resource->classifications();
@@ -106,7 +106,7 @@ $CollectionIds = $CFactory->getIdsOfMatchingRecords(
 );
 
 foreach ($CollectionIds as $Id) {
-    $Record = new Collection($Id);
+    $Record = Collection::getRecord($Id);
     $Record->destroy();
 }
 

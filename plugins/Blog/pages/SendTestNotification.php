@@ -3,7 +3,7 @@
 #   FILE:  SendTestNotification.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -20,7 +20,7 @@ $AF->setPageTitle("Send Test Notification");
 
 # get the blog plugin and entry
 $Blog = Blog::getInstance();
-$Entry = new Entry(StdLib::getArrayValue($_GET, "ID"));
+$Entry = Entry::getRecord(StdLib::getArrayValue($_GET, "ID"));
 
 # don't allow unauthorized access
 if (!$Entry->UserCanEdit(User::getCurrentUser())) {

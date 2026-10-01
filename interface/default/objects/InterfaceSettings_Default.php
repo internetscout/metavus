@@ -60,7 +60,12 @@ class InterfaceSettings_Default extends InterfaceSettings
                 "Default" => "",
                 "Help" => "The email address of the individual responsible"
                         ." for overall site management. Feedback and other"
-                        ." administrative mail is directed to this address.",
+                        ." administrative mail is directed to this address."
+                        ." If this server is not an authorized sender for"
+                        ." the domain of this address then you will need to"
+                        ." configure Metavus send email with SMTP using"
+                        ." an authorized server. See the 'Mailing' section"
+                        ." in 'System Configuration'.",
             ],
             "MainNavItems" => [
                 "Type" => FormUI::FTYPE_PARAGRAPH,
@@ -242,13 +247,14 @@ class InterfaceSettings_Default extends InterfaceSettings
                         ."Metavus creates a display area for the image, centers "
                         ."the image within that area, displays it without scaling, "
                         ."and crops any overflow.</p>"
-                        ."<p>The specific size of the display area will be determined by the "
-                        ."interface in use and the size of the user's browser window. "
+                        ."<p>The specific size of the display area will be determined "
+                        ."by the interface in use and the size of the user's "
+                        ."browser window. "
                         ."For the Metavus default interface, the hero image is hidden "
                         ."on windows narrower than 990px. On wider windows, the display "
-                        ."area is 430px tall and has a variable width determind by the size "
-                        ."of the window. The default hero image file is 1920px wide by "
-                        ."430px tall.</p>"
+                        ."area is 430px tall and has a variable width determined by "
+                        ."the size of the window. The default hero image file is "
+                        ."1920px wide by 430px tall.</p>"
 
             ],
             "CollageSchema" => [
@@ -262,7 +268,7 @@ class InterfaceSettings_Default extends InterfaceSettings
                     unset($SchemaNames[MetadataSchema::SCHEMAID_USER]);
                     return $SchemaNames;
                 },
-                "Help" => "Schena to use for the photo collage on the home page, "
+                "Help" => "Schema to use for the photo collage on the home page, "
                         ." if the Collage plugin is enabled."
             ],
             # -------------------------------------------------

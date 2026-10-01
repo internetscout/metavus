@@ -3,7 +3,7 @@
 #   FILE:  SecondaryNavigation.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -103,8 +103,10 @@ class SecondaryNavigation extends Plugin
                         $InvalidLinks[] = trim($Link);
                     }
                 }
-                return (count($InvalidLinks) !== 0 ? "Link(s) not found in offered "
-                        ."navigation item list: ".implode(", ", $InvalidLinks) : null);
+                return (count($InvalidLinks) !== 0
+                    ? "Link(s) not found in offered navigation item list: "
+                        .htmlspecialchars(implode(", ", $InvalidLinks))
+                    : null);
             },
             "Default" => "index.php?P=SysAdmin\nindex.php?P=UserList\nindex.php?P=MDHome"
         ];

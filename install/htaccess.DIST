@@ -10,6 +10,9 @@ RewriteEngine on
 RewriteBase X-REWRITEBASE-X
 
 # -- Access Control
+
+# BEGIN: STRICT_SEARCH_SUPPORT
+RewriteRule .* - [E=STRICT_SEARCH_SUPPORT:1]
 # if strict search urls is enabled, deny searches when they have no session
 # cookie and P= occurs but is not the first parameter in the string
 RewriteCond %{HTTP_COOKIE} =""
@@ -17,6 +20,7 @@ RewriteCond %{QUERY_STRING} "&P=SearchResults(&|$)"
 RewriteCond %{SCRIPT_FILENAME} "^(.*)/index\.php$"
 RewriteCond %1/tmp/htaccess_strict_searches -f
 RewriteRule index\.php - [F]
+# END: STRICT_SEARCH_SUPPORT
 
 # allow only the following specific PHP files
 RewriteRule ^plugins/Captcha/lib/securimage/securimage_(show|play)\.php$ - [S=4]
@@ -43,26 +47,40 @@ RewriteRule ^lib/FilePond/server/index\.php$ - [F]
 
 # make sure fcgi installations get HTTP_AUTHORIZATION headers
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+
+# BEGIN: URL_FINGERPRINTING_SUPPORT
 # -- URL fingerprinting support
 RewriteRule .* - [E=URL_FINGERPRINTING_SUPPORT:1]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{QUERY_STRING} !=URLF=1
 RewriteRule ^(.+)\.[0-9A-F]{6}\.([a-z]+)$ $1.$2?URLF=1 [L]
+# END: URL_FINGERPRINTING_SUPPORT
+
+# BEGIN: SCSS_REWRITE_SUPPORT
 # -- SCSS support
 RewriteRule .* - [E=SCSS_REWRITE_SUPPORT:1]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{QUERY_STRING} !=SCSS=1
 RewriteRule ^(.+\.css)$ local/data/caches/SCSS/$1?SCSS=1 [L]
+# END: SCSS_REWRITE_SUPPORT
+
+# BEGIN: JSMIN_REWRITE_SUPPORT
 # -- JavaScript auto-minification support
 RewriteRule .* - [E=JSMIN_REWRITE_SUPPORT:1]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{QUERY_STRING} !=JSMIN=1
 RewriteRule ^(.+\.js)$ local/data/caches/JSMin/$1?JSMIN=1 [L]
+# END: JSMIN_REWRITE_SUPPORT
+
+# BEGIN: CLEAN_URL_SUPPORT
 # -- Clean URL support (must be last rewrite)
 RewriteRule .* - [E=CLEAN_URL_SUPPORT:1]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php [L]
+# END: CLEAN_URL_SUPPORT
+
 </IfModule>
 
 # set Cache Policy for static assets and fingerprinted files

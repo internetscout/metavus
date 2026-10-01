@@ -3,7 +3,7 @@
 #   FILE:  QuickSearchHelper.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -531,7 +531,7 @@ class QuickSearchHelper
         # pull out mapped titles for all resources
         $ResourceData = [];
         foreach (array_keys($SearchResults) as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $ResourceData[$ResourceId] = (string)$Resource->getForDisplay(
                 $Resource->getSchema()->getFieldByMappedName("Title")
             );

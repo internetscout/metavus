@@ -3,7 +3,7 @@
 #   FILE:  AddQualifier.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -126,12 +126,12 @@ switch ($ButtonPushed) {
             $Valid = true;
             # check if namespace is a valid url
             if (!filter_var($NewNamespace, FILTER_VALIDATE_URL) && strlen($NewNamespace)) {
-                FormUI::logError($NewNamespace." is not a valid URL.");
+                FormUI::logError(htmlspecialchars($NewNamespace)." is not a valid URL.");
                 $Valid = false;
             }
             # check if url is a valid url
             if (!filter_var($NewUrl, FILTER_VALIDATE_URL) && strlen($NewUrl)) {
-                FormUI::logError($NewUrl." is not a valid URL.");
+                FormUI::logError(htmlspecialchars($NewUrl)." is not a valid URL.");
                 $Valid = false;
             }
             #check if name is empty
@@ -142,8 +142,8 @@ switch ($ButtonPushed) {
             # pass true to nameIsInUse so a case-insensitive string comparison
             # is used to check if the new qualifier's name is already in use
             if ($QualifierFactory->nameIsInUse($NewName, true)
-                && $NewName != $Qualifier->name()) {
-                FormUI::logError($NewName." is already in use.");
+                    && $NewName != $Qualifier->name()) {
+                FormUI::logError(htmlspecialchars($NewName)." is already in use.");
                 $Valid = false;
             }
             if ($Valid) {

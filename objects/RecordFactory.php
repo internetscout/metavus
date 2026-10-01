@@ -49,7 +49,8 @@ class RecordFactory extends ItemFactory
             "RecordId",
             $ItemNameColumnName,
             false,
-            "SchemaId = ".intval($this->SchemaId)
+            "SchemaId = ".intval($this->SchemaId),
+            [Record::class, "getRecord"]
         );
     }
 
@@ -91,8 +92,9 @@ class RecordFactory extends ItemFactory
                 $ErrType = ($Error->level == LIBXML_ERR_WARNING) ? "Warning"
                         : (($Error->level == LIBXML_ERR_ERROR) ? "Error"
                         : "Fatal Error");
-                $this->logErrorMessage("XML ".$ErrType.": ".$Error->message
-                        ." (".$Error->file.":".$Error->line.",".$Error->column.")");
+                $this->logErrorMessage("XML ".$ErrType.": ".htmlspecialchars($Error->message)
+                        ." (".htmlspecialchars($Error->file).":".$Error->line
+                        .",".$Error->column.")");
             }
             return [];
         }
@@ -131,7 +133,7 @@ class RecordFactory extends ItemFactory
 
                 if (!array_key_exists($TagName, $PossibleTags)) {
                     $this->logErrorMessage(
-                        "Invalid metadata field tag \"".$TagName
+                        "Invalid metadata field tag \"".htmlspecialchars($TagName)
                         ."\" found in record #".$ResourceIndex."."
                     );
                     continue;
@@ -378,7 +380,7 @@ class RecordFactory extends ItemFactory
         # for each resource ID found
         foreach ($ResourceIds as $ResourceId) {
             # load resource and add to list of found resources
-            $Resources[$ResourceId] = new Record($ResourceId);
+            $Resources[$ResourceId] = Record::getRecord($ResourceId);
         }
 
         # return found resources to caller
@@ -1262,7 +1264,7 @@ class RecordFactory extends ItemFactory
         array $RecordIds
     ): bool {
         foreach ($RecordIds as $RecordId) {
-            $Record = new Record($RecordId);
+            $Record = Record::getRecord($RecordId);
             $Screenshot = $Record->getMapped("Screenshot");
             if (is_array($Screenshot) && count($Screenshot) > 0) {
                 return true;
@@ -1925,7 +1927,7 @@ class RecordFactory extends ItemFactory
 
                     default:
                         $this->logErrorMessage(
-                            "Unknown tag found: <".$Child->getName().">"
+                            "Unknown tag found: <".htmlspecialchars($Child->getName()).">"
                                 ." (in the ".$Field->name()." field in record #"
                                 .$ResourceIndex.")"
                         );
@@ -1945,7 +1947,7 @@ class RecordFactory extends ItemFactory
             # check file exist
             if (!file_exists($SourceImageName)) {
                 $this->logErrorMessage(
-                    "File ".$SourceImageName
+                    "File ".htmlspecialchars($SourceImageName)
                         ." does not exist (in the ".$Field->name()
                         ." field in record #".$ResourceIndex.")"
                 );
@@ -1955,7 +1957,7 @@ class RecordFactory extends ItemFactory
             # check file is readable
             if (!is_readable($SourceImageName)) {
                 $this->logErrorMessage(
-                    "File ".$SourceImageName
+                    "File ".htmlspecialchars($SourceImageName)
                         ." is not readable (in the ".$Field->name()
                         ." field in record #".$ResourceIndex.")"
                 );
@@ -1973,7 +1975,7 @@ class RecordFactory extends ItemFactory
                 $this->logErrorMessage(
                     "Exception while"
                     ." creating Image object and"
-                    ." saving to Record:\n".$e->getMessage()
+                    ." saving to Record:\n".htmlspecialchars($e->getMessage())
                     ."\n(in the ".$Field->name()
                     ." field in record #".$ResourceIndex.")"
                 );
@@ -2014,7 +2016,7 @@ class RecordFactory extends ItemFactory
             # check file exists and is readable
             if (!file_exists($SourceFileName)) {
                 $this->logErrorMessage(
-                    "File ".$SourceFileName
+                    "File ".htmlspecialchars($SourceFileName)
                     ." does not exist (in the ".$Field->name()
                     ." field in record #".$ResourceIndex.")"
                 );
@@ -2023,7 +2025,7 @@ class RecordFactory extends ItemFactory
 
             if (!is_readable($SourceFileName)) {
                 $this->logErrorMessage(
-                    "File ".$SourceFileName
+                    "File ".htmlspecialchars($SourceFileName)
                         ." is not readable (in the ".$Field->name()
                         ." field in record #".$ResourceIndex.")"
                 );
@@ -2038,7 +2040,7 @@ class RecordFactory extends ItemFactory
                 $this->logErrorMessage(
                     "Exception while"
                     ." creating File object and saving"
-                    ." to Record:\n".$e->getMessage()
+                    ." to Record:\n".htmlspecialchars($e->getMessage())
                     ."\n(in the ".$Field->name()
                     ." field in record #".$ResourceIndex.")"
                 );

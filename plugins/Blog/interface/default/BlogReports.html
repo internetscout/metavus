@@ -60,7 +60,7 @@ function printBlogTable(array $CountData, string $StartDate, string $Caption): v
             $Rows = 0;
             foreach ($CountData as $Id => $Count) {
                 if (Record::itemExists($Id)) {
-                    $BlogPost = new Entry($Id);
+                    $BlogPost = Entry::getRecord($Id);
                     $Total += $Count;
                     if ($Rows < 20) {
                         $Rows++;

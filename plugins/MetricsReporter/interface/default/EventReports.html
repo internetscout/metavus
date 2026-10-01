@@ -3,7 +3,7 @@
 #   FILE:  EventReports.html (MetricsReporter plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -39,7 +39,7 @@ function printEventTable(
             $Rows = 0;
             foreach ($CountData as $Id => $Count) {
                 if (Event::itemExists($Id)) {
-                    $Event = new Event($Id);
+                    $Event = Event::getRecord($Id);
 
                     $Total += $Count;
 

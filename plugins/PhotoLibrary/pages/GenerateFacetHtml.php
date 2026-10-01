@@ -29,13 +29,6 @@ $AF->suppressHtmlOutput();
 # request that this page not be indexed by search engines
 $AF->addMetaTag(["robots" => "noindex"]);
 
-# do not generate facets for bots
-if ($PluginMgr->pluginReady("BotDetector") &&
-    $PluginMgr->getPlugin("BotDetector")->checkForBot()) {
-    $AF->doNotCacheCurrentPage();
-    return;
-}
-
 # do not generate facets for anon uses when load is high
 if (!$User->isLoggedIn()) {
     # check system load
@@ -53,6 +46,12 @@ if (!$User->isLoggedIn()) {
     }
 }
 
+# do not generate facets for bots
+if ($PluginMgr->pluginReady("BotDetector") &&
+    $PluginMgr->getPlugin("BotDetector")->checkForBot()) {
+    $AF->doNotCacheCurrentPage();
+    return;
+}
 
 $PhotoLibraryPlugin = PhotoLibrary::getInstance();
 $SchemaId = $PhotoLibraryPlugin->getConfigSetting("MetadataSchemaId");

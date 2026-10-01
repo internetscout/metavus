@@ -3,7 +3,7 @@
 #   FILE:  Comment.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -66,7 +66,7 @@ function Blog_JumpTo(array $GetParameters, ?string $Fragment = null): void
     if (isset($GetParameters["P"]) && isset($GetParameters["EntryId"])) {
         if ($GetParameters["P"] == "P_Blog_Entry") {
             # get the entry for the ID
-            $Entry = new Entry($GetParameters["EntryId"]);
+            $Entry = Entry::getRecord($GetParameters["EntryId"]);
 
             # remove the parameters
             unset($GetParameters["P"]);
@@ -129,7 +129,7 @@ if (!is_numeric($H_EntryId) || !Record::ItemExists($H_EntryId)) {
 }
 
 # pull out the current entry (which we need to get the current blog)
-$H_Entry = new Entry($H_EntryId);
+$H_Entry = Entry::getRecord((int)$H_EntryId);
 
 # if the entry is some other type of resource
 if (!$H_Blog->IsBlogEntry($H_Entry)) {
@@ -219,7 +219,7 @@ if (!is_null($H_Action)) {
     # make sure the entry ID is set
     $H_CommentId = $H_Comment->MessageId();
     $H_EntryId = $H_Comment->ParentId();
-    $H_Entry = new Entry($H_EntryId);
+    $H_Entry = Entry::getRecord((int)$H_EntryId);
 
     # set up page jumping
     Blog_JumpTo(
@@ -246,7 +246,7 @@ if (!is_null($H_Action)) {
 
     # make sure the entry ID is set
     $H_EntryId = $H_Comment->ParentId();
-    $H_Entry = new Entry($H_EntryId);
+    $H_Entry = Entry::getRecord($H_EntryId);
 }
 
 # everything went okay

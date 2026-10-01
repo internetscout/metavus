@@ -1,0 +1,1305 @@
+#!/usr/bin/env php
+<?PHP
+#
+#   FILE:  ccheck (Metavus comprehensive check utility)
+#
+#   Part of the Metavus digital collections platform
+#   Copyright 2026 Edward Almasy and Internet Scout Research Group
+#   http://metavus.net
+#
+#   This local development utility provides one read-only entry point for
+#   syntax checks, coding-style checks, PHP compatibility analysis, PHPStan,
+#   and PHPUnit.  It deliberately uses the tools installed on the local
+#   system and does not install dependencies or modify project source files.
+#   Any checks whose required tools are not available are reported and skipped.
+#
+#   With no path arguments, ccheck performs the normal complete check and
+#   runs PHPUnit under the minimum and default PHP interpreters.  Path
+#   arguments limit source analysis to those paths; tests are then run only
+#   when test files are among the selected paths or a test-related option is
+#   supplied.  The --matrix option runs only PHPUnit, using every supported
+#   PHP interpreter installed in this development environment.
+#
+#   Use --help to see usage and options list.
+#
+# @scout:phpstan
+
+namespace Metavus;
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
+
+$Args = array_slice($_SERVER["argv"], 1);
+$RootDir = dirname(__DIR__);
+
+$CCUtil = new ComprehensiveCheckUtility($RootDir);
+$ExitCode = $CCUtil->runChecks($Args);
+exit($ExitCode);
+
+/**
+ * Runs the standard local source and test checks for a Metavus working copy.
+ */
+class ComprehensiveCheckUtility
+{
+    # ---- PUBLIC INTERFACE --------------------------------------------------
+
+    /**
+     * Create a new comprehensive check command.
+     * @param string $RootDirectory Absolute path to the project root.
+     * @throws RuntimeException If the project root cannot be resolved.
+     */
+    public function __construct(string $RootDirectory)
+    {
+        $ResolvedRootDirectory = realpath($RootDirectory);
+        if ($ResolvedRootDirectory === false) {
+            throw new RuntimeException("Unable to resolve the project root.");
+        }
+
+        $this->RootDirectory = $ResolvedRootDirectory;
+    }
+
+    /**
+     * Parse command-line arguments and run the requested checks.
+     * @param array $Arguments Command-line arguments.
+     * @return int Process exit status, with zero indicating that all checks passed.
+     */
+    public function runChecks(array $Arguments): int
+    {
+        try {
+            # parse the requested mode before inspecting the working copy
+            $Options = $this->parseArguments($Arguments);
+            if ($Options["help"]) {
+                $this->printUsage();
+                return self::EXIT_SUCCESS;
+            }
+
+            # establish the project and source scope shared by all checkers
+            $this->validateProjectRoot();
+            $AllSourceFiles = $this->findAllSourceFiles();
+            $this->SourceFiles = $this->selectSourceFiles(
+                $AllSourceFiles,
+                $Options["paths"]
+            );
+            $PathsWereSpecified = count($Options["paths"]) > 0;
+            $this->printRunDescription($Options);
+
+            # matrix mode is dedicated to running PHPUnit across PHP versions
+            if (!$Options["matrix"]) {
+                # run independent source checks even when an earlier check fails
+                $this->runLintStage(
+                    "PHP ".self::MINIMUM_PHP_VERSION." Syntax",
+                    $this->getPhpExecutableName(self::MINIMUM_PHP_VERSION),
+                    $this->SourceFiles
+                );
+                $this->runLintStage("Default PHP Syntax", "php", $this->SourceFiles);
+                $this->runPhpCodeSnifferStage(
+                    "Scout Coding Style",
+                    "Scout",
+                    $this->SourceFiles,
+                    !$PathsWereSpecified
+                );
+                $this->runPhpCodeSnifferStage(
+                    "PHP ".self::MINIMUM_PHP_VERSION."+ Compatibility",
+                    "PHPCompatibility",
+                    $this->SourceFiles,
+                    !$PathsWereSpecified
+                );
+                $this->runPhpStanStage($this->SourceFiles, $PathsWereSpecified);
+            }
+
+            # run tests only when the selected mode calls for behavioral checks
+            $this->runRequestedUnitTests($Options);
+
+            return $this->printSummary();
+        } catch (InvalidArgumentException $Exception) {
+            fwrite(STDERR, "ERROR: ".$Exception->getMessage()."\n\n");
+            $this->printUsage(STDERR);
+        } catch (Throwable $Exception) {
+            fwrite(STDERR, "ERROR: ".$Exception->getMessage()."\n");
+        }
+
+        return self::EXIT_FAILURE;
+    }
+
+    # ---- PRIVATE INTERFACE -------------------------------------------------
+
+    private const DIRECTORY_SEPARATOR_PATTERN = "#/#";
+    private const EXIT_FAILURE = 1;
+    private const EXIT_SUCCESS = 0;
+    private const FILE_HEADER_READ_LENGTH = 512;
+    private const MAXIMUM_PARALLEL_PROCESSES = 4;
+    private const MINIMUM_PHP_VERSION = "7.4";
+    private const PHP_EXECUTABLE_PATTERN = "#^php-?[0-9]+(?:\.[0-9]+)?$#";
+    private const PHPSTAN_MEMORY_LIMIT = "1024M";
+    private const RESULT_FAIL = "FAIL";
+    private const RESULT_PASS = "PASS";
+    private const RESULT_SKIP = "SKIP";
+    private const ROOT_SOURCE_FILES = [
+        "index.php",
+        "installmv.php",
+    ];
+    private const SOURCE_DIRECTORIES = [
+        "include",
+        "install",
+        "interface",
+        "lib/ScoutLib",
+        "local",
+        "objects",
+        "pages",
+        "plugins",
+    ];
+    private const STDERR_DESCRIPTOR = 2;
+    private const STDIN_DESCRIPTOR = 0;
+    private const STDOUT_DESCRIPTOR = 1;
+    private const SUMMARY_PADDING = 2;
+
+    private $PhpExecutables;
+    private $Results = [];
+    private $RootDirectory;
+    private $SourceFiles = [];
+
+    /**
+     * Generate all supported source files below a directory.
+     * @param string $RelativeDirectory Directory relative to the project root.
+     * @return iterable Relative paths of discovered source files.
+     * @throws RuntimeException If the directory cannot be read.
+     */
+    private function collectSourceFiles(string $RelativeDirectory): iterable
+    {
+        $AbsoluteDirectory = $this->absolutePath($RelativeDirectory);
+        $DirectoryEntries = scandir($AbsoluteDirectory);
+        if ($DirectoryEntries === false) {
+            throw new RuntimeException(
+                "Unable to read source directory ".$RelativeDirectory."."
+            );
+        }
+
+        # walk the tree without following links or entering excluded directories
+        foreach ($DirectoryEntries as $Entry) {
+            if ($Entry === "." || $Entry === "..") {
+                continue;
+            }
+
+            $RelativePath = $RelativeDirectory."/".$Entry;
+            $AbsolutePath = $this->absolutePath($RelativePath);
+            if (is_link($AbsolutePath)) {
+                continue;
+            }
+            if (is_dir($AbsolutePath)) {
+                if (!$this->shouldSkipDirectory($RelativePath)) {
+                    yield from $this->collectSourceFiles($RelativePath);
+                }
+                continue;
+            }
+            if (is_file($AbsolutePath) && $this->isPhpSourceFile($RelativePath)) {
+                yield $RelativePath;
+            }
+        }
+    }
+
+    /**
+     * Convert a project-relative path to an absolute path.
+     * @param string $RelativePath Path relative to the project root.
+     * @return string Absolute path within the project.
+     */
+    private function absolutePath(string $RelativePath): string
+    {
+        return $this->RootDirectory.DIRECTORY_SEPARATOR.$RelativePath;
+    }
+
+    /**
+     * Determine the major and minor PHP version for an interpreter.
+     * @param string $Executable Absolute path to a PHP interpreter.
+     * @return string|null Detected major and minor version, or null on failure.
+     */
+    private function detectPhpVersion(string $Executable): ?string
+    {
+        $Result = $this->executeCommand(
+            [
+                $Executable,
+                "-r",
+                'print PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;',
+            ],
+            ["XDEBUG_MODE" => "off"],
+            null,
+            true
+        );
+
+        $Version = trim($Result["output"]);
+        return $Result["exitCode"] === self::EXIT_SUCCESS
+                && preg_match("#^[0-9]+\.[0-9]+$#", $Version) === 1
+            ? $Version
+            : null;
+    }
+
+    /**
+     * Discover PHP interpreters available through the current search path.
+     *
+     * Candidate names are php or php followed by an optional dash and a numeric
+     * version, with an optional dot separating major and minor versions (for
+     * example, php82, php-82, php8.2, or php-8.2).  Each candidate is executed to
+     * determine its real version so aliases and names that do not agree with
+     * their interpreter are handled correctly.
+     * @return array Interpreter definitions containing executable, name, and
+     *      version entries, sorted by actual PHP version.
+     */
+    private function discoverPhpExecutables(): array
+    {
+        if ($this->PhpExecutables !== null) {
+            return $this->PhpExecutables;
+        }
+
+        # collect candidate names while respecting the first occurrence in PATH
+        $ExecutableNames = ["php" => true];
+        $SearchPath = getenv("PATH");
+        if ($SearchPath !== false) {
+            foreach (explode(PATH_SEPARATOR, $SearchPath) as $Directory) {
+                if ($Directory === ""
+                        || !is_dir($Directory)
+                        || !is_readable($Directory)) {
+                    continue;
+                }
+                $Entries = scandir($Directory);
+                if ($Entries === false) {
+                    continue;
+                }
+                foreach ($Entries as $Entry) {
+                    if (preg_match(self::PHP_EXECUTABLE_PATTERN, $Entry) === 1) {
+                        $ExecutableNames[$Entry] = true;
+                    }
+                }
+            }
+        }
+
+        # verify candidates and retain their actual interpreter versions
+        $PhpExecutables = [];
+        foreach (array_keys($ExecutableNames) as $Name) {
+            $Executable = $this->findExecutable($Name);
+            if ($Executable === null) {
+                continue;
+            }
+            $Version = $this->detectPhpVersion($Executable);
+            if ($Version === null) {
+                continue;
+            }
+            $PhpExecutables[] = [
+                "executable" => $Executable,
+                "name" => $Name,
+                "version" => $Version,
+            ];
+        }
+
+        # provide deterministic version ordering for matrix runs
+        usort(
+            $PhpExecutables,
+            function (array $First, array $Second): int {
+                $VersionComparison = version_compare(
+                    $First["version"],
+                    $Second["version"]
+                );
+                return $VersionComparison !== self::EXIT_SUCCESS
+                    ? $VersionComparison
+                    : strcmp($First["name"], $Second["name"]);
+            }
+        );
+        $this->PhpExecutables = $PhpExecutables;
+        return $this->PhpExecutables;
+    }
+
+    /**
+     * Execute a command in the project root.
+     * @param array $Command Executable and argument list, without shell parsing.
+     * @param array $EnvironmentOverrides Environment values to set for the process.
+     * @param string|null $Input Optional data to write to standard input.
+     * @param bool $CaptureOutput Whether output should be captured instead of streamed.
+     * @return array Associative array containing exitCode and output entries.
+     * @throws RuntimeException If temporary files or the process cannot be created.
+     */
+    private function executeCommand(
+        array $Command,
+        array $EnvironmentOverrides = [],
+        ?string $Input = null,
+        bool $CaptureOutput = false
+    ): array {
+        $StandardOutputFile = null;
+        $StandardErrorFile = null;
+
+        # send captured output to files so verbose tools cannot fill a pipe buffer
+        if ($CaptureOutput) {
+            $StandardOutputFile = tempnam(sys_get_temp_dir(), "ccheck-out-");
+            $StandardErrorFile = tempnam(sys_get_temp_dir(), "ccheck-err-");
+            if ($StandardOutputFile === false || $StandardErrorFile === false) {
+                throw new RuntimeException("Unable to create temporary output files.");
+            }
+            $DescriptorSpecification = [
+                self::STDIN_DESCRIPTOR => ["pipe", "r"],
+                self::STDOUT_DESCRIPTOR => ["file", $StandardOutputFile, "w"],
+                self::STDERR_DESCRIPTOR => ["file", $StandardErrorFile, "w"],
+            ];
+        } else {
+            $DescriptorSpecification = [
+                self::STDIN_DESCRIPTOR => ["pipe", "r"],
+                self::STDOUT_DESCRIPTOR => STDOUT,
+                self::STDERR_DESCRIPTOR => STDERR,
+            ];
+        }
+
+        # preserve the current environment while applying stage-specific overrides
+        $Environment = null;
+        if (count($EnvironmentOverrides) > 0) {
+            $CurrentEnvironment = getenv();
+            $Environment = is_array($CurrentEnvironment) ? $CurrentEnvironment : [];
+            foreach ($EnvironmentOverrides as $Name => $Value) {
+                $Environment[$Name] = $Value;
+            }
+        }
+
+        # proc_open requires a numerically consecutive list for shell-free commands
+        $NormalizedCommand = array_values($Command);
+        $Process = proc_open(
+            $NormalizedCommand,
+            $DescriptorSpecification,
+            $Pipes,
+            $this->RootDirectory,
+            $Environment
+        );
+        if (!is_resource($Process)) {
+            $this->removeTemporaryFile($StandardOutputFile);
+            $this->removeTemporaryFile($StandardErrorFile);
+            throw new RuntimeException("Unable to start ".$Command[self::STDIN_DESCRIPTOR].".");
+        }
+
+        # supply optional input and signal that no more input will be written
+        if ($Input !== null) {
+            fwrite($Pipes[self::STDIN_DESCRIPTOR], $Input);
+        }
+        fclose($Pipes[self::STDIN_DESCRIPTOR]);
+        $ExitCode = proc_close($Process);
+
+        # combine captured streams after the process has closed its file handles
+        $Output = "";
+        if ($CaptureOutput) {
+            $StandardOutput = file_get_contents($StandardOutputFile);
+            $StandardError = file_get_contents($StandardErrorFile);
+            $Output = ($StandardOutput === false ? "" : $StandardOutput)
+                .($StandardError === false ? "" : $StandardError);
+            $this->removeTemporaryFile($StandardOutputFile);
+            $this->removeTemporaryFile($StandardErrorFile);
+        }
+
+        return ["exitCode" => $ExitCode, "output" => $Output];
+    }
+
+    /**
+     * Find every first-party PHP-bearing source file in the project.
+     * @return array Sorted list of paths relative to the project root.
+     * @throws RuntimeException If a source path cannot be read.
+     */
+    private function findAllSourceFiles(): array
+    {
+        $Files = [];
+
+        # add the small set of PHP entry points stored in the project root
+        foreach (self::ROOT_SOURCE_FILES as $RelativePath) {
+            if (is_file($this->absolutePath($RelativePath))) {
+                $Files[] = $RelativePath;
+            }
+        }
+
+        # collect source from product and site-local first-party directories
+        foreach (self::SOURCE_DIRECTORIES as $RelativeDirectory) {
+            if (is_dir($this->absolutePath($RelativeDirectory))) {
+                foreach ($this->collectSourceFiles($RelativeDirectory) as $File) {
+                    $Files[] = $File;
+                }
+            }
+        }
+
+        $Files = array_values(array_unique($Files));
+        sort($Files);
+        return $Files;
+    }
+
+    /**
+     * Locate an executable using the current process search path.
+     * @param string $Name Executable name or path.
+     * @return string|null Absolute executable path, or null when not found.
+     */
+    private function findExecutable(string $Name): ?string
+    {
+        if (strpos($Name, DIRECTORY_SEPARATOR) !== false) {
+            return is_executable($Name) ? $Name : null;
+        }
+
+        # search each PATH entry without invoking a shell
+        $SearchPath = getenv("PATH");
+        if ($SearchPath === false) {
+            return null;
+        }
+        foreach (explode(PATH_SEPARATOR, $SearchPath) as $Directory) {
+            $Candidate = (strlen($Directory) ? $Directory : ".")
+                    .DIRECTORY_SEPARATOR.$Name;
+            if (is_file($Candidate) && is_executable($Candidate)) {
+                $ResolvedCandidate = realpath($Candidate);
+                return $ResolvedCandidate === false ? $Candidate : $ResolvedCandidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get PHP runtimes to use for unit testing.
+     * @param bool $UseMatrix Whether all supported local runtimes are requested.
+     * @return array Runtime definitions with label and executable entries.
+     */
+    private function getPhpRuntimes(bool $UseMatrix): array
+    {
+        $PhpExecutables = $this->discoverPhpExecutables();
+        if ($UseMatrix) {
+            $Runtimes = [];
+            $VersionsSeen = [];
+
+            # include each installed, supported PHP version exactly once
+            foreach ($PhpExecutables as $PhpExecutable) {
+                $Version = $PhpExecutable["version"];
+                if (version_compare($Version, self::MINIMUM_PHP_VERSION) < 0
+                        || isset($VersionsSeen[$Version])) {
+                    continue;
+                }
+                $VersionsSeen[$Version] = true;
+                $Runtimes[] = [
+                    "executable" => $PhpExecutable["executable"],
+                    "label" => $Version,
+                    "name" => $PhpExecutable["name"],
+                ];
+            }
+            if (count($Runtimes) === self::STDIN_DESCRIPTOR) {
+                $Runtimes[] = [
+                    "executable" => null,
+                    "label" => self::MINIMUM_PHP_VERSION."+",
+                    "name" => "php or phpXX",
+                ];
+            }
+            return $Runtimes;
+        }
+
+        # ordinary runs use the minimum-version and default interpreters
+        $MinimumRuntime = null;
+        $DefaultRuntime = null;
+        foreach ($PhpExecutables as $PhpExecutable) {
+            if ($MinimumRuntime === null
+                    && $PhpExecutable["version"] === self::MINIMUM_PHP_VERSION) {
+                $MinimumRuntime = $PhpExecutable;
+            }
+            if ($PhpExecutable["name"] === "php") {
+                $DefaultRuntime = $PhpExecutable;
+            }
+        }
+
+        $Candidates = [
+            $MinimumRuntime ?? [
+                "executable" => null,
+                "name" => $this->getConventionalPhpExecutableName(
+                    self::MINIMUM_PHP_VERSION
+                ),
+                "version" => self::MINIMUM_PHP_VERSION,
+            ],
+            $DefaultRuntime ?? [
+                "executable" => null,
+                "name" => "php",
+                "version" => "default",
+            ],
+        ];
+        $Runtimes = [];
+        $VersionsSeen = [];
+
+        # de-duplicate interpreters that report the same PHP version
+        foreach ($Candidates as $Candidate) {
+            if ($Candidate["executable"] === null) {
+                $Runtimes[] = [
+                    "executable" => null,
+                    "label" => $Candidate["version"],
+                    "name" => $Candidate["name"],
+                ];
+                continue;
+            }
+            $Version = $Candidate["version"];
+            if (isset($VersionsSeen[$Version])) {
+                continue;
+            }
+            $VersionsSeen[$Version] = true;
+            $Runtimes[] = [
+                "executable" => $Candidate["executable"],
+                "label" => $Version,
+                "name" => $Candidate["name"],
+            ];
+        }
+
+        return $Runtimes;
+    }
+
+    /**
+     * Get usage notices for checks whose required tools are unavailable.
+     * @return array Informational messages describing checks that will be skipped.
+     */
+    private function getUnavailableToolMessages(): array
+    {
+        $Messages = [];
+
+        # report tools shared by one or more source-analysis stages
+        if ($this->findExecutable("xargs") === null) {
+            $Messages[] = "PHP syntax checks will not run because xargs is not"
+                ." available.";
+        }
+        if ($this->findExecutable("phpcs") === null) {
+            $Messages[] = "Coding-style and compatibility checks will not run"
+                ." because phpcs is not available.";
+        }
+        if ($this->findExecutable("phpstan") === null) {
+            $Messages[] = "PHPStan checks will not run because phpstan is not available.";
+        }
+        if ($this->findExecutable("phpunit") === null) {
+            $Messages[] = "Unit tests will not run because phpunit is not available.";
+        }
+
+        # report missing interpreters according to their verified PHP versions
+        try {
+            $PhpExecutables = $this->discoverPhpExecutables();
+            $MinimumPhpAvailable = false;
+            $DefaultPhpAvailable = false;
+            foreach ($PhpExecutables as $PhpExecutable) {
+                if ($PhpExecutable["version"] === self::MINIMUM_PHP_VERSION) {
+                    $MinimumPhpAvailable = true;
+                }
+                if ($PhpExecutable["name"] === "php") {
+                    $DefaultPhpAvailable = true;
+                }
+            }
+            if (!$MinimumPhpAvailable) {
+                $Messages[] = "PHP ".self::MINIMUM_PHP_VERSION
+                    ." checks will not run because that PHP version is not available.";
+            }
+            if (!$DefaultPhpAvailable) {
+                $Messages[] = "Default PHP checks will not run because php is not"
+                    ." available.";
+            }
+        } catch (RuntimeException $Exception) {
+            # omit interpreter notices when availability cannot be determined
+        }
+
+        return $Messages;
+    }
+
+    /**
+     * Get the conventional command name for a PHP version.
+     * @param string $Version PHP major and minor version.
+     * @return string Conventional local executable name for the supplied version.
+     */
+    private function getConventionalPhpExecutableName(string $Version): string
+    {
+        return "php".str_replace(".", "", $Version);
+    }
+
+    /**
+     * Get an installed PHP executable for a version.
+     * @param string $Version PHP major and minor version.
+     * @return string Installed executable path, or its conventional command name
+     *      when no matching interpreter was discovered.
+     */
+    private function getPhpExecutableName(string $Version): string
+    {
+        foreach ($this->discoverPhpExecutables() as $PhpExecutable) {
+            if ($PhpExecutable["version"] === $Version) {
+                return $PhpExecutable["executable"];
+            }
+        }
+        return $this->getConventionalPhpExecutableName($Version);
+    }
+
+    /**
+     * Determine whether a path is a PHP source file checked by this utility.
+     * @param string $RelativePath Path relative to the project root.
+     * @return bool True when the file contains project PHP source.
+     * @throws RuntimeException If a candidate file cannot be read.
+     */
+    private function isPhpSourceFile(string $RelativePath): bool
+    {
+        $Extension = strtolower(pathinfo($RelativePath, PATHINFO_EXTENSION));
+        if ($Extension === "php") {
+            return true;
+        }
+
+        $AbsolutePath = $this->absolutePath($RelativePath);
+        if ($Extension === "html") {
+            $Contents = file_get_contents($AbsolutePath);
+            if ($Contents === false) {
+                throw new RuntimeException("Unable to read ".$RelativePath.".");
+            }
+            return strpos($Contents, "<?") !== false;
+        }
+
+        # include extensionless PHP command-line scripts such as mvus and ccheck
+        if ($Extension === "") {
+            $Handle = fopen($AbsolutePath, "r");
+            if ($Handle === false) {
+                throw new RuntimeException("Unable to read ".$RelativePath.".");
+            }
+            $Header = fread($Handle, self::FILE_HEADER_READ_LENGTH);
+            fclose($Handle);
+            return $Header !== false
+                && strpos($Header, "#!") === self::STDIN_DESCRIPTOR
+                && stripos($Header, "php") !== false
+                && strpos($Header, "<?") !== false;
+        }
+
+        return false;
+    }
+
+    /**
+     * Parse supported command-line options and path arguments.
+     * @param array $Arguments Command-line arguments without the script name.
+     * @return array Parsed option values.
+     * @throws InvalidArgumentException If an option is invalid or incomplete.
+     */
+    private function parseArguments(array $Arguments): array
+    {
+        $Options = [
+            "filter" => null,
+            "full" => false,
+            "help" => false,
+            "matrix" => false,
+            "paths" => [],
+            "quick" => false,
+        ];
+        $OnlyPathsRemain = false;
+
+        # consume options while preserving path arguments exactly as supplied
+        while (count($Arguments) > 0) {
+            $Argument = array_shift($Arguments);
+            if ($OnlyPathsRemain) {
+                $Options["paths"][] = $Argument;
+                continue;
+            }
+            if ($Argument === "--") {
+                $OnlyPathsRemain = true;
+                continue;
+            }
+            if ($Argument === "-h" || $Argument === "--help") {
+                $Options["help"] = true;
+                continue;
+            }
+            if ($Argument === "--full") {
+                $Options["full"] = true;
+                continue;
+            }
+            if ($Argument === "--matrix") {
+                $Options["matrix"] = true;
+                continue;
+            }
+            if ($Argument === "--quick") {
+                $Options["quick"] = true;
+                continue;
+            }
+            if ($Argument === "--filter") {
+                if (count($Arguments) === self::STDIN_DESCRIPTOR) {
+                    throw new InvalidArgumentException("--filter requires a value.");
+                }
+                $Options["filter"] = array_shift($Arguments);
+                continue;
+            }
+            $FilterPrefix = "--filter=";
+            if (strpos($Argument, $FilterPrefix) === self::STDIN_DESCRIPTOR) {
+                $Options["filter"] = substr($Argument, strlen($FilterPrefix));
+                continue;
+            }
+            if (strpos($Argument, "-") === self::STDIN_DESCRIPTOR) {
+                throw new InvalidArgumentException("Unknown option ".$Argument.".");
+            }
+            $Options["paths"][] = $Argument;
+        }
+
+        # reject combinations whose requested test behavior is contradictory
+        if ($Options["quick"]
+                && ($Options["full"]
+                    || $Options["matrix"]
+                    || $Options["filter"] !== null)) {
+            throw new InvalidArgumentException(
+                "--quick cannot be combined with test-related options."
+            );
+        }
+        if ($Options["filter"] === "") {
+            throw new InvalidArgumentException("--filter cannot be empty.");
+        }
+
+        return $Options;
+    }
+
+    /**
+     * Print a short description of the selected scope.
+     * @param array $Options Parsed command-line options.
+     * @return void
+     */
+    private function printRunDescription(array $Options): void
+    {
+        print "Metavus Comprehensive Check\n";
+        print "Project: ".$this->RootDirectory."\n";
+        print "Source Files: ".count($this->SourceFiles)."\n";
+        if (count($Options["paths"]) > 0) {
+            print "Scope: explicitly selected paths\n";
+        } else {
+            print "Scope: all first-party project source\n";
+        }
+    }
+
+    /**
+     * Print command usage and notices for currently unavailable tools.
+     * @param resource|null $Stream Stream to receive the usage text.
+     */
+    private function printUsage($Stream = null): void
+    {
+        $OutputStream = $Stream === null ? STDOUT : $Stream;
+        $Usage = <<<END
+Usage: install/ccheck [OPTIONS] [PATH ...]
+
+Run local syntax, coding-style, compatibility, PHPStan, and PHPUnit checks.
+With no paths, all first-party source and the complete PHPUnit suite are checked.
+With paths, source checks are limited to those paths and selected test files run.
+
+Options:
+  --quick             Skip PHPUnit.
+  --full              Run the complete PHPUnit suite even when paths are given.
+  --matrix            Run only PHPUnit under every supported installed PHP version.
+  --filter PATTERN    Pass a test-name filter to PHPUnit.
+  -h, --help          Display this help text.
+  --                  Treat all remaining arguments as paths.
+
+Examples:
+  install/ccheck
+  install/ccheck --quick objects/Record.php
+  install/ccheck objects/tests/Record_Test.php
+  install/ccheck --full --filter Record_Cache objects/Record.php
+  install/ccheck --matrix
+
+END;
+        $UnavailableToolMessages = $this->getUnavailableToolMessages();
+        if (count($UnavailableToolMessages) > self::STDIN_DESCRIPTOR) {
+            $Usage .= "\nTools currently unavailable:\n";
+            foreach ($UnavailableToolMessages as $Message) {
+                $Usage .= "  ".$Message."\n";
+            }
+        }
+        fwrite($OutputStream, $Usage);
+    }
+
+    /**
+     * Remove file-name tracing emitted by PHPStan's non-parallel debug mode.
+     * @param string $Output Captured PHPStan output.
+     * @return string Output containing diagnostics but not scanned file names.
+     */
+    private function removePhpStanFileTracing(string $Output): string
+    {
+        $Lines = preg_split("/\r\n|\r|\n/", $Output);
+        if (!is_array($Lines)) {
+            return $Output;
+        }
+
+        # debug mode prints every absolute input path on a line by itself
+        $ProjectPathPrefix = $this->RootDirectory.DIRECTORY_SEPARATOR;
+        $FilteredLines = array_filter(
+            $Lines,
+            function (string $Line) use ($ProjectPathPrefix): bool {
+                return strpos($Line, $ProjectPathPrefix) !== self::STDIN_DESCRIPTOR;
+            }
+        );
+        return implode("\n", $FilteredLines)."\n";
+    }
+
+    /**
+     * Print the result summary and return the combined process status.
+     * @return int Zero if every executed stage passed, otherwise one.
+     */
+    private function printSummary(): int
+    {
+        $NameWidth = self::STDIN_DESCRIPTOR;
+        $HasFailures = false;
+        foreach ($this->Results as $Result) {
+            $NameWidth = max($NameWidth, strlen($Result["name"]));
+            if ($Result["status"] === self::RESULT_FAIL) {
+                $HasFailures = true;
+            }
+        }
+        $NameWidth += self::SUMMARY_PADDING;
+
+        print "\n===== Summary =====\n";
+        foreach ($this->Results as $Result) {
+            print str_pad($Result["name"], $NameWidth)
+                .$Result["status"];
+            if ($Result["detail"] !== "") {
+                print " — ".$Result["detail"];
+            }
+            print "\n";
+        }
+        print "Overall: ".($HasFailures ? "FAILED" : "PASSED")."\n";
+
+        return $HasFailures ? self::EXIT_FAILURE : self::EXIT_SUCCESS;
+    }
+
+    /**
+     * Record the outcome of one independently reported check stage.
+     * @param string $Name Human-readable stage name.
+     * @param string $Status PASS, FAIL, or SKIP.
+     * @param string $Detail Optional short result detail.
+     * @return void
+     */
+    private function recordResult(string $Name, string $Status, string $Detail = ""): void
+    {
+        $this->Results[] = [
+            "detail" => $Detail,
+            "name" => $Name,
+            "status" => $Status,
+        ];
+    }
+
+    /**
+     * Report that a stage was skipped because a required tool is unavailable.
+     * @param string $Name Human-readable stage name.
+     * @param string $ToolName Name or path of the unavailable tool.
+     */
+    private function reportUnavailableTool(string $Name, string $ToolName): void
+    {
+        print "Not run because required tool is unavailable: ".$ToolName.".\n";
+        $this->recordResult($Name, self::RESULT_SKIP, $ToolName." unavailable");
+    }
+
+    /**
+     * Remove a temporary file when one was successfully created.
+     * @param string|null $FileName Temporary file name.
+     * @return void
+     */
+    private function removeTemporaryFile(?string $FileName): void
+    {
+        if ($FileName !== null && is_file($FileName)) {
+            unlink($FileName);
+        }
+    }
+
+    /**
+     * Run parallel PHP syntax checks for one interpreter when tools are available.
+     * @param string $Name Human-readable stage name.
+     * @param string $ExecutableName PHP executable name.
+     * @param array $Files Relative source file paths to check.
+     */
+    private function runLintStage(
+        string $Name,
+        string $ExecutableName,
+        array $Files
+    ): void {
+        print "\n===== ".$Name." =====\n";
+        $Executable = $this->findExecutable($ExecutableName);
+        $Xargs = $this->findExecutable("xargs");
+        if ($Executable === null || $Xargs === null) {
+            $MissingTool = $Executable === null ? $ExecutableName : "xargs";
+            $this->reportUnavailableTool($Name, $MissingTool);
+            return;
+        }
+
+        # xargs supplies one path per PHP process and safely handles unusual names
+        $Input = implode("\0", $Files)."\0";
+        $Result = $this->executeCommand(
+            [
+                $Xargs,
+                "-0",
+                "-r",
+                "-n",
+                "1",
+                "-P",
+                (string) self::MAXIMUM_PARALLEL_PROCESSES,
+                $Executable,
+                "-l",
+            ],
+            ["XDEBUG_MODE" => "off"],
+            $Input,
+            true
+        );
+
+        if ($Result["exitCode"] === self::EXIT_SUCCESS) {
+            print "Checked ".count($Files)." files.\n";
+            $this->recordResult($Name, self::RESULT_PASS);
+            return;
+        }
+
+        print $Result["output"];
+        $this->recordResult($Name, self::RESULT_FAIL, "syntax errors found");
+    }
+
+    /**
+     * Run an available PHPCS using either configured coding standard.
+     * @param string $Name Human-readable stage name.
+     * @param string $Standard Installed PHPCS standard name.
+     * @param array $Files Relative source file paths to check.
+     * @param bool $UseSummaryReport Whether to suppress individual diagnostics.
+     * @throws RuntimeException If the temporary source list cannot be created or
+     *      fully written, or the checker process cannot be started.
+     */
+    private function runPhpCodeSnifferStage(
+        string $Name,
+        string $Standard,
+        array $Files,
+        bool $UseSummaryReport
+    ): void {
+        print "\n===== ".$Name." =====\n";
+        $Executable = $this->findExecutable("phpcs");
+        if ($Executable === null) {
+            $this->reportUnavailableTool($Name, "phpcs");
+            return;
+        }
+
+        # PHPCS ignores extensionless scripts, but syntax checks still cover them
+        $PhpCodeSnifferFiles = array_values(array_filter(
+            $Files,
+            function (string $File): bool {
+                $Extension = strtolower(pathinfo($File, PATHINFO_EXTENSION));
+                return $Extension === "php" || $Extension === "html";
+            }
+        ));
+        if (count($PhpCodeSnifferFiles) === self::STDIN_DESCRIPTOR) {
+            print "No PHPCS-compatible files selected.\n";
+            $this->recordResult($Name, self::RESULT_SKIP, "no applicable files");
+            return;
+        }
+
+        $FileList = tempnam(sys_get_temp_dir(), "ccheck-files-");
+        if ($FileList === false) {
+            throw new RuntimeException("Unable to create a temporary source list.");
+        }
+
+        # keep policy explicit so the command does not depend on PHPCS defaults
+        $Command = [
+            $Executable,
+            "--standard=".$Standard,
+            "--extensions=php,html",
+            "--parallel=".(string) self::MAXIMUM_PARALLEL_PROCESSES,
+            "--basepath=".$this->RootDirectory,
+        ];
+        if ($UseSummaryReport) {
+            $Command[] = "--report=summary";
+        }
+        if ($Standard === "PHPCompatibility") {
+            $Command[] = "--runtime-set";
+            $Command[] = "testVersion";
+            $Command[] = self::MINIMUM_PHP_VERSION."-";
+        }
+        $Command[] = "--file-list=".$FileList;
+
+        try {
+            # require the complete source list before starting the checker
+            $FileListContents = implode("\n", $PhpCodeSnifferFiles)."\n";
+            $BytesWritten = file_put_contents($FileList, $FileListContents);
+            if ($BytesWritten !== strlen($FileListContents)) {
+                throw new RuntimeException(
+                    "Unable to write the temporary source list: ".$FileList."."
+                );
+            }
+
+            $Result = $this->executeCommand(
+                $Command,
+                ["XDEBUG_MODE" => "off"]
+            );
+        } finally {
+            $this->removeTemporaryFile($FileList);
+        }
+
+        $this->recordResult(
+            $Name,
+            $Result["exitCode"] === self::EXIT_SUCCESS
+                ? self::RESULT_PASS
+                : self::RESULT_FAIL
+        );
+    }
+
+    /**
+     * Run an available PHPStan using established project selection conventions.
+     * @param array $Files Relative source paths selected for this invocation.
+     * @param bool $PathsWereSpecified Whether the user supplied explicit paths.
+     */
+    private function runPhpStanStage(array $Files, bool $PathsWereSpecified): void
+    {
+        $Name = "PHPStan";
+        print "\n===== ".$Name." =====\n";
+        $Executable = $this->findExecutable("phpstan");
+        if ($Executable === null) {
+            $this->reportUnavailableTool($Name, "phpstan");
+            return;
+        }
+
+        # full checks follow the @scout marker; targeted checks analyze selected PHP
+        $PhpStanFiles = array_values(array_filter(
+            $Files,
+            function (string $File) use ($PathsWereSpecified): bool {
+                if (strtolower(pathinfo($File, PATHINFO_EXTENSION)) !== "php"
+                        || substr($File, -strlen("_Test.php")) === "_Test.php") {
+                    return false;
+                }
+                if ($PathsWereSpecified) {
+                    return true;
+                }
+                $Contents = file_get_contents($this->absolutePath($File));
+                return $Contents !== false
+                    && strpos($Contents, "@scout:phpstan") !== false;
+            }
+        ));
+        if (count($PhpStanFiles) === self::STDIN_DESCRIPTOR) {
+            print "No PHPStan files selected.\n";
+            $this->recordResult($Name, self::RESULT_SKIP, "no applicable files");
+            return;
+        }
+
+        # page files are analyzed separately because each has its own global context
+        $OtherFiles = [];
+        $PageFiles = [];
+        foreach ($PhpStanFiles as $File) {
+            if (strpos("/".$File, "/pages/") !== false) {
+                $PageFiles[] = $File;
+            } else {
+                $OtherFiles[] = $File;
+            }
+        }
+
+        $BaseCommand = [
+            $Executable,
+            "analyze",
+            "--configuration=phpstan.neon",
+            "--debug",
+            "--memory-limit=".self::PHPSTAN_MEMORY_LIMIT,
+            "--no-ansi",
+            "--no-interaction",
+            "--no-progress",
+        ];
+        $ExitCode = self::EXIT_SUCCESS;
+        if (count($OtherFiles) > self::STDIN_DESCRIPTOR) {
+            print "Checking ".count($OtherFiles)." non-page files.\n";
+            $Command = array_merge($BaseCommand, ["--"], $OtherFiles);
+            $Result = $this->executeCommand(
+                $Command,
+                ["XDEBUG_MODE" => "off"],
+                null,
+                true
+            );
+            if ($Result["exitCode"] !== self::EXIT_SUCCESS) {
+                $ExitCode = self::EXIT_FAILURE;
+                print $this->removePhpStanFileTracing($Result["output"]);
+            }
+        }
+
+        # capture successful page output while retaining complete diagnostics on failure
+        if (count($PageFiles) > self::STDIN_DESCRIPTOR) {
+            print "Checking ".count($PageFiles)." page files";
+            foreach ($PageFiles as $File) {
+                print ".";
+                $Command = array_merge($BaseCommand, ["--", $File]);
+                $Result = $this->executeCommand(
+                    $Command,
+                    ["XDEBUG_MODE" => "off"],
+                    null,
+                    true
+                );
+                if ($Result["exitCode"] !== self::EXIT_SUCCESS) {
+                    $ExitCode = self::EXIT_FAILURE;
+                    print "\n-- ".$File." --\n"
+                        .$this->removePhpStanFileTracing($Result["output"]);
+                }
+            }
+            print " done\n";
+        }
+
+        $this->recordResult(
+            $Name,
+            $ExitCode === self::EXIT_SUCCESS ? self::RESULT_PASS : self::RESULT_FAIL
+        );
+    }
+
+    /**
+     * Run requested PHPUnit stages when their required tools are available.
+     * @param array $Options Parsed command-line options.
+     */
+    private function runRequestedUnitTests(array $Options): void
+    {
+        $TestFiles = array_values(array_filter(
+            $this->SourceFiles,
+            function (string $File): bool {
+                return substr($File, -strlen("_Test.php")) === "_Test.php";
+            }
+        ));
+        $PathsWereSpecified = count($Options["paths"]) > self::STDIN_DESCRIPTOR;
+        $TestsWereRequested = !$Options["quick"]
+            && (!$PathsWereSpecified
+                || $Options["full"]
+                || $Options["matrix"]
+                || $Options["filter"] !== null
+                || count($TestFiles) > self::STDIN_DESCRIPTOR);
+
+        if (!$TestsWereRequested) {
+            $Reason = $Options["quick"]
+                ? "quick mode"
+                : "no tests selected by paths";
+            $this->recordResult("PHPUnit", self::RESULT_SKIP, $Reason);
+            return;
+        }
+
+        $PhpUnit = $this->findExecutable("phpunit");
+        if ($PhpUnit === null) {
+            print "\n===== PHPUnit =====\n";
+            $this->reportUnavailableTool("PHPUnit", "phpunit");
+            return;
+        }
+
+        # path-scoped runs use selected tests unless a complete run was requested
+        $TestTargets = [];
+        if ($PathsWereSpecified && !$Options["full"] && count($TestFiles) > 0) {
+            $TestTargets = $TestFiles;
+        }
+
+        foreach ($this->getPhpRuntimes($Options["matrix"]) as $Runtime) {
+            $Name = "PHPUnit (PHP ".$Runtime["label"].")";
+            print "\n===== ".$Name." =====\n";
+            if ($Runtime["executable"] === null) {
+                $this->reportUnavailableTool($Name, $Runtime["name"]);
+                continue;
+            }
+
+            # disable coverage and result caching to keep ordinary checks fast and read-only
+            $Command = [
+                $Runtime["executable"],
+                $PhpUnit,
+                "--configuration=phpunit.xml",
+                "--no-coverage",
+                "--do-not-cache-result",
+                "--colors=never",
+            ];
+            if ($Options["filter"] !== null) {
+                $Command[] = "--filter";
+                $Command[] = $Options["filter"];
+            }
+            $Command = array_merge($Command, $TestTargets);
+
+            $Result = $this->executeCommand(
+                $Command,
+                ["XDEBUG_MODE" => "off"]
+            );
+            $this->recordResult(
+                $Name,
+                $Result["exitCode"] === self::EXIT_SUCCESS
+                    ? self::RESULT_PASS
+                    : self::RESULT_FAIL
+            );
+        }
+    }
+
+    /**
+     * Select source files contained by explicit file or directory arguments.
+     * @param array $AllSourceFiles All recognized first-party source paths.
+     * @param array $RequestedPaths File or directory arguments supplied by the user.
+     * @return array Sorted, de-duplicated selected source paths.
+     * @throws InvalidArgumentException If a path is missing, outside the project,
+     *      or does not contain recognized source.
+     */
+    private function selectSourceFiles(array $AllSourceFiles, array $RequestedPaths): array
+    {
+        if (count($RequestedPaths) === self::STDIN_DESCRIPTOR) {
+            return $AllSourceFiles;
+        }
+
+        $SelectedFiles = [];
+        $RootPrefix = $this->RootDirectory.DIRECTORY_SEPARATOR;
+        foreach ($RequestedPaths as $RequestedPath) {
+            $CandidatePath = strpos($RequestedPath, DIRECTORY_SEPARATOR)
+                    === self::STDIN_DESCRIPTOR
+                ? $RequestedPath
+                : $this->absolutePath($RequestedPath);
+            $ResolvedPath = realpath($CandidatePath);
+            if ($ResolvedPath === false) {
+                throw new InvalidArgumentException(
+                    "Path does not exist: ".$RequestedPath
+                );
+            }
+            if ($ResolvedPath !== $this->RootDirectory
+                    && strpos($ResolvedPath, $RootPrefix) !== self::STDIN_DESCRIPTOR) {
+                throw new InvalidArgumentException(
+                    "Path is outside the project: ".$RequestedPath
+                );
+            }
+
+            # convert the requested path to the same relative form as source paths
+            $RelativePath = $ResolvedPath === $this->RootDirectory
+                ? ""
+                : substr($ResolvedPath, strlen($RootPrefix));
+            $PathPrefix = $RelativePath === "" ? "" : $RelativePath."/";
+            $FilesFoundForPath = self::STDIN_DESCRIPTOR;
+            foreach ($AllSourceFiles as $SourceFile) {
+                if ($SourceFile === $RelativePath
+                        || ($PathPrefix !== ""
+                            && strpos($SourceFile, $PathPrefix)
+                                === self::STDIN_DESCRIPTOR)
+                        || $RelativePath === "") {
+                    $SelectedFiles[] = $SourceFile;
+                    $FilesFoundForPath++;
+                }
+            }
+            if ($FilesFoundForPath === self::STDIN_DESCRIPTOR) {
+                throw new InvalidArgumentException(
+                    "Path contains no recognized first-party PHP source: ".$RequestedPath
+                );
+            }
+        }
+
+        $SelectedFiles = array_values(array_unique($SelectedFiles));
+        sort($SelectedFiles);
+        return $SelectedFiles;
+    }
+
+    /**
+     * Determine whether a directory contains code excluded from project checks.
+     * @param string $RelativePath Directory path relative to the project root.
+     * @return bool True for administrative or bundled third-party directories.
+     */
+    private function shouldSkipDirectory(string $RelativePath): bool
+    {
+        $Segments = preg_split(self::DIRECTORY_SEPARATOR_PATTERN, $RelativePath);
+        if (is_array($Segments)) {
+            foreach ($Segments as $Segment) {
+                if ($Segment === ".svn" || $Segment === ".git") {
+                    return true;
+                }
+            }
+        }
+
+        # omit generated site data, logs, and bundled third-party code
+        return preg_match("#^local/(?:data|logs)(?:/|$)#", $RelativePath) === 1
+            || preg_match("#^local/lib(?:/|$)#", $RelativePath) === 1
+            || preg_match("#^plugins/[^/]+/lib(?:/|$)#", $RelativePath) === 1
+            || preg_match("#^local/plugins/[^/]+/lib(?:/|$)#", $RelativePath) === 1;
+    }
+
+    /**
+     * Ensure the command is running against a usable Metavus working copy.
+     * @return void
+     * @throws RuntimeException If required project files are not present.
+     */
+    private function validateProjectRoot(): void
+    {
+        $RequiredFiles = [
+            "install/mvus",
+            "phpstan.neon",
+            "phpunit.xml",
+        ];
+        foreach ($RequiredFiles as $RequiredFile) {
+            if (!is_file($this->absolutePath($RequiredFile))) {
+                throw new RuntimeException(
+                    "This does not appear to be a Metavus development tree."
+                            ." (Required project file is missing: ".$RequiredFile.")"
+                );
+            }
+        }
+    }
+}

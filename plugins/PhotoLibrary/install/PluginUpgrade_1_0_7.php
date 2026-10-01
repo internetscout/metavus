@@ -144,7 +144,7 @@ class PluginUpgrade_1_0_7 extends PluginUpgrade
         $RFactory = new RecordFactory($Plugin->getSchemaId());
 
         foreach ($RFactory->getItemIds() as $RecordId) {
-            $Record = new Record((int)$RecordId);
+            $Record = Record::getRecord((int)$RecordId);
             try {
                 $Plugin->updateImageFileNameForRecord($Record);
             } catch (Exception $Exception) {

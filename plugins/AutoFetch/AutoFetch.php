@@ -3,7 +3,7 @@
 #   FILE:  AutoFetch.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -362,7 +362,7 @@ class AutoFetch extends Plugin
 
         # iterate over the associated resources
         foreach ($RecordIds as $RecordId) {
-            $Resource = new Record($RecordId);
+            $Resource = Record::getRecord($RecordId);
 
             # if a notification field was configured, toggle it
             # (when no field is selected, gCS() returns an empty string)
@@ -532,7 +532,7 @@ class AutoFetch extends Plugin
         $Exts = $this->allowedExtensions();
 
         foreach ($RecordIds as $RecordId) {
-            $Resource = new Record($RecordId);
+            $Resource = Record::getRecord($RecordId);
 
             # pull out the URLs that live in our paragraph field; these
             # will always need to be checked

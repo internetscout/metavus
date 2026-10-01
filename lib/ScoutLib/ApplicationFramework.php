@@ -3784,12 +3784,26 @@ class ApplicationFramework
      *      name of calling method)
      * @param bool $Wait If TRUE, method will not return until a lock has
      *      been obtained.  (OPTIONAL, defaults to TRUE)
+     * @param float $RecheckInterval Positive number of seconds to wait
+     *      between unsuccessful attempts to obtain the lock. Fractional seconds
+     *      are supported.  (OPTIONAL, defaults to 2.0)
      * @return bool TRUE if lock was obtained, otherwise FALSE.
+     * @throws InvalidArgumentException If the recheck interval is zero or negative.
      * @see ApplicationFramework::releaseLock()
      * @see ApplicationFramework::maxExecutionTime()
      */
-    public function getLock(?string $LockName = null, bool $Wait = true): bool
-    {
+    public function getLock(
+        ?string $LockName = null,
+        bool $Wait = true,
+        float $RecheckInterval = 2.0
+    ): bool {
+        # validate the interval before attempting to obtain the lock
+        if ($RecheckInterval <= 0) {
+            throw new InvalidArgumentException(
+                "Lock recheck interval must be positive."
+            );
+        }
+
         # use name of calling function if lock name if not supplied
         if ($LockName === null) {
             $LockName = StdLib::getCallerInfo()["Function"];
@@ -3831,8 +3845,18 @@ class ApplicationFramework
 
                 # if blocking was requested
                 if ($Wait) {
+                    # split the delay so usleep() only handles the fractional second
+                    $RecheckSeconds = (int)$RecheckInterval;
+                    $RecheckMicroseconds = (int)(($RecheckInterval - $RecheckSeconds)
+                            * 1000000);
+
                     # wait to give someone else a chance to release lock
-                    sleep(2);
+                    if ($RecheckSeconds > 0) {
+                        sleep($RecheckSeconds);
+                    }
+                    if ($RecheckMicroseconds > 0) {
+                        usleep($RecheckMicroseconds);
+                    }
                 }
             }
             // @codingStandardsIgnoreStart

@@ -52,9 +52,7 @@ class CachingHttpClient
     public function __construct(string $UserAgentPrefix)
     {
         if (self::$Cache === null) {
-            self::$Cache = new DataCache(
-                str_replace('\\', '-', __CLASS__)."-"
-            );
+            self::$Cache = new DataCache(__CLASS__."-");
         }
 
         $this->UserAgentPrefix = $UserAgentPrefix;

@@ -3,7 +3,7 @@
 #   FILE:  ViewImage.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -63,7 +63,7 @@ if (!Record::itemExists($_GET["RI"])) {
     Set404();
     return;
 }
-$Resource = new Record($_GET["RI"]);
+$Resource = Record::getRecord($_GET["RI"]);
 
 # error out if field was invalid
 if (!$Resource->getSchema()->fieldExists($_GET["FI"])) {

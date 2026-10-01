@@ -3,7 +3,7 @@
 #   FILE:  CleanSpam.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -79,7 +79,7 @@ remove their posting privilege, and disable their account.  </p>
 <p><i><?= $TgtUser->name(); ?></i> had made the following comments:</p>
 
 <?PHP
-$Resource = new Record($ResourceId);
+$Resource = Record::getRecord($ResourceId);
 $Comments = (new MessageFactory())->getMessagesPostedByUser($TgtUser->id());
 foreach ($Comments as $Comment) {
     MessageUI::printForumMessage($Comment, $Resource);

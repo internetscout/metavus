@@ -3,7 +3,7 @@
 #   FILE:  GoTo.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -23,7 +23,7 @@ if (isset($_GET["ID"])) {
     # if resource ID is valid
     if (Record::itemExists($ResourceId)) {
         # if metadata field was specified
-        $Resource = new Record($ResourceId);
+        $Resource = Record::getRecord($ResourceId);
         if (isset($_GET["MF"])) {
             # if specified metadata field is valid
             if ($Resource->getSchema()->fieldExists($_GET["MF"])) {

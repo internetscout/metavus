@@ -3,7 +3,7 @@
 #   FILE:  SocialMedia.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -327,7 +327,7 @@ class SocialMedia extends Plugin
             return;
         }
 
-        $Resource = new Record($ResourceId);
+        $Resource = Record::getRecord($ResourceId);
         $Schema = $Resource->getSchema();
 
         # only add metadata for enabled schemas

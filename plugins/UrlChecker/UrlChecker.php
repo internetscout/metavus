@@ -3,7 +3,7 @@
 #   FILE:  UrlChecker.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -18,8 +18,8 @@ use Metavus\Plugin;
 use Metavus\Plugins\UrlChecker\ConstraintList;
 use Metavus\Plugins\UrlChecker\HttpInfo;
 use Metavus\Plugins\UrlChecker\InvalidUrl;
-use Metavus\Plugins\UrlChecker\Record;
 use Metavus\Plugins\UrlChecker\StatusLine;
+use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\Database;
@@ -284,11 +284,11 @@ class UrlChecker extends Plugin
         }
 
         \Metavus\Record::registerObserver(
-            \Metavus\Record::EVENT_SET,
+            \Metavus\Record::EVENT_MODIFY,
             [$this, "resourceModify"]
         );
         \Metavus\Record::registerObserver(
-            \Metavus\Record::EVENT_REMOVE,
+            \Metavus\Record::EVENT_DESTROY,
             [$this, "resourceDelete"]
         );
 
@@ -384,8 +384,8 @@ class UrlChecker extends Plugin
             }
 
             foreach ($Resources as $ResourceId => $CheckDate) {
-                $Resource = new Record($ResourceId, $CheckDate);
-                $this->queueResourceCheckTask($Resource);
+                $Resource = Record::getRecord((int)$ResourceId);
+                $this->queueResourceCheckTask($Resource, $CheckDate);
             }
         }
 
@@ -554,7 +554,7 @@ class UrlChecker extends Plugin
 
         # instantiate resource
         $Resource = is_object($ResourceId) ? $ResourceId
-                : new Record($ResourceId, $CheckDate);
+                : Record::getRecord((int)$ResourceId);
 
         # the URLs for the resource should not be checked
         if ($this->shouldNotCheckUrls($Resource)) {
@@ -858,7 +858,7 @@ class UrlChecker extends Plugin
     {
         $UrlInfo = $this->decodeUrlIdentifier($Identifier);
 
-        $Resource = new Record($UrlInfo["RecordId"]);
+        $Resource = Record::getRecord($UrlInfo["RecordId"]);
 
         $AutofixActions = $this->getConfigSetting("AutofixConfiguration");
         $Changes = isset($AutofixActions[$Resource->getSchemaId()]) ?
@@ -1203,12 +1203,11 @@ class UrlChecker extends Plugin
      * Handle resource modification.
      * @param int $Events \Metavus\Record::EVENT_ values OR'd together.
      * @param \Metavus\Record $Resource Resource that was modified.
-     *   (needs to be \Metavus\Record here to distinguish from
-     *   \Metavus\Plugins\UrlChecker\Record and because AF passes in a
-     *   \Metavus\Record when signaling the events)
      */
-    public function resourceModify(int $Events, \Metavus\Record $Resource): void
-    {
+    public function resourceModify(
+        int $Events,
+        \Metavus\Record $Resource
+    ): void {
         # get the list of fields that we will check for this resource
         $FieldsToCheck = $this->getFieldsToCheck($Resource->getSchemaId());
 
@@ -1226,12 +1225,11 @@ class UrlChecker extends Plugin
      * Handle resource deletion.
      * @param int $Events \Metavus\Record::EVENT_ values OR'd together.
      * @param \Metavus\Record $Resource Resource that is about to be deleted.
-     *   (needs to be \Metavus\Record here to distinguish from
-     *   \Metavus\Plugins\UrlChecker\Record and because AF passes in a
-     *   \Metavus\Record when signaling the events)
      */
-    public function resourceDelete(int $Events, \Metavus\Record $Resource): void
-    {
+    public function resourceDelete(
+        int $Events,
+        \Metavus\Record $Resource
+    ): void {
         $this->DB->query(
             "DELETE FROM UrlChecker_UrlHistory"
             ." WHERE RecordId = '".intval($Resource->id())."'"
@@ -1327,7 +1325,7 @@ class UrlChecker extends Plugin
         $SkippedResourceIds = [];
 
         foreach ($ResourceIds as $Row) {
-            $Resource = new Record($Row["RecordId"]);
+            $Resource = Record::getRecord($Row["RecordId"]);
             if ($this->shouldNotCheckUrls($Resource)) {
                 $SkippedResourceIds[] = $Row["RecordId"];
             }
@@ -1697,7 +1695,7 @@ class UrlChecker extends Plugin
             $RecordIds = $this->DB->fetchColumn("RecordId");
 
             foreach ($RecordIds as $RecordId) {
-                $Record = new Record($RecordId);
+                $Record = Record::getRecord($RecordId);
                 if ($this->shouldCheckDomainsFromRecordUrls($Record)) {
                     $Resources[$RecordId] = "N/A";
 
@@ -1755,7 +1753,7 @@ class UrlChecker extends Plugin
             $Rows = $this->DB->fetchRows();
 
             foreach ($Rows as $Row) {
-                $Record = new Record($Row["RecordId"]);
+                $Record = Record::getRecord($Row["RecordId"]);
                 if ($this->shouldCheckDomainsFromRecordUrls($Record)) {
                     $Resources[$Row["RecordId"]] = $Row["CheckDate"] ;
 
@@ -2411,16 +2409,19 @@ class UrlChecker extends Plugin
     /**
      * Queue a task to check non-failing URLs from a resource.
      * @param Record $Resource Resource to be checked.
+     * @param string $CheckDate Date resource was last checked.
      */
-    private function queueResourceCheckTask(Record $Resource): void
-    {
+    private function queueResourceCheckTask(
+        Record $Resource,
+        string $CheckDate
+    ): void {
         $TaskDescription =
             "Validate good URLs associated with <a href=\"r".$Resource->id()."\"><i>"
             .$Resource->getMapped("Title")."</i></a>";
 
         $this->queueUniqueTask(
             "checkResourceUrls",
-            [$Resource->id(), $Resource->getCheckDate()],
+            [$Resource->id(), $CheckDate],
             $this->getConfigSetting("TaskPriority"),
             $TaskDescription
         );

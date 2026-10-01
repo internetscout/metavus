@@ -3,7 +3,7 @@
 #   FILE:  PluginUpgrade_1_0_14.php (Blog plugin)
 #
 #   A plugin upgrade file for the Metavus digital collections platform
-#   Copyright 2024 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -76,7 +76,7 @@ class PluginUpgrade_1_0_14 extends PluginUpgrade
 
         $Factory = new RecordFactory($Plugin->getSchemaId());
         foreach ($Factory->getItemIds() as $Id) {
-            $BlogEntry = new Entry($Id);
+            $BlogEntry = Entry::getRecord($Id);
             $BlogEntry->set($Plugin::BLOG_NAME_FIELD_NAME, $BlogNameToSet);
         }
 

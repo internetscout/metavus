@@ -3,7 +3,7 @@
 #   FILE:  GoogleMaps.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2002-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2002-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -498,7 +498,7 @@ class GoogleMaps extends Plugin
             }
 
             Record::registerObserver(
-                Record::EVENT_SET,
+                Record::EVENT_MODIFY,
                 [$this, "blankAutoPopulatedFields"]
             );
         }
@@ -518,7 +518,7 @@ class GoogleMaps extends Plugin
         $this->CallbackManager = new CallbackManager();
 
         Record::registerObserver(
-            Record::EVENT_ADD | Record::EVENT_REMOVE | Record::EVENT_SET,
+            Record::EVENT_CREATE | Record::EVENT_DESTROY | Record::EVENT_MODIFY,
             [$this, "updateResourceTimestamp"]
         );
 
@@ -576,7 +576,7 @@ class GoogleMaps extends Plugin
         $Resources = array_diff($Resources, $ExcludeResources);
 
         foreach ($Resources as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
 
             # pull out the address
             $Address = $Resource->get($SrcFieldId);
@@ -1200,7 +1200,7 @@ class GoogleMaps extends Plugin
     /**
      * Update the timestamp storing the last change to any resource.
      * @param int $Events Record::EVENT_* values OR'd together.
-     * @param Record $Record The record being observed.
+     * @param Record $Record Record being observed.
      */
     public function updateResourceTimestamp(int $Events, Record $Record): void
     {
@@ -1581,7 +1581,7 @@ class GoogleMaps extends Plugin
         if (!Record::itemExists($ResourceId)) {
             print("ERROR: Invalid ResourceId\n");
         } else {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             print(
                 '<h1>'.$Resource->getMapped("Title").'</h1>'
                 .'<p>'.$Resource->getMapped("Description").'</p>'

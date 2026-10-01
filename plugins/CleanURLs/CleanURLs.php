@@ -3,7 +3,7 @@
 #   FILE:  CleanURLs.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -239,7 +239,7 @@ class CleanURLs extends Plugin
                         # if resource ID was valid
                         if (Record::itemExists($Id)) {
                             # set title to resource title
-                            $Resource = new Record($Id);
+                            $Resource = Record::getRecord($Id);
                             $Title = $Resource->getMapped("Title");
                         }
                     }

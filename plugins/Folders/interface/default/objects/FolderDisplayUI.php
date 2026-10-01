@@ -3,7 +3,7 @@
 #   FILE:  FolderDisplayUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -463,7 +463,7 @@ class FolderDisplayUI
         $ResourceInfo = [];
 
         foreach ($ItemIds as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $Title = Folder::getSafeResourceTitle($Resource);
             $ResourceCSSClass = $Resource->userCanView(User::getAnonymousUser())
                 ? ""
@@ -548,7 +548,7 @@ class FolderDisplayUI
         int $ItemId,
         bool $Hidden = false
     ): void {
-        $Resource = new Record($ItemId);
+        $Resource = Record::getRecord($ItemId);
         $PublicResource = $Resource->userCanView(User::getAnonymousUser());
         $SafeFolderId = defaulthtmlentities($FolderId);
         $SafeId = defaulthtmlentities($Resource->id());

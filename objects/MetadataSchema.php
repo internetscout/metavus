@@ -320,7 +320,7 @@ class MetadataSchema extends ItemFactory
         $ResourceIds = $RFactory->getItemIds();
 
         foreach ($ResourceIds as $ResourceId) {
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
             $Resource->destroy();
         }
 
@@ -460,6 +460,7 @@ class MetadataSchema extends ItemFactory
     public function setItemClassName(string $NewValue): void
     {
         self::clearStaticCaches();
+        Record::clearCaches();
         $this->DB->updateValue("ItemClassName", $NewValue);
     }
 
@@ -930,7 +931,7 @@ class MetadataSchema extends ItemFactory
                 $DefaultValue
             );
         } catch (Exception $Exception) {
-            $this->logErrorMessage($Exception->getMessage());
+            $this->logErrorMessage(htmlspecialchars($Exception->getMessage()));
             $Field = null;
         }
 
@@ -968,17 +969,20 @@ class MetadataSchema extends ItemFactory
 
         # check that file exists and is readable
         if (!file_exists($FileName)) {
-            $this->logErrorMessage("Could not find XML file '".$FileName."'.");
+            $this->logErrorMessage("Could not find XML file '"
+                    .htmlspecialchars($FileName)."'.");
             return false;
         } elseif (!is_readable($FileName)) {
-            $this->logErrorMessage("Could not read from XML file '".$FileName."'.");
+            $this->logErrorMessage("Could not read from XML file '"
+                    .htmlspecialchars($FileName)."'.");
             return false;
         }
 
         # load XML from file
         $Xml = file_get_contents($FileName);
         if ($Xml === false) {
-            $this->logErrorMessage("Could not read from XML file '".$FileName."'.");
+            $this->logErrorMessage("Could not read from XML file '"
+                    .htmlspecialchars($FileName)."'.");
             return false;
         }
 
@@ -1040,7 +1044,7 @@ class MetadataSchema extends ItemFactory
                 $ErrType = ($Err->level == LIBXML_ERR_WARNING) ? "Warning"
                         : (($Err->level == LIBXML_ERR_ERROR) ? "Error"
                         : "Fatal Error");
-                $this->logErrorMessage("XML ".$ErrType.": ".$Err->message
+                $this->logErrorMessage("XML ".$ErrType.": ".htmlspecialchars($Err->message)
                         ." (".$Err->line.",".$Err->column.")");
             }
         # else if no metadata fields found record error message
@@ -1078,7 +1082,7 @@ class MetadataSchema extends ItemFactory
                             !isset($FieldType) ||
                             !defined($FieldType)) {
                         $this->logErrorMessage("Valid type not found for field '"
-                                .$FieldXml->Name."' (MetadataField #"
+                                .htmlspecialchars($FieldXml->Name)."' (MetadataField #"
                                 .$FieldIndex.").");
                     }
 
@@ -1150,7 +1154,7 @@ class MetadataSchema extends ItemFactory
                                 if ($SchemaId === null) {
                                     $this->logErrorMessage(
                                         "Invalid schema in ReferenceableSchemaIds: "
-                                            .$SchemaName
+                                            .htmlspecialchars($SchemaName)
                                     );
                                     continue;
                                 }
@@ -1177,7 +1181,7 @@ class MetadataSchema extends ItemFactory
                                 if ($Priv === null) {
                                     $this->logErrorMessage(
                                         "Invalid privilege in UserPrivilegeRestrictions: "
-                                            .$PrivName
+                                            .htmlspecialchars($PrivName)
                                     );
                                     continue;
                                 }
@@ -1217,8 +1221,8 @@ class MetadataSchema extends ItemFactory
                         $Field->$MethodName($Value);
                     } catch (Exception $Ex) {
                         $this->logErrorMessage(
-                            "Exception setting value for '".$MethodName."': "
-                                .$Ex->getMessage()
+                            "Exception setting value for '".htmlspecialchars($MethodName)."': "
+                                .htmlspecialchars($Ex->getMessage())
                         );
                     }
                 }
@@ -1240,8 +1244,9 @@ class MetadataSchema extends ItemFactory
                         $Field->loadVocabulary($VocabToLoad);
                     } catch (Exception $Ex) {
                         $this->logErrorMessage(
-                            "Exception loading vocabulary '".$VocabToLoad."': "
-                                .$Ex->getMessage()
+                            "Exception loading vocabulary '"
+                                .htmlspecialchars($VocabToLoad)."': "
+                                .htmlspecialchars($Ex->getMessage())
                         );
                     }
                 }
@@ -1357,8 +1362,8 @@ class MetadataSchema extends ItemFactory
                             # log error about field not found
                             $this->logErrorMessage(
                                 "Field not found with name '"
-                                .$FieldName."' to map to standard field name '"
-                                .$StandardName."'."
+                                .htmlspecialchars($FieldName)."' to map to standard field name '"
+                                .htmlspecialchars($StandardName)."'."
                             );
                         }
                     } else {
@@ -2923,7 +2928,7 @@ class MetadataSchema extends ItemFactory
         try {
             return PrivilegeSet::createFromXml($Xml, $this);
         } catch (Exception $Exception) {
-            $this->logErrorMessage($Exception->getMessage());
+            $this->logErrorMessage(htmlspecialchars($Exception->getMessage()));
             return null;
         }
     }

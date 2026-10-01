@@ -3,13 +3,13 @@
 #   FILE:  Autofix.php (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\MetadataSchema;
-use Metavus\Plugins\UrlChecker\Record;
+use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;

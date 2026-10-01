@@ -3,7 +3,7 @@
 #   FILE:  LTIHome.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -105,7 +105,7 @@ if ($ButtonPushed == "Select") {
 
         $LinkUrl = $AF->baseUrl()."lti/dl_r/v1/".$RecordId;
 
-        $Title = (new Record($RecordId))->getMapped("Title") ;
+        $Title = (Record::getRecord($RecordId))->getMapped("Title") ;
 
         $Reply = \IMSGlobal\LTI\LTI_Deep_Link_Resource::new()
             ->set_title($Title)

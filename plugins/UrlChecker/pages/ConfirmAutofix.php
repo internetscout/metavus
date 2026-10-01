@@ -3,14 +3,14 @@
 #   FILE:  ConfirmAutofix.php (UrlChecker plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 use Metavus\MetadataField;
 use Metavus\MetadataSchema;
-use Metavus\Plugins\UrlChecker\Record;
+use Metavus\Record;
 use Metavus\User;
 use ScoutLib\ApplicationFramework;
 use ScoutLib\StdLib;
@@ -33,7 +33,7 @@ $FieldId = $UrlInfo["FieldId"];
 if (Record::itemExists($ResourceId) &&
     MetadataSchema::fieldExistsInAnySchema($FieldId)) {
     $H_Field = MetadataField::getField($FieldId);
-    $H_Resource = new Record($ResourceId);
+    $H_Resource = Record::getRecord($ResourceId);
     $H_InvalidUrl = $MyPlugin->getInvalidUrl(
         $ResourceId,
         $FieldId,

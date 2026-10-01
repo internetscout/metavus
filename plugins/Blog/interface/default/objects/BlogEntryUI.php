@@ -3,7 +3,7 @@
 #   FILE:  BlogEntryUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2020-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2020-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -189,7 +189,7 @@ class BlogEntryUI
             ($Id = array_shift($BlogIds)) !== null
                  && $Printed < $NumberToPrint
         ) {
-            $Entry = new Entry($Id);
+            $Entry = Entry::getRecord($Id);
             if ($Entry->userCanView($User)) {
                 ?><tr><td class="BlogEntrySummary"><?PHP
                 self::printBlogEntry($Entry);

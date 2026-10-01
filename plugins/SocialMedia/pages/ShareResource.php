@@ -3,7 +3,7 @@
 #   FILE:  ShareResource.php (SocialMedia plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -21,7 +21,7 @@ $UserId = StdLib::getArrayValue($_GET, "UserId");
 
 # get the resource and SocialMedia plugin
 if (Record::ItemExists($ResourceId)) {
-    $Resource = new Record($ResourceId);
+    $Resource = Record::getRecord($ResourceId);
     $Plugin = SocialMedia::getInstance();
 
     # share the resource

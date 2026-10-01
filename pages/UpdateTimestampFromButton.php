@@ -3,7 +3,7 @@
 #   FILE:  UpdateTimestampFromButton.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -34,7 +34,7 @@ if (!Record::itemExists($ResourceId)) {
 }
 
 # get the resource
-$Resource = new Record($ResourceId);
+$Resource = Record::getRecord($ResourceId);
 
 # bail if user can't edit this resource, given field is invalid, or user can't
 # edit given field

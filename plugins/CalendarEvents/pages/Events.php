@@ -3,7 +3,7 @@
 #   FILE:  Events.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -133,7 +133,7 @@ $MonthTimestamp = !is_null($H_Month) ? strtotime((string)$H_Month) : false;
 if ($MonthTimestamp === false) {
     $EventIds = $EFactory->getIdsOfUpcomingEvents(true, 1);
     if (count($EventIds) > 0) {
-        $FirstEvent = new Event(reset($EventIds));
+        $FirstEvent = Event::getRecord(reset($EventIds));
         $MonthTimestamp = strtotime($FirstEvent->get("Start Date"));
     } else {
         $MonthTimestamp = time();
@@ -153,7 +153,7 @@ $H_EventCount = count($EventIds);
 
 # load event objects from IDs
 foreach ($EventIds as $Id) {
-    $H_Events[$Id] = new Event($Id);
+    $H_Events[$Id] = Event::getRecord($Id);
 }
 
 # tag page so it will be cleared when events are edited

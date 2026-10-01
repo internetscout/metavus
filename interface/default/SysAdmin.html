@@ -3,7 +3,7 @@
 #   FILE:  SysAdmin.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -44,6 +44,62 @@ $SystemAdminMenuEntries = [
 ];
 
 # ----- LOCAL FUNCTIONS ------------------------------------------------------
+
+/**
+ * Get messages related to problems with the htaccess file.
+ * @return string HTML of warnings or an empty string when no issues were
+ *     detected.
+ */
+function getHtaccessWarnings(): string
+{
+    $RunningUnderNginx = isset($_SERVER["SERVER_SOFTWARE"])
+        && stripos($_SERVER["SERVER_SOFTWARE"], "nginx") !== false;
+
+    if (!$RunningUnderNginx && file_exists(".htaccess.Metavus")) {
+        return "<div class='alert alert-danger'>"
+            ."Could not automatically update "
+            ."<code>.htaccess</code> during upgrade. A new version has been created "
+            ."as <code>.htaccess.Metavus</code>. Please merge the new "
+            ."sections in that file into <code>.htaccess</code> and then "
+            ."remove <code>.htaccess.Metavus</code>."
+            ."</div>";
+    }
+
+    $MissingFromHTAccess = [];
+    $ExpectedInHTAccess = [
+        "CLEAN_URL_SUPPORT",
+        "URL_FINGERPRINTING_SUPPORT",
+        "JSMIN_REWRITE_SUPPORT",
+        "SCSS_REWRITE_SUPPORT",
+        "STRICT_SEARCH_SUPPORT",
+    ];
+    foreach ($ExpectedInHTAccess as $Key) {
+        if (!isset($_SERVER[$Key]) && !isset($_SERVER["REDIRECT_".$Key])) {
+            $MissingFromHTAccess[] = $Key;
+        }
+    }
+
+    if (count($MissingFromHTAccess) === 0) {
+        return "";
+    }
+
+    if ($RunningUnderNginx) {
+        return "<div class='alert alert-danger'>"
+            ."<p>Required entries missing from the NGINX configuration: "
+            .implode(", ", $MissingFromHTAccess).".</p>"
+            ."<p>Please update the NGINX configuration from "
+            ."<code>install/EXAMPLE-Metavus-NGINX.conf</code>.</p>"
+            ."</div>";
+    }
+
+    return "<div class='alert alert-danger'>"
+        ."<p>Required sections missing from <code>.htaccess</code>: "
+        .implode(", ", $MissingFromHTAccess).".</p>"
+        ."<p>Please add the corresponding sections from "
+        ."<code>install/htaccess.DIST</code> "
+        ."(look for <code>BEGIN/END</code> markers).</p>"
+        ."</div>";
+}
 
 /**
  * Display menu entries in two columns.
@@ -269,6 +325,10 @@ if (count($SignalResult) !== 0) {
 $AF->setPageTitle("System Administration");
 
 # ----- DISPLAY --------------------------------------------------------------
+
+if ($User->hasPriv(PRIV_SYSADMIN)) {
+    print getHtaccessWarnings();
+}
 
 ?><div class="mv-content-sectioned"><?PHP
 

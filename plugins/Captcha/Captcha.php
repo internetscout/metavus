@@ -114,6 +114,8 @@ class Captcha extends Plugin
 
         $this->CfgSetup += TurnstileCaptcha::getConfigOptions();
 
+        $this->Instructions = TurnstileCaptcha::getInstructions();
+
         return null;
     }
 

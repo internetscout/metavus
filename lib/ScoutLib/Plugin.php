@@ -541,10 +541,13 @@ abstract class Plugin
      */
     public function getDataCache()
     {
-        if (self::$DataCache === null) {
-            self::$DataCache = new DataCache("Plugin-".self::getBaseName()."-");
+        if ($this->DataCache === null) {
+            $this->DataCache = new DataCache(
+                "Plugin-".static::getBaseName()."-"
+            );
         }
-        return self::$DataCache;
+
+        return $this->DataCache;
     }
 
     /**
@@ -669,6 +672,7 @@ abstract class Plugin
 
     # ----- PRIVATE INTERFACE ------------------------------------------------
 
+    private $DataCache = null;          # plugin data cache
     private $Enabled = false;           # whether plugin is enabled
     private $Installed = false;         # whether plugin has been installed
     private $InstalledVersion = false;  # version last installed
@@ -678,7 +682,6 @@ abstract class Plugin
     private static $CfgOver;            # configuration override values
     private static $Instances;          # instantiated plugins
     private static $PluginInfoCache;    # cache of setting values from DB
-    private static $DataCache = null;          # plugin data cache
 
     /**
      * Class constructor.  Plugins should be retrieved via getInstance(),

@@ -3,7 +3,7 @@
 #   FILE:  ListPages.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -35,5 +35,5 @@ $PageIds = $PFactory->getItemIds();
 # load pages from page IDs
 $H_Pages = [];
 foreach ($PageIds as $Id) {
-    $H_Pages[$Id] = new Page($Id);
+    $H_Pages[$Id] = Page::getRecord($Id);
 }

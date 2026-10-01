@@ -3,7 +3,7 @@
 #   FILE:  SearchResults.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2015-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2015-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 
@@ -470,7 +470,7 @@ function printSearchResults(
         true
     ));
     foreach ($ResultSliceIds as $Id) {
-        $ResultsToDisplay[] = new Record($Id);
+        $ResultsToDisplay[] = Record::getRecord($Id);
     }
 
     # ----- TAB CONTAINER (if any) BEGIN ------------------------------------

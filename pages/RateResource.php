@@ -3,7 +3,7 @@
 #   FILE:  RateResource.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -25,7 +25,7 @@ if (is_null($Rating) && isset($_POST["F_Rating"])) {
 # save the new rating for the user
 if (!is_null($ResourceId)) {
     if (!is_null($Rating)) {
-        $Resource = new Record($ResourceId);
+        $Resource = Record::getRecord($ResourceId);
         $Resource->rating($Rating);
     }
 

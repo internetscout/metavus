@@ -3,7 +3,7 @@
 #   FILE:  Register.html
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -865,7 +865,7 @@ $FormFields = [
             # lives in Instructure's cloud
             if ($AllValues["Canvas_SelfHosted"] === true &&
                 preg_match('/\.instructure\.com$/', $Host)) {
-                return $FieldValues." ends in .instructure.com, so it cannot be "
+                return htmlspecialchars($FieldValues)." ends in .instructure.com, so it cannot be "
                     ."Self Hosted.";
             }
         },

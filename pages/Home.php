@@ -3,7 +3,7 @@
 #   FILE:  Home.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2021-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2021-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # VALUES PROVIDED to INTERFACE (REQUIRED):
@@ -57,7 +57,7 @@ function loadCollections()
 
     $ViewableCollections = [];
     foreach ($ViewableCollectionIds as $CollectionId) {
-        $Collection = new Collection($CollectionId);
+        $Collection = Collection::getRecord($CollectionId);
         $ViewableCollections[$CollectionId] = $Collection;
     }
     return $ViewableCollections;
@@ -95,7 +95,7 @@ function loadNews(): array
     $User = User::getCurrentUser();
     $NewsItems = [];
     foreach ($NewsItemIds as $NewsItemId) {
-        $NewsItem = new Entry($NewsItemId);
+        $NewsItem = Entry::getRecord($NewsItemId);
         if ($NewsItem->userCanView($User)) {
             $NewsItems[$NewsItemId] = $NewsItem;
         }
@@ -116,7 +116,7 @@ function loadEvents(): array
     $EventIds = $EFactory->getIdsOfUpcomingEvents(true, $MaxEvents);
     $Events = [];
     foreach ($EventIds as $EventId) {
-        $Events[$EventId] = new Event($EventId);
+        $Events[$EventId] = Event::getRecord($EventId);
     }
     return $Events;
 }

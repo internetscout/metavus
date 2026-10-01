@@ -3,7 +3,7 @@
 #   FILE:  WhatCMS.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2024-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2024-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -1221,7 +1221,7 @@ class WhatCMS extends Plugin
                         $LineContent,
                         self::VALID_RESULT_CATEGORIES
                     )) {
-                        return $LineId."Result category ".$LineContent.
+                        return $LineId."Result category ".htmlspecialchars($LineContent).
                                 " is invalid";
                     }
                     $NextLinePrefixMustBe = ["Field"];
@@ -1276,9 +1276,11 @@ class WhatCMS extends Plugin
         string $TargetFieldName,
         string $UrlFieldName
     ): ?string {
+        $EscapedTargetFieldName = htmlspecialchars($TargetFieldName);
+        $EscapedUrlFieldName = htmlspecialchars($UrlFieldName);
 
         if (!MetadataSchema::fieldExistsInAnySchema($TargetFieldName)) {
-            return "Specified field ".$TargetFieldName." does not exist.";
+            return "Specified field ".$EscapedTargetFieldName." does not exist.";
         }
         $TargetFieldId =
                 MetadataSchema::getCanonicalFieldIdentifier($TargetFieldName);
@@ -1294,9 +1296,9 @@ class WhatCMS extends Plugin
             # name of the schema the field was found in, rather than restating
             # the provided prefix (or lack thereof)
             $SchemaNames = MetadataSchema::getAllSchemaNames();
-            return "Target field ".$TargetFieldName.", found in the "
+            return "Target field ".$EscapedTargetFieldName.", found in the "
                    .$SchemaNames[$TargetMdField->schemaId()]." schema, is not "
-                   ."in the same schema as the URL field ".$UrlFieldName
+                   ."in the same schema as the URL field ".$EscapedUrlFieldName
                    ." , found in the ".$SchemaNames[$UrlFieldSchemaId]
                    ." schema. (Check that you used fully-qualified field "
                    ."names.)";
@@ -1306,13 +1308,13 @@ class WhatCMS extends Plugin
             $TargetMdField->type(),
             self::ALLOWED_TARGET_FIELD_TYPES
         )) {
-            return "Target field ".$TargetFieldName." does not have one of the".
+            return "Target field ".$EscapedTargetFieldName." does not have one of the".
                     " allowed types. ".self::ALLOWED_TARGET_FIELD_TYPES_MESSAGE;
         }
 
         if ($TargetMdField->type() == MetadataSchema::MDFTYPE_OPTION &&
                 !$TargetMdField->allowMultiple()) {
-            return "Target option field ".$TargetFieldName.
+            return "Target option field ".$EscapedTargetFieldName.
                     " does not allow multiple values.";
         }
         return null;
@@ -1331,14 +1333,15 @@ class WhatCMS extends Plugin
      */
     private function checkUrlFieldForErrors(string $FieldName): ?string
     {
+        $EscapedFieldName = htmlspecialchars($FieldName);
         if (!MetadataSchema::fieldExistsInAnySchema($FieldName)) {
-            return "Specified field ".$FieldName." does not exist.";
+            return "Specified field ".$EscapedFieldName." does not exist.";
         }
         $FieldId = MetadataSchema::getCanonicalFieldIdentifier($FieldName);
         $MdField =  MetadataField::getField($FieldId);
 
         if ($MdField->type() != MetadataSchema::MDFTYPE_URL) {
-            return "Field ".$FieldName." is not a URL field.";
+            return "Field ".$EscapedFieldName." is not a URL field.";
         }
 
         return null;

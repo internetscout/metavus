@@ -3,15 +3,16 @@
 #   FILE: InvalidUrl.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2011-2023 Edward Almasy and Internet Scout Research Group
+#   Copyright 2011-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
 
 namespace Metavus\Plugins\UrlChecker;
 use Exception;
-use Metavus\MetadataSchema;
 use Metavus\MetadataField;
+use Metavus\MetadataSchema;
+use Metavus\Record;
 
 class InvalidUrl
 {
@@ -59,16 +60,16 @@ class InvalidUrl
      * Return a resource with the ID specified by the invalid URL.
      * @return Record Associated resource.
      */
-    public function getAssociatedResource(): \Metavus\Plugins\UrlChecker\Record
+    public function getAssociatedResource(): Record
     {
-        return new Record($this->RecordId);
+        return Record::getRecord($this->RecordId);
     }
 
     /**
      * Return a metadata field with the ID specified by the invalid URL.
      * @return MetadataField Associated metadata field.
      */
-    public function getAssociatedField(): \Metavus\MetadataField
+    public function getAssociatedField(): MetadataField
     {
         return MetadataField::getField($this->FieldId);
     }

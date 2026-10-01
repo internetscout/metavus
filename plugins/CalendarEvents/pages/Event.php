@@ -3,7 +3,7 @@
 #   FILE:  Event.php (CalendarEvents plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -37,7 +37,7 @@ if (!Event::itemExists((int)$EventId)) {
     return;
 }
 
-$H_Event = new Event((int)$EventId);
+$H_Event = Event::getRecord((int)$EventId);
 
 # if the entry is some other type of resource
 if (!$H_Plugin->isEvent($H_Event)) {

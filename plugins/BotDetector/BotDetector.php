@@ -30,7 +30,7 @@ class BotDetector extends Plugin
     public function register(): void
     {
         $this->Name = "Bot Detector";
-        $this->Version = "1.4.2";
+        $this->Version = "1.4.3";
         $this->Description = "Provides support for detecting whether the"
                 ." current page load is by an actual person or by an automated"
                 ." <a href=\"http://en.wikipedia.org/wiki/Web_crawler\""
@@ -40,6 +40,33 @@ class BotDetector extends Plugin
         $this->Email = "support@metavus.net";
         $this->Requires = ["MetavusCore" => "1.2.0"];
         $this->EnabledByDefault = true;
+
+        $this->CfgSetup["SlowDnsLookupTime"] = [
+            "Type" => "Number",
+            "Label" => "Slow Lookup Threshold",
+            "Help" => "DNS lookups taking longer than this are considered slow.",
+            "Units" => "seconds",
+            "Default" => 15,
+            "MinVal" => 2,
+        ];
+
+        $this->CfgSetup["MaxSlowDnsLookupAge"] = [
+            "Type" => "Number",
+            "Label" => "Max Slow DNS Lookup Age",
+            "Help" => "How long to remember that a DNS lookup was slow.",
+            "Units" => "minutes",
+            "Default" => 10080, # (one week)
+            "MinVal" => 5,
+        ];
+
+        $this->CfgSetup["MaxSlowDnsLookups"] = [
+            "Type" => "Number",
+            "Label" => "Max Slow DNS Lookups",
+            "Help" => "Maximum number of slow DNS lookups for a Class C IPv4 network (a CIDR /24)"
+                ." before no further lookups will be performed for that network.",
+            "Default" => 5,
+            "MinVal" => 1,
+        ];
 
         $this->CfgSetup["HttpBLAccessKey"] = [
             "Type" => "Text",
@@ -298,7 +325,7 @@ class BotDetector extends Plugin
         foreach ($Patterns as $Pattern) {
             $Result = @preg_match($Pattern."i", "text.example.com");
             if ($Result === false) {
-                return "Error in pattern '".$Pattern."'";
+                return "Error in pattern '".htmlspecialchars($Pattern)."'";
             }
         }
 
@@ -356,7 +383,23 @@ class BotDetector extends Plugin
      */
     public static function lookUpHostnameAndCleanMetrics(string $IP): void
     {
+        $BotDetector = BotDetector::getInstance();
+
+        # if DNS lookups in this network are slow, bail
+        if ($BotDetector->isIpInSlowDnsNetwork($IP)) {
+            return;
+        }
+
+        $SlowLookupTime = $BotDetector->getConfigSetting("SlowDnsLookupTime");
+
+        $Now = microtime(true);
         $Hostname = StdLib::getHostName($IP); # (doing a lookup populates the cache)
+        $LookupTime = microtime(true) - $Now;
+
+        # if this look took too long, log it as slow
+        if ($LookupTime > $SlowLookupTime) {
+            $BotDetector->logSlowDnsLookup($IP);
+        }
 
         # if no hostname available, nothing to do
         if ($Hostname == $IP) {
@@ -448,9 +491,15 @@ class BotDetector extends Plugin
         $IP = $_SERVER["REMOTE_ADDR"];
         $Hostname = StdLib::getHostNameFromCache($IP);
 
-        # if nothing in hostname cache, queue background task to populate it
-        # and return unsure
+        # if nothing in hostname cache
         if ($Hostname === null) {
+            # return unsure when IP is in a slow DNS network such that we're not
+            # going to try looking it up
+            if ($this->isIpInSlowDnsNetwork($IP)) {
+                return null;
+            }
+
+            # otherwise, queue a background task to do the lookup and return unsure
             ApplicationFramework::getInstance()
                 ->queueUniqueTask(
                     [__CLASS__, "lookUpHostnameAndCleanMetrics"],
@@ -703,6 +752,106 @@ class BotDetector extends Plugin
         # but if we *have* shown them the canary
         # and it's been more than 3600s, then this is a bot
         return true;
+    }
+
+    /**
+     * Determine if an IP address is in network where lookups have been slow.
+     * @param string $IP IP Address.
+     * @return bool TRUE for IPs in a network where lookups have been slow,
+     *     FALSE otherwise
+     */
+    private function isIpInSlowDnsNetwork(string $IP): bool
+    {
+        $CacheKey = $this->getSlowDnsCacheKey($IP);
+
+        # if address provided is not IPv4, then it can't be in a slow IPv4
+        # network
+        if ($CacheKey === null) {
+            return false;
+        }
+
+        # get the logged slow dns lookups
+        $DataCache = $this->getDataCache();
+        $Timestamps = $DataCache->get($CacheKey);
+
+        # if no slow lookups logged, network was not slow
+        if ($Timestamps === null) {
+            return false;
+        }
+
+        # otherwise, count the number of slow lookups younger than our max age
+        $SlowLookups = 0;
+        $Now = microtime(true);
+        $MaxAge = 60 * $this->getConfigSetting("MaxSlowDnsLookupAge") ;
+        foreach ($Timestamps as $Timestamp) {
+            if ($Now - $Timestamp < $MaxAge) {
+                $SlowLookups += 1;
+            }
+        }
+
+        # if max number of slow lookups was exceeded, than this network is slow
+        $MaxSlowDnsLookups = $this->getConfigSetting("MaxSlowDnsLookups");
+        return ($SlowLookups >= $MaxSlowDnsLookups);
+    }
+
+    /**
+     * Log a slow DNS lookup for an IP Address.
+     * @param string $IP IP Address.
+     */
+    private function logSlowDnsLookup(string $IP): void
+    {
+        $CacheKey = $this->getSlowDnsCacheKey($IP);
+
+        # if provided address was not an IPv4 address, nothing to do
+        if ($CacheKey === null) {
+            return;
+        }
+
+        $AF = ApplicationFramework::getInstance();
+        $DataCache = $this->getDataCache();
+
+        $MaxAge = 60 * $this->getConfigSetting("MaxSlowDnsLookupAge");
+        $Now = microtime(true);
+
+        # get a lock for this network
+        $AF->getLock("BotDetector_".$CacheKey);
+
+        # build updated list of timestamps, filtering out those that were too old
+        # and then adding the current one
+        $NewTimestamps = [];
+        $Timestamps = $DataCache->get($CacheKey);
+        if ($Timestamps !== null) {
+            foreach ($Timestamps as $Timestamp) {
+                if ($Now - $Timestamp < $MaxAge) {
+                    $NewTimestamps[] = $Timestamp;
+                }
+            }
+        }
+        $NewTimestamps[] = $Now;
+
+        # save updated list
+        $DataCache->set($CacheKey, $NewTimestamps, $MaxAge);
+
+        $AF->releaseLock("BotDetector_".$CacheKey);
+    }
+
+    /**
+     * Get cache key for the slow DNS lookup tracking for a given IP address.
+     * @param string $IP IP Address.
+     * @return string|null Cache key or NULL when IP was not an IPv4 address.
+     */
+    private function getSlowDnsCacheKey(string $IP): ?string
+    {
+        $Result = filter_var($IP, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+        if ($Result === false) {
+            return null;
+        }
+
+        $Parts = explode(".", $IP);
+        array_pop($Parts);
+        $Network = implode(".", $Parts);
+
+        return "SlowDnsNetworks_".$Network;
     }
 
     /**

@@ -3,7 +3,7 @@
 #   FILE:  LeaveFeedback.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -198,7 +198,7 @@ if ($H_FeedbackType == "ResourceFeedback") {
     }
 
     # construct the record from ParameterOne
-    $Record = new Record($ParameterOne);
+    $Record = Record::getRecord($ParameterOne);
     if ($Record->getSchemaId() == MetadataSchema::SCHEMAID_USER) {
         $H_InvalidRecord = true;
         return;
@@ -337,7 +337,7 @@ if ($ButtonPushed) {
                     return;
                 }
 
-                $Record = new Record($RecordId);
+                $Record = Record::getRecord($RecordId);
 
                 $Subject .= "Resource Feedback";
                 $Body .= "Title: " . trim($Record->getMapped("Title")) . "\n";

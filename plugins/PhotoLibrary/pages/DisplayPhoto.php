@@ -40,7 +40,7 @@ if (filter_var($RecordId, FILTER_VALIDATE_INT) == false ||
 }
 
 # check that user has permission to view photo
-$H_Record = new Record($RecordId);
+$H_Record = Record::getRecord($RecordId);
 if (!$H_Record->userCanView($User)) {
     $H_ErrMsg = "You do not have permission to view this photo.";
     return;

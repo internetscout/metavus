@@ -3,7 +3,7 @@
 #   FILE:  Entry.php (Blog plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2013-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2013-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -40,7 +40,7 @@ if (Record::getSchemaForRecord((int)$EntryId) != $H_Blog->getSchemaId()) {
     return;
 }
 
-$H_Entry = new Entry((int)$EntryId);
+$H_Entry = Entry::getRecord((int)$EntryId);
 $H_Blog->setCurrentBlog($H_Entry->getBlogId());
 
 # if the entry hasn't been published yet and the user can't view unpublished

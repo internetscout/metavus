@@ -3,7 +3,7 @@
 #   FILE:  ChangeSetEditingUI.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2014-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2014-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -880,7 +880,7 @@ class ChangeSetEditingUI
             # and look up a human-friendly display value
             if (strlen($CurValueId) > 0) {
                 $DisplayVal = ($Field->type() == MetadataSchema::MDFTYPE_REFERENCE) ?
-                    (new Record(intval($CurValueId)))->getMapped("Title") :
+                    (Record::getRecord(intval($CurValueId)))->getMapped("Title") :
                     $Field->getFactory()->getItem($CurValueId)->name();
             }
         } else {

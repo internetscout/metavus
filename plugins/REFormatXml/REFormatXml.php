@@ -3,7 +3,7 @@
 #   FILE:  REFormatXml.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2018-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2018-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -114,7 +114,7 @@ class REFormatXml extends Plugin
         $ExportedResourceCount = 0;
         foreach ($ResourceIds as $ResourceId) {
             # load resource
-            $Resource = new Record($ResourceId);
+            $Resource = Record::getRecord($ResourceId);
 
             $Schema = $Resource->getSchema();
             $Fields = $Schema->getFields(null, MetadataSchema::MDFORDER_EDITING);

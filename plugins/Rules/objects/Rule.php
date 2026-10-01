@@ -3,7 +3,7 @@
 #   FILE:  Rule.php
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2017-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2017-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -342,7 +342,7 @@ class Rule extends Item
 
         $User = new User($UserId);
         foreach ($RecordIds as $RecordId) {
-            $Resource = new Record($RecordId);
+            $Resource = Record::getRecord($RecordId);
 
             # if we have no changes to apply for this resource's schema, skip it
             if (!isset($EditParams[$Resource->getSchemaId()])) {
@@ -448,7 +448,7 @@ class Rule extends Item
             case self::ACTION_SENDEMAIL:
                 $PrivSet = $this->userSelectionCriteria();
                 $User = new User($UserId);
-                $Record = new Record($RecordId);
+                $Record = Record::getRecord($RecordId);
                 return $PrivSet->meetsRequirements($User, $Record);
 
             default:

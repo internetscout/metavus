@@ -3,7 +3,7 @@
 #   FILE:  DeletePage.php (Pages plugin)
 #
 #   Part of the Metavus digital collections platform
-#   Copyright 2012-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2012-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 # @scout:phpstan
@@ -30,7 +30,7 @@ if (!$PFactory->itemExists($_GET["ID"])) {
 }
 
 # load page
-$H_Page = new Page($_GET["ID"]);
+$H_Page = Page::getRecord($_GET["ID"]);
 
 # make sure user has privileges to delete page
 # (uCD() checks edit perms and then delete perms)
@@ -46,7 +46,7 @@ if (isset($_GET["AC"]) && ($_GET["AC"] == "Confirmation")) {
         # hook function to delete page after HTML is displayed
         function DeletePage(int $Id): void
         {
-            $Page = new Page($Id);
+            $Page = Page::getRecord($Id);
             $Page->destroy();
         }
         $AF->addPostProcessingCall("DeletePage", $_GET["ID"]);

@@ -3,7 +3,7 @@
 #   FILE:  CalendarFeed.php
 #
 #   A plugin for the Metavus digital collections platform
-#   Copyright 2022-2025 Edward Almasy and Internet Scout Research Group
+#   Copyright 2022-2026 Edward Almasy and Internet Scout Research Group
 #   http://metavus.net
 #
 #   @scout:phpstan
@@ -192,7 +192,7 @@ class CalendarFeed extends Plugin
                 continue;
             }
 
-            $Event = new Event($EventId);
+            $Event = Event::getRecord($EventId);
 
             $StartDate = $Event->get("Start Date");
             $EndDate = $Event->get("End Date");
